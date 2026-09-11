@@ -1,9 +1,7 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import JoinRoom from './pages/JoinRoom'
-import HostSettings from './pages/HostSettings'
-import SwipeDeck from './pages/SwipeDeck'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import JoinRoom from './pages/JoinRoom';
+import HostSettings from './pages/HostSettings';
+import SwipeDeck from './pages/SwipeDeck';
 
 function App() {
   return (
@@ -11,10 +9,11 @@ function App() {
       <Routes>
         <Route path="/" element={<JoinRoom />} />
         <Route path="/host" element={<HostSettings />} />
-        <Route path="/swipe" element={<SwipeDeck />} />
+        <Route path="/deck/:pin" element={<SwipeDeck />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;
