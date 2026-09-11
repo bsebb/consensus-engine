@@ -10,8 +10,8 @@ export default function JoinRoom() {
   const handleJoin = (e) => {
     e.preventDefault();
     if (pin.length === 4 && name.length > 0) {
-      // TODO: Add Socket.io join_lobby emission here
-      navigate(`/deck/${pin}`);
+      // Navigate to Lobby / Step Zero / Suggestions
+      navigate(`/lobby/${pin}`, { state: { isHost: false, userName: name } });
     }
   };
 
