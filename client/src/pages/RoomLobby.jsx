@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield } from 'lucide-react';
+import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check } from 'lucide-react';
 
 export default function RoomLobby() {
   const { pin } = useParams();
@@ -9,37 +9,57 @@ export default function RoomLobby() {
 
   const mode = location.state?.mode || 'CUSTOM';
   const isHost = location.state?.isHost ?? true;
-  const userName = location.state?.userName || 'Seb';
+  const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Participant');
+
+  // Dynamic participants: starts with only the joined user
+  const [participants, setParticipants] = useState([
+    { name: currentUserName, isMe: true }
+  ]);
 
   const [budgetLimit, setBudgetLimit] = useState(250);
   const [confirmedConstraint, setConfirmedConstraint] = useState(false);
 
   const [suggestion, setSuggestion] = useState('');
   const [mySuggestions, setMySuggestions] = useState([]);
-  const [groupPool, setGroupPool] = useState([
-    "John's House",
-    'Board Game Cafe',
-    'Downtown Bowling'
-  ]);
+  
+  // Group pool starts with host's pre-filled options or empty
+  const [groupPool, setGroupPool] = useState(
+    location.state?.initialOptions
+      ? location.state.initialOptions.split(',').map(s => s.trim()).filter(Boolean)
+      : []
+  );
 
-  const [participants] = useState([
-    { name: userName, isMe: true },
-    { name: 'Gabriel', isMe: false },
-    { name: 'Afina', isMe: false },
-    { name: 'Max', isMe: false },
-    { name: 'Lilia', isMe: false }
-  ]);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyPin = () => {
+    navigator.clipboard.writeText(pin);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  // Quick helper for local testing without needing multiple phones
+  const handleAddTestGuest = () => {
+    const guestNum = participants.length;
+    const newGuest = { name: `Guest ${guestNum}`, isMe: false };
+    setParticipants([...participants, newGuest]);
+  };
 
   const handleAddSuggestion = (e) => {
     e.preventDefault();
     if (!suggestion.trim() || mySuggestions.length >= 3) return;
-    setMySuggestions([...mySuggestions, suggestion.trim()]);
-    setGroupPool([...groupPool, suggestion.trim()]);
+    const clean = suggestion.trim();
+    setMySuggestions([...mySuggestions, clean]);
+    setGroupPool([...groupPool, clean]);
     setSuggestion('');
   };
 
   const handleStartVoting = () => {
-    navigate(`/deck/${pin}`, { state: { mode } });
+    navigate(`/deck/${pin}`, { 
+      state: { 
+        mode,
+        totalParticipants: participants.length 
+      } 
+    });
   };
 
   return (
@@ -47,26 +67,49 @@ export default function RoomLobby() {
       
       {/* Navigation Header */}
       <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] px-4 py-3 flex items-center justify-between">
-        <div>
-          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Lobby</span>
-          <span className="text-base font-black text-black font-mono tracking-widest">{pin}</span>
+        <div className="flex items-center gap-2">
+          <div>
+            <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Room PIN</span>
+            <span className="text-base font-black text-black font-mono tracking-widest">{pin}</span>
+          </div>
+          <button
+            onClick={handleCopyPin}
+            className="p-1.5 rounded-lg text-[#007AFF] hover:bg-black/[0.04] transition"
+            title="Copy PIN"
+          >
+            {copied ? <Check className="w-4 h-4 text-[#34C759]" /> : <Copy className="w-4 h-4" />}
+          </button>
         </div>
+
         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#34C759]/10 text-[#34C759] text-xs font-semibold rounded-full">
           <span className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse"></span>
-          {participants.length} Active
+          {participants.length} in Room
         </span>
       </div>
 
       <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5">
         
-        {/* Participants Inset Section */}
-        <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <Users className="w-3.5 h-3.5 text-[#6E6E73]" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73]">
-              Lobby Roll-Call
-            </span>
+        {/* Dynamic Participants Roll-Call */}
+        <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-[#6E6E73]" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73]">
+                Lobby Roll-Call ({participants.length})
+              </span>
+            </div>
+
+            {/* Dev / Demo quick join helper */}
+            <button
+              type="button"
+              onClick={handleAddTestGuest}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] hover:opacity-80 transition"
+            >
+              <UserPlus className="w-3 h-3" />
+              <span>+ Add Guest</span>
+            </button>
           </div>
+
           <div className="flex flex-wrap gap-1.5">
             {participants.map((p, idx) => (
               <span
@@ -92,7 +135,7 @@ export default function RoomLobby() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-black">Step Zero: Secret Budget Cap</h3>
-                <p className="text-[11px] text-[#6E6E73]">Over-budget venues get pruned silently</p>
+                <p className="text-[11px] text-[#6E6E73]">Options exceeding the lowest cap are silently pruned</p>
               </div>
             </div>
 
@@ -149,7 +192,7 @@ export default function RoomLobby() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-black">Anonymous Suggestions</h3>
-                  <p className="text-[11px] text-[#6E6E73]">Merged with Levenshtein fuzzy logic</p>
+                  <p className="text-[11px] text-[#6E6E73]">Merged with Levenshtein fuzzy deduplication</p>
                 </div>
               </div>
               <span className="flex items-center gap-1 text-[10px] text-[#8E8E93]">
@@ -179,23 +222,27 @@ export default function RoomLobby() {
 
             <div className="pt-2 border-t border-black/[0.04]">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8E8E93] block mb-2">
-                Active Group Pool ({groupPool.length})
+                Group Options Pool ({groupPool.length})
               </span>
-              <div className="flex flex-wrap gap-1.5">
-                {groupPool.map((item, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2.5 py-1 bg-[#F2F2F7] text-black rounded-lg text-xs font-medium"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
+              {groupPool.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {groupPool.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 bg-[#F2F2F7] text-black rounded-lg text-xs font-medium"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[#8E8E93] italic">No suggestions added yet. Type one above!</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* Host Launch Action */}
+        {/* Start Swiping CTA */}
         <div className="pt-2">
           {isHost ? (
             <button
