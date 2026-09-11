@@ -87,9 +87,9 @@ If the frontend sends bad data, the backend will return a 400 or 404 status code
 {
   "participant_id": "uuid-string",
   "rankings": [
-    { "option_id": "uuid-1", "score": 1 },
-    { "option_id": "uuid-2", "score": -1 },
-    { "option_id": "uuid-3", "score": 0 }
+    { "option_id": "uuid-1", "score": 1 },     // Swiped Right (Approve)
+    { "option_id": "uuid-2", "score": -1 },    // Swiped Left (Pass)
+    { "option_id": "uuid-3", "score": -100 }   // Middle Button (VETO)
   ]
 }
 ```
