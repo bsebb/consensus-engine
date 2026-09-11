@@ -18,5 +18,5 @@ This repository utilizes **Contract-Driven Development**. Please read the docume
 *   **APIs:** Google Places API
 
 ## Team Members
-*   **Frontend & UX:** [Name 1], [Name 2]
-*   **Backend, Data, & DevOps:** [Name 3], [Name 4], [Name 5]
+*   **Team 1 (Frontend & UX):** Seb, Gabi
+*   **Team 2 (Backend, Data, & DevOps):** Afina, Max, Lilia
