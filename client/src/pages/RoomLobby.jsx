@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check, HelpCircle } from 'lucide-react';
+import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check } from 'lucide-react';
 import { deduplicateSuggestions } from '../utils/levenshtein';
 
 export default function RoomLobby() {

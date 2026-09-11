@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Compass, Sparkles, MapPin, Check } from 'lucide-react';
+import { ChevronLeft, Compass, Sparkles, MapPin } from 'lucide-react';
 
 export default function HostSettings() {
   const navigate = useNavigate();
@@ -18,6 +18,8 @@ export default function HostSettings() {
   const [topic, setTopic] = useState('Where should we hang out?');
   const [suggestionLimit, setSuggestionLimit] = useState(3);
   const [allowParticipantSuggestions, setAllowParticipantSuggestions] = useState(true);
+  const [initialOptions, setInitialOptions] = useState('');
+  
   // Universal Room Configuration
   const [groupSize, setGroupSize] = useState(4);
 
