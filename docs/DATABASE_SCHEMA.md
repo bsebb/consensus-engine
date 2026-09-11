@@ -65,7 +65,7 @@ model Vote {
   id             String      @id @default(uuid())
   participant_id String
   option_id      String
-  score          Int         // e.g., 1 (Like), -1 (Veto), 0 (Neutral)
+  score          Int         // 1 (Approve), -1 (Pass), -100 (VETO)
 
   // Relationships
   participant    Participant @relation(fields: [participant_id], references: [id], onDelete: Cascade)

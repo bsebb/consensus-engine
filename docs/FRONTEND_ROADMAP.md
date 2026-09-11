@@ -17,7 +17,7 @@ Here is your exact timeline.
 
 ## 📱 Sprint 2: The Core UX & Interactions
 **Goal:** Make the app feel like a native mobile app.
-*   **Seb:** Build the "Tinder-style" swipe card component. Import the fake `restaurants.json` file and make it so users can swipe left to Veto or right to Approve. 
+*   **Seb:** Build the "Tinder-style" 3-way swipe component. Import the fake `restaurants.json` file. Users should swipe left to **Pass**, swipe right to **Approve**, and have a dedicated middle button to **VETO** (the hard reject).
 *   **Gabi:** Build the "Step Zero" onboarding flow. Create clean sliders or inputs for users to anonymously submit their budget limits before they enter the Swipe Deck. Build the "Host Moderation" screen where the Host can manually approve Custom Suggestions.
 
 ---
