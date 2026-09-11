@@ -5,6 +5,18 @@ Base URL: `/api/v1`
 
 ---
 
+## 🛑 Standard Error Responses
+If the frontend sends bad data, the backend will return a 400 or 404 status code with this standard structure so the frontend knows exactly what went wrong.
+```json
+{
+  "success": false,
+  "error": "INVALID_PIN",
+  "message": "The room PIN 4921 does not exist or voting has already closed."
+}
+```
+
+---
+
 ## 1. Create Room
 **Endpoint:** `POST /rooms`
 **Description:** Initializes a new voting lobby.

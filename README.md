@@ -22,6 +22,7 @@ Please read the documentation in the `/docs` folder before writing code:
 5. [REST API Contract](./docs/API_CONTRACT.md) *(The JSON formats for Frontend <-> Backend)*
 6. [Socket.io Events](./docs/SOCKET_EVENTS.md) *(Real-time multiplayer events)*
 7. [Prisma Database Schema](./docs/DATABASE_SCHEMA.md) *(The PostgreSQL tables)*
+8. [Deployment Strategy](./docs/DEPLOYMENT.md) *(Vercel & Render DevOps guide)*
 
 ---
 
