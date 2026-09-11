@@ -2,21 +2,63 @@
 
 A real-time Progressive Web App (PWA) designed to solve group decision paralysis using Graph-Theory mathematics and frictionless UX.
 
-## Documentation Overview
-This repository utilizes **Contract-Driven Development**. Please read the documentation in the `/docs` folder before writing code:
+---
 
-1. [System Architecture](./docs/ARCHITECTURE.md)
-2. [REST API Contract](./docs/API_CONTRACT.md)
-3. [Socket.io Events](./docs/SOCKET_EVENTS.md)
-4. [Prisma Database Schema](./docs/DATABASE_SCHEMA.md)
-5. [Contributing Guidelines](./CONTRIBUTING.md)
+## 👥 Team Members
+*   **Team 1 (Frontend & UX):** Seb, Gabi
+*   **Team 2 (Backend, Data, & DevOps):** Afina, Max, Lilia
 
-## Tech Stack
+---
+
+## 📖 Documentation Overview
+This repository utilizes **Contract-Driven Development**. This means Team 1 (Frontend) doesn't have to wait for Team 2 (Backend) to finish! Team 1 can look at the JSON examples in the Docs and start building the UI immediately.
+
+Please read the documentation in the `/docs` folder before writing code:
+1. [System Architecture](./docs/ARCHITECTURE.md) *(How the whole app works)*
+2. [REST API Contract](./docs/API_CONTRACT.md) *(The JSON formats for Frontend <-> Backend)*
+3. [Socket.io Events](./docs/SOCKET_EVENTS.md) *(Real-time multiplayer events)*
+4. [Prisma Database Schema](./docs/DATABASE_SCHEMA.md) *(The PostgreSQL tables)*
+5. [Beginner's Git Guide](./CONTRIBUTING.md) *(READ THIS IF YOU ARE NEW TO GIT)*
+
+---
+
+## 💻 Tech Stack
 *   **Frontend:** React (Vite), Tailwind CSS
 *   **Backend:** Node.js, Express, Socket.io
 *   **Database:** PostgreSQL, Prisma ORM
 *   **APIs:** Google Places API
 
-## Team Members
-*   **Team 1 (Frontend & UX):** Seb, Gabi
-*   **Team 2 (Backend, Data, & DevOps):** Afina, Max, Lilia
+---
+
+## 📂 Proposed Folder Structure
+To keep Team 1 and Team 2 from stepping on each other's toes, we will use a "Monorepo" structure. Everything lives in this one Git repository, but it's split into two main folders:
+
+```text
+consensus-engine/
+├── client/           # Team 1 (Seb & Gabi) works strictly in here (React/Vite)
+├── server/           # Team 2 (Afina, Max, Lilia) works strictly in here (Node/Express)
+├── docs/             # Architecture and API contracts
+├── README.md
+└── CONTRIBUTING.md
+```
+
+## 🛠️ First Time Setup (How to run the project)
+*(Note: We will update this section once the `client` and `server` folders are officially created in Sprint 1).*
+
+**Prerequisites:**
+You must install [Node.js](https://nodejs.org/) and [Git](https://git-scm.com/) on your computer.
+
+**To run the Frontend (Seb & Gabi):**
+```bash
+cd client
+npm install
+npm run dev
+```
+
+**To run the Backend (Afina, Max, Lilia):**
+```bash
+cd server
+npm install
+npx prisma generate
+npm run dev
+```

@@ -1,31 +1,53 @@
-# Contributing Guidelines
+# Git Guide & Contributing Rules
 
-To avoid merge conflicts across our 5-person team, strictly adhere to these Git protocols.
+Welcome to the team! Since this is a 5-person project, we need to be careful not to overwrite each other's code. Git can be confusing, but if you follow these exact steps, you will never break the project.
 
-## 1. Branch Naming Convention
-Never push directly to `main`. Create a branch from `main` using the following prefixes:
-*   `feat/` - A new feature (e.g., `feat/swipe-ui`, `feat/google-api`)
-*   `fix/` - A bug fix (e.g., `fix/cors-error`, `fix/socket-disconnect`)
-*   `docs/` - Documentation updates (e.g., `docs/update-readme`)
-*   `refactor/` - Code restructuring without changing behavior (e.g., `refactor/graph-math`)
+---
 
-**Example:** `git checkout -b feat/socket-room-state`
+## 🚀 The Daily Workflow (Copy & Paste these commands)
 
-## 2. Commit Message Protocol
-We use conventional commits. Keep it short and descriptive.
-*   `feat(ui): add tinder-style swipe animations`
-*   `fix(db): correct prisma unique constraint on votes`
-*   `chore(deps): install socket.io-client`
+Every time you sit down to write code, follow these steps in order:
 
-## 3. Pull Request (PR) Rules
-1.  **Do not merge your own PR.** You must request a review from at least 1 teammate (preferably someone from the opposite domain: Frontend reviews Backend, Backend reviews Frontend).
-2.  **Mocking Policy:** Frontend developers are not allowed to say "I'm blocked waiting on the backend." Use the `API_CONTRACT.md` to mock the JSON response and build the UI.
-3.  **No `.env` files in PRs:** Ensure your `.gitignore` blocks `.env` files. If you accidentally commit a Google API key, the PR will be rejected.
+### 1. Get the latest code
+Always start by making sure you have what Afina, Max, Lilia, and Gabi worked on yesterday.
+```bash
+git checkout main
+git pull origin main
+```
 
-## 4. Resolving Conflicts
-If your branch has a conflict with `main`:
-1. `git checkout main`
-2. `git pull origin main`
-3. `git checkout your-branch`
-4. `git rebase main`
-5. Resolve the conflicts in your IDE, then force push to your branch `git push -f`.
+### 2. Create your own safe "branch"
+Never type code directly into `main`. Create a branch (a safe copy) to work in.
+Name it with your domain, your name, and what you are doing.
+```bash
+# Examples:
+git checkout -b feat/seb-swipe-cards
+git checkout -b feat/afina-database-schema
+git checkout -b fix/gabi-button-colors
+```
+
+### 3. Save your work (Commit)
+After you write some code and it works, save it locally to your branch.
+```bash
+git add .
+git commit -m "feat: added the tinder swipe animation"
+```
+*(Keep your commit messages short and descriptive!)*
+
+### 4. Send it to GitHub (Push)
+When you are done for the day, or ready to combine your code with the main project, push it up to GitHub.
+```bash
+git push origin <your-branch-name>
+```
+
+### 5. Merge it! (Pull Requests)
+1. Go to our GitHub page.
+2. You will see a green button that says **"Compare & pull request"**. Click it.
+3. Ask someone else on the team to quickly look at your code. (e.g., Seb asks Gabi to look at the UI).
+4. If it looks good, click **"Merge Pull Request"**. Your code is now officially in `main`!
+
+---
+
+## ⚠️ The Golden Rules
+1. **Never push directly to `main`.** Always use a branch and a Pull Request.
+2. **Never commit `.env` files.** If you put the Google API key or Database password in a `.env` file, make sure `.env` is listed in our `.gitignore` file. If you push passwords to GitHub, bots will steal them in 10 minutes.
+3. **Talk to each other.** If Seb and Gabi are both trying to edit the same `App.jsx` file at the exact same time, you will get a "Merge Conflict." Communicate on Discord/Slack about who is working on what file!
