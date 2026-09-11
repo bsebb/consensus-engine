@@ -1,53 +1,81 @@
-# Git Guide & Contributing Rules
+# The Ultimate Beginner's Guide to Git
 
-Welcome to the team! Since this is a 5-person project, we need to be careful not to overwrite each other's code. Git can be confusing, but if you follow these exact steps, you will never break the project.
+Welcome to the team! If you have never used Git before, do not panic. Git is actually very simple once you understand *why* we use it.
+
+## 🕰️ What is Git?
+Imagine you are playing a video game and you are about to fight a massive boss. What do you do? **You save your game.** If you die, you just reload the save file. 
+
+Git is exactly that, but for code. It is a "time machine." If you accidentally delete a file or write code that breaks the app, you don't have to panic. With Git, you can instantly rewind time to when the code was working. GitHub is just the website where we store everyone's "save files" in the cloud so we can share them.
 
 ---
 
-## 🚀 The Daily Workflow (Copy & Paste these commands)
+## 🌳 What is a "Branch"? (And the Golden Rule)
+Our project has one master timeline called the **`main` branch**. 
+**THE GOLDEN RULE:** **Never, ever write code directly into the `main` branch.** 
 
-Every time you sit down to write code, follow these steps in order:
+If all 5 of us wrote code into `main` at the same time, we would constantly overwrite each other's work and the app would crash. 
 
-### 1. Get the latest code
-Always start by making sure you have what Afina, Max, Lilia, and Gabi worked on yesterday.
+Instead, when you want to build something, you create a **Branch**. A branch is like taking a photocopy of the `main` code, going into your own private sandbox, and building your feature. When you are 100% sure your code works, you ask the team to "Merge" your branch back into `main`.
+
+### How to Name Your Branch
+We use a specific naming format so everyone knows exactly what you are doing without having to ask you.
+**Format:** `<type>/<your-name>-<what-you-are-doing>`
+
+**Types:**
+*   `feat/` : You are building a new feature (e.g., a new button, a new database table).
+*   `fix/` : You are fixing a bug.
+*   `docs/` : You are just changing text files like this one.
+
+**Examples:**
+*   ✅ `feat/seb-swipe-cards` *(Seb is building the swipe UI)*
+*   ✅ `feat/afina-database-schema` *(Afina is building the Postgres tables)*
+*   ✅ `fix/max-socket-crash` *(Max is fixing a bug where the server crashes)*
+*   ❌ `my-code` *(Bad name. Who are you? What code?)*
+
+---
+
+## 🚀 The Daily Workflow (What the commands actually do)
+
+Every time you sit down at your computer to write code, follow these steps:
+
+### Step 1: Get the latest code from your teammates
+Before you start working, you need to download whatever your team finished yesterday.
 ```bash
 git checkout main
 git pull origin main
 ```
+*   **`git checkout main`** -> "Hey Git, switch my computer to the main timeline."
+*   **`git pull origin main`** -> "Hey Git, download the newest main timeline from GitHub."
 
-### 2. Create your own safe "branch"
-Never type code directly into `main`. Create a branch (a safe copy) to work in.
-Name it with your domain, your name, and what you are doing.
+### Step 2: Create your private sandbox
+Now that your `main` is up to date, create your new branch.
 ```bash
-# Examples:
 git checkout -b feat/seb-swipe-cards
-git checkout -b feat/afina-database-schema
-git checkout -b fix/gabi-button-colors
 ```
+*   **`git checkout -b`** -> "Hey Git, create a brand new Branch (-b) and switch me into it." You are now safe. You can delete every file on your computer, and it won't affect `main`.
 
-### 3. Save your work (Commit)
-After you write some code and it works, save it locally to your branch.
+### Step 3: Write your code & Save it (Commit)
+Go into VS Code, write your code, and test it. Once it works, it's time to "Save your game".
 ```bash
 git add .
 git commit -m "feat: added the tinder swipe animation"
 ```
-*(Keep your commit messages short and descriptive!)*
+*   **`git add .`** -> "Hey Git, look at *all* (`.`) the files I just changed and get ready to save them."
+*   **`git commit -m "message"`** -> "Hey Git, officially save this code. Here is a message (-m) explaining what I did so I can remember it later."
 
-### 4. Send it to GitHub (Push)
-When you are done for the day, or ready to combine your code with the main project, push it up to GitHub.
+### Step 4: Send your safe branch to GitHub (Push)
+Your code is saved on your laptop, but your teammates can't see it yet.
 ```bash
-git push origin <your-branch-name>
+git push origin feat/seb-swipe-cards
 ```
+*   **`git push origin <branch>`** -> "Hey Git, upload my specific branch to GitHub (origin)."
 
-### 5. Merge it! (Pull Requests)
-1. Go to our GitHub page.
-2. You will see a green button that says **"Compare & pull request"**. Click it.
-3. Ask someone else on the team to quickly look at your code. (e.g., Seb asks Gabi to look at the UI).
-4. If it looks good, click **"Merge Pull Request"**. Your code is now officially in `main`!
+### Step 5: The Pull Request (PR)
+1. Go to our repository on GitHub.com.
+2. You will see a big green button that says **"Compare & pull request"**. Click it.
+3. A Pull Request is you saying: *"Hey team, my code is done in my sandbox. Can someone check it to make sure it's good?"*
+4. Seb should ask Gabi to check his UI code. Afina should ask Max to check her database code.
+5. If the reviewer says it looks good, you click **"Merge Pull Request"**. 
+6. Boom! Your code is taken out of your sandbox and officially added to the `main` timeline for everyone to use.
 
----
-
-## ⚠️ The Golden Rules
-1. **Never push directly to `main`.** Always use a branch and a Pull Request.
-2. **Never commit `.env` files.** If you put the Google API key or Database password in a `.env` file, make sure `.env` is listed in our `.gitignore` file. If you push passwords to GitHub, bots will steal them in 10 minutes.
-3. **Talk to each other.** If Seb and Gabi are both trying to edit the same `App.jsx` file at the exact same time, you will get a "Merge Conflict." Communicate on Discord/Slack about who is working on what file!
+Congratulations, you now know how to use Git like a professional software engineer!
