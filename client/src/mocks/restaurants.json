@@ -1,0 +1,42 @@
+[
+  {
+    "id": "1e2f3c4d",
+    "name": "Luigi's Pizza",
+    "price_level": 2,
+    "distance_km": 0.8,
+    "emoji": "🍕",
+    "tags": ["Italian", "Fast Food"]
+  },
+  {
+    "id": "5a6b7c8d",
+    "name": "Sakura Sushi",
+    "price_level": 3,
+    "distance_km": 3.5,
+    "emoji": "🍣",
+    "tags": ["Japanese", "Seafood"]
+  },
+  {
+    "id": "9e0f1a2b",
+    "name": "The Burger Joint",
+    "price_level": 1,
+    "distance_km": 1.2,
+    "emoji": "🍔",
+    "tags": ["American", "Fast Food"]
+  },
+  {
+    "id": "3c4d5e6f",
+    "name": "El Camino Tacos",
+    "price_level": 1,
+    "distance_km": 2.1,
+    "emoji": "🌮",
+    "tags": ["Mexican", "Street Food"]
+  },
+  {
+    "id": "7g8h9i0j",
+    "name": "Vegan Vibe Cafe",
+    "price_level": 2,
+    "distance_km": 0.5,
+    "emoji": "🥗",
+    "tags": ["Healthy", "Vegan"]
+  }
+]
