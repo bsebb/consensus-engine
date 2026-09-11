@@ -9,6 +9,7 @@ export default function SwipeDeck() {
   const location = useLocation();
 
   const mode = location.state?.mode || 'DISCOVERY';
+  const totalParticipants = location.state?.totalParticipants || 2;
 
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -23,7 +24,7 @@ export default function SwipeDeck() {
   useEffect(() => {
     if (mode === 'CUSTOM') {
       setCards([
-        { id: 'c1', name: "John's House", emoji: '🏡', tags: ['Chill', 'Free'], distance_km: '0.8', price_level: 0 },
+        { id: 'c1', name: "Local Spot", emoji: '🏡', tags: ['Chill', 'Free'], distance_km: '0.8', price_level: 0 },
         { id: 'c2', name: 'Downtown Bowling', emoji: '🎳', tags: ['Activity', 'Fun'], distance_km: '3.2', price_level: 2 },
         { id: 'c3', name: 'Board Game Cafe', emoji: '🎲', tags: ['Cozy', 'Drinks'], distance_km: '1.4', price_level: 1 },
         { id: 'c4', name: 'Cinema Movie Night', emoji: '🍿', tags: ['Entertainment'], distance_km: '4.0', price_level: 2 }
@@ -48,8 +49,11 @@ export default function SwipeDeck() {
   const currentCard = cards[currentIndex];
   const winningOption = cards[0] || { name: "Luigi's Pizza", emoji: '🍕' };
 
-  // Waiting for group
+  // Waiting for remaining participants
   if (currentIndex >= cards.length && !showWinner) {
+    const finishedCount = Math.max(1, totalParticipants - 1);
+    const progressPercent = Math.round((finishedCount / totalParticipants) * 100);
+
     return (
       <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6 select-none">
         <div className="w-full max-w-sm bg-white rounded-3xl p-8 border border-black/[0.04] shadow-sm text-center space-y-4">
@@ -66,10 +70,13 @@ export default function SwipeDeck() {
           <div className="p-3.5 bg-[#F8F8FA] rounded-2xl space-y-2">
             <div className="flex justify-between text-xs font-semibold text-[#6E6E73]">
               <span>Votes Received</span>
-              <span className="font-mono text-black">4 of 5</span>
+              <span className="font-mono text-black">{finishedCount} of {totalParticipants}</span>
             </div>
             <div className="w-full bg-[#E5E5EA] h-1.5 rounded-full overflow-hidden">
-              <div className="bg-[#007AFF] h-full w-[80%] rounded-full animate-pulse"></div>
+              <div 
+                className="bg-[#007AFF] h-full rounded-full animate-pulse transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              ></div>
             </div>
           </div>
 
@@ -232,11 +239,10 @@ export default function SwipeDeck() {
         )}
       </div>
 
-      {/* Floating Apple Liquid Glass Control Dock (Thumb Zone) */}
+      {/* Floating Apple Liquid Glass Control Dock */}
       <div className="p-6 pb-10 flex justify-center items-center">
         <div className="liquid-glass rounded-full px-6 py-3 flex items-center gap-6 shadow-lg shadow-black/5">
           
-          {/* Pass Control (Red X) */}
           <button
             type="button"
             onClick={() => handleVote(-1)}
@@ -246,7 +252,6 @@ export default function SwipeDeck() {
             <X className="w-6 h-6 stroke-[2.5]" />
           </button>
 
-          {/* VETO Dealbreaker (Middle Flame Control) */}
           <button
             type="button"
             onClick={() => handleVote(-100)}
@@ -256,7 +261,6 @@ export default function SwipeDeck() {
             <Flame className="w-7 h-7 fill-current" />
           </button>
 
-          {/* Approve Control (Green Check) */}
           <button
             type="button"
             onClick={() => handleVote(1)}

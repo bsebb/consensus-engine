@@ -39,7 +39,7 @@ export default function JoinRoom() {
             </label>
             <input 
               type="text" 
-              placeholder="e.g. Seb"
+              placeholder="e.g. Alex"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full min-h-[48px] px-4 rounded-xl bg-[#F8F8FA] border border-black/[0.06] text-base text-black placeholder:text-[#8E8E93] focus:bg-white focus:ring-2 focus:ring-[#007AFF] focus:border-transparent outline-none transition duration-150"
