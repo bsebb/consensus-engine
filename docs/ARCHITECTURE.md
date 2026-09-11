@@ -13,6 +13,7 @@ Rooms can be populated with voting options via two distinct paths:
 ### Loop A: Discovery Mode (API-Driven)
 *   **Use Case:** Finding a restaurant, cafe, or bar.
 *   **Flow:** The host selects a Theme, Radius, and Budget. The backend queries the **Google Places API** to fetch 10-15 venues.
+*   **API Caching (Cost Protection):** To prevent draining API credits, the backend caches the Google Places JSON response. If another room requests the same latitude/longitude/radius within 24 hours, the server serves the cached data instead of pinging Google.
 *   **Step Zero (The Prune):** Before voting, participants anonymously submit a strict budget cap. The backend cross-references this with the Google API data and our proprietary `Venue_Analytics` table, pruning any options that exceed the group's limits.
 
 ### Loop B: Custom Mode (User-Driven)

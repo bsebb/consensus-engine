@@ -79,6 +79,25 @@ If the frontend sends bad data, the backend will return a 400 or 404 status code
 
 ---
 
+## 3.5. Host Approves Custom List (Moderation Phase)
+**Endpoint:** `POST /rooms/:pin/approve-suggestions`
+**Description:** The Host submits the final, sanitized list of custom options to start voting.
+**Request Body:**
+```json
+{
+  "host_id": "uuid-string",
+  "approved_options": ["John's House", "The Park"]
+}
+```
+**Response (200 OK):**
+```json
+{
+  "success": true
+}
+```
+
+---
+
 ## 4. Submit Batched Votes
 **Endpoint:** `POST /rooms/:pin/votes`
 **Description:** After swiping all cards, the client sends the final rankings.
@@ -119,5 +138,24 @@ If the frontend sends bad data, the backend will return a 400 or 404 status code
 ```json
 {
   "success": true
+}
+```
+
+---
+
+## 6. Force Resolve (Anti-Ghost Voter)
+**Endpoint:** `POST /rooms/:pin/force-resolve`
+**Description:** The Host forces the algorithm to run early if a participant goes AFK.
+**Request Body:**
+```json
+{
+  "host_id": "uuid-string"
+}
+```
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Algorithm triggered manually."
 }
 ```
