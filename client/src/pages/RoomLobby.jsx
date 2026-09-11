@@ -11,6 +11,9 @@ export default function RoomLobby() {
   const isHost = location.state?.isHost ?? true;
   const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Participant');
 
+  // Expected Group Size defined by host
+  const [groupSize, setGroupSize] = useState(location.state?.groupSize || 4);
+
   // Dynamic participants: starts with only the joined user
   const [participants, setParticipants] = useState([
     { name: currentUserName, isMe: true }
@@ -57,10 +60,12 @@ export default function RoomLobby() {
     navigate(`/deck/${pin}`, { 
       state: { 
         mode,
-        totalParticipants: participants.length 
+        totalParticipants: groupSize 
       } 
     });
   };
+
+  const isFull = participants.length >= groupSize;
 
   return (
     <div className="min-h-screen bg-[#F2F2F7] pb-16 select-none">
@@ -81,21 +86,27 @@ export default function RoomLobby() {
           </button>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#34C759]/10 text-[#34C759] text-xs font-semibold rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse"></span>
-          {participants.length} in Room
-        </span>
+        <div className="text-right">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${
+            isFull 
+              ? 'bg-[#34C759]/10 text-[#34C759]' 
+              : 'bg-[#007AFF]/10 text-[#007AFF]'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isFull ? 'bg-[#34C759]' : 'bg-[#007AFF] animate-pulse'}`}></span>
+            {participants.length} of {groupSize} Joined
+          </span>
+        </div>
       </div>
 
       <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5">
         
-        {/* Dynamic Participants Roll-Call */}
+        {/* Dynamic Participants Roll-Call with Progress Bar */}
         <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-[#6E6E73]" />
               <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73]">
-                Lobby Roll-Call ({participants.length})
+                Lobby Roll-Call ({participants.length}/{groupSize})
               </span>
             </div>
 
@@ -106,8 +117,16 @@ export default function RoomLobby() {
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] hover:opacity-80 transition"
             >
               <UserPlus className="w-3 h-3" />
-              <span>+ Add Guest</span>
+              <span>+ Add Friend</span>
             </button>
+          </div>
+
+          {/* Group Fill Progress Bar */}
+          <div className="w-full bg-[#E5E5EA] h-1.5 rounded-full overflow-hidden">
+            <div 
+              className="bg-[#007AFF] h-full rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.round((participants.length / groupSize) * 100))}%` }}
+            ></div>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
