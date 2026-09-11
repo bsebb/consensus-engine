@@ -3,8 +3,8 @@
 @layer base {
   :root {
     --ios-bg: #F2F2F7;
-    --ios-surface: #FFFFFF;
-    --ios-surface-secondary: #F8F8FA;
+    --ios-card: #FFFFFF;
+    --ios-inset: #F8F8FA;
     --ios-separator: rgba(60, 60, 67, 0.12);
     --ios-label: #000000;
     --ios-secondary-label: #6E6E73;
@@ -13,6 +13,26 @@
     --ios-green: #34C759;
     --ios-red: #FF3B30;
     --ios-orange: #FF9500;
+    --ios-glass-bg: rgba(255, 255, 255, 0.78);
+    --ios-glass-border: rgba(255, 255, 255, 0.65);
+    --ios-glass-shadow: rgba(0, 0, 0, 0.08);
+  }
+
+  .dark {
+    --ios-bg: #000000;
+    --ios-card: #1C1C1E;
+    --ios-inset: #2C2C2E;
+    --ios-separator: rgba(255, 255, 255, 0.12);
+    --ios-label: #FFFFFF;
+    --ios-secondary-label: #8E8E93;
+    --ios-tertiary-label: #636366;
+    --ios-blue: #0A84FF;
+    --ios-green: #30D158;
+    --ios-red: #FF453A;
+    --ios-orange: #FF9F0A;
+    --ios-glass-bg: rgba(28, 28, 30, 0.82);
+    --ios-glass-border: rgba(255, 255, 255, 0.12);
+    --ios-glass-shadow: rgba(0, 0, 0, 0.4);
   }
 
   html, body {
@@ -23,9 +43,9 @@
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Ensure standard Apple mobile touch targets (44x44 minimum) */
   button, input, select, textarea {
     touch-action: manipulation;
   }
@@ -33,24 +53,24 @@
 
 /* Apple Liquid Glass utility for floating functional layer */
 .liquid-glass {
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--ios-glass-bg);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ios-glass-border);
+  box-shadow: 0 8px 32px 0 var(--ios-glass-shadow);
 }
 
 /* Continuous Apple Card surface */
 .apple-card {
-  background: #FFFFFF;
+  background: var(--ios-card);
   border-radius: 1.25rem;
-  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--ios-separator);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 /* Recessed Inset Group */
 .apple-inset-group {
-  background: #F8F8FA;
+  background: var(--ios-inset);
   border-radius: 1rem;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--ios-separator);
 }

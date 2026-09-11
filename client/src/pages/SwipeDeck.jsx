@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { X, Check, Flame, Trophy, Star, Sparkles, RotateCcw } from 'lucide-react';
 import restaurantsMock from '../mocks/restaurants.json';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function SwipeDeck() {
   const { pin } = useParams();
@@ -37,7 +38,7 @@ export default function SwipeDeck() {
   });
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [myVotes, setMyVotes] = useState([]);
+  const [_myVotes, setMyVotes] = useState([]);
   const [showWinner, setShowWinner] = useState(false);
 
   // Mentor Post-Event Feedback
@@ -59,16 +60,15 @@ export default function SwipeDeck() {
     }
   };
 
-  // Safe fallback for winning option
   const winningOption = cards[0] || { name: "Selected Option", emoji: '🎯' };
   const currentCard = cards[currentIndex] || null;
 
   // 1. Loading / Empty guard
   if (!cards || cards.length === 0) {
     return (
-      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6 select-none">
-        <div className="w-full max-w-sm bg-white rounded-3xl p-8 border border-black/[0.04] shadow-sm text-center space-y-4">
-          <p className="text-sm font-semibold text-black">No cards available for this room.</p>
+      <div className="min-h-screen bg-[#F2F2F7] dark:bg-black flex items-center justify-center p-6 select-none transition-colors">
+        <div className="w-full max-w-sm bg-white dark:bg-[#1C1C1E] rounded-3xl p-8 border border-black/[0.04] dark:border-white/[0.08] shadow-sm text-center space-y-4">
+          <p className="text-sm font-semibold text-black dark:text-white">No cards available for this room.</p>
           <button
             onClick={() => navigate('/')}
             className="w-full min-h-[44px] bg-[#007AFF] text-white text-xs font-semibold rounded-xl"
@@ -86,24 +86,24 @@ export default function SwipeDeck() {
     const progressPercent = Math.round((finishedCount / totalParticipants) * 100);
 
     return (
-      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6 select-none">
-        <div className="w-full max-w-sm bg-white rounded-3xl p-8 border border-black/[0.04] shadow-sm text-center space-y-4">
+      <div className="min-h-screen bg-[#F2F2F7] dark:bg-black flex items-center justify-center p-6 select-none transition-colors">
+        <div className="w-full max-w-sm bg-white dark:bg-[#1C1C1E] rounded-3xl p-8 border border-black/[0.04] dark:border-white/[0.08] shadow-sm text-center space-y-4">
           <div className="w-14 h-14 bg-[#007AFF]/10 text-[#007AFF] rounded-2xl flex items-center justify-center mx-auto">
             <Sparkles className="w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-black">Cards Complete</h2>
-            <p className="text-xs text-[#6E6E73] mt-1">
+            <h2 className="text-xl font-bold text-black dark:text-white">Cards Complete</h2>
+            <p className="text-xs text-[#6E6E73] dark:text-[#8E8E93] mt-1">
               Calculating Condorcet compromise matrix for "{topic}"...
             </p>
           </div>
           
-          <div className="p-3.5 bg-[#F8F8FA] rounded-2xl space-y-2">
-            <div className="flex justify-between text-xs font-semibold text-[#6E6E73]">
+          <div className="p-3.5 bg-[#F8F8FA] dark:bg-[#2C2C2E] rounded-2xl space-y-2">
+            <div className="flex justify-between text-xs font-semibold text-[#6E6E73] dark:text-[#8E8E93]">
               <span>Votes Gathered</span>
-              <span className="font-mono text-black">{finishedCount} of {totalParticipants}</span>
+              <span className="font-mono text-black dark:text-white">{finishedCount} of {totalParticipants}</span>
             </div>
-            <div className="w-full bg-[#E5E5EA] h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-[#E5E5EA] dark:bg-[#3A3A3C] h-1.5 rounded-full overflow-hidden">
               <div 
                 className="bg-[#007AFF] h-full rounded-full animate-pulse transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -113,7 +113,7 @@ export default function SwipeDeck() {
 
           <button
             onClick={() => setShowWinner(true)}
-            className="w-full min-h-[44px] bg-black text-white text-xs font-semibold rounded-xl active:scale-[0.98] transition"
+            className="w-full min-h-[44px] bg-black dark:bg-white text-white dark:text-black text-xs font-semibold rounded-xl active:scale-[0.98] transition"
           >
             Show Consensus Result
           </button>
@@ -125,8 +125,8 @@ export default function SwipeDeck() {
   // 3. Consensus Winner Screen
   if (showWinner) {
     return (
-      <div className="min-h-screen bg-[#F2F2F7] py-10 px-4 flex items-center justify-center select-none">
-        <div className="w-full max-w-sm bg-white rounded-3xl shadow-sm border border-black/[0.04] overflow-hidden text-center">
+      <div className="min-h-screen bg-[#F2F2F7] dark:bg-black py-10 px-4 flex items-center justify-center select-none transition-colors">
+        <div className="w-full max-w-sm bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-sm border border-black/[0.04] dark:border-white/[0.08] overflow-hidden text-center">
           
           {/* Winner Header */}
           <div className="bg-[#007AFF] p-8 text-white">
@@ -147,14 +147,14 @@ export default function SwipeDeck() {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8E8E93] block">
                     Post-Event Feedback
                   </span>
-                  <h3 className="text-sm font-bold text-black mt-0.5">
+                  <h3 className="text-sm font-bold text-black dark:text-white mt-0.5">
                     Rate this outcome
                   </h3>
                 </div>
 
                 {/* Satisfaction */}
-                <div className="p-3 bg-[#F8F8FA] rounded-xl border border-black/[0.04]">
-                  <span className="text-xs font-medium text-[#6E6E73] block mb-1.5">
+                <div className="p-3 bg-[#F8F8FA] dark:bg-[#2C2C2E] rounded-xl border border-black/[0.04] dark:border-white/[0.06]">
+                  <span className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] block mb-1.5">
                     Group Satisfaction
                   </span>
                   <div className="flex gap-1.5">
@@ -164,7 +164,7 @@ export default function SwipeDeck() {
                         type="button"
                         onClick={() => setSatisfaction(star)}
                         className={`p-1 transition ${
-                          satisfaction >= star ? 'text-[#FF9500]' : 'text-[#E5E5EA]'
+                          satisfaction >= star ? 'text-[#FF9500]' : 'text-[#E5E5EA] dark:text-[#3A3A3C]'
                         }`}
                       >
                         <Star className="w-5 h-5 fill-current" />
@@ -174,8 +174,8 @@ export default function SwipeDeck() {
                 </div>
 
                 {/* Price Accuracy */}
-                <div className="p-3 bg-[#F8F8FA] rounded-xl border border-black/[0.04]">
-                  <span className="text-xs font-medium text-[#6E6E73] block mb-1.5">
+                <div className="p-3 bg-[#F8F8FA] dark:bg-[#2C2C2E] rounded-xl border border-black/[0.04] dark:border-white/[0.06]">
+                  <span className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] block mb-1.5">
                     Price Match Expectation
                   </span>
                   <div className="flex gap-1.5">
@@ -185,7 +185,7 @@ export default function SwipeDeck() {
                         type="button"
                         onClick={() => setPriceAccuracy(star)}
                         className={`p-1 transition ${
-                          priceAccuracy >= star ? 'text-[#007AFF]' : 'text-[#E5E5EA]'
+                          priceAccuracy >= star ? 'text-[#007AFF]' : 'text-[#E5E5EA] dark:text-[#3A3A3C]'
                         }`}
                       >
                         <Star className="w-5 h-5 fill-current" />
@@ -203,7 +203,7 @@ export default function SwipeDeck() {
                 </button>
               </div>
             ) : (
-              <div className="p-3 bg-[#34C759]/10 border border-[#34C759]/20 rounded-xl text-left text-xs text-[#28893F]">
+              <div className="p-3 bg-[#34C759]/10 border border-[#34C759]/20 rounded-xl text-left text-xs text-[#30D158]">
                 <p className="font-semibold">Rating Saved</p>
                 <p className="text-[11px] opacity-90 mt-0.5">Recorded to VenueAnalytics to train future decisions.</p>
               </div>
@@ -211,7 +211,7 @@ export default function SwipeDeck() {
 
             <button
               onClick={() => navigate('/')}
-              className="w-full min-h-[44px] flex items-center justify-center gap-1.5 text-[#007AFF] text-xs font-semibold hover:bg-[#F2F2F7] rounded-xl transition"
+              className="w-full min-h-[44px] flex items-center justify-center gap-1.5 text-[#007AFF] text-xs font-semibold hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] rounded-xl transition"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Start New Decision</span>
@@ -225,33 +225,36 @@ export default function SwipeDeck() {
 
   // 4. Active Swipe Deck
   return (
-    <div className="min-h-screen bg-[#F2F2F7] flex flex-col justify-between select-none">
+    <div className="min-h-screen bg-[#F2F2F7] dark:bg-black flex flex-col justify-between select-none transition-colors">
       
-      {/* Top Header Bar */}
+      {/* Top Header Bar with ThemeToggle */}
       <div className="p-4 flex justify-between items-center max-w-sm w-full mx-auto">
         <div>
           <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">
             {topic}
           </span>
-          <span className="text-xs font-black text-black font-mono">PIN: {pin}</span>
+          <span className="text-xs font-black text-black dark:text-white font-mono">PIN: {pin}</span>
         </div>
-        <span className="text-xs font-semibold text-[#6E6E73] bg-white px-3 py-1 rounded-full border border-black/[0.05] shadow-xs">
-          {currentIndex + 1} of {cards.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-[#6E6E73] dark:text-[#8E8E93] bg-white dark:bg-[#1C1C1E] px-3 py-1 rounded-full border border-black/[0.05] dark:border-white/[0.08] shadow-xs">
+            {currentIndex + 1} of {cards.length}
+          </span>
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Center Swipe Card */}
       <div className="flex-1 flex items-center justify-center p-4 max-w-sm w-full mx-auto">
         {currentCard && (
-          <div className="w-full bg-white rounded-[2rem] shadow-sm border border-black/[0.05] overflow-hidden flex flex-col">
-            <div className="h-64 bg-[#F8F8FA] flex items-center justify-center text-7xl select-none">
+          <div className="w-full bg-white dark:bg-[#1C1C1E] rounded-[2rem] shadow-sm border border-black/[0.05] dark:border-white/[0.08] overflow-hidden flex flex-col transition-colors">
+            <div className="h-64 bg-[#F8F8FA] dark:bg-[#2C2C2E] flex items-center justify-center text-7xl select-none">
               {currentCard.emoji || '📍'}
             </div>
             
             <div className="p-6">
-              <h2 className="text-2xl font-black text-black tracking-tight mb-1">{currentCard.name}</h2>
+              <h2 className="text-2xl font-black text-black dark:text-white tracking-tight mb-1">{currentCard.name}</h2>
               
-              <div className="flex items-center gap-2 text-xs text-[#6E6E73] font-medium mb-4">
+              <div className="flex items-center gap-2 text-xs text-[#6E6E73] dark:text-[#8E8E93] font-medium mb-4">
                 <span>{currentCard.distance_km}</span>
                 <span>•</span>
                 <span>
@@ -265,7 +268,7 @@ export default function SwipeDeck() {
                 {currentCard.tags?.map((tag) => (
                   <span
                     key={tag}
-                    className="px-2.5 py-1 bg-[#F2F2F7] text-black rounded-lg text-xs font-medium"
+                    className="px-2.5 py-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white rounded-lg text-xs font-medium"
                   >
                     {tag}
                   </span>
@@ -278,7 +281,7 @@ export default function SwipeDeck() {
 
       {/* Floating Apple Liquid Glass Control Dock */}
       <div className="p-6 pb-10 flex justify-center items-center">
-        <div className="liquid-glass rounded-full px-6 py-3 flex items-center gap-6 shadow-lg shadow-black/5">
+        <div className="liquid-glass rounded-full px-6 py-3 flex items-center gap-6 shadow-lg shadow-black/5 dark:shadow-black/40">
           
           <button
             type="button"
