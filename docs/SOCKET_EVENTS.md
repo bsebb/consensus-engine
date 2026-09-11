@@ -10,6 +10,7 @@ This document outlines the real-time events handled by the WebSocket engine. **N
 | `host_lock_lobby` | `{ pin: "4921", host_id: "uuid" }` | The Host closes the lobby to new participants. |
 | `host_start_voting` | `{ pin: "4921", host_id: "uuid" }` | The Host finishes Step Zero / Moderation and triggers the swiping phase. |
 | `notify_votes_submitted` | `{ pin: "4921" }` | Fired immediately after the REST `POST /votes` succeeds to update the room counter. |
+| `host_force_resolve` | `{ pin: "4921", host_id: "uuid" }` | The Host manually triggers vote resolution if a participant goes AFK. |
 
 ---
 
