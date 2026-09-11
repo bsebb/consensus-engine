@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check } from 'lucide-react';
+import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check, HelpCircle } from 'lucide-react';
+import { deduplicateSuggestions } from '../utils/levenshtein';
 
 export default function RoomLobby() {
   const { pin } = useParams();
@@ -10,6 +11,8 @@ export default function RoomLobby() {
   const mode = location.state?.mode || 'CUSTOM';
   const isHost = location.state?.isHost ?? true;
   const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Participant');
+  const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Where should we hang out?' : 'Find Places Nearby');
+  const suggestionLimit = location.state?.suggestionLimit || 3;
 
   // Expected Group Size defined by host
   const [groupSize, setGroupSize] = useState(location.state?.groupSize || 4);
@@ -25,12 +28,13 @@ export default function RoomLobby() {
   const [suggestion, setSuggestion] = useState('');
   const [mySuggestions, setMySuggestions] = useState([]);
   
-  // Group pool starts with host's pre-filled options or empty
-  const [groupPool, setGroupPool] = useState(
-    location.state?.initialOptions
-      ? location.state.initialOptions.split(',').map(s => s.trim()).filter(Boolean)
-      : []
-  );
+  // Group pool starts with host's pre-filled options or default seed
+  const [groupPool, setGroupPool] = useState(() => {
+    if (location.state?.initialOptions) {
+      return location.state.initialOptions.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return mode === 'CUSTOM' ? ['Game Night', 'Board Game Cafe', 'Movie Marathon'] : [];
+  });
 
   const [copied, setCopied] = useState(false);
 
@@ -40,7 +44,6 @@ export default function RoomLobby() {
     setTimeout(() => setCopied(false), 1500);
   };
 
-  // Quick helper for local testing without needing multiple phones
   const handleAddTestGuest = () => {
     const guestNum = participants.length;
     const newGuest = { name: `Guest ${guestNum}`, isMe: false };
@@ -49,7 +52,7 @@ export default function RoomLobby() {
 
   const handleAddSuggestion = (e) => {
     e.preventDefault();
-    if (!suggestion.trim() || mySuggestions.length >= 3) return;
+    if (!suggestion.trim() || mySuggestions.length >= suggestionLimit) return;
     const clean = suggestion.trim();
     setMySuggestions([...mySuggestions, clean]);
     setGroupPool([...groupPool, clean]);
@@ -57,10 +60,17 @@ export default function RoomLobby() {
   };
 
   const handleStartVoting = () => {
+    // Run Levenshtein Deduplication on the group pool
+    const deduplicated = mode === 'CUSTOM'
+      ? deduplicateSuggestions(groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2'])
+      : [];
+
     navigate(`/deck/${pin}`, { 
       state: { 
         mode,
-        totalParticipants: groupSize 
+        topic,
+        totalParticipants: groupSize,
+        customCards: deduplicated
       } 
     });
   };
@@ -100,6 +110,14 @@ export default function RoomLobby() {
 
       <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5">
         
+        {/* Decision Topic Card */}
+        <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
+          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block mb-1">
+            Decision Topic
+          </span>
+          <h2 className="text-base font-bold text-black tracking-tight">{topic}</h2>
+        </div>
+
         {/* Dynamic Participants Roll-Call with Progress Bar */}
         <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs space-y-3">
           <div className="flex items-center justify-between">
