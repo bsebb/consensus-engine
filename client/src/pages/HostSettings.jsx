@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Compass, Sparkles, MapPin, Sliders, Users, ArrowRight } from 'lucide-react';
+import { ChevronLeft, Compass, Sparkles, MapPin, Check } from 'lucide-react';
 
 export default function HostSettings() {
   const navigate = useNavigate();
 
-  // Dual-Loop Mode: 'DISCOVERY' (Google Places API) vs 'CUSTOM' (Crowdsourced Suggestions)
+  // Dual-Loop Mode: 'DISCOVERY' vs 'CUSTOM'
   const [mode, setMode] = useState('DISCOVERY');
 
   // Discovery Mode State
-  const [category, setCategory] = useState('Restaurant');
+  const [category, setCategory] = useState('Restaurants');
   const [customKeyword, setCustomKeyword] = useState('');
   const [radiusKm, setRadiusKm] = useState(5);
-  const [maxPrice, setMaxPrice] = useState('$$');
+  const [priceTier, setPriceTier] = useState('$$');
 
   // Custom Mode State
-  const [topic, setTopic] = useState('Where should we hang out tonight?');
+  const [topic, setTopic] = useState('Where should we hang out?');
   const [suggestionLimit, setSuggestionLimit] = useState(3);
   const [allowParticipantSuggestions, setAllowParticipantSuggestions] = useState(true);
   const [initialOptions, setInitialOptions] = useState('');
@@ -23,172 +23,125 @@ export default function HostSettings() {
   const handleCreateRoom = (e) => {
     e.preventDefault();
     const mockPin = "4921";
-
-    const payload = {
-      mode,
-      hostName: 'Host',
-      ...(mode === 'DISCOVERY'
-        ? { category, customKeyword, radiusKm, maxPrice }
-        : { topic, suggestionLimit, allowParticipantSuggestions, initialOptions }
-      )
-    };
-
-    console.log('Room created with payload:', payload);
-
-    // Navigate to the Lobby / Step Zero / Suggestion phase before the swipe deck
     navigate(`/lobby/${mockPin}`, { state: { mode, isHost: true } });
   };
 
-  const discoveryCategories = [
-    { label: 'Restaurant', icon: '🍽️' },
-    { label: 'Cafe / Coffee', icon: '☕' },
-    { label: 'Bar / Drinks', icon: '🍸' },
+  const categories = [
+    { label: 'Restaurants', icon: '🍽️' },
+    { label: 'Cafes', icon: '☕' },
+    { label: 'Bars', icon: '🍸' },
     { label: 'Fast Food', icon: '🍔' },
-    { label: 'Dessert & Bakery', icon: '🍰' },
-    { label: 'Fun Activity', icon: '🎳' },
-    { label: 'Cinema / Movies', icon: '🎬' },
-    { label: 'Parks & Outdoor', icon: '🌳' },
+    { label: 'Desserts', icon: '🍰' },
+    { label: 'Activities', icon: '🎳' },
+    { label: 'Cinema', icon: '🎬' },
+    { label: 'Parks', icon: '🌳' },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6">
-      <div className="max-w-xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+    <div className="min-h-screen bg-[#F2F2F7] pb-12 select-none">
+      
+      {/* Navigation Bar (Apple HIG Navigation Bar) */}
+      <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-1 text-[#007AFF] font-medium text-sm min-h-[44px] -ml-2 px-2 active:opacity-60 transition"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          <span>Back</span>
+        </button>
+        <h2 className="font-semibold text-sm text-black">New Decision Room</h2>
+        <div className="w-10"></div> {/* spacer for centering title */}
+      </div>
+
+      <div className="max-w-lg mx-auto p-4 sm:p-6 space-y-6">
         
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 p-8 text-white text-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-md uppercase tracking-wider mb-2">
-            Host Control Panel
-          </span>
-          <h1 className="text-3xl font-extrabold tracking-tight">Create a Decision Room</h1>
-          <p className="text-indigo-100 text-sm mt-1">Pick an engine loop to curate options for your group</p>
+        {/* Apple Segmented Control (Dual-Loop Selector) */}
+        <div className="bg-[#E5E5EA] p-1 rounded-xl flex shadow-inner">
+          <button
+            type="button"
+            onClick={() => setMode('DISCOVERY')}
+            className={`flex-1 min-h-[38px] flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+              mode === 'DISCOVERY'
+                ? 'bg-white text-black shadow-sm font-bold'
+                : 'text-[#6E6E73] hover:text-black'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Discovery Loop (API)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('CUSTOM')}
+            className={`flex-1 min-h-[38px] flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+              mode === 'CUSTOM'
+                ? 'bg-white text-black shadow-sm font-bold'
+                : 'text-[#6E6E73] hover:text-black'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Custom Loop (Group)</span>
+          </button>
         </div>
 
-        {/* Loop Selector (Dual-Loop Tabs) */}
-        <div className="p-6 sm:p-8">
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            Choose Decision Loop
-          </label>
-          <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 rounded-2xl mb-8">
-            <button
-              type="button"
-              onClick={() => setMode('DISCOVERY')}
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                mode === 'DISCOVERY'
-                  ? 'bg-white text-indigo-600 shadow-md scale-[1.02]'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              <span>Discovery Mode</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('CUSTOM')}
-              className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 ${
-                mode === 'CUSTOM'
-                  ? 'bg-white text-purple-600 shadow-md scale-[1.02]'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Custom Loop</span>
-            </button>
-          </div>
-
-          <form onSubmit={handleCreateRoom} className="space-y-6">
-            {/* ================= DISCOVERY MODE (PLACES API) ================= */}
-            {mode === 'DISCOVERY' && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl text-xs text-indigo-900 flex items-start gap-3">
-                  <span className="text-lg">🗺️</span>
-                  <div>
-                    <p className="font-semibold text-indigo-950">Places API Automated Fetch</p>
-                    <p className="text-indigo-700/90 mt-0.5">
-                      The consensus engine automatically queries venues around your GPS location. "Step Zero" will anonymously prune venues that exceed participants' secret budgets.
-                    </p>
-                  </div>
+        <form onSubmit={handleCreateRoom} className="space-y-6">
+          
+          {/* ================= DISCOVERY MODE ================= */}
+          {mode === 'DISCOVERY' && (
+            <div className="space-y-5">
+              
+              {/* Category Grid */}
+              <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] mb-3">
+                  Select Theme
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.label}
+                      type="button"
+                      onClick={() => setCategory(cat.label)}
+                      className={`min-h-[56px] flex flex-col items-center justify-center p-2 rounded-xl text-xs font-medium transition duration-150 ${
+                        category === cat.label
+                          ? 'bg-[#007AFF] text-white shadow-xs font-semibold'
+                          : 'bg-[#F8F8FA] text-black hover:bg-[#EFEFF4]'
+                      }`}
+                    >
+                      <span className="text-xl leading-none mb-1">{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Categories */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2.5">
-                    Category Theme
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {discoveryCategories.map((cat) => (
-                      <button
-                        key={cat.label}
-                        type="button"
-                        onClick={() => setCategory(cat.label)}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-semibold transition-all ${
-                          category === cat.label
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                        }`}
-                      >
-                        <span className="text-xl mb-1">{cat.icon}</span>
-                        <span className="text-center leading-tight">{cat.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Specific Keyword / Filter */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">
-                    Specific Cuisine / Keyword <span className="text-slate-400 font-normal">(Optional)</span>
+              {/* Inset Group: Keyword & Price */}
+              <div className="bg-white rounded-2xl border border-black/[0.04] shadow-xs divide-y divide-black/[0.06] overflow-hidden">
+                <div className="p-4">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] mb-1.5">
+                    Filter Keyword <span className="normal-case font-normal text-[#8E8E93]">(Optional)</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Sushi, Vegan, Rooftop, Italian..."
+                    placeholder="e.g. Italian, Sushi, Rooftop..."
                     value={customKeyword}
                     onChange={(e) => setCustomKeyword(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm transition"
+                    className="w-full text-sm text-black placeholder:text-[#8E8E93] bg-transparent outline-none py-1"
                   />
                 </div>
 
-                {/* Search Radius Slider */}
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4 text-indigo-500" />
-                      Search Radius
-                    </label>
-                    <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
-                      {radiusKm} km
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="25"
-                    step="1"
-                    value={radiusKm}
-                    onChange={(e) => setRadiusKm(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                  />
-                  <div className="flex justify-between text-[11px] text-slate-400 mt-1">
-                    <span>Walking (1km)</span>
-                    <span>5km</span>
-                    <span>Driving (25km)</span>
-                  </div>
-                </div>
-
-                {/* Host Starting Price Ceiling */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Default Price Guide
+                <div className="p-4">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] mb-2.5">
+                    Price Ceiling
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     {['$', '$$', '$$$', '$$$$'].map((tier) => (
                       <button
                         key={tier}
                         type="button"
-                        onClick={() => setMaxPrice(tier)}
-                        className={`py-2 rounded-xl text-xs font-bold border transition ${
-                          maxPrice === tier
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        onClick={() => setPriceTier(tier)}
+                        className={`min-h-[40px] rounded-lg text-xs font-semibold transition ${
+                          priceTier === tier
+                            ? 'bg-black text-white'
+                            : 'bg-[#F8F8FA] text-[#6E6E73] hover:bg-[#EFEFF4]'
                         }`}
                       >
                         {tier}
@@ -197,106 +150,113 @@ export default function HostSettings() {
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* ================= CUSTOM MODE (ANONYMOUS SUGGESTIONS) ================= */}
-            {mode === 'CUSTOM' && (
-              <div className="space-y-6 animate-fadeIn">
-                <div className="p-4 bg-purple-50/70 border border-purple-100 rounded-2xl text-xs text-purple-950 flex items-start gap-3">
-                  <span className="text-lg">💡</span>
-                  <div>
-                    <p className="font-semibold text-purple-950">Crowdsourced Anonymous Loop</p>
-                    <p className="text-purple-700/90 mt-0.5">
-                      Participants anonymously type suggestions onto a blank canvas. Our backend Levenshtein fuzzy engine merges duplicates automatically (e.g. "Johns House" & "John's house").
-                    </p>
-                  </div>
+              {/* Radius Slider Card */}
+              <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Search Distance
+                  </span>
+                  <span className="text-xs font-bold text-[#007AFF] bg-[#007AFF]/10 px-2 py-0.5 rounded-full font-mono">
+                    {radiusKm} km
+                  </span>
                 </div>
-
-                {/* Decision Topic */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">
-                    Question / Topic Prompt
-                  </label>
-                  <input
-                    type="text"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder="e.g. What movie should we stream? / What activity next?"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm transition"
-                    required
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Everyone sees this question when they join your PIN.
-                  </p>
-                </div>
-
-                {/* Anonymous Suggestion Settings */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">Allow Group Suggestions</p>
-                      <p className="text-xs text-slate-500">Let joined participants add anonymous options</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={allowParticipantSuggestions}
-                      onChange={(e) => setAllowParticipantSuggestions(e.target.checked)}
-                      className="w-5 h-5 accent-purple-600 rounded cursor-pointer"
-                    />
-                  </div>
-
-                  {allowParticipantSuggestions && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Max Suggestions Per Person: <span className="text-purple-600 font-bold">{suggestionLimit}</span>
-                      </label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="5"
-                        value={suggestionLimit}
-                        onChange={(e) => setSuggestionLimit(Number(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Host Pre-seeded Options */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">
-                    Host Pre-filled Options <span className="text-slate-400 font-normal">(Comma separated, optional)</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={initialOptions}
-                    onChange={(e) => setInitialOptions(e.target.value)}
-                    placeholder="e.g. Inception, Interstellar, Dune, The Matrix"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm transition"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    You can kick off the room with ideas, and friends can add theirs.
-                  </p>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="1"
+                  value={radiusKm}
+                  onChange={(e) => setRadiusKm(Number(e.target.value))}
+                  className="w-full h-2 bg-[#E5E5EA] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
+                />
+                <div className="flex justify-between text-[11px] text-[#8E8E93] mt-1.5 font-medium">
+                  <span>1 km</span>
+                  <span>10 km</span>
+                  <span>20 km</span>
                 </div>
               </div>
-            )}
 
-            {/* Submit / Generate PIN */}
-            <div className="pt-4 border-t border-slate-100">
-              <button
-                type="submit"
-                className={`w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] ${
-                  mode === 'DISCOVERY'
-                    ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-                    : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
-                }`}
-              >
-                <span>Generate PIN & Open Lobby</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
             </div>
-          </form>
-        </div>
+          )}
+
+          {/* ================= CUSTOM MODE ================= */}
+          {mode === 'CUSTOM' && (
+            <div className="space-y-5">
+              <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] mb-1.5">
+                  Decision Topic / Question
+                </label>
+                <input
+                  type="text"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="e.g. What movie should we stream?"
+                  className="w-full text-base font-medium text-black bg-transparent outline-none py-1 border-b border-black/[0.08] focus:border-[#007AFF] transition"
+                  required
+                />
+              </div>
+
+              <div className="bg-white rounded-2xl border border-black/[0.04] shadow-xs divide-y divide-black/[0.06] overflow-hidden">
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <span className="block text-sm font-semibold text-black">Group Anonymous Suggestions</span>
+                    <span className="block text-xs text-[#6E6E73]">Let participants add their own ideas</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={allowParticipantSuggestions}
+                    onChange={(e) => setAllowParticipantSuggestions(e.target.checked)}
+                    className="w-5 h-5 rounded-md accent-[#007AFF] cursor-pointer"
+                  />
+                </div>
+
+                {allowParticipantSuggestions && (
+                  <div className="p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-semibold text-[#6E6E73]">Max Suggestions Per Person</span>
+                      <span className="text-xs font-bold text-[#007AFF]">{suggestionLimit}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      value={suggestionLimit}
+                      onChange={(e) => setSuggestionLimit(Number(e.target.value))}
+                      className="w-full h-2 bg-[#E5E5EA] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] mb-1.5">
+                  Host Pre-filled Options <span className="normal-case font-normal text-[#8E8E93]">(Optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={initialOptions}
+                  onChange={(e) => setInitialOptions(e.target.value)}
+                  placeholder="Inception, Dune, Interstellar"
+                  className="w-full text-sm text-black placeholder:text-[#8E8E93] bg-[#F8F8FA] rounded-xl p-3 border border-black/[0.06] outline-none focus:bg-white focus:ring-2 focus:ring-[#007AFF] transition"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Primary Submit Button (Apple Standard 50pt touch target) */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition duration-150 active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <span>Generate Room PIN</span>
+            </button>
+          </div>
+
+        </form>
+
       </div>
     </div>
   );
