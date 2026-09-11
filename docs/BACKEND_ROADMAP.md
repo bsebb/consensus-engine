@@ -1,59 +1,38 @@
-# Backend Team (Team 2) - Getting Started Guide
+# Backend Team (Team 2) - 4-Sprint Roadmap
 
 Hey Afina, Max, and Lilia! 
 
-To keep everyone moving fast without constantly waiting on each other, we have established a **Contract-Driven** architecture. Seb and Gabi are already building the React Frontend using dummy data. 
+To keep everyone moving fast, we are using a **Contract-Driven** architecture. You do not need to ask the Frontend team how the UI works—just build your API endpoints to output the exact JSON formats listed in [`API_CONTRACT.md`](./API_CONTRACT.md). 
 
-Your goal is to build the Node.js/Express server to eventually replace that dummy data. You don't need to ask Team 1 how the UI works—just build the endpoints to match the exact JSON formats listed in [`API_CONTRACT.md`](./API_CONTRACT.md).
-
-Here is your exact roadmap for the next two sprints.
+Here is your exact timeline for the entire semester.
 
 ---
 
-## 🚀 Step 1: Initial Setup
-1. Read the [`CONTRIBUTING.md`](../CONTRIBUTING.md) file so you understand how we are using Git.
-2. In your terminal, navigate to the `server` folder and run `npm install`.
-3. Create a `.env` file inside the `server` folder. (Do not worry, this is git-ignored).
-4. Add your database URL and Google Places API Key to the `.env` file.
+## 🛠️ Sprint 1: Architecture & Prototyping
+**Goal:** Get the database running and the basic REST API working.
+*   **Afina (Database Master):** Open `DATABASE_SCHEMA.md` and copy the models into `server/prisma/schema.prisma`. Run `npx prisma db push` to create the Postgres tables. Write simple helper functions (e.g., `createUser()`).
+*   **Max (API Architect):** Build the basic Express server. Create the `POST /api/v1/rooms` endpoint. Don't worry about Google Places yet—just successfully create a room and save it to Afina's database.
+*   **Lilia (Real-Time Engineer):** Install Socket.io. Just get it to log "A user connected" when a browser connects. 
 
 ---
 
-## 🛠️ Step 2: Sprint 1 Tasks (Divide & Conquer)
-
-You have 3 core domains to build first. I recommend assigning one person to each:
-
-### 1. The Database Master (Prisma)
-*   **Goal:** Set up the Postgres connection and Prisma schema.
-*   **Action:** Open [`DATABASE_SCHEMA.md`](./DATABASE_SCHEMA.md) and copy the exact models into your `server/prisma/schema.prisma` file.
-*   **Action:** Run `npx prisma db push` to generate the tables.
-*   **Action:** Build simple helper functions (e.g., `createRoom()`, `saveVote()`) that the REST API can call.
-
-### 2. The API Architect (Express & Google Places)
-*   **Goal:** Build the HTTP REST endpoints.
-*   **Action:** Open [`API_CONTRACT.md`](./API_CONTRACT.md) and look at the routes.
-*   **Action:** Build `POST /api/v1/rooms`. When "Discovery Mode" is triggered, this endpoint needs to call the **Google Places API** to fetch 15 restaurants and save them to the Prisma database using the Database Master's helper functions.
-*   **Action:** Build the `POST /api/v1/rooms/:pin/suggestions` endpoint with the **Levenshtein Distance** logic to prevent duplicates.
-
-### 3. The Real-Time Engineer (Socket.io)
-*   **Goal:** Set up the live multiplayer rooms.
-*   **Action:** Open [`SOCKET_EVENTS.md`](./SOCKET_EVENTS.md).
-*   **Action:** Initialize `socket.io` on top of the Express server.
-*   **Action:** Build the logic for `join_lobby`. When a user connects, add them to a specific Socket.io Room using their PIN so we don't broadcast votes to the wrong group.
+## 🔌 Sprint 2: APIs & "Step Zero"
+**Goal:** Connect to the outside world and filter data.
+*   **Max:** Hook up the **Google Places API** to the room creation endpoint. When a room is made, the server should fetch 15 restaurants and save them to the DB.
+*   **Afina:** Build the Levenshtein Distance algorithm. When users submit custom ideas, run the math to automatically merge duplicates before saving them to the database.
+*   **Lilia:** Build the "Step Zero" pruning logic. When users submit their budgets, filter the database to delete restaurants that are too expensive.
 
 ---
 
-## 🧠 Step 3: Sprint 2 (The Graph Theory Algorithm)
-Once the database saves votes correctly and the Sockets can broadcast messages, you all will collaborate on the hardest part: **The Algorithm**.
-
-When the final vote is submitted, you need to execute the **Schulze Method / Condorcet Algorithm**.
-1. Retrieve all the votes for the room from Prisma.
-2. Convert the rankings into a 2D matrix (Weighted Directed Graph).
-3. Find the strongest path.
-4. Emit the `winner_announced` Socket event to the frontend.
-
-*Pro-tip: Try to run this algorithm on a Node.js `worker_thread` so it doesn't freeze the server!*
+## ⚡ Sprint 3: Real-Time Engine & Algorithm
+**Goal:** Make it multiplayer and do the complex math.
+*   **Lilia:** Build the Socket.io "Rooms". Ensure that when someone joins PIN "4921", their Socket only talks to other people in "4921". Broadcast live updates (e.g., "3/5 users voted").
+*   **Team Effort (The Algorithm):** When all votes are in, execute the **Schulze Method / Condorcet Algorithm**. Convert the rankings into a 2D matrix, find the winner, and save the result to the database.
 
 ---
 
-## 🤝 How to work with Team 1 (Seb & Gabi)
-If you build your API endpoints so that they receive and return the exact JSON structures written in the `API_CONTRACT.md`, the frontend will connect to your backend flawlessly on the first try. If you realize you *need* to change the JSON structure, let Seb know so he can update the React code!
+## 🚀 Sprint 4: Polish, Testing & Deployment
+**Goal:** Make it crash-proof and put it on the internet.
+*   **Afina:** Build the "Post-Event Feedback Loop". Create an endpoint that accepts a 1-5 star review and updates our proprietary `Venue_Analytics` table.
+*   **Max:** Offload the Sprint 3 Graph Algorithm onto a `worker_thread` so it doesn't freeze the main Express Event Loop.
+*   **Lilia:** Deploy the Node.js server to the internet using **Render** or **Railway.app**. Ensure CORS policies allow the frontend to connect securely.

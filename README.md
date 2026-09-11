@@ -14,11 +14,14 @@ A real-time Progressive Web App (PWA) designed to solve group decision paralysis
 This repository utilizes **Contract-Driven Development**. This means Team 1 (Frontend) doesn't have to wait for Team 2 (Backend) to finish! Team 1 can look at the JSON examples in the Docs and start building the UI immediately.
 
 Please read the documentation in the `/docs` folder before writing code:
-1. [System Architecture](./docs/ARCHITECTURE.md) *(How the whole app works)*
-2. [REST API Contract](./docs/API_CONTRACT.md) *(The JSON formats for Frontend <-> Backend)*
-3. [Socket.io Events](./docs/SOCKET_EVENTS.md) *(Real-time multiplayer events)*
-4. [Prisma Database Schema](./docs/DATABASE_SCHEMA.md) *(The PostgreSQL tables)*
-5. [Beginner's Git Guide](./CONTRIBUTING.md) *(READ THIS IF YOU ARE NEW TO GIT)*
+0. [DAY 0: Absolute Beginner Setup](./docs/DAY_0_SETUP.md) *(READ THIS FIRST)*
+1. [Beginner's Git Guide](./CONTRIBUTING.md) *(How to safely save code)*
+2. [Team 1: Frontend Roadmap](./docs/FRONTEND_ROADMAP.md) *(Seb & Gabi's Timeline)*
+3. [Team 2: Backend Roadmap](./docs/BACKEND_ROADMAP.md) *(Afina, Max, Lilia's Timeline)*
+4. [System Architecture](./docs/ARCHITECTURE.md) *(How the whole app works)*
+5. [REST API Contract](./docs/API_CONTRACT.md) *(The JSON formats for Frontend <-> Backend)*
+6. [Socket.io Events](./docs/SOCKET_EVENTS.md) *(Real-time multiplayer events)*
+7. [Prisma Database Schema](./docs/DATABASE_SCHEMA.md) *(The PostgreSQL tables)*
 
 ---
 
