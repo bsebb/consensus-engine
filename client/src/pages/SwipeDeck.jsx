@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { X, Check, Flame, Trophy, Star, Sparkles, RotateCcw } from 'lucide-react';
 import restaurantsMock from '../mocks/restaurants.json';
@@ -9,9 +9,33 @@ export default function SwipeDeck() {
   const location = useLocation();
 
   const mode = location.state?.mode || 'DISCOVERY';
+  const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
   const totalParticipants = location.state?.totalParticipants || 2;
 
-  const [cards, setCards] = useState([]);
+  // Initialize cards synchronously to prevent initial render 0-length race condition
+  const [cards] = useState(() => {
+    if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
+      return location.state.customCards.map((item, idx) => ({
+        id: `custom-${idx}`,
+        name: typeof item === 'string' ? item : item.name || `Option ${idx + 1}`,
+        emoji: '💡',
+        tags: ['Custom', 'Group Suggestion'],
+        distance_km: 'Local',
+        price_level: 0
+      }));
+    }
+
+    if (mode === 'CUSTOM') {
+      return [
+        { id: 'c1', name: "Local Spot", emoji: '🏡', tags: ['Chill', 'Free'], distance_km: '0.8', price_level: 0 },
+        { id: 'c2', name: 'Downtown Bowling', emoji: '🎳', tags: ['Activity', 'Fun'], distance_km: '3.2', price_level: 2 },
+        { id: 'c3', name: 'Board Game Cafe', emoji: '🎲', tags: ['Cozy', 'Drinks'], distance_km: '1.4', price_level: 1 }
+      ];
+    }
+
+    return restaurantsMock || [];
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [myVotes, setMyVotes] = useState([]);
   const [showWinner, setShowWinner] = useState(false);
@@ -21,35 +45,42 @@ export default function SwipeDeck() {
   const [priceAccuracy, setPriceAccuracy] = useState(4);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  useEffect(() => {
-    if (mode === 'CUSTOM') {
-      setCards([
-        { id: 'c1', name: "Local Spot", emoji: '🏡', tags: ['Chill', 'Free'], distance_km: '0.8', price_level: 0 },
-        { id: 'c2', name: 'Downtown Bowling', emoji: '🎳', tags: ['Activity', 'Fun'], distance_km: '3.2', price_level: 2 },
-        { id: 'c3', name: 'Board Game Cafe', emoji: '🎲', tags: ['Cozy', 'Drinks'], distance_km: '1.4', price_level: 1 },
-        { id: 'c4', name: 'Cinema Movie Night', emoji: '🍿', tags: ['Entertainment'], distance_km: '4.0', price_level: 2 }
-      ]);
-    } else {
-      setCards(restaurantsMock);
-    }
-  }, [mode]);
-
   const handleVote = (score) => {
+    if (currentIndex >= cards.length) return;
     const current = cards[currentIndex];
-    setMyVotes([...myVotes, { option_id: current.id, score }]);
+    setMyVotes((prev) => [...prev, { option_id: current.id, score }]);
     setCurrentIndex((prev) => prev + 1);
 
+    // After last card, transition to winner
     if (currentIndex + 1 >= cards.length) {
       setTimeout(() => {
         setShowWinner(true);
-      }, 1200);
+      }, 1000);
     }
   };
 
-  const currentCard = cards[currentIndex];
-  const winningOption = cards[0] || { name: "Luigi's Pizza", emoji: '🍕' };
+  // Safe fallback for winning option
+  const winningOption = cards[0] || { name: "Selected Option", emoji: '🎯' };
+  const currentCard = cards[currentIndex] || null;
 
-  // Waiting for remaining participants
+  // 1. Loading / Empty guard
+  if (!cards || cards.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#F2F2F7] flex items-center justify-center p-6 select-none">
+        <div className="w-full max-w-sm bg-white rounded-3xl p-8 border border-black/[0.04] shadow-sm text-center space-y-4">
+          <p className="text-sm font-semibold text-black">No cards available for this room.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full min-h-[44px] bg-[#007AFF] text-white text-xs font-semibold rounded-xl"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Waiting for other participants
   if (currentIndex >= cards.length && !showWinner) {
     const finishedCount = Math.max(1, totalParticipants - 1);
     const progressPercent = Math.round((finishedCount / totalParticipants) * 100);
@@ -63,13 +94,13 @@ export default function SwipeDeck() {
           <div>
             <h2 className="text-xl font-bold text-black">Cards Complete</h2>
             <p className="text-xs text-[#6E6E73] mt-1">
-              Calculating Condorcet compromise matrix...
+              Calculating Condorcet compromise matrix for "{topic}"...
             </p>
           </div>
           
           <div className="p-3.5 bg-[#F8F8FA] rounded-2xl space-y-2">
             <div className="flex justify-between text-xs font-semibold text-[#6E6E73]">
-              <span>Votes Received</span>
+              <span>Votes Gathered</span>
               <span className="font-mono text-black">{finishedCount} of {totalParticipants}</span>
             </div>
             <div className="w-full bg-[#E5E5EA] h-1.5 rounded-full overflow-hidden">
@@ -91,7 +122,7 @@ export default function SwipeDeck() {
     );
   }
 
-  // Consensus Winner Screen
+  // 3. Consensus Winner Screen
   if (showWinner) {
     return (
       <div className="min-h-screen bg-[#F2F2F7] py-10 px-4 flex items-center justify-center select-none">
@@ -105,7 +136,7 @@ export default function SwipeDeck() {
             </span>
             <div className="text-6xl my-2">{winningOption.emoji}</div>
             <h1 className="text-2xl font-black tracking-tight">{winningOption.name}</h1>
-            <p className="text-white/80 text-xs mt-1">Optimal group compromise • 0 Vetoes</p>
+            <p className="text-white/80 text-xs mt-1">{topic} • 0 Vetoes</p>
           </div>
 
           {/* Mentors' Post-Event Rating Form */}
@@ -117,7 +148,7 @@ export default function SwipeDeck() {
                     Post-Event Feedback
                   </span>
                   <h3 className="text-sm font-bold text-black mt-0.5">
-                    How was this choice?
+                    Rate this outcome
                   </h3>
                 </div>
 
@@ -192,15 +223,17 @@ export default function SwipeDeck() {
     );
   }
 
-  // Active Swipe Deck
+  // 4. Active Swipe Deck
   return (
     <div className="min-h-screen bg-[#F2F2F7] flex flex-col justify-between select-none">
       
       {/* Top Header Bar */}
       <div className="p-4 flex justify-between items-center max-w-sm w-full mx-auto">
         <div>
-          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">PIN</span>
-          <span className="text-sm font-black text-black font-mono">{pin}</span>
+          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">
+            {topic}
+          </span>
+          <span className="text-xs font-black text-black font-mono">PIN: {pin}</span>
         </div>
         <span className="text-xs font-semibold text-[#6E6E73] bg-white px-3 py-1 rounded-full border border-black/[0.05] shadow-xs">
           {currentIndex + 1} of {cards.length}
@@ -219,9 +252,13 @@ export default function SwipeDeck() {
               <h2 className="text-2xl font-black text-black tracking-tight mb-1">{currentCard.name}</h2>
               
               <div className="flex items-center gap-2 text-xs text-[#6E6E73] font-medium mb-4">
-                <span>{currentCard.distance_km} km away</span>
+                <span>{currentCard.distance_km}</span>
                 <span>•</span>
-                <span>{currentCard.price_level > 0 ? '$'.repeat(currentCard.price_level) : 'Free'}</span>
+                <span>
+                  {typeof currentCard.price_level === 'number' && currentCard.price_level > 0
+                    ? '$'.repeat(Math.max(1, currentCard.price_level))
+                    : 'Free / Custom'}
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-1.5">

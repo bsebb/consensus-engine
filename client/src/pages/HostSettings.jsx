@@ -29,6 +29,9 @@ export default function HostSettings() {
         mode, 
         isHost: true,
         groupSize,
+        topic: mode === 'CUSTOM' ? topic : category,
+        suggestionLimit,
+        allowParticipantSuggestions,
         initialOptions: mode === 'CUSTOM' ? initialOptions : undefined
       } 
     });
