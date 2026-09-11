@@ -79,14 +79,13 @@ If the frontend sends bad data, the backend will return a 400 or 404 status code
 
 ---
 
-## 3.5. Host Approves Custom List (Moderation Phase)
-**Endpoint:** `POST /rooms/:pin/approve-suggestions`
-**Description:** The Host submits the final, sanitized list of custom options to start voting.
+## 3.5. Host Starts Voting (Auto-Merge)
+**Endpoint:** `POST /rooms/:pin/start-voting`
+**Description:** The Host closes the suggestion phase. The backend automatically runs the **Levenshtein Distance Algorithm** to invisibly merge duplicate strings (e.g. "Johns House" and "John's House") before distributing the final list of cards via WebSockets.
 **Request Body:**
 ```json
 {
-  "host_id": "uuid-string",
-  "approved_options": ["John's House", "The Park"]
+  "host_id": "uuid-string"
 }
 ```
 **Response (200 OK):**
