@@ -1,31 +1,27 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield } from 'lucide-react';
 
 export default function RoomLobby() {
   const { pin } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Mode could be passed via state from HostSettings, or defaults to DISCOVERY / CUSTOM
   const mode = location.state?.mode || 'CUSTOM';
   const isHost = location.state?.isHost ?? true;
   const userName = location.state?.userName || 'Seb';
 
-  // Step Zero State (Discovery Mode)
   const [budgetLimit, setBudgetLimit] = useState(250);
-  const [submittedConstraint, setSubmittedConstraint] = useState(false);
+  const [confirmedConstraint, setConfirmedConstraint] = useState(false);
 
-  // Custom Suggestion State (Custom Mode)
   const [suggestion, setSuggestion] = useState('');
   const [mySuggestions, setMySuggestions] = useState([]);
-  const [mockGroupSuggestions, setMockGroupSuggestions] = useState([
+  const [groupPool, setGroupPool] = useState([
     "John's House",
     'Board Game Cafe',
-    'Downtown Bowling Alley'
+    'Downtown Bowling'
   ]);
 
-  // Mock participants connected via socket
   const [participants] = useState([
     { name: userName, isMe: true },
     { name: 'Gabriel', isMe: false },
@@ -38,52 +34,47 @@ export default function RoomLobby() {
     e.preventDefault();
     if (!suggestion.trim() || mySuggestions.length >= 3) return;
     setMySuggestions([...mySuggestions, suggestion.trim()]);
-    setMockGroupSuggestions([...mockGroupSuggestions, suggestion.trim()]);
+    setGroupPool([...groupPool, suggestion.trim()]);
     setSuggestion('');
   };
 
   const handleStartVoting = () => {
-    // In real app, Host emits socket event 'host_start_voting' or calls POST /rooms/:pin/start-voting
-    // which triggers Levenshtein auto-merge and routes everyone to SwipeDeck
     navigate(`/deck/${pin}`, { state: { mode } });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4">
-      <div className="max-w-xl mx-auto space-y-6">
-        
-        {/* Lobby PIN Banner */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Room PIN</span>
-            <h1 className="text-3xl font-black text-indigo-600 tracking-widest font-mono">{pin}</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Mode: <span className="font-semibold text-slate-800">{mode === 'DISCOVERY' ? '🔍 Discovery (API)' : '💡 Custom Suggestions'}</span>
-            </p>
-          </div>
+    <div className="min-h-screen bg-[#F2F2F7] pb-16 select-none">
+      
+      {/* Navigation Header */}
+      <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] px-4 py-3 flex items-center justify-between">
+        <div>
+          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Lobby</span>
+          <span className="text-base font-black text-black font-mono tracking-widest">{pin}</span>
+        </div>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#34C759]/10 text-[#34C759] text-xs font-semibold rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#34C759] animate-pulse"></span>
+          {participants.length} Active
+        </span>
+      </div>
 
-          <div className="text-right">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-full">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              {participants.length} Active in Lobby
+      <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5">
+        
+        {/* Participants Inset Section */}
+        <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs">
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Users className="w-3.5 h-3.5 text-[#6E6E73]" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73]">
+              Lobby Roll-Call
             </span>
           </div>
-        </div>
-
-        {/* Connected Participants (Roll Call) */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-4 h-4 text-slate-400" />
-            <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Lobby Roll-Call</h2>
-          </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {participants.map((p, idx) => (
               <span
                 key={idx}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
                   p.isMe
-                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-xs'
-                    : 'bg-slate-50 text-slate-600 border-slate-200'
+                    ? 'bg-[#007AFF] text-white shadow-xs'
+                    : 'bg-[#F2F2F7] text-black'
                 }`}
               >
                 {p.name} {p.isMe && '(You)'}
@@ -92,125 +83,109 @@ export default function RoomLobby() {
           </div>
         </div>
 
-        {/* ================= STEP ZERO (DISCOVERY MODE) ================= */}
+        {/* ================= DISCOVERY MODE: STEP ZERO ================= */}
         {mode === 'DISCOVERY' && (
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-indigo-50 rounded-2xl text-indigo-600">
-                <DollarSign className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-5 border border-black/[0.04] shadow-xs space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF]">
+                <DollarSign className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-800">Step Zero: Anonymous Budget Limit</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Set the maximum you are willing to spend. Options exceeding the group's lowest cap are silently pruned before voting!
-                </p>
+                <h3 className="text-sm font-bold text-black">Step Zero: Secret Budget Cap</h3>
+                <p className="text-[11px] text-[#6E6E73]">Over-budget venues get pruned silently</p>
               </div>
             </div>
 
-            {!submittedConstraint ? (
-              <div className="space-y-4 pt-2">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-slate-600">My Secret Budget Ceiling:</span>
-                    <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg font-mono">
-                      {budgetLimit} MDL
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="800"
-                    step="25"
-                    value={budgetLimit}
-                    onChange={(e) => setBudgetLimit(Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                  />
-                  <div className="flex justify-between text-[11px] text-slate-400 mt-1">
-                    <span>Tight (50 MDL)</span>
-                    <span>250 MDL</span>
-                    <span>No Cap (800+ MDL)</span>
-                  </div>
+            {!confirmedConstraint ? (
+              <div className="space-y-4 pt-1">
+                <div className="p-3 bg-[#F8F8FA] rounded-xl flex items-center justify-between">
+                  <span className="text-xs font-medium text-[#6E6E73]">My Spending Ceiling</span>
+                  <span className="text-base font-bold text-[#007AFF] font-mono">{budgetLimit} MDL</span>
                 </div>
+
+                <input
+                  type="range"
+                  min="50"
+                  max="800"
+                  step="25"
+                  value={budgetLimit}
+                  onChange={(e) => setBudgetLimit(Number(e.target.value))}
+                  className="w-full h-2 bg-[#E5E5EA] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
+                />
 
                 <button
                   type="button"
-                  onClick={() => setSubmittedConstraint(true)}
-                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                  onClick={() => setConfirmedConstraint(true)}
+                  className="w-full min-h-[44px] bg-[#007AFF] hover:bg-[#0071E3] text-white rounded-xl text-xs font-semibold transition active:scale-[0.98]"
                 >
-                  Confirm Secret Constraint
+                  Lock Secret Constraint
                 </button>
               </div>
             ) : (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-800">
-                <div className="flex items-center gap-2 font-semibold">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Your constraint ({budgetLimit} MDL) is locked in anonymously</span>
+              <div className="p-3 bg-[#34C759]/10 border border-[#34C759]/20 rounded-xl flex items-center justify-between text-xs text-[#28893F]">
+                <div className="flex items-center gap-2 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-[#34C759]" />
+                  <span>Locked in ({budgetLimit} MDL max)</span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSubmittedConstraint(false)}
-                  className="text-xs text-emerald-700 underline font-medium hover:text-emerald-900"
+                  onClick={() => setConfirmedConstraint(false)}
+                  className="underline font-semibold hover:opacity-80"
                 >
-                  Edit
+                  Change
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* ================= ANONYMOUS SUGGESTIONS (CUSTOM MODE) ================= */}
+        {/* ================= CUSTOM MODE: ANONYMOUS SUGGESTIONS ================= */}
         {mode === 'CUSTOM' && (
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-purple-50 rounded-2xl text-purple-600">
-                <Sparkles className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-5 border border-black/[0.04] shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-black">Anonymous Suggestions</h3>
+                  <p className="text-[11px] text-[#6E6E73]">Merged with Levenshtein fuzzy logic</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-800">Anonymous Suggestion Box</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Submit ideas anonymously. The backend Levenshtein engine merges duplicates automatically.
-                </p>
-              </div>
+              <span className="flex items-center gap-1 text-[10px] text-[#8E8E93]">
+                <Shield className="w-3 h-3 text-[#34C759]" />
+                Anonymous
+              </span>
             </div>
 
-            {/* Input Form */}
             <form onSubmit={handleAddSuggestion} className="flex gap-2">
               <input
                 type="text"
                 value={suggestion}
                 onChange={(e) => setSuggestion(e.target.value)}
-                placeholder="Type your suggestion..."
-                maxLength={40}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                placeholder="Suggest an option..."
+                maxLength={30}
+                className="flex-1 min-h-[44px] px-3.5 rounded-xl bg-[#F8F8FA] border border-black/[0.06] text-xs text-black placeholder:text-[#8E8E93] outline-none focus:bg-white focus:ring-2 focus:ring-[#007AFF] transition"
               />
               <button
                 type="submit"
                 disabled={!suggestion.trim() || mySuggestions.length >= 3}
-                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                className="min-h-[44px] px-4 bg-black disabled:opacity-40 text-white rounded-xl text-xs font-semibold transition active:scale-[0.96] flex items-center gap-1"
               >
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-3 h-3" />
                 <span>Add</span>
               </button>
             </form>
 
-            <div className="flex justify-between items-center text-[11px] text-slate-400">
-              <span>Your submissions: {mySuggestions.length}/3</span>
-              <span className="flex items-center gap-1 text-slate-500">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                No names attached
+            <div className="pt-2 border-t border-black/[0.04]">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8E8E93] block mb-2">
+                Active Group Pool ({groupPool.length})
               </span>
-            </div>
-
-            {/* Group suggestions stream */}
-            <div className="pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                Current Pool ({mockGroupSuggestions.length} Options Added)
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {mockGroupSuggestions.map((item, idx) => (
+              <div className="flex flex-wrap gap-1.5">
+                {groupPool.map((item, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200/70 rounded-full text-xs font-medium"
+                    className="px-2.5 py-1 bg-[#F2F2F7] text-black rounded-lg text-xs font-medium"
                   >
                     {item}
                   </span>
@@ -220,19 +195,19 @@ export default function RoomLobby() {
           </div>
         )}
 
-        {/* Start Voting Action (Host Trigger) */}
+        {/* Host Launch Action */}
         <div className="pt-2">
           {isHost ? (
             <button
               onClick={handleStartVoting}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-indigo-100 transition-all transform active:scale-[0.98]"
+              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition duration-150 active:scale-[0.98] flex items-center justify-center gap-2"
             >
-              <Play className="w-5 h-5 fill-current" />
-              <span>Launch Voting Phase (All Players)</span>
+              <Play className="w-4 h-4 fill-current" />
+              <span>Start Swiping Phase</span>
             </button>
           ) : (
-            <div className="p-4 bg-slate-100 rounded-2xl text-center text-xs text-slate-500 font-medium">
-              Waiting for the host to start the voting phase...
+            <div className="p-4 bg-white/60 backdrop-blur-md rounded-2xl text-center text-xs text-[#6E6E73] font-medium border border-black/[0.04]">
+              Waiting for host to start voting...
             </div>
           )}
         </div>
