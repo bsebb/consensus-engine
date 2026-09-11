@@ -18,12 +18,20 @@ export default function HostSettings() {
   const [topic, setTopic] = useState('Where should we hang out?');
   const [suggestionLimit, setSuggestionLimit] = useState(3);
   const [allowParticipantSuggestions, setAllowParticipantSuggestions] = useState(true);
-  const [initialOptions, setInitialOptions] = useState('');
+  // Universal Room Configuration
+  const [groupSize, setGroupSize] = useState(4);
 
   const handleCreateRoom = (e) => {
     e.preventDefault();
     const mockPin = "4921";
-    navigate(`/lobby/${mockPin}`, { state: { mode, isHost: true } });
+    navigate(`/lobby/${mockPin}`, { 
+      state: { 
+        mode, 
+        isHost: true,
+        groupSize,
+        initialOptions: mode === 'CUSTOM' ? initialOptions : undefined
+      } 
+    });
   };
 
   const categories = [
@@ -81,6 +89,36 @@ export default function HostSettings() {
             <Sparkles className="w-3.5 h-3.5" />
             <span>Custom Loop (Group)</span>
           </button>
+        </div>
+
+        {/* Group Size Stepper */}
+        <div className="bg-white rounded-2xl p-4 border border-black/[0.04] shadow-xs flex items-center justify-between">
+          <div>
+            <span className="block text-sm font-semibold text-black">People in Group</span>
+            <span className="block text-xs text-[#6E6E73]">Total friends deciding together</span>
+          </div>
+
+          <div className="flex items-center gap-3 bg-[#F2F2F7] p-1.5 rounded-xl border border-black/[0.04]">
+            <button
+              type="button"
+              onClick={() => setGroupSize(Math.max(2, groupSize - 1))}
+              className="w-8 h-8 rounded-lg bg-white text-black font-bold flex items-center justify-center shadow-xs active:scale-95 transition disabled:opacity-30"
+              disabled={groupSize <= 2}
+            >
+              -
+            </button>
+            <span className="font-mono font-bold text-base w-6 text-center text-black">
+              {groupSize}
+            </span>
+            <button
+              type="button"
+              onClick={() => setGroupSize(Math.min(20, groupSize + 1))}
+              className="w-8 h-8 rounded-lg bg-white text-black font-bold flex items-center justify-center shadow-xs active:scale-95 transition disabled:opacity-30"
+              disabled={groupSize >= 20}
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleCreateRoom} className="space-y-6">
