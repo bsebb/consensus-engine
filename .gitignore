@@ -86,3 +86,7 @@ Thumbs.db
 # Vite output
 dist/
 dist-ssr/
+
+# Temporary scripts
+fix-transitions.cjs
+*.cjs

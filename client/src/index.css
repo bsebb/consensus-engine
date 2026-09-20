@@ -1,5 +1,5 @@
 @import "tailwindcss";
-
+@custom-variant dark (&:where(.dark, .dark *));
 @layer base {
   :root {
     --ios-bg: #F2F2F7;
@@ -43,7 +43,7 @@
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease;
   }
 
   button, input, select, textarea {
@@ -51,9 +51,18 @@
   }
 }
 
+/* Force perfect transition synchronization strictly on color variables during theme toggles */
+.theme-switching,
+.theme-switching * {
+  transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
 /* Apple Liquid Glass utility for floating functional layer */
 .liquid-glass {
-  background: var(--ios-glass-bg);
+  background-color: var(--ios-glass-bg);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid var(--ios-glass-border);
@@ -62,7 +71,7 @@
 
 /* Continuous Apple Card surface */
 .apple-card {
-  background: var(--ios-card);
+  background-color: var(--ios-card);
   border-radius: 1.25rem;
   border: 1px solid var(--ios-separator);
   transition: background-color 0.2s ease, border-color 0.2s ease;
@@ -70,7 +79,7 @@
 
 /* Recessed Inset Group */
 .apple-inset-group {
-  background: var(--ios-inset);
+  background-color: var(--ios-inset);
   border-radius: 1rem;
   border: 1px solid var(--ios-separator);
 }

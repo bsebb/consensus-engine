@@ -25,6 +25,7 @@ export function ThemeProvider({ children }) {
       }
 
       setIsDark(activeDark);
+      
       if (activeDark) {
         root.classList.add('dark');
       } else {
@@ -43,7 +44,12 @@ export function ThemeProvider({ children }) {
   }, [theme]);
 
   const toggleTheme = () => {
+    const root = document.documentElement;
+    root.classList.add('theme-switching');
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setTimeout(() => {
+      root.classList.remove('theme-switching');
+    }, 280);
   };
 
   return (

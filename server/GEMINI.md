@@ -13,3 +13,6 @@ These rules apply whenever viewing, editing, or creating files in `/server`.
 *   **Prisma Integrity:** Always use composite unique constraints on `[participant_id, option_id]` to prevent duplicate vote rows.
 *   **Secret Guard:** Never log or return `GOOGLE_PLACES_API_KEY` or `DATABASE_URL` in HTTP responses or console output.
 *   **Standardized Responses:** All REST endpoints must return standard JSON payloads. Errors must follow `{ success: false, error: "CODE", message: "..." }`.
+
+## 4. Developer Logging
+*   **Update the Changelog:** At the end of every significant task or daily work session, append a high-level summary of what you built to `docs/DEV_LOG.md`. This maintains a continuous history of the project's state.

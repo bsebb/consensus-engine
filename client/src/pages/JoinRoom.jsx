@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Plus, ArrowRight } from 'lucide-react';
+import { Sparkles, Plus, ArrowRight, Clock } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function JoinRoom() {
@@ -18,8 +18,16 @@ export default function JoinRoom() {
   return (
     <div className="min-h-screen bg-[#F2F2F7] dark:bg-black flex flex-col justify-between p-6 sm:p-8 select-none transition-colors duration-200">
       
-      {/* Top Header with ThemeToggle */}
-      <div className="flex justify-end">
+      {/* Top Header */}
+      <div className="relative z-10 flex justify-between items-center w-full max-w-sm mx-auto">
+        <button
+          type="button"
+          onClick={() => navigate('/history')}
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl p-2.5 bg-transparent text-[#6E6E73] dark:text-[#8E8E93] hover:text-black dark:hover:text-white hover:bg-black/[0.06] dark:hover:bg-white/10 transition-all duration-150 active:scale-95"
+          aria-label="Past Decisions"
+        >
+          <Clock className="w-5 h-5 pointer-events-none" />
+        </button>
         <ThemeToggle />
       </div>
 
@@ -71,7 +79,7 @@ export default function JoinRoom() {
           <button 
             type="submit"
             disabled={pin.length !== 4 || !name.trim()}
-            className="w-full min-h-[48px] flex items-center justify-center gap-2 bg-[#007AFF] hover:bg-[#0071E3] disabled:opacity-40 disabled:pointer-events-none text-white font-semibold text-base rounded-xl transition duration-150 active:scale-[0.98] shadow-sm shadow-[#007AFF]/25"
+            className="w-full min-h-[48px] flex items-center justify-center gap-2 bg-[#007AFF] hover:bg-[#0071E3] disabled:opacity-40 disabled:pointer-events-none text-white font-semibold text-base rounded-xl transition active:scale-[0.98] shadow-sm shadow-[#007AFF]/25"
           >
             <span>Join Room</span>
             <ArrowRight className="w-4 h-4" />
@@ -83,7 +91,7 @@ export default function JoinRoom() {
       <div className="w-full max-w-sm mx-auto pb-4">
         <button 
           onClick={() => navigate('/host')}
-          className="w-full min-h-[48px] flex items-center justify-center gap-2 bg-white dark:bg-[#1C1C1E] hover:bg-[#F8F8FA] dark:hover:bg-[#2C2C2E] text-[#007AFF] font-semibold text-sm rounded-2xl border border-black/[0.05] dark:border-white/[0.08] shadow-xs active:scale-[0.98] transition duration-150"
+          className="w-full min-h-[48px] flex items-center justify-center gap-2 bg-white dark:bg-[#1C1C1E] hover:bg-[#F8F8FA] dark:hover:bg-[#2C2C2E] text-[#007AFF] font-semibold text-sm rounded-2xl border border-black/[0.05] dark:border-white/[0.08] shadow-xs transition active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           <span>Host a New Room</span>
