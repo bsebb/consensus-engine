@@ -9,6 +9,12 @@ This document tracks a high-level summary of work completed each day.
 
 ---
 
+### September 20, 2026
+* **Socket.io Real-Time Client Integration:** Installed `socket.io-client` and implemented `SocketContext` with automatic offline fallback so the application runs smoothly both with and without active backend servers.
+* **Synchronized Room Transition:** Wired the `voting_started` event in `RoomLobby.jsx` to trigger automated multi-user transitions to `SwipeDeck.jsx` when the host starts voting.
+* **Live Multiplayer Presence & Progress:** Implemented `join_lobby` and `participant_joined` event listeners for real-time room counters, along with dynamic connection status badges (`Live` vs `Local`).
+* **Real-Time Vote Progress Bar:** Connected `notify_votes_submitted`, `vote_status_update`, and `winner_announced` in `SwipeDeck.jsx` to dynamically animate the group completion bar and display consensus winners upon calculation.
+
 ### September 11, 2026
 * **Dark Mode Transition Lock:** Fixed a jarring UI desync where elements updated at different speeds during Light/Dark mode toggles. Implemented a temporary `theme-switching` transition lock.
 * **Dual-Loop Settings UI:** Finished the "Host Settings" interactive UI that switches between Discovery (API) and Custom (Group) loop modes.
