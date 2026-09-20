@@ -285,7 +285,7 @@ export default function RoomLobby() {
           {isHost ? (
             <button
               onClick={handleStartVoting}
-              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition duration-150 active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" />
               <span>Start Swiping Phase</span>

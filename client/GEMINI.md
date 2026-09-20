@@ -17,3 +17,6 @@ These rules apply whenever viewing, editing, or creating files in `/client`.
 ## 3. Static Analysis & Verification Gate
 *   **Fast AST Check:** After modifying any `.jsx`, `.js`, or `.tsx` file, run `npx oxlint` from `/client` to verify 0 undefined variable reference errors before declaring the task complete.
 *   **Build Check:** Run `npm run build` to confirm zero syntax or bundling errors.
+
+## 4. Developer Logging
+*   **Update the Changelog:** At the end of every significant task or daily work session, append a high-level summary of what you built to `docs/DEV_LOG.md`. This maintains a continuous history of the project's state.

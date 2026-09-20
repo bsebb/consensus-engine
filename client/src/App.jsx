@@ -4,6 +4,7 @@ import JoinRoom from './pages/JoinRoom';
 import HostSettings from './pages/HostSettings';
 import RoomLobby from './pages/RoomLobby';
 import SwipeDeck from './pages/SwipeDeck';
+import History from './pages/History';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/host" element={<HostSettings />} />
           <Route path="/lobby/:pin" element={<RoomLobby />} />
           <Route path="/deck/:pin" element={<SwipeDeck />} />
+          <Route path="/history" element={<History />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

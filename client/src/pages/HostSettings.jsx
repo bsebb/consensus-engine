@@ -108,7 +108,7 @@ export default function HostSettings() {
             <button
               type="button"
               onClick={() => setGroupSize(Math.max(2, groupSize - 1))}
-              className="w-8 h-8 rounded-lg bg-white dark:bg-[#3A3A3C] text-black dark:text-white font-bold flex items-center justify-center shadow-xs active:scale-95 transition disabled:opacity-30"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#3A3A3C] text-black dark:text-white font-bold flex items-center justify-center shadow-xs transition active:scale-95 transition disabled:opacity-30"
               disabled={groupSize <= 2}
             >
               -
@@ -119,7 +119,7 @@ export default function HostSettings() {
             <button
               type="button"
               onClick={() => setGroupSize(Math.min(20, groupSize + 1))}
-              className="w-8 h-8 rounded-lg bg-white dark:bg-[#3A3A3C] text-black dark:text-white font-bold flex items-center justify-center shadow-xs active:scale-95 transition disabled:opacity-30"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#3A3A3C] text-black dark:text-white font-bold flex items-center justify-center shadow-xs transition active:scale-95 transition disabled:opacity-30"
               disabled={groupSize >= 20}
             >
               +
@@ -293,7 +293,7 @@ export default function HostSettings() {
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition duration-150 active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <span>Generate Room PIN</span>
             </button>
