@@ -63,10 +63,12 @@ export default function JoinRoom() {
       <div className="w-full max-w-sm mx-auto my-auto">
         <form onSubmit={handleJoin} className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-sm border border-black/[0.04] dark:border-white/[0.08] space-y-5 transition-colors">
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] mb-1.5 px-1">
+            <label htmlFor="userName" className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] mb-1.5 px-1">
               Your Name
             </label>
             <input 
+              id="userName"
+              name="userName"
               type="text" 
               placeholder="e.g. Alex"
               value={name}
@@ -77,10 +79,12 @@ export default function JoinRoom() {
           </div>
           
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] mb-1.5 px-1">
+            <label htmlFor="roomPin" className="block text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93] mb-1.5 px-1">
               Room PIN
             </label>
             <input 
+              id="roomPin"
+              name="roomPin"
               type="text" 
               placeholder="0000"
               maxLength={4}

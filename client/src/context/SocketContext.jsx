@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
@@ -6,7 +6,7 @@ const SocketContext = createContext(null);
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
 
 export function SocketProvider({ children }) {
-  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
 
@@ -47,7 +47,7 @@ export function SocketProvider({ children }) {
       setConnectionError(err.message);
     });
 
-    setSocket(socketInstance);
+    socketRef.current = socketInstance;
 
     return () => {
       console.log('[Socket] Cleaning up socket connection...');
@@ -56,29 +56,29 @@ export function SocketProvider({ children }) {
   }, []);
 
   const emit = useCallback((event, payload) => {
-    if (socket && isConnected) {
-      socket.emit(event, payload);
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit(event, payload);
     } else {
       console.log(`[Socket:Offline Mock] Emitted '${event}':`, payload);
     }
-  }, [socket, isConnected]);
+  }, [isConnected]);
 
   const on = useCallback((event, callback) => {
-    if (socket) {
-      socket.on(event, callback);
+    if (socketRef.current) {
+      socketRef.current.on(event, callback);
     }
-  }, [socket]);
+  }, []);
 
   const off = useCallback((event, callback) => {
-    if (socket) {
-      socket.off(event, callback);
+    if (socketRef.current) {
+      socketRef.current.off(event, callback);
     }
-  }, [socket]);
+  }, []);
 
   return (
     <SocketContext.Provider
       value={{
-        socket,
+        socket: socketRef.current,
         isConnected,
         connectionError,
         participantId,
