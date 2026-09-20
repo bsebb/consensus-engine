@@ -4,6 +4,7 @@ import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus
 import { deduplicateSuggestions } from '../utils/levenshtein';
 import { useSocket } from '../context/SocketContext';
 import ThemeToggle from '../components/ThemeToggle';
+import restaurantsMock from '../mocks/restaurants.json';
 
 export default function RoomLobby() {
   const { pin } = useParams();
@@ -113,24 +114,67 @@ export default function RoomLobby() {
   };
 
   const handleStartVoting = () => {
-    // Run Levenshtein Deduplication on the group pool
-    const deduplicated = mode === 'CUSTOM'
-      ? deduplicateSuggestions(groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2'])
-      : [];
+    let cardsToPass = [];
+
+    if (mode === 'CUSTOM') {
+      // Run Levenshtein Deduplication on the group pool
+      cardsToPass = deduplicateSuggestions(groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2']);
+    } else {
+      let pool = restaurantsMock || [];
+      const category = location.state?.category;
+      if (category && category !== 'Restaurants') {
+        const catLower = category.toLowerCase();
+        const matched = pool.filter(r => 
+          r.tags?.some(t => t.toLowerCase().includes(catLower)) ||
+          r.name?.toLowerCase().includes(catLower)
+        );
+        if (matched.length > 0) pool = matched;
+      }
+
+      const keyword = location.state?.customKeyword?.trim();
+      if (keyword) {
+        const kwLower = keyword.toLowerCase();
+        const matched = pool.filter(r =>
+          r.name?.toLowerCase().includes(kwLower) ||
+          r.tags?.some(t => t.toLowerCase().includes(kwLower))
+        );
+        if (matched.length > 0) pool = matched;
+      }
+
+      // Step Zero Secret Budget Cap Pruning
+      // 50-200 MDL => price_level 1 ($)
+      // 201-350 MDL => price_level <= 2 ($$)
+      // 351-500 MDL => price_level <= 3 ($$$)
+      // > 500 MDL => all
+      const maxLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
+      const budgetFiltered = pool.filter(r => (r.price_level || 1) <= maxLevel);
+      if (budgetFiltered.length > 0) {
+        pool = budgetFiltered;
+      }
+
+      const radius = location.state?.radiusKm;
+      if (radius) {
+        const distFiltered = pool.filter(r => (r.distance_km || 1) <= radius);
+        if (distFiltered.length > 0) pool = distFiltered;
+      }
+
+      cardsToPass = pool;
+    }
 
     // Broadcast voting_started event to server so all participants jump to deck
     emit('host_start_voting', {
       pin,
       host_id: participantId,
-      options: deduplicated
+      options: cardsToPass
     });
 
     navigate(`/deck/${pin}`, { 
       state: { 
-        mode,
-        topic,
-        totalParticipants: groupSize,
-        customCards: deduplicated
+        mode, 
+        topic, 
+        totalParticipants: groupSize, 
+        customCards: cardsToPass,
+        budgetLimit: confirmedConstraint ? budgetLimit : undefined
       } 
     });
   };

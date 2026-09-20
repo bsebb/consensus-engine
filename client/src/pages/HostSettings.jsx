@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Compass, Sparkles, MapPin } from 'lucide-react';
+import { ChevronLeft, Compass, Sparkles, MapPin, Wifi, WifiOff } from 'lucide-react';
+import { useSocket } from '../context/SocketContext';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function HostSettings() {
@@ -34,6 +35,10 @@ export default function HostSettings() {
         isHost: true,
         groupSize,
         topic: mode === 'CUSTOM' ? topic : category,
+        category,
+        customKeyword,
+        priceTier,
+        radiusKm,
         suggestionLimit,
         allowParticipantSuggestions,
         initialOptions: mode === 'CUSTOM' ? initialOptions : undefined
@@ -65,7 +70,20 @@ export default function HostSettings() {
           <span>Back</span>
         </button>
         <h2 className="font-semibold text-sm text-black dark:text-white">New Decision Room</h2>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <span 
+            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
+              isConnected
+                ? 'bg-[#34C759]/10 text-[#34C759]'
+                : 'bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93]'
+            }`}
+            title={isConnected ? 'Live WebSocket Connected' : 'Simulated / Offline Mode'}
+          >
+            {isConnected ? <Wifi className="w-3 h-3 text-[#34C759]" /> : <WifiOff className="w-3 h-3 text-[#8E8E93]" />}
+            <span>{isConnected ? 'Live' : 'Local'}</span>
+          </span>
+          <ThemeToggle />
+        </div>
       </div>
 
       <div className="max-w-lg mx-auto p-4 sm:p-6 space-y-6">
