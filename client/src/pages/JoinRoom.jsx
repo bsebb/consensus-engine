@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Plus, ArrowRight, Clock } from 'lucide-react';
+import { Sparkles, Plus, ArrowRight, Clock, Wifi, WifiOff } from 'lucide-react';
+import { useSocket } from '../context/SocketContext';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function JoinRoom() {
   const [pin, setPin] = useState('');
   const [name, setName] = useState('');
   const navigate = useNavigate();
+  const { isConnected } = useSocket();
 
   const handleJoin = (e) => {
     e.preventDefault();
@@ -28,7 +30,20 @@ export default function JoinRoom() {
         >
           <Clock className="w-5 h-5 pointer-events-none" />
         </button>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <span 
+            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
+              isConnected
+                ? 'bg-[#34C759]/10 text-[#34C759]'
+                : 'bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93]'
+            }`}
+            title={isConnected ? 'Live WebSocket Connected' : 'Simulated / Offline Mode'}
+          >
+            {isConnected ? <Wifi className="w-3 h-3 text-[#34C759]" /> : <WifiOff className="w-3 h-3 text-[#8E8E93]" />}
+            <span>{isConnected ? 'Live' : 'Local'}</span>
+          </span>
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Brand Mark */}

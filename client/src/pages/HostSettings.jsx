@@ -5,6 +5,7 @@ import ThemeToggle from '../components/ThemeToggle';
 
 export default function HostSettings() {
   const navigate = useNavigate();
+  const { isConnected } = useSocket();
 
   // Dual-Loop Mode: 'DISCOVERY' vs 'CUSTOM'
   const [mode, setMode] = useState('DISCOVERY');
