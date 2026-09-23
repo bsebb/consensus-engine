@@ -1,0 +1,120 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RoomStatus {
+  CONFIGURING
+  SUGGESTING
+  VOTING
+  RESOLVED
+}
+
+enum OptionSource {
+  GOOGLE_API
+  USER_CUSTOM
+}
+
+model Room {
+  id             String     @id @default(uuid())
+  pin            String     @unique
+  hostId         String
+  status         RoomStatus @default(CONFIGURING)
+  winnerOptionId String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  winnerOption   Option?       @relation("RoomWinner", fields: [winnerOptionId], references: [id])
+  participants   Participant[]
+  options        Option[]      @relation("RoomOptions")
+
+  @@map("rooms")
+}
+
+model Participant {
+  id        String   @id @default(uuid())
+  roomId    String
+  budgetCap Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room      Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+  feedbacks Feedback[]
+
+  @@index([roomId])
+  @@map("participants")
+}
+
+model Option {
+  id            String       @id @default(uuid())
+  roomId        String
+  name          String
+  source        OptionSource
+  googlePlaceId String?
+  priceLevel    Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  room          Room         @relation("RoomOptions", fields: [roomId], references: [id], onDelete: Cascade)
+  roomsWon      Room[]       @relation("RoomWinner")
+  votes         Vote[]
+  feedbacks     Feedback[]
+
+  @@index([roomId])
+  @@index([googlePlaceId])
+  @@map("options")
+}
+
+model Vote {
+  id            String   @id @default(uuid())
+  participantId String
+  optionId      String
+  score         Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  option        Option      @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@index([optionId])
+  @@unique([participantId, optionId])
+  @@map("votes")
+}
+
+model VenueAnalytics {
+  id               String @id @default(uuid())
+  googlePlaceId    String @unique
+  name             String
+  truePriceAvg     Float  @default(0.0)
+  consensusWinRate Float  @default(0.0)
+  satisfactionAvg  Float  @default(0.0)
+  totalReviews     Int    @default(0)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("venue_analytics")
+}
+
+model Feedback {
+  id                 String @id @default(uuid())
+  participantId      String
+  optionId           String
+  satisfactionScore  Int
+  priceAccuracyScore Int
+
+  participant        Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  option             Option      @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([participantId])
+  @@index([optionId])
+  @@map("feedbacks")
+}
