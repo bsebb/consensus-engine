@@ -9,6 +9,11 @@ This document tracks a high-level summary of work completed each day.
 
 ---
 
+### September 23, 2026
+* **Database Infrastructure:** Spun up the local PostgreSQL environment using Docker containers to ensure isolated team development.
+* **Prisma Schema Implementation:** Designed the core database models and enforced strict composite unique constraints for the voting logic.
+* **Core Database Functions:** Built and tested the essential database CRUD helpers required to manage rooms, participants, options, and votes.
+
 ### September 20, 2026
 * **Socket.io Real-Time Client Integration:** Installed `socket.io-client` and implemented `SocketContext` with automatic offline fallback so the application runs smoothly both with and without active backend servers.
 * **Synchronized Room Transition:** Wired the `voting_started` event in `RoomLobby.jsx` to trigger automated multi-user transitions to `SwipeDeck.jsx` when the host starts voting.
