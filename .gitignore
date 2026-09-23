@@ -98,3 +98,6 @@ activity/
 *activity*
 *sheet*
 
+# IDEs and Visual Studio
+.vs/
+
