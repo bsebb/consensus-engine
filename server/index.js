@@ -1,5 +1,5 @@
 const express = require('express')
-const { createRoom } = require('./db/helpers');
+const { createRoom, getRoomByPin } = require('./db/helpers');
 
 const app = express();
 
@@ -44,8 +44,36 @@ app.post('/api/v1/rooms', async (req, res) => {
   }
 });
 
+app.get('/api/v1/rooms/:pin', async (req, res) => {
+  try {
+    const { pin } = req.params;
+    const room = await getRoomByPin(pin);
 
-const PORT = process.env.PORT || 5000;
+    return res.status(200).json({
+      room_id: room.id,
+      pin: room.pin,
+      status: room.status,
+      participants: room.participants,
+      options: room.options,
+    });
+  } catch (error) {
+    if (error.message === 'Room not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'ROOM_NOT_FOUND',
+        message: 'No active room found with this PIN.',
+      });
+    }
+    console.error('Error fetching room:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'SERVER_ERROR',
+      message: 'Failed to retrieve room.',
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`)
 });
