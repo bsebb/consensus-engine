@@ -5,6 +5,8 @@ import HostSettings from './pages/HostSettings';
 import RoomLobby from './pages/RoomLobby';
 import SwipeDeck from './pages/SwipeDeck';
 
+// Lilia: initialize the Socket.io client connection
+import './socket';
 function App() {
   return (
     <ThemeProvider>
