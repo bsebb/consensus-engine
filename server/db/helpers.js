@@ -111,6 +111,18 @@ async function createVote(participantId, optionId, score) {
         throw new Error("Failed to create vote");
     }
 }
+async function updateRoomConfig(roomId, updateData) {
+    try {
+        const room = await prisma.room.update({
+            where: { id: roomId },
+            data: updateData,
+        });
+        return room;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to update room configuration");
+    }
+}
 
 module.exports = {
     createRoom,
@@ -119,4 +131,5 @@ module.exports = {
     getRoomById,
     getRoomByPin,
     createVote,
+    updateRoomConfig,
 };
