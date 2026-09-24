@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check } from 'lucide-react';
+import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check, Wifi, WifiOff } from 'lucide-react';
 import { deduplicateSuggestions } from '../utils/levenshtein';
+import { useSocket } from '../context/SocketContext';
 import ThemeToggle from '../components/ThemeToggle';
 
 export default function RoomLobby() {
@@ -37,6 +38,57 @@ export default function RoomLobby() {
     return mode === 'CUSTOM' ? ['Game Night', 'Board Game Cafe', 'Movie Marathon'] : [];
   });
 
+  const { isConnected, participantId, emit, on, off } = useSocket();
+
+  // Listen for real-time multiplayer updates from the server
+  useEffect(() => {
+    // 1. Join room lobby namespace
+    emit('join_lobby', {
+      pin,
+      participant_id: participantId,
+      user_name: currentUserName
+    });
+
+    // 2. Listen for other participants joining
+    const handleParticipantJoined = (data) => {
+      if (data?.total_participants) {
+        setParticipants((prev) => {
+          const count = data.total_participants;
+          if (count > prev.length) {
+            const newOnes = [];
+            for (let i = prev.length; i < count; i++) {
+              newOnes.push({ name: data.user_name || `Friend ${i + 1}`, isMe: false });
+            }
+            return [...prev, ...newOnes];
+          }
+          return prev;
+        });
+      }
+    };
+
+    // 3. Listen for host starting voting (triggers guest navigation)
+    const handleVotingStarted = (data) => {
+      console.log('[Socket] voting_started received, transitioning to SwipeDeck');
+      const options = data?.options || [];
+      navigate(`/deck/${pin}`, { 
+        state: { 
+          mode,
+          topic,
+          totalParticipants: groupSize,
+          customCards: options.length > 0 ? options : undefined
+        } 
+      });
+    };
+
+    on('participant_joined', handleParticipantJoined);
+    on('voting_started', handleVotingStarted);
+
+    return () => {
+      off('participant_joined', handleParticipantJoined);
+      off('voting_started', handleVotingStarted);
+    };
+  }, [pin, participantId, currentUserName, mode, topic, groupSize, navigate, emit, on, off]);
+
   const [copied, setCopied] = useState(false);
 
   const handleCopyPin = () => {
@@ -65,6 +117,13 @@ export default function RoomLobby() {
     const deduplicated = mode === 'CUSTOM'
       ? deduplicateSuggestions(groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2'])
       : [];
+
+    // Broadcast voting_started event to server so all participants jump to deck
+    emit('host_start_voting', {
+      pin,
+      host_id: participantId,
+      options: deduplicated
+    });
 
     navigate(`/deck/${pin}`, { 
       state: { 
@@ -98,6 +157,17 @@ export default function RoomLobby() {
         </div>
 
         <div className="flex items-center gap-2">
+          <span 
+            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
+              isConnected
+                ? 'bg-[#34C759]/10 text-[#34C759]'
+                : 'bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93]'
+            }`}
+            title={isConnected ? 'Live WebSocket Connected' : 'Simulated / Offline Mode'}
+          >
+            {isConnected ? <Wifi className="w-3 h-3 text-[#34C759]" /> : <WifiOff className="w-3 h-3 text-[#8E8E93]" />}
+            <span>{isConnected ? 'Live' : 'Local'}</span>
+          </span>
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${
             isFull 
               ? 'bg-[#34C759]/10 text-[#34C759]' 
@@ -285,7 +355,7 @@ export default function RoomLobby() {
           {isHost ? (
             <button
               onClick={handleStartVoting}
-              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition duration-150 active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-current" />
               <span>Start Swiping Phase</span>

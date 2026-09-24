@@ -86,3 +86,18 @@ Thumbs.db
 # Vite output
 dist/
 dist-ssr/
+
+# Temporary scripts
+fix-transitions.cjs
+*.cjs
+
+# Internship activity sheets
+*.docx
+*.pptx
+activity/
+*activity*
+*sheet*
+
+# IDEs and Visual Studio
+.vs/
+

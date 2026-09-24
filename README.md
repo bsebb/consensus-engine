@@ -1,6 +1,7 @@
 # The Consensus Engine
 
 A real-time Progressive Web App (PWA) designed to solve group decision paralysis using Graph-Theory mathematics and frictionless UX.
+AFINA, MAX, LILIA, SEB, GABI
 
 ---
 

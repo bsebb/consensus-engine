@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { X, Check, Flame, Trophy, Star, Sparkles, RotateCcw } from 'lucide-react';
+import { X, Check, Flame, Trophy, Star, Sparkles, RotateCcw, Wifi, WifiOff } from 'lucide-react';
 import restaurantsMock from '../mocks/restaurants.json';
+import { useSocket } from '../context/SocketContext';
 import ThemeToggle from '../components/ThemeToggle';
+
+const DEFAULT_WINNER = { name: "Selected Option", emoji: '🎯' };
 
 export default function SwipeDeck() {
   const { pin } = useParams();
@@ -45,23 +48,71 @@ export default function SwipeDeck() {
   const [satisfaction, setSatisfaction] = useState(5);
   const [priceAccuracy, setPriceAccuracy] = useState(4);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [skipVoted, setSkipVoted] = useState(false);
+  const { isConnected, participantId, emit, on, off } = useSocket();
+  const [votesReceived, setVotesReceived] = useState(1);
+  const [serverWinner, setServerWinner] = useState(null);
+
+  // Real-time socket event handling for voting completion
+  useEffect(() => {
+    if (currentIndex >= cards.length && !showWinner) {
+      // Notify server that this participant completed their card votes
+      emit('notify_votes_submitted', { pin, participant_id: participantId });
+
+      // Listen for live room progress
+      const handleVoteStatus = (data) => {
+        if (data?.votes_received) {
+          setVotesReceived(data.votes_received);
+        }
+      };
+
+      // Listen for server announcing the consensus winner
+      const handleWinnerAnnounced = (data) => {
+        console.log('[Socket] winner_announced received:', data);
+        if (data?.winning_option) {
+          setServerWinner(data.winning_option);
+        }
+        setShowWinner(true);
+      };
+
+      on('vote_status_update', handleVoteStatus);
+      on('winner_announced', handleWinnerAnnounced);
+
+      return () => {
+        off('vote_status_update', handleVoteStatus);
+        off('winner_announced', handleWinnerAnnounced);
+      };
+    }
+  }, [currentIndex, cards.length, showWinner, pin, participantId, emit, on, off]);
 
   const handleVote = (score) => {
     if (currentIndex >= cards.length) return;
     const current = cards[currentIndex];
     setMyVotes((prev) => [...prev, { option_id: current.id, score }]);
     setCurrentIndex((prev) => prev + 1);
-
-    // After last card, transition to winner
-    if (currentIndex + 1 >= cards.length) {
-      setTimeout(() => {
-        setShowWinner(true);
-      }, 1000);
-    }
   };
 
-  const winningOption = cards[0] || { name: "Selected Option", emoji: '🎯' };
+  const winningOption = serverWinner || cards[0] || DEFAULT_WINNER;
   const currentCard = cards[currentIndex] || null;
+
+  // Save to history when winner is shown
+  useEffect(() => {
+    if (showWinner) {
+      try {
+        const existing = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+        const newEntry = {
+          id: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+          topic,
+          winner: winningOption,
+          options: cards
+        };
+        localStorage.setItem('consensus_history', JSON.stringify([...existing, newEntry]));
+      } catch (e) {
+        console.error('Failed to save history', e);
+      }
+    }
+  }, [showWinner, topic, cards, winningOption]);
 
   // 1. Loading / Empty guard
   if (!cards || cards.length === 0) {
@@ -82,8 +133,8 @@ export default function SwipeDeck() {
 
   // 2. Waiting for other participants
   if (currentIndex >= cards.length && !showWinner) {
-    const finishedCount = Math.max(1, totalParticipants - 1);
-    const progressPercent = Math.round((finishedCount / totalParticipants) * 100);
+    const finishedCount = Math.max(1, votesReceived);
+    const progressPercent = Math.min(100, Math.round((finishedCount / totalParticipants) * 100));
 
     return (
       <div className="min-h-screen bg-[#F2F2F7] dark:bg-black flex items-center justify-center p-6 select-none transition-colors">
@@ -112,10 +163,19 @@ export default function SwipeDeck() {
           </div>
 
           <button
-            onClick={() => setShowWinner(true)}
-            className="w-full min-h-[44px] bg-black dark:bg-white text-white dark:text-black text-xs font-semibold rounded-xl active:scale-[0.98] transition"
+            onClick={() => {
+              setSkipVoted(true);
+              // Mocking a network delay to simulate other participants skipping
+              setTimeout(() => setShowWinner(true), 1200);
+            }}
+            disabled={skipVoted}
+            className={`w-full min-h-[44px] text-xs font-semibold rounded-xl transition ${
+              skipVoted 
+                ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#8E8E93] cursor-default'
+                : 'bg-black dark:bg-white text-white dark:text-black transition active:scale-[0.98]'
+            }`}
           >
-            Show Consensus Result
+            {skipVoted ? 'Skip Voted! Waiting for others...' : 'Vote to Skip / Finish Early'}
           </button>
         </div>
       </div>
@@ -236,6 +296,17 @@ export default function SwipeDeck() {
           <span className="text-xs font-black text-black dark:text-white font-mono">PIN: {pin}</span>
         </div>
         <div className="flex items-center gap-2">
+          <span 
+            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
+              isConnected
+                ? 'bg-[#34C759]/10 text-[#34C759]'
+                : 'bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93]'
+            }`}
+            title={isConnected ? 'Live WebSocket Connected' : 'Simulated / Offline Mode'}
+          >
+            {isConnected ? <Wifi className="w-3 h-3 text-[#34C759]" /> : <WifiOff className="w-3 h-3 text-[#8E8E93]" />}
+            <span>{isConnected ? 'Live' : 'Local'}</span>
+          </span>
           <span className="text-xs font-semibold text-[#6E6E73] dark:text-[#8E8E93] bg-white dark:bg-[#1C1C1E] px-3 py-1 rounded-full border border-black/[0.05] dark:border-white/[0.08] shadow-xs">
             {currentIndex + 1} of {cards.length}
           </span>
@@ -287,7 +358,7 @@ export default function SwipeDeck() {
             type="button"
             onClick={() => handleVote(-1)}
             aria-label="Pass option"
-            className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-full bg-[#FF3B30]/10 hover:bg-[#FF3B30]/20 text-[#FF3B30] flex items-center justify-center active:scale-90 transition duration-150"
+            className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-full bg-[#FF3B30]/10 hover:bg-[#FF3B30]/20 text-[#FF3B30] flex items-center justify-center transition active:scale-90 transition duration-150"
           >
             <X className="w-6 h-6 stroke-[2.5]" />
           </button>
@@ -296,7 +367,7 @@ export default function SwipeDeck() {
             type="button"
             onClick={() => handleVote(-100)}
             aria-label="VETO option"
-            className="w-15 h-15 min-w-[60px] min-h-[60px] rounded-full bg-[#FF9500] hover:bg-[#E08500] text-white flex items-center justify-center active:scale-90 shadow-md shadow-[#FF9500]/30 transition duration-150"
+            className="w-15 h-15 min-w-[60px] min-h-[60px] rounded-full bg-[#FF9500] hover:bg-[#E08500] text-white flex items-center justify-center transition active:scale-90 shadow-md shadow-[#FF9500]/30 transition duration-150"
           >
             <Flame className="w-7 h-7 fill-current" />
           </button>
@@ -305,7 +376,7 @@ export default function SwipeDeck() {
             type="button"
             onClick={() => handleVote(1)}
             aria-label="Approve option"
-            className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-full bg-[#34C759]/10 hover:bg-[#34C759]/20 text-[#34C759] flex items-center justify-center active:scale-90 transition duration-150"
+            className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-full bg-[#34C759]/10 hover:bg-[#34C759]/20 text-[#34C759] flex items-center justify-center transition active:scale-90 transition duration-150"
           >
             <Check className="w-6 h-6 stroke-[2.5]" />
           </button>
