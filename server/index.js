@@ -1,5 +1,5 @@
 const express = require('express')
-const { createRoom, getRoomByPin } = require('./db/helpers');
+const { createRoom, getRoomByPin, updateRoomConfig } = require('./db/helpers');
 
 const app = express();
 
@@ -69,6 +69,29 @@ app.get('/api/v1/rooms/:pin', async (req, res) => {
       success: false,
       error: 'SERVER_ERROR',
       message: 'Failed to retrieve room.',
+    });
+  }
+});
+
+app.patch('/api/v1/rooms/:id/config', async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const updateData = req.body;
+
+    const updatedRoom = await updateRoomConfig(roomId, updateData);
+
+    return res.status(200).json({
+      success: true,
+      room_id: updatedRoom.id,
+      status: updatedRoom.status,
+      message: "Room configuration updated successfully."
+    });
+  } catch (error) {
+    console.error('Error updating room:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'SERVER_ERROR',
+      message: 'Failed to update room.',
     });
   }
 });
