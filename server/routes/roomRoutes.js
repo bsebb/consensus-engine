@@ -6,5 +6,6 @@ const asyncHandler = require('../utils/asyncHandler');
 router.post('/', asyncHandler(roomController.createNewRoom));
 router.get('/:pin', asyncHandler(roomController.getRoom));
 router.patch('/:id/config', asyncHandler(roomController.updateConfig));
-
+//Lilia: added Step Zero budget constraints endpoint
+router.post('/:pin/constraints', asyncHandler(roomController.submitConstraints));
 module.exports = router;

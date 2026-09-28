@@ -124,6 +124,36 @@ async function updateRoomConfig(roomId, updateData) {
     }
 }
 
+//Lilia: update the participant's budget limit for Step Zero
+async function updateParticipantBudget(participantId, budgetCap) {
+    try {
+        const participant = await prisma.participant.update({
+            where: { id: participantId },
+            data: { budgetCap },
+        });
+
+        return participant;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to update participant budget");
+    }
+}
+//Lilia: remove options that exceed the group's budget limit
+async function pruneOptionsByBudget(roomId, maxPriceLevel) {
+    try {
+        await prisma.option.deleteMany({
+            where: {
+                roomId,
+                priceLevel: {
+                    gt: maxPriceLevel,
+                },
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to prune options by budget");
+    }
+}
 module.exports = {
     createRoom,
     createParticipant,
@@ -132,4 +162,8 @@ module.exports = {
     getRoomByPin,
     createVote,
     updateRoomConfig,
+     //Lilia: export Step Zero budget helper
+    updateParticipantBudget,
+     //Lilia: export Step Zero pruning helper
+    pruneOptionsByBudget,
 };
