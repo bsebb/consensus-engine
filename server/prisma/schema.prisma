@@ -24,6 +24,10 @@ model Room {
   pin            String     @unique
   hostId         String
   status         RoomStatus @default(CONFIGURING)
+  
+  theme          String?
+  radius         Int?
+  
   winnerOptionId String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
