@@ -5,10 +5,9 @@ const {
   updateRoomConfig,
   updateParticipantBudget,
   pruneOptionsByBudget,
-  createOption // Added for Sprint 2 options saving
+  createOption 
 } = require('../db/helpers');
 
-// Added for Sprint 2 Foursquare Integration
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -37,7 +36,7 @@ const createNewRoom = async (req, res) => {
 
   // Sprint 2 Logic: Fetch Foursquare data and save to DB
   if (mode === 'DISCOVERY') {
-    // Support either exported function name from foursquarePlaces.js
+    
     const fetchFn = searchRestaurants || fetchFoursquarePlaces;
     
     const places = await fetchFn({
@@ -51,7 +50,7 @@ const createNewRoom = async (req, res) => {
       await createOption(
         room.id,
         place.name,
-        "GOOGLE_API", // Keep as GOOGLE_API to satisfy Prisma enum constraints
+        "GOOGLE_API",
         place.fsq_place_id || place.fsq_id,
         place.priceLevel ?? null // Pass price level (1-4) for Lilia's budget pruning
       );
