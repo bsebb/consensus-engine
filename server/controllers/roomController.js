@@ -1,16 +1,27 @@
-//Lilia: import Step Zero budget and pruning helpers
+// Lilia: import Step Zero budget and pruning helpers
 const {
   createRoom,
   getRoomByPin,
   updateRoomConfig,
   updateParticipantBudget,
   pruneOptionsByBudget,
+  createOption 
 } = require('../db/helpers');
+
+const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 const createNewRoom = async (req, res) => {
-  const { host_id } = req.body;
+  // Sprint 2: Added mode, theme, radius, latitude, and longitude
+  const {
+    host_id,
+    mode = 'DISCOVERY',
+    theme = 'restaurant',
+    radius = 5000,
+    latitude,
+    longitude
+  } = req.body;
 
   if (!host_id) {
     return res.status(400).json({
@@ -22,6 +33,29 @@ const createNewRoom = async (req, res) => {
 
   const pin = generatePin();
   const room = await createRoom(host_id, pin);
+
+  // Sprint 2 Logic: Fetch Foursquare data and save to DB
+  if (mode === 'DISCOVERY') {
+    
+    const fetchFn = searchRestaurants || fetchFoursquarePlaces;
+    
+    const places = await fetchFn({
+      theme,
+      latitude,
+      longitude,
+      radius
+    });
+
+    for (const place of places) {
+      await createOption(
+        room.id,
+        place.name,
+        "GOOGLE_API",
+        place.fsq_place_id || place.fsq_id,
+        place.priceLevel ?? null // Pass price level (1-4) for Lilia's budget pruning
+      );
+    }
+  }
 
   return res.status(201).json({
     room_id: room.id,
@@ -65,12 +99,12 @@ const updateConfig = async (req, res) => {
   });
 };
 
-//Lilia: handle Step Zero budget constraint submission
+// Lilia: handle Step Zero budget constraint submission
 const submitConstraints = async (req, res) => {
   const { pin } = req.params;
   const { participant_id, max_price_level } = req.body;
 
-  //Lilia: validate the Step Zero budget range
+  // Lilia: validate the Step Zero budget range
   if (
     !participant_id ||
     !Number.isInteger(max_price_level) ||
@@ -84,7 +118,7 @@ const submitConstraints = async (req, res) => {
     });
   }
 
-  //Lilia: verify that the participant belongs to this room
+  // Lilia: verify that the participant belongs to this room
   const room = await getRoomByPin(pin);
 
   const participantExists = room.participants.some(
@@ -99,10 +133,10 @@ const submitConstraints = async (req, res) => {
     });
   }
 
-  //Lilia: save the participant's budget limit
+  // Lilia: save the participant's budget limit
   await updateParticipantBudget(participant_id, max_price_level);
 
-  //Lilia: find the strictest budget limit among all participants
+  // Lilia: find the strictest budget limit among all participants
   const updatedRoom = await getRoomByPin(pin);
 
   const budgetLimits = updatedRoom.participants
@@ -111,7 +145,7 @@ const submitConstraints = async (req, res) => {
 
   const groupMaxPriceLevel = Math.min(...budgetLimits);
 
-  //Lilia: remove restaurants that exceed the group's strictest budget
+  // Lilia: remove restaurants that exceed the group's strictest budget
   await pruneOptionsByBudget(updatedRoom.id, groupMaxPriceLevel);
 
   return res.status(200).json({
@@ -124,6 +158,6 @@ module.exports = {
   createNewRoom,
   getRoom,
   updateConfig,
-  //Lilia: export Step Zero constraints handler
+  // Lilia: export Step Zero constraints handler
   submitConstraints,
 };
