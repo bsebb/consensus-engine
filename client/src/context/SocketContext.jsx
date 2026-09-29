@@ -11,14 +11,17 @@ export function SocketProvider({ children }) {
   const [connectionError, setConnectionError] = useState(null);
 
   // Persistent participant ID per browser session
-  const [participantId] = useState(() => {
-    let id = sessionStorage.getItem('consensus_participant_id');
-    if (!id) {
-      id = 'user_' + Math.random().toString(36).substring(2, 10);
-      sessionStorage.setItem('consensus_participant_id', id);
-    }
-    return id;
-  });
+const [participantId] = useState(() => {
+  let id = sessionStorage.getItem('consensus_participant_id');
+
+  //Lilia: use a UUID because participant_id must match the backend API contract
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem('consensus_participant_id', id);
+  }
+
+  return id;
+});
 
   useEffect(() => {
     // Initialize socket connection
