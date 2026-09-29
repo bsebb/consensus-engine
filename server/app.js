@@ -1,6 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { searchRestaurants } = require('./utils/foursquarePlaces');
 const roomRoutes = require('./routes/roomRoutes');
 
 const app = express();
@@ -8,6 +10,31 @@ const app = express();
 app.use(express.json());
 
 app.use('/api/v1/rooms', roomRoutes);
+
+app.get('/api/v1/test-foursquare', async (req, res) => {
+    try {
+        const restaurants = await searchRestaurants({
+            latitude: 47.0105,
+            longitude: 28.8638,
+            radius: 5000,
+        });
+
+        res.json({
+            success: true,
+            count: restaurants.length,
+            restaurants,
+        });
+    } catch (error) {
+        console.error('Foursquare error:', error);
+
+        res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+});
+
+
 
 app.use((err, req, res, next) => {
   console.error(`[Error]: ${err.message}`);
