@@ -51,7 +51,7 @@ const createNewRoom = async (req, res) => {
       await createOption(
         room.id,
         place.name,
-        "FOURSQUARE", // Keep as GOOGLE_API to satisfy Prisma enum constraints
+        "GOOGLE_API", // Keep as GOOGLE_API to satisfy Prisma enum constraints
         place.fsq_place_id || place.fsq_id,
         place.priceLevel ?? null // Pass price level (1-4) for Lilia's budget pruning
       );
