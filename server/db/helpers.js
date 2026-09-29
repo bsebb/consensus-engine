@@ -15,7 +15,6 @@ async function createRoom(hostId, pin) {
         throw new Error("Failed to create room");
     }
 }
-
 async function createParticipant(roomId, budgetCap) {
     try {
         const participant = await prisma.participant.create({
@@ -24,10 +23,28 @@ async function createParticipant(roomId, budgetCap) {
                 budgetCap,
             },
         });
+
         return participant;
     } catch (error) {
         console.error(error);
         throw new Error("Failed to create participant");
+    }
+}
+// Lilia: create a participant with the UUID provided by the Socket.io client
+async function createParticipantWithId(roomId, participantId, budgetCap = null) {
+    try {
+        const participant = await prisma.participant.create({
+            data: {
+                id: participantId,
+                roomId,
+                budgetCap,
+            },
+        });
+
+        return participant;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to create participant with ID");
     }
 }
 
@@ -166,4 +183,6 @@ module.exports = {
     updateParticipantBudget,
      //Lilia: export Step Zero pruning helper
     pruneOptionsByBudget,
+    //Lilia: export participant creation helper for Socket.io room joining
+    createParticipantWithId,
 };
