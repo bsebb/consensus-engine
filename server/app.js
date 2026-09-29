@@ -16,6 +16,7 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
             longitude: 28.8638,
             radius: 5000,
         });
+        
 
         res.json({
             success: true,
