@@ -5,7 +5,8 @@ const {
   updateRoomConfig,
   updateParticipantBudget,
   pruneOptionsByBudget,
-  createOption 
+  createOption,
+  submitVenueFeedback   //Afina
 } = require('../db/helpers');
 
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
@@ -154,10 +155,43 @@ const submitConstraints = async (req, res) => {
   });
 };
 
+// Afina: process end-of-event venue feedback and trigger analytics recalculation
+const submitFeedback = async (req, res) => {
+    const { participant_id, option_id, satisfaction_score, price_accuracy_score } = req.body;
+
+    if (!participant_id || !option_id || satisfaction_score === undefined || price_accuracy_score === undefined) {
+        return res.status(400).json({
+            success: false,
+            error: 'MISSING_FIELDS',
+            message: 'participant_id, option_id, and both scores are required.'
+        });
+    }
+
+    // Strict boundary check for 1-5 star ratings
+    if (
+        typeof satisfaction_score !== 'number' || typeof price_accuracy_score !== 'number' ||
+        satisfaction_score < 1 || satisfaction_score > 5 ||
+        price_accuracy_score < 1 || price_accuracy_score > 5
+    ) {
+        return res.status(400).json({
+            success: false,
+            error: 'INVALID_CONSTRAINT',
+            message: 'Scores must be integers between 1 and 5.'
+        });
+    }
+
+    await submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score);
+
+    return res.status(200).json({ success: true });
+};
+
+
 module.exports = {
   createNewRoom,
   getRoom,
   updateConfig,
   // Lilia: export Step Zero constraints handler
   submitConstraints,
+  // Afina: export feedback handler
+  submitFeedback
 };
