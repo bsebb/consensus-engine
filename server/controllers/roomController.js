@@ -6,10 +6,15 @@ const {
   updateParticipantBudget,
   pruneOptionsByBudget,
   createOption,
-  submitVenueFeedback   //Afina
+  createVote,
+  countVotedParticipants,
+  submitVenueFeedback,   //Afina
 } = require('../db/helpers');
 
+// Lilia: access Socket.io for live vote progress updates
+const { getIO } = require('../utils/socket');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
+const { calculateSchulzeWinner } = require('../utils/schulze');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -37,9 +42,8 @@ const createNewRoom = async (req, res) => {
 
   // Sprint 2 Logic: Fetch Foursquare data and save to DB
   if (mode === 'DISCOVERY') {
-    
     const fetchFn = searchRestaurants || fetchFoursquarePlaces;
-    
+
     const places = await fetchFn({
       theme,
       latitude,
@@ -53,7 +57,7 @@ const createNewRoom = async (req, res) => {
         place.name,
         "GOOGLE_API",
         place.fsq_place_id || place.fsq_id,
-        place.priceLevel ?? null // Pass price level (1-4) for Lilia's budget pruning
+        place.priceLevel ?? null
       );
     }
   }
@@ -155,6 +159,155 @@ const submitConstraints = async (req, res) => {
   });
 };
 
+
+
+// Lilia: save a participant's batched rankings and broadcast live vote progress
+const submitVotes = async (req, res) => {
+  const { pin } = req.params;
+  const { participant_id, rankings } = req.body;
+
+  // Lilia: validate the batched rankings payload
+  if (
+    !participant_id ||
+    !Array.isArray(rankings) ||
+    rankings.length === 0
+  ) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_VOTES',
+      message: 'participant_id and a non-empty rankings array are required.',
+    });
+  }
+
+  // Lilia: validate every ranking before writing anything to the database
+  const validScores = new Set([1, -1, -100]);
+
+  const rankingsAreValid = rankings.every(
+    (ranking) =>
+      ranking &&
+      typeof ranking.option_id === 'string' &&
+      validScores.has(ranking.score)
+  );
+
+  if (!rankingsAreValid) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_VOTES',
+      message: 'Each ranking must contain option_id and a valid score.',
+    });
+  }
+
+  // Lilia: verify that the participant belongs to this room
+  const room = await getRoomByPin(pin);
+
+  const participantExists = room.participants.some(
+    (participant) => participant.id === participant_id
+  );
+
+  if (!participantExists) {
+    return res.status(404).json({
+      success: false,
+      error: 'PARTICIPANT_NOT_FOUND',
+      message: 'Participant does not belong to this room.',
+    });
+  }
+
+  // Lilia: make sure every submitted option belongs to this room
+  const roomOptionIds = new Set(
+    room.options.map((option) => option.id)
+  );
+
+  const allOptionsBelongToRoom = rankings.every(
+    (ranking) => roomOptionIds.has(ranking.option_id)
+  );
+
+  if (!allOptionsBelongToRoom) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_OPTION',
+      message: 'One or more options do not belong to this room.',
+    });
+  }
+
+  // Lilia: save all submitted rankings
+  for (const ranking of rankings) {
+    await createVote(
+      participant_id,
+      ranking.option_id,
+      ranking.score
+    );
+  }
+
+  // Lilia: count unique participants who have completed voting
+  const votedParticipants = await countVotedParticipants(room.id);
+  const totalParticipants = room.participants.length;
+
+  // Lilia: broadcast progress only inside this Socket.io room
+  const io = getIO();
+
+  io.to(pin).emit('vote_progress', {
+    pin,
+    voted_participants: votedParticipants,
+    total_participants: totalParticipants,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Votes recorded safely.',
+  });
+};
+
+// Sprint 3: finalize voting using the graph algorithm
+const finalizeVoting = async (req, res) => {
+  const { pin } = req.params;
+  const room = await getRoomByPin(pin);
+
+  if (!room) {
+    return res.status(404).json({
+      success: false,
+      error: 'ROOM_NOT_FOUND',
+      message: 'No active room found with this PIN.',
+    });
+  }
+
+  const submissions = room.participants.map(p => ({
+    participant_id: p.id,
+    votes: (p.votes || []).map(vote => ({
+      option_id: vote.optionId,
+      score: vote.score
+    }))
+  }));
+
+  try {
+    const winningOptionId = calculateSchulzeWinner(submissions);
+
+    if (!winningOptionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'NO_VALID_WINNER',
+        message: 'Could not resolve a winning option from submissions.',
+      });
+    }
+
+    const io = req.app.get('io');
+
+    if (io) {
+      io.to(pin).emit('MATCH_FOUND', { winningOptionId });
+    }
+
+    return res.status(200).json({
+      success: true,
+      winner_option_id: winningOptionId,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
+
 // Afina: process end-of-event venue feedback and trigger analytics recalculation
 const submitFeedback = async (req, res) => {
     const { participant_id, option_id, satisfaction_score, price_accuracy_score } = req.body;
@@ -190,8 +343,12 @@ module.exports = {
   createNewRoom,
   getRoom,
   updateConfig,
-  // Lilia: export Step Zero constraints handler
+  //Lilia: export Step Zero constraints handler
   submitConstraints,
+  //export voting finalizer
+  finalizeVoting,
+  //export batched voting handler
+  submitVotes,
   // Afina: export feedback handler
-  submitFeedback
+  submitFeedback,
 };
