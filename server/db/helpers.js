@@ -171,6 +171,27 @@ async function pruneOptionsByBudget(roomId, maxPriceLevel) {
         throw new Error("Failed to prune options by budget");
     }
 }
+//Lilia: count unique participants who have submitted votes in a room
+async function countVotedParticipants(roomId) {
+    try {
+        const result = await prisma.vote.findMany({
+            where: {
+                participant: {
+                    roomId,
+                },
+            },
+            select: {
+                participantId: true,
+            },
+            distinct: ['participantId'],
+        });
+
+        return result.length;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to count voted participants");
+    }
+}
 module.exports = {
     createRoom,
     createParticipant,
@@ -178,6 +199,8 @@ module.exports = {
     getRoomById,
     getRoomByPin,
     createVote,
+    //Lilia: export vote progress helper
+    countVotedParticipants,
     updateRoomConfig,
      //Lilia: export Step Zero budget helper
     updateParticipantBudget,

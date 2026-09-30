@@ -21,7 +21,8 @@ export default function SwipeDeck() {
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
       return location.state.customCards.map((item, idx) => ({
         id: `custom-${idx}`,
-        name: typeof item === 'string' ? item : item.name || `Option ${idx + 1}`,
+        //Lilia: keep the database option UUID received from the server
+        id: typeof item === 'string' ? `custom-${idx}` : item.id,
         emoji: '💡',
         tags: ['Custom', 'Group Suggestion'],
         distance_km: 'Local',
@@ -53,20 +54,34 @@ export default function SwipeDeck() {
   const [votesReceived, setVotesReceived] = useState(1);
   const [serverWinner, setServerWinner] = useState(null);
 
-  // Real-time socket event handling for voting completion
-  useEffect(() => {
-    if (currentIndex >= cards.length && !showWinner) {
-      // Notify server that this participant completed their card votes
-      emit('notify_votes_submitted', { pin, participant_id: participantId });
+  //Real-time socket event handling for voting completion
+useEffect(() => {
+  if (currentIndex >= cards.length && !showWinner) {
 
-      // Listen for live room progress
-      const handleVoteStatus = (data) => {
-        if (data?.votes_received) {
-          setVotesReceived(data.votes_received);
-        }
-      };
+    //Lilia: send all collected votes to the backend once voting is complete
+    if (myVotes.length > 0) {
+      fetch(`/api/v1/rooms/${pin}/votes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          participant_id: participantId,
+          rankings: myVotes
+        })
+      });
+    }
 
-      // Listen for server announcing the consensus winner
+    //Listen for live room progress
+    const handleVoteStatus = (data) => {
+      if (data?.votes_received) {
+        setVotesReceived(data.votes_received);
+      }
+    };
+
+
+
+      //Listen for server announcing the consensus winner
       const handleWinnerAnnounced = (data) => {
         console.log('[Socket] winner_announced received:', data);
         if (data?.winning_option) {
