@@ -9,6 +9,7 @@ const {
 } = require('../db/helpers');
 
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
+const { calculateSchulzeWinner } = require('../utils/schulze');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -154,10 +155,60 @@ const submitConstraints = async (req, res) => {
   });
 };
 
+const finalizeVoting = async (req, res) => {
+  const { pin } = req.params;
+  const room = await getRoomByPin(pin);
+
+  if (!room) {
+    return res.status(404).json({
+      success: false,
+      error: 'ROOM_NOT_FOUND',
+      message: 'No active room found with this PIN.',
+    });
+  }
+
+  const submissions = room.participants.map(p => ({
+    participant_id: p.id,
+    votes: (p.votes || []).map(vote => ({
+      option_id: vote.optionId,
+      score: vote.score
+    }))
+  }));
+
+  try {
+    const winningOptionId = calculateSchulzeWinner(submissions);
+
+    if (!winningOptionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'NO_VALID_WINNER',
+        message: 'Could not resolve a winning option from submissions.',
+      });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(pin).emit('MATCH_FOUND', { winningOptionId });
+    }
+
+    return res.status(200).json({
+      success: true,
+      winner_option_id: winningOptionId,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   createNewRoom,
   getRoom,
   updateConfig,
   // Lilia: export Step Zero constraints handler
   submitConstraints,
+  // Sprint 3: export voting finalizer
+  finalizeVoting,
 };

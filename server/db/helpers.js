@@ -54,7 +54,9 @@ async function getRoomById(roomId) {
         const room = await prisma.room.findUnique({
             where: { id: roomId },
             include: {
-                participants: true,
+                participants: {
+                    include: { votes: true } 
+                },
                 options: true,
             },
         });
@@ -76,7 +78,9 @@ async function getRoomByPin(pin) {
         const room = await prisma.room.findUnique({
             where: { pin },
             include: {
-                participants: true,
+                participants: {
+                    include: { votes: true } 
+                },
                 options: true,
             },
         });
@@ -162,8 +166,6 @@ module.exports = {
     getRoomByPin,
     createVote,
     updateRoomConfig,
-     //Lilia: export Step Zero budget helper
     updateParticipantBudget,
-     //Lilia: export Step Zero pruning helper
     pruneOptionsByBudget,
 };
