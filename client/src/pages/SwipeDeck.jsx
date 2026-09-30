@@ -19,6 +19,7 @@ export default function SwipeDeck() {
   // Initialize cards synchronously
   const [cards] = useState(() => {
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
+<<<<<<< HEAD
       return location.state.customCards.map((item, idx) => {
         if (typeof item === 'string') {
           return {
@@ -39,6 +40,17 @@ export default function SwipeDeck() {
           price_level: typeof item.price_level === 'number' ? item.price_level : 0
         };
       });
+=======
+      return location.state.customCards.map((item, idx) => ({
+        id: `custom-${idx}`,
+        //Lilia: keep the database option UUID received from the server
+        id: typeof item === 'string' ? `custom-${idx}` : item.id,
+        emoji: '💡',
+        tags: ['Custom', 'Group Suggestion'],
+        distance_km: 'Local',
+        price_level: 0
+      }));
+>>>>>>> origin/main
     }
 
     if (mode === 'CUSTOM') {
@@ -66,6 +78,7 @@ export default function SwipeDeck() {
   const [votesReceived, setVotesReceived] = useState(1);
   const [serverWinner, setServerWinner] = useState(null);
 
+<<<<<<< HEAD
   // Touch swipe drag tracking
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
@@ -131,8 +144,24 @@ export default function SwipeDeck() {
   // Automated & Real-time voting resolution
   useEffect(() => {
     if (currentIndex >= cards.length && !showWinner) {
-      // 1. Notify server if connected
+      // 1. Notify server via socket if connected
       emit('notify_votes_submitted', { pin, participant_id: participantId });
+
+      // 2. Submit batched votes to backend REST API
+      if (myVotes.length > 0) {
+        fetch(`http://localhost:3000/api/v1/rooms/${pin}/votes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            participant_id: participantId,
+            rankings: myVotes,
+          }),
+        }).catch((err) => {
+          console.warn('[SwipeDeck] REST vote submit fallback:', err);
+        });
+      }
 
       let timer;
       if (!isConnected) {
@@ -161,28 +190,36 @@ export default function SwipeDeck() {
       }, 4000);
 
       const handleVoteStatus = (data) => {
-        if (data?.votes_received) {
-          setVotesReceived(data.votes_received);
+        if (data?.votes_received || data?.voted_participants) {
+          setVotesReceived(data.votes_received || data.voted_participants);
         }
       };
 
+      // Listen for server announcing the consensus winner
       const handleWinnerAnnounced = (data) => {
         if (data?.winning_option) {
           setServerWinner(data.winning_option);
+        } else if (data?.winningOptionId) {
+          const found = cards.find((c) => c.id === data.winningOptionId);
+          setServerWinner(found || { name: 'Consensus Winner', id: data.winningOptionId });
         }
         setShowWinner(true);
       };
 
       on('vote_status_update', handleVoteStatus);
+      on('vote_progress', handleVoteStatus);
       on('winner_announced', handleWinnerAnnounced);
+      on('MATCH_FOUND', handleWinnerAnnounced);
 
       return () => {
         clearTimeout(safetyFallback);
         off('vote_status_update', handleVoteStatus);
+        off('vote_progress', handleVoteStatus);
         off('winner_announced', handleWinnerAnnounced);
+        off('MATCH_FOUND', handleWinnerAnnounced);
       };
     }
-  }, [currentIndex, cards.length, showWinner, pin, participantId, isConnected, totalParticipants, emit, on, off]);
+  }, [currentIndex, cards.length, showWinner, pin, participantId, isConnected, totalParticipants, myVotes, cards, emit, on, off]);
 
   // Calculate real consensus winner based on votes & Condorcet veto elimination
   const consensusResult = useMemo(() => {
