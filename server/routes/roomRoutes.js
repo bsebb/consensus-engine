@@ -9,3 +9,4 @@ router.patch('/:id/config', asyncHandler(roomController.updateConfig));
 //Lilia: added Step Zero budget constraints endpoint
 router.post('/:pin/constraints', asyncHandler(roomController.submitConstraints));
 module.exports = router;
+router.post('/:pin/finalize', asyncHandler(roomController.finalizeVoting));
