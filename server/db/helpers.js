@@ -15,7 +15,6 @@ async function createRoom(hostId, pin) {
         throw new Error("Failed to create room");
     }
 }
-
 async function createParticipant(roomId, budgetCap) {
     try {
         const participant = await prisma.participant.create({
@@ -24,10 +23,28 @@ async function createParticipant(roomId, budgetCap) {
                 budgetCap,
             },
         });
+
         return participant;
     } catch (error) {
         console.error(error);
         throw new Error("Failed to create participant");
+    }
+}
+// Lilia: create a participant with the UUID provided by the Socket.io client
+async function createParticipantWithId(roomId, participantId, budgetCap = null) {
+    try {
+        const participant = await prisma.participant.create({
+            data: {
+                id: participantId,
+                roomId,
+                budgetCap,
+            },
+        });
+
+        return participant;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to create participant with ID");
     }
 }
 
@@ -158,6 +175,27 @@ async function pruneOptionsByBudget(roomId, maxPriceLevel) {
         throw new Error("Failed to prune options by budget");
     }
 }
+//Lilia: count unique participants who have submitted votes in a room
+async function countVotedParticipants(roomId) {
+    try {
+        const result = await prisma.vote.findMany({
+            where: {
+                participant: {
+                    roomId,
+                },
+            },
+            select: {
+                participantId: true,
+            },
+            distinct: ['participantId'],
+        });
+
+        return result.length;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to count voted participants");
+    }
+}
 module.exports = {
     createRoom,
     createParticipant,
@@ -165,7 +203,11 @@ module.exports = {
     getRoomById,
     getRoomByPin,
     createVote,
+    //Lilia: export vote progress helper
+    countVotedParticipants,
     updateRoomConfig,
     updateParticipantBudget,
     pruneOptionsByBudget,
+    //Lilia: export participant creation helper for Socket.io room joining
+    createParticipantWithId,
 };

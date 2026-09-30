@@ -111,31 +111,24 @@ export default function RoomLobby() {
     setGroupPool([...groupPool, clean]);
     setSuggestion('');
   };
-
   const handleStartVoting = () => {
-    // Run Levenshtein Deduplication on the group pool
-    const deduplicated = mode === 'CUSTOM'
-      ? deduplicateSuggestions(groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2'])
-      : [];
+  // Lilia: prepare custom suggestions before sending them to the server
+  const deduplicated = mode === 'CUSTOM'
+    ? deduplicateSuggestions(
+        groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2']
+      )
+    : [];
 
-    // Broadcast voting_started event to server so all participants jump to deck
-    emit('host_start_voting', {
-      pin,
-      host_id: participantId,
-      options: deduplicated
-    });
+  // Lilia: the server creates database options and broadcasts voting_started
+  // to every participant in this Socket.io room
+  emit('host_start_voting', {
+    pin,
+    host_id: participantId,
+    options: deduplicated
+  });
+};
 
-    navigate(`/deck/${pin}`, { 
-      state: { 
-        mode,
-        topic,
-        totalParticipants: groupSize,
-        customCards: deduplicated
-      } 
-    });
-  };
-
-  const isFull = participants.length >= groupSize;
+const isFull = participants.length >= groupSize;
 
   return (
     <div className="min-h-screen bg-[#F2F2F7] dark:bg-black pb-16 select-none transition-colors duration-200">
