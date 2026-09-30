@@ -4,9 +4,12 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { searchRestaurants } = require('./utils/foursquarePlaces');
 const roomRoutes = require('./routes/roomRoutes');
+//Lilia: access the shared Socket.io instance from other server modules
+const { setIO } = require('./utils/socket');
+const cors = require('cors');
 
 const app = express();
-
+app.use(cors());
 app.use(express.json());
 
 app.use('/api/v1/rooms', roomRoutes);
@@ -57,7 +60,8 @@ const io = new Server(httpServer, {
     origin: '*',
   },
 });
-
+//Lilia: make the Socket.io instance available to other server modules
+setIO(io);
 //Lilia: handle Socket.io room joining for real-time lobby updates
 io.on('connection', (socket) => {
   socket.on('join_lobby', async (data) => {
@@ -71,48 +75,9 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const room = await require('./db/helpers').getRoomByPin(pin);
 
-      const existingParticipant = room.participants.find(
-        (participant) => participant.id === participant_id
-      );
-
-      if (!existingParticipant) {
-        await require('./db/helpers').createParticipantWithId(
-          room.id,
-          participant_id
-        );
-      }
-
-      socket.join(pin);
-
-      socket.data.pin = pin;
-      socket.data.participantId = participant_id;
-      socket.data.userName = user_name || 'Guest';
-
-      const totalParticipants =
-        io.sockets.adapter.rooms.get(pin)?.size || 0;
-
-      //Lilia: notify everyone in this room about the new participant
-      io.to(pin).emit('participant_joined', {
-        pin,
-        participant_id,
-        user_name: user_name || 'Guest',
-        total_participants: totalParticipants,
-      });
-
-      console.log(
-        `[Socket] ${user_name || 'Guest'} joined room ${pin}`
-      );
-    } catch (error) {
-      console.error('[Socket] Failed to join room:', error.message);
-
-      socket.emit('room_error', {
-        message: 'Failed to join room.',
-      });
-    }
-  });
   //Lilia: start the voting phase for everyone in the room
+   //Lilia: start the voting phase and prepare room options
   socket.on('host_start_voting', async (data) => {
     try {
       const { pin, host_id, options } = data;
@@ -123,6 +88,64 @@ io.on('connection', (socket) => {
         });
         return;
       }
+
+      const {
+        getRoomByPin,
+        createOption,
+      } = require('./db/helpers');
+
+      const room = await getRoomByPin(pin);
+
+      //Lilia: only the room host can start the voting phase
+      if (room.hostId !== host_id) {
+        socket.emit('room_error', {
+          message: 'Only the room host can start voting.',
+        });
+        return;
+      }
+
+      let roomOptions = options;
+
+      //Lilia: convert custom option names into database options with real UUIDs
+      if (options.length > 0 && options.every((option) => typeof option === 'string')) {
+        roomOptions = [];
+
+        for (const optionName of options) {
+          const option = await createOption(
+            room.id,
+            optionName,
+            'USER_CUSTOM',
+            null,
+            null
+          );
+
+          roomOptions.push({
+            id: option.id,
+            name: option.name,
+          });
+        }
+      }
+
+      //Lilia: broadcast database-backed options only inside this Socket.io room
+      io.to(pin).emit('voting_started', {
+        pin,
+        options: roomOptions,
+      });
+
+      console.log(
+        `[Socket] Voting started in room ${pin} with ${roomOptions.length} options`
+      );
+    } catch (error) {
+      console.error(
+        '[Socket] Failed to start voting:',
+        error.message
+      );
+
+      socket.emit('room_error', {
+        message: 'Failed to start voting.',
+      });
+    }
+  });
 
       const room = await require('./db/helpers').getRoomByPin(pin);
 
