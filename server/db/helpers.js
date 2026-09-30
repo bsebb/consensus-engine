@@ -15,7 +15,6 @@ async function createRoom(hostId, pin) {
         throw new Error("Failed to create room");
     }
 }
-
 async function createParticipant(roomId, budgetCap) {
     try {
         const participant = await prisma.participant.create({
@@ -24,10 +23,28 @@ async function createParticipant(roomId, budgetCap) {
                 budgetCap,
             },
         });
+
         return participant;
     } catch (error) {
         console.error(error);
         throw new Error("Failed to create participant");
+    }
+}
+// Lilia: create a participant with the UUID provided by the Socket.io client
+async function createParticipantWithId(roomId, participantId, budgetCap = null) {
+    try {
+        const participant = await prisma.participant.create({
+            data: {
+                id: participantId,
+                roomId,
+                budgetCap,
+            },
+        });
+
+        return participant;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to create participant with ID");
     }
 }
 
@@ -54,7 +71,9 @@ async function getRoomById(roomId) {
         const room = await prisma.room.findUnique({
             where: { id: roomId },
             include: {
-                participants: true,
+                participants: {
+                    include: { votes: true } 
+                },
                 options: true,
             },
         });
@@ -76,7 +95,9 @@ async function getRoomByPin(pin) {
         const room = await prisma.room.findUnique({
             where: { pin },
             include: {
-                participants: true,
+                participants: {
+                    include: { votes: true } 
+                },
                 options: true,
             },
         });
@@ -138,6 +159,7 @@ async function updateParticipantBudget(participantId, budgetCap) {
         throw new Error("Failed to update participant budget");
     }
 }
+
 //Lilia: remove options that exceed the group's budget limit
 async function pruneOptionsByBudget(roomId, maxPriceLevel) {
     try {
@@ -156,7 +178,32 @@ async function pruneOptionsByBudget(roomId, maxPriceLevel) {
 }
 
 
-/**
+
+//Lilia: count unique participants who have submitted votes in a room
+async function countVotedParticipants(roomId) {
+    try {
+        const result = await prisma.vote.findMany({
+            where: {
+                participant: {
+                    roomId,
+                },
+            },
+            select: {
+                participantId: true,
+            },
+            distinct: ['participantId'],
+        });
+
+        return result.length;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to count voted participants");
+    }
+}
+
+
+
+/** AFINA:
  * Records user feedback and atomically recalculates continuous venue analytics
  * using Prisma transactions to prevent race conditions during concurrent voting.
  */
@@ -223,7 +270,6 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
 }
 
 
-
 module.exports = {
     createRoom,
     createParticipant,
@@ -231,11 +277,14 @@ module.exports = {
     getRoomById,
     getRoomByPin,
     createVote,
+    //Lilia: export vote progress helper
+    countVotedParticipants,
     updateRoomConfig,
-     //Lilia: export Step Zero budget helper
     updateParticipantBudget,
     //Lilia: export Step Zero pruning helper
     pruneOptionsByBudget,
+    //Lilia: export participant creation helper for Socket.io room joining
+    createParticipantWithId,
     //Afina
     submitVenueFeedback,
 };
