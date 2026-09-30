@@ -1,83 +1,134 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check, Wifi, WifiOff } from 'lucide-react';
-import { deduplicateSuggestions } from '../utils/levenshtein';
+import React, { useState, useEffect } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Copy,
+  Check,
+  Users,
+  ShieldCheck,
+  Coins,
+  ArrowRight,
+  Plus,
+  Trash2,
+  Lock,
+  Sparkles,
+} from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
+import Button from '../components/ui/Button';
+import RangeSlider from '../components/ui/RangeSlider';
+import StatusBadge from '../components/ui/StatusBadge';
+import MilledTray from '../components/ui/MilledTray';
 import restaurantsMock from '../mocks/restaurants.json';
+
+// Client-side Levenshtein distance for fuzzy duplicate detection
+function levenshteinDistance(a, b) {
+  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function deduplicateSuggestions(list) {
+  const result = [];
+  list.forEach((item) => {
+    const isDup = result.some((existing) => {
+      const dist = levenshteinDistance(
+        existing.toLowerCase().trim(),
+        item.toLowerCase().trim()
+      );
+      return dist <= 2;
+    });
+    if (!isDup) result.push(item);
+  });
+  return result;
+}
 
 export default function RoomLobby() {
   const { pin } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isConnected, participantId, emit, on, off } = useSocket();
+  const { addToast } = useToast();
 
-  const mode = location.state?.mode || 'CUSTOM';
-  const isHost = location.state?.isHost ?? true;
-  const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Participant');
-  const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Where should we hang out?' : 'Find Places Nearby');
-  const suggestionLimit = location.state?.suggestionLimit || 3;
+  const isHost = location.state?.isHost ?? false;
+  const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
+  const groupSize = location.state?.groupSize || 4;
+  const mode = location.state?.mode || 'DISCOVERY';
+  const topic = location.state?.topic || 'Where should we go?';
 
-  // Expected Group Size defined by host
-  const [groupSize] = useState(location.state?.groupSize || 4);
-
-  // Dynamic participants: starts with only the joined user
-  const [participants, setParticipants] = useState([
-    { name: currentUserName, isMe: true }
+  // Live participant state
+  const [participants, setParticipants] = useState(() => [
+    { id: participantId || 'host_1', name: currentUserName, isHost },
   ]);
 
+  // Step Zero Budget Constraint State
   const [budgetLimit, setBudgetLimit] = useState(250);
-  const [confirmedConstraint, setConfirmedConstraint] = useState(false);
+  const [lockedConstraint, setLockedConstraint] = useState(false);
+  const [lockingBudget, setLockingBudget] = useState(false);
 
+  // Suggestions state
   const [suggestion, setSuggestion] = useState('');
-  const [mySuggestions, setMySuggestions] = useState([]);
-  
-  // Group pool starts with host's pre-filled options or default seed
-  const [groupPool, setGroupPool] = useState(() => {
-    if (location.state?.initialOptions) {
-      return location.state.initialOptions.split(',').map(s => s.trim()).filter(Boolean);
-    }
-    return mode === 'CUSTOM' ? ['Game Night', 'Board Game Cafe', 'Movie Marathon'] : [];
-  });
+  const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft']);
+  const [copied, setCopied] = useState(false);
 
-  const { isConnected, participantId, emit, on, off } = useSocket();
-
-  // Listen for real-time multiplayer updates from the server
+  // Handle Socket.io synchronization
   useEffect(() => {
-    // 1. Join room lobby namespace
+    // 1. Join room
     emit('join_lobby', {
       pin,
       participant_id: participantId,
-      user_name: currentUserName
+      user_name: currentUserName,
     });
 
-    // 2. Listen for other participants joining
+    // 2. Listen for peers joining
     const handleParticipantJoined = (data) => {
-      if (data?.total_participants) {
+      if (data?.participants && Array.isArray(data.participants)) {
+        setParticipants(
+          data.participants.map((p) => ({
+            id: p.id,
+            name: p.name || p.userName || 'Peer',
+            isHost: p.id === data.host_id,
+          }))
+        );
+      } else if (data?.user_name) {
         setParticipants((prev) => {
-          const count = data.total_participants;
-          if (count > prev.length) {
-            const newOnes = [];
-            for (let i = prev.length; i < count; i++) {
-              newOnes.push({ name: data.user_name || `Friend ${i + 1}`, isMe: false });
-            }
-            return [...prev, ...newOnes];
-          }
-          return prev;
+          if (prev.some((p) => p.name === data.user_name)) return prev;
+          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false }];
         });
       }
     };
 
-    // 3. Listen for host starting voting (triggers guest navigation)
+    // 3. Listen for host voting trigger
     const handleVotingStarted = (data) => {
-      console.log('[Socket] voting_started received, transitioning to SwipeDeck');
+      addToast({
+        title: 'Voting Started',
+        message: 'Entering the Swipe Deck now...',
+        type: 'info',
+      });
+
       const options = data?.options || [];
-      navigate(`/deck/${pin}`, { 
-        state: { 
+      navigate(`/deck/${pin}`, {
+        state: {
           mode,
           topic,
           totalParticipants: groupSize,
-          customCards: options.length > 0 ? options : undefined
-        } 
+          customCards: options.length > 0 ? options : undefined,
+          budgetLimit: lockedConstraint ? budgetLimit : undefined,
+        },
       });
     };
 
@@ -88,325 +139,308 @@ export default function RoomLobby() {
       off('participant_joined', handleParticipantJoined);
       off('voting_started', handleVotingStarted);
     };
-  }, [pin, participantId, currentUserName, mode, topic, groupSize, navigate, emit, on, off]);
-
-  const [copied, setCopied] = useState(false);
+  }, [pin, participantId, currentUserName, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
 
   const handleCopyPin = () => {
     navigator.clipboard.writeText(pin);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    addToast({
+      title: 'PIN Copied',
+      message: `Room #${pin} copied to clipboard`,
+      type: 'success',
+    });
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAddTestGuest = () => {
-    const guestNum = participants.length;
-    const newGuest = { name: `Guest ${guestNum}`, isMe: false };
-    setParticipants([...participants, newGuest]);
+  // Submit Step Zero constraint to backend
+  const handleLockConstraint = async () => {
+    setLockingBudget(true);
+
+    // Map 50-800 MDL slider into price level 1-4
+    const priceLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/v1/rooms/${pin}/constraints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: participantId,
+          max_price_level: priceLevel,
+        }),
+      });
+
+      if (response.ok) {
+        addToast({
+          title: 'Budget Constraint Locked',
+          message: 'Backend pruned options above group budget',
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      console.warn('[Lobby] Backend constraint call offline, locking locally:', err);
+    }
+
+    setLockingBudget(false);
+    setLockedConstraint(true);
   };
 
   const handleAddSuggestion = (e) => {
     e.preventDefault();
-    if (!suggestion.trim() || mySuggestions.length >= suggestionLimit) return;
     const clean = suggestion.trim();
-    setMySuggestions([...mySuggestions, clean]);
-    setGroupPool([...groupPool, clean]);
+    if (!clean) return;
+
+    const deduplicated = deduplicateSuggestions([...groupPool, clean]);
+    setGroupPool(deduplicated);
     setSuggestion('');
   };
+
+  const handleRemoveSuggestion = (idx) => {
+    setGroupPool((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleStartVoting = () => {
     let cardsToPass = [];
 
     if (mode === 'CUSTOM') {
-      // Run Levenshtein Deduplication on the group pool
-      cardsToPass = deduplicateSuggestions(groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2']);
+      cardsToPass = deduplicateSuggestions(groupPool);
     } else {
       let pool = restaurantsMock || [];
       const category = location.state?.category;
       if (category && category !== 'Restaurants') {
         const catLower = category.toLowerCase();
-        const matched = pool.filter(r => 
-          r.tags?.some(t => t.toLowerCase().includes(catLower)) ||
-          r.name?.toLowerCase().includes(catLower)
+        const matched = pool.filter(
+          (r) =>
+            r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
+            r.name?.toLowerCase().includes(catLower)
         );
         if (matched.length > 0) pool = matched;
       }
 
-      const keyword = location.state?.customKeyword?.trim();
-      if (keyword) {
-        const kwLower = keyword.toLowerCase();
-        const matched = pool.filter(r =>
-          r.name?.toLowerCase().includes(kwLower) ||
-          r.tags?.some(t => t.toLowerCase().includes(kwLower))
-        );
-        if (matched.length > 0) pool = matched;
-      }
-
-      // Step Zero Secret Budget Cap Pruning
+      // Filter by secret budget cap
       const maxLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
-      const budgetFiltered = pool.filter(r => (r.price_level || 1) <= maxLevel);
-      if (budgetFiltered.length > 0) {
-        pool = budgetFiltered;
-      }
-
-      const radius = location.state?.radiusKm;
-      if (radius) {
-        const distFiltered = pool.filter(r => (r.distance_km || 1) <= radius);
-        if (distFiltered.length > 0) pool = distFiltered;
-      }
+      const budgetFiltered = pool.filter((r) => (r.price_level || 1) <= maxLevel);
+      if (budgetFiltered.length > 0) pool = budgetFiltered;
 
       cardsToPass = pool;
     }
 
-    // Broadcast voting_started event to server so all participants jump to deck
+    // Broadcast via socket
     emit('host_start_voting', {
       pin,
       host_id: participantId,
-      options: cardsToPass
+      options: cardsToPass,
     });
 
-    navigate(`/deck/${pin}`, { 
-      state: { 
-        mode, 
-        topic, 
-        totalParticipants: groupSize, 
+    // Fallback navigation
+    navigate(`/deck/${pin}`, {
+      state: {
+        mode,
+        topic,
+        totalParticipants: groupSize,
         customCards: cardsToPass,
-        budgetLimit: confirmedConstraint ? budgetLimit : undefined
-      } 
+        budgetLimit: lockedConstraint ? budgetLimit : undefined,
+      },
     });
   };
 
-  const isFull = participants.length >= groupSize;
-
   return (
-    <div className="min-h-screen bg-[#F2F2F7] dark:bg-black pb-16 select-none transition-colors duration-200">
+    <div className="min-h-screen pb-24 select-none">
       
-      {/* Navigation Header with ThemeToggle */}
-      <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] dark:border-white/[0.08] px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div>
-            <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Room PIN</span>
-            <span className="text-base font-black text-black dark:text-white font-mono tracking-widest">{pin}</span>
-          </div>
-          <button
-            onClick={handleCopyPin}
-            className="p-1.5 rounded-lg text-[#007AFF] hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition"
-            title="Copy PIN"
-          >
-            {copied ? <Check className="w-4 h-4 text-[#34C759]" /> : <Copy className="w-4 h-4" />}
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span 
-            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
-              isConnected
-                ? 'bg-[#34C759]/10 text-[#34C759]'
-                : 'bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93]'
-            }`}
-            title={isConnected ? 'Live WebSocket Connected' : 'Simulated / Offline Mode'}
-          >
-            {isConnected ? <Wifi className="w-3 h-3 text-[#34C759]" /> : <WifiOff className="w-3 h-3 text-[#8E8E93]" />}
-            <span>{isConnected ? 'Live' : 'Local'}</span>
-          </span>
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${
-            isFull 
-              ? 'bg-[#34C759]/10 text-[#34C759]' 
-              : 'bg-[#007AFF]/10 text-[#007AFF]'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isFull ? 'bg-[#34C759]' : 'bg-[#007AFF] animate-pulse'}`}></span>
-            {participants.length} of {groupSize} Joined
-          </span>
-          <ThemeToggle />
-        </div>
-      </div>
-
-      <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5">
-        
-        {/* Decision Topic Card */}
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.08] shadow-xs transition-colors">
-          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block mb-1">
-            Decision Topic
-          </span>
-          <h2 className="text-base font-bold text-black dark:text-white tracking-tight">{topic}</h2>
-        </div>
-
-        {/* Dynamic Participants Roll-Call with Progress Bar */}
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.08] shadow-xs space-y-3 transition-colors">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#6E6E73] dark:text-[#8E8E93]" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93]">
-                Lobby Roll-Call ({participants.length}/{groupSize})
+      {/* Top Header */}
+      <header className="sticky top-0 z-30 liquid-glass border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-[var(--ios-secondary-label)] uppercase tracking-wider">
+                Room PIN
               </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleAddTestGuest}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] hover:opacity-80 transition"
-            >
-              <UserPlus className="w-3 h-3" />
-              <span>+ Add Friend</span>
-            </button>
-          </div>
-
-          {/* Group Fill Progress Bar */}
-          <div className="w-full bg-[#E5E5EA] dark:bg-[#2C2C2E] h-1.5 rounded-full overflow-hidden">
-            <div 
-              className="bg-[#007AFF] h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, Math.round((participants.length / groupSize) * 100))}%` }}
-            ></div>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {participants.map((p, idx) => (
-              <span
-                key={idx}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                  p.isMe
-                    ? 'bg-[#007AFF] text-white shadow-xs'
-                    : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white'
-                }`}
+              <button
+                type="button"
+                onClick={handleCopyPin}
+                className="flex items-center gap-1.5 font-mono text-xl font-extrabold text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
+                title="Click to copy PIN"
               >
-                {p.name} {p.isMe && '(You)'}
-              </span>
+                <span>{pin}</span>
+                {copied ? <Check size={16} className="text-[var(--semantic-success)]" /> : <Copy size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <StatusBadge
+              status={isConnected ? 'success' : 'neutral'}
+              label={isConnected ? 'Live Room' : 'Local Room'}
+              pulse={isConnected}
+              size="sm"
+            />
+            <ThemeToggle />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="max-w-2xl mx-auto px-4 pt-6 flex flex-col gap-6">
+        
+        {/* Room Headline & Topic */}
+        <section className="flex flex-col gap-1">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+            Consensus Topic
+          </span>
+          <h2 className="text-2xl font-bold text-[var(--ios-label)] tracking-tight">
+            {topic}
+          </h2>
+        </section>
+
+        {/* Live Roll-Call Roster */}
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="settings-section-label !p-0 !m-0">Participants Roll-Call</span>
+            <span className="text-xs font-mono font-semibold text-[var(--ios-secondary-label)]">
+              {participants.length} / {groupSize} Quorum
+            </span>
+          </div>
+
+          <div className="settings-card-group p-3 flex flex-wrap gap-2">
+            {participants.map((p, idx) => (
+              <div
+                key={p.id || idx}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-subtle)]"
+              >
+                <div className="w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-xs font-bold flex items-center justify-center">
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-[var(--ios-label)]">{p.name}</span>
+                {p.isHost && (
+                  <StatusBadge status="info" label="Host" size="sm" />
+                )}
+              </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* ================= DISCOVERY MODE: STEP ZERO ================= */}
-        {mode === 'DISCOVERY' && (
-          <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.08] shadow-xs space-y-4 transition-colors">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF]">
-                <DollarSign className="w-4 h-4" />
+        {/* Step Zero: Secret Budget Cap */}
+        <section className="flex flex-col gap-2">
+          <div className="settings-section-label">Step Zero: Confidential Budget Guard</div>
+          <div className="settings-card-group p-4 flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-[rgba(255,149,0,0.12)] text-[var(--semantic-warning)] shrink-0 mt-0.5">
+                <Coins size={20} />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-black dark:text-white">Step Zero: Secret Budget Cap</h3>
-                <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">Options exceeding the lowest cap are silently pruned</p>
+              <div className="flex flex-col">
+                <h4 className="text-sm font-semibold text-[var(--ios-label)]">
+                  Private Spending Ceiling
+                </h4>
+                <p className="text-xs text-[var(--ios-secondary-label)] leading-relaxed">
+                  Your budget limit is sealed. Options exceeding the group's lowest constraint are pruned from the deck.
+                </p>
               </div>
             </div>
 
-            {!confirmedConstraint ? (
-              <div className="space-y-4 pt-1">
-                <div className="p-3 bg-[#F8F8FA] dark:bg-[#2C2C2E] rounded-xl flex items-center justify-between transition-colors">
-                  <span className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93]">My Spending Ceiling</span>
-                  <span className="text-base font-bold text-[#007AFF] font-mono">{budgetLimit} MDL</span>
+            {lockedConstraint ? (
+              <MilledTray className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[var(--semantic-success)]">
+                  <ShieldCheck size={16} />
+                  <span>Constraint Sealed: Max {budgetLimit} MDL</span>
                 </div>
-
-                <input
-                  type="range"
-                  min="50"
-                  max="800"
-                  step="25"
+                <button
+                  type="button"
+                  onClick={() => setLockedConstraint(false)}
+                  className="text-xs text-[var(--ios-secondary-label)] hover:text-[var(--ios-label)] underline cursor-pointer"
+                >
+                  Adjust
+                </button>
+              </MilledTray>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <RangeSlider
+                  min={50}
+                  max={800}
+                  step={25}
                   value={budgetLimit}
-                  onChange={(e) => setBudgetLimit(Number(e.target.value))}
-                  className="w-full h-2 bg-[#E5E5EA] dark:bg-[#2C2C2E] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
+                  onChange={setBudgetLimit}
+                  unit="MDL"
+                  label="My Personal Maximum"
                 />
 
-                <button
-                  type="button"
-                  onClick={() => setConfirmedConstraint(true)}
-                  className="w-full min-h-[44px] bg-[#007AFF] hover:bg-[#0071E3] text-white rounded-xl text-xs font-semibold transition active:scale-[0.98]"
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={handleLockConstraint}
+                  loading={lockingBudget}
+                  icon={Lock}
                 >
-                  Lock Secret Constraint
-                </button>
-              </div>
-            ) : (
-              <div className="p-3 bg-[#34C759]/10 border border-[#34C759]/20 rounded-xl flex items-center justify-between text-xs text-[#28893F]">
-                <div className="flex items-center gap-2 font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-[#34C759]" />
-                  <span>Locked in ({budgetLimit} MDL max)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setConfirmedConstraint(false)}
-                  className="underline font-semibold hover:opacity-80"
-                >
-                  Change
-                </button>
+                  Lock Secret Limit ({budgetLimit} MDL)
+                </Button>
               </div>
             )}
           </div>
-        )}
+        </section>
 
-        {/* ================= CUSTOM MODE: ANONYMOUS SUGGESTIONS ================= */}
+        {/* Custom Suggestions Pool (if Custom mode) */}
         {mode === 'CUSTOM' && (
-          <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.08] shadow-xs space-y-4 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-black dark:text-white">Anonymous Suggestions</h3>
-                  <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">Merged with Levenshtein fuzzy deduplication</p>
-                </div>
-              </div>
-              <span className="flex items-center gap-1 text-[10px] text-[#8E8E93]">
-                <Shield className="w-3 h-3 text-[#34C759]" />
-                Anonymous
-              </span>
-            </div>
+          <section className="flex flex-col gap-2">
+            <div className="settings-section-label">Crowdsourced Suggestions</div>
+            <div className="settings-card-group p-4 flex flex-col gap-4">
+              <form onSubmit={handleAddSuggestion} className="flex gap-2">
+                <input
+                  type="text"
+                  value={suggestion}
+                  onChange={(e) => setSuggestion(e.target.value)}
+                  placeholder="Propose an option..."
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-sm text-[var(--ios-label)] outline-none focus:border-[var(--accent-bg)]"
+                />
+                <Button type="submit" variant="primary" size="sm" icon={Plus}>
+                  Add
+                </Button>
+              </form>
 
-            <form onSubmit={handleAddSuggestion} className="flex gap-2">
-              <input
-                type="text"
-                value={suggestion}
-                onChange={(e) => setSuggestion(e.target.value)}
-                placeholder="Suggest an option..."
-                maxLength={30}
-                className="flex-1 min-h-[44px] px-3.5 rounded-xl bg-[#F8F8FA] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] text-xs text-black dark:text-white placeholder:text-[#8E8E93] outline-none focus:bg-white dark:focus:bg-[#1C1C1E] focus:ring-2 focus:ring-[#007AFF] transition"
-              />
-              <button
-                type="submit"
-                disabled={!suggestion.trim() || mySuggestions.length >= suggestionLimit}
-                className="min-h-[44px] px-4 bg-black dark:bg-white disabled:opacity-40 text-white dark:text-black rounded-xl text-xs font-semibold transition active:scale-[0.96] flex items-center gap-1"
-              >
-                <Send className="w-3 h-3" />
-                <span>Add</span>
-              </button>
-            </form>
-
-            <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8E8E93] block mb-2">
-                Group Options Pool ({groupPool.length})
-              </span>
-              {groupPool.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {groupPool.map((item, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white rounded-lg text-xs font-medium"
+              <div className="flex flex-wrap gap-2">
+                {groupPool.map((item, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] text-xs font-medium text-[var(--ios-label)] border border-[var(--border-subtle)]"
+                  >
+                    <span>{item}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSuggestion(idx)}
+                      className="text-[var(--ios-tertiary-label)] hover:text-[var(--semantic-error)] cursor-pointer"
                     >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[#8E8E93] italic">No suggestions added yet. Type one above!</p>
-              )}
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          </section>
         )}
+      </main>
 
-        {/* Start Swiping CTA */}
-        <div className="pt-2">
-          {isHost ? (
-            <button
-              onClick={handleStartVoting}
-              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Start Swiping Phase</span>
-            </button>
-          ) : (
-            <div className="p-4 bg-white/60 dark:bg-[#1C1C1E]/60 backdrop-blur-md rounded-2xl text-center text-xs text-[#6E6E73] dark:text-[#8E8E93] font-medium border border-black/[0.04] dark:border-white/[0.06]">
-              Waiting for host to start voting...
+      {/* Sticky Host Action Bar */}
+      {isHost && (
+        <footer className="fixed bottom-0 inset-x-0 z-30 liquid-glass border-t border-[var(--border-subtle)] p-4">
+          <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-[var(--ios-label)]">
+                Host Control
+              </span>
+              <span className="text-[11px] text-[var(--ios-secondary-label)]">
+                {participants.length} connected
+              </span>
             </div>
-          )}
-        </div>
 
-      </div>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleStartVoting}
+              icon={ArrowRight}
+              className="px-6"
+            >
+              Start Swiping
+            </Button>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
