@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Compass, Sparkles, MapPin, Wifi, WifiOff } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import ThemeToggle from '../components/ThemeToggle';
-import { useSocket } from '../context/SocketContext';
 
 export default function HostSettings() {
   const navigate = useNavigate();

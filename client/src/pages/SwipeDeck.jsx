@@ -19,7 +19,6 @@ export default function SwipeDeck() {
   // Initialize cards synchronously
   const [cards] = useState(() => {
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
-<<<<<<< HEAD
       return location.state.customCards.map((item, idx) => {
         if (typeof item === 'string') {
           return {
@@ -40,17 +39,6 @@ export default function SwipeDeck() {
           price_level: typeof item.price_level === 'number' ? item.price_level : 0
         };
       });
-=======
-      return location.state.customCards.map((item, idx) => ({
-        id: `custom-${idx}`,
-        //Lilia: keep the database option UUID received from the server
-        id: typeof item === 'string' ? `custom-${idx}` : item.id,
-        emoji: '💡',
-        tags: ['Custom', 'Group Suggestion'],
-        distance_km: 'Local',
-        price_level: 0
-      }));
->>>>>>> origin/main
     }
 
     if (mode === 'CUSTOM') {
@@ -78,7 +66,6 @@ export default function SwipeDeck() {
   const [votesReceived, setVotesReceived] = useState(1);
   const [serverWinner, setServerWinner] = useState(null);
 
-<<<<<<< HEAD
   // Touch swipe drag tracking
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
