@@ -12,8 +12,21 @@ export default function History() {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('consensus_history') || '[]');
-      if (stored.length > 0) {
-        setSessions(stored);
+      if (Array.isArray(stored) && stored.length > 0) {
+        const sanitized = stored.map((s) => ({
+          ...s,
+          winner:
+            typeof s.winner === 'object' && s.winner !== null
+              ? s.winner.name || s.winner.id || 'Consensus Option'
+              : String(s.winner || 'Consensus Option'),
+          topic:
+            typeof s.topic === 'object' && s.topic !== null
+              ? s.topic.name || 'Decision'
+              : String(s.topic || 'Decision'),
+          priceLevel: typeof s.priceLevel === 'number' ? s.priceLevel : 2,
+          participantsCount: typeof s.participantsCount === 'number' ? s.participantsCount : 4,
+        }));
+        setSessions(sanitized);
       } else {
         // Sample baseline entries for demonstration
         setSessions([
@@ -155,7 +168,11 @@ export default function History() {
                     <td className="py-3 px-3.5">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ios-label)]">
                         <Trophy size={13} className="text-[var(--semantic-warning)] shrink-0" />
-                        <span className="truncate">{s.winner}</span>
+                        <span className="truncate">
+                          {typeof s.winner === 'object' && s.winner !== null
+                            ? s.winner.name || s.winner.id || 'Consensus Option'
+                            : String(s.winner || 'Consensus Option')}
+                        </span>
                       </div>
                     </td>
                     <td className="py-3 px-3.5 text-right">
