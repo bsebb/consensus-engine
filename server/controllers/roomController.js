@@ -10,7 +10,7 @@ const {
   countVotedParticipants,
 } = require('../db/helpers');
 
-//Lilia: access Socket.io for live vote progress updates
+// Lilia: access Socket.io for live vote progress updates
 const { getIO } = require('../utils/socket');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 const { calculateSchulzeWinner } = require('../utils/schulze');
@@ -41,9 +41,8 @@ const createNewRoom = async (req, res) => {
 
   // Sprint 2 Logic: Fetch Foursquare data and save to DB
   if (mode === 'DISCOVERY') {
-    
     const fetchFn = searchRestaurants || fetchFoursquarePlaces;
-    
+
     const places = await fetchFn({
       theme,
       latitude,
@@ -57,7 +56,7 @@ const createNewRoom = async (req, res) => {
         place.name,
         "GOOGLE_API",
         place.fsq_place_id || place.fsq_id,
-        place.priceLevel ?? null // Pass price level (1-4) for Lilia's budget pruning
+        place.priceLevel ?? null
       );
     }
   }
@@ -104,12 +103,12 @@ const updateConfig = async (req, res) => {
   });
 };
 
-//Lilia: handle Step Zero budget constraint submission
+// Lilia: handle Step Zero budget constraint submission
 const submitConstraints = async (req, res) => {
   const { pin } = req.params;
   const { participant_id, max_price_level } = req.body;
 
-  //Lilia: validate the Step Zero budget range
+  // Lilia: validate the Step Zero budget range
   if (
     !participant_id ||
     !Number.isInteger(max_price_level) ||
@@ -123,7 +122,7 @@ const submitConstraints = async (req, res) => {
     });
   }
 
-  //Lilia: verify that the participant belongs to this room
+  // Lilia: verify that the participant belongs to this room
   const room = await getRoomByPin(pin);
 
   const participantExists = room.participants.some(
@@ -138,10 +137,10 @@ const submitConstraints = async (req, res) => {
     });
   }
 
-  //Lilia: save the participant's budget limit
+  // Lilia: save the participant's budget limit
   await updateParticipantBudget(participant_id, max_price_level);
 
-  //Lilia: find the strictest budget limit among all participants
+  // Lilia: find the strictest budget limit among all participants
   const updatedRoom = await getRoomByPin(pin);
 
   const budgetLimits = updatedRoom.participants
@@ -150,7 +149,7 @@ const submitConstraints = async (req, res) => {
 
   const groupMaxPriceLevel = Math.min(...budgetLimits);
 
-  //Lilia: remove restaurants that exceed the group's strictest budget
+  // Lilia: remove restaurants that exceed the group's strictest budget
   await pruneOptionsByBudget(updatedRoom.id, groupMaxPriceLevel);
 
   return res.status(200).json({
@@ -158,12 +157,13 @@ const submitConstraints = async (req, res) => {
     message: 'Constraint locked.',
   });
 };
-//Lilia: save a participant's batched rankings and broadcast live vote progress
+
+// Lilia: save a participant's batched rankings and broadcast live vote progress
 const submitVotes = async (req, res) => {
   const { pin } = req.params;
   const { participant_id, rankings } = req.body;
 
-  //Lilia: validate the batched rankings payload
+  // Lilia: validate the batched rankings payload
   if (
     !participant_id ||
     !Array.isArray(rankings) ||
@@ -176,7 +176,7 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  //Lilia: validate every ranking before writing anything to the database
+  // Lilia: validate every ranking before writing anything to the database
   const validScores = new Set([1, -1, -100]);
 
   const rankingsAreValid = rankings.every(
@@ -194,7 +194,7 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  //Lilia: verify that the participant belongs to this room
+  // Lilia: verify that the participant belongs to this room
   const room = await getRoomByPin(pin);
 
   const participantExists = room.participants.some(
@@ -209,6 +209,52 @@ const submitVotes = async (req, res) => {
     });
   }
 
+  // Lilia: make sure every submitted option belongs to this room
+  const roomOptionIds = new Set(
+    room.options.map((option) => option.id)
+  );
+
+  const allOptionsBelongToRoom = rankings.every(
+    (ranking) => roomOptionIds.has(ranking.option_id)
+  );
+
+  if (!allOptionsBelongToRoom) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_OPTION',
+      message: 'One or more options do not belong to this room.',
+    });
+  }
+
+  // Lilia: save all submitted rankings
+  for (const ranking of rankings) {
+    await createVote(
+      participant_id,
+      ranking.option_id,
+      ranking.score
+    );
+  }
+
+  // Lilia: count unique participants who have completed voting
+  const votedParticipants = await countVotedParticipants(room.id);
+  const totalParticipants = room.participants.length;
+
+  // Lilia: broadcast progress only inside this Socket.io room
+  const io = getIO();
+
+  io.to(pin).emit('vote_progress', {
+    pin,
+    voted_participants: votedParticipants,
+    total_participants: totalParticipants,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: 'Votes recorded safely.',
+  });
+};
+
+// Sprint 3: finalize voting using the graph algorithm
 const finalizeVoting = async (req, res) => {
   const { pin } = req.params;
   const room = await getRoomByPin(pin);
@@ -241,6 +287,7 @@ const finalizeVoting = async (req, res) => {
     }
 
     const io = req.app.get('io');
+
     if (io) {
       io.to(pin).emit('MATCH_FOUND', { winningOptionId });
     }
@@ -257,57 +304,13 @@ const finalizeVoting = async (req, res) => {
   }
 };
 
-  //Lilia: make sure every submitted option belongs to this room
-  const roomOptionIds = new Set(
-    room.options.map((option) => option.id)
-  );
-
-  const allOptionsBelongToRoom = rankings.every(
-    (ranking) => roomOptionIds.has(ranking.option_id)
-  );
-
-  if (!allOptionsBelongToRoom) {
-    return res.status(400).json({
-      success: false,
-      error: 'INVALID_OPTION',
-      message: 'One or more options do not belong to this room.',
-    });
-  }
-
-  //Lilia: save all submitted rankings
-  for (const ranking of rankings) {
-    await createVote(
-      participant_id,
-      ranking.option_id,
-      ranking.score
-    );
-  }
-
-  //Lilia: count unique participants who have completed voting
-  const votedParticipants = await countVotedParticipants(room.id);
-  const totalParticipants = room.participants.length;
-
-  //Lilia: broadcast progress only inside this Socket.io room
-  const io = getIO();
-
-  io.to(pin).emit('vote_progress', {
-    pin,
-    voted_participants: votedParticipants,
-    total_participants: totalParticipants,
-  });
-
-  return res.status(200).json({
-    success: true,
-    message: 'Votes recorded safely.',
-  });
-};
 module.exports = {
   createNewRoom,
   getRoom,
   updateConfig,
-  // Lilia: export Step Zero constraints handler
+  //Lilia: export Step Zero constraints handler
   submitConstraints,
-  // Sprint 3: export voting finalizer
+  //export voting finalizer
   finalizeVoting,
   //export batched voting handler
   submitVotes,
