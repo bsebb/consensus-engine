@@ -53,8 +53,13 @@ const [participantId] = useState(() => {
     socketRef.current = socketInstance;
 
     return () => {
-      console.log('[Socket] Cleaning up socket connection...');
-      socketInstance.disconnect();
+      if (socketInstance.connected) {
+        socketInstance.disconnect();
+      } else {
+        socketInstance.once('connect', () => {
+          socketInstance.disconnect();
+        });
+      }
     };
   }, []);
 
