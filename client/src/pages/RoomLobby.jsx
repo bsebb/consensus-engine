@@ -112,7 +112,6 @@ export default function RoomLobby() {
     setGroupPool([...groupPool, clean]);
     setSuggestion('');
   };
-
   const handleStartVoting = () => {
     let cardsToPass = [];
 
@@ -142,10 +141,6 @@ export default function RoomLobby() {
       }
 
       // Step Zero Secret Budget Cap Pruning
-      // 50-200 MDL => price_level 1 ($)
-      // 201-350 MDL => price_level <= 2 ($$)
-      // 351-500 MDL => price_level <= 3 ($$$)
-      // > 500 MDL => all
       const maxLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
       const budgetFiltered = pool.filter(r => (r.price_level || 1) <= maxLevel);
       if (budgetFiltered.length > 0) {
