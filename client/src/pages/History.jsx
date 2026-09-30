@@ -1,130 +1,178 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, Clock, Trophy, Users, Calendar, ArrowRight, Sparkles } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import Button from '../components/ui/Button';
+import StatusBadge from '../components/ui/StatusBadge';
 
 export default function History() {
   const navigate = useNavigate();
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('consensus_history');
-      return saved ? JSON.parse(saved).reverse() : [];
-    } catch (e) {
-      console.error('Failed to parse history', e);
-      return [];
-    }
-  });
-  const [expandedId, setExpandedId] = useState(null);
+  const [sessions, setSessions] = useState([]);
 
-  const clearHistory = () => {
-    if (window.confirm("Are you sure you want to clear your decision history?")) {
-      localStorage.removeItem('consensus_history');
-      setHistory([]);
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+      if (stored.length > 0) {
+        setSessions(stored);
+      } else {
+        // Sample baseline entries for demonstration
+        setSessions([
+          {
+            pin: '4921',
+            topic: 'Friday Dinner Decision',
+            winner: 'Bistro del Sol',
+            date: 'Oct 1, 2026',
+            participantsCount: 4,
+            priceLevel: 2,
+          },
+          {
+            pin: '8104',
+            topic: 'Team Coffee Break',
+            winner: 'Artisan Roasters',
+            date: 'Sep 28, 2026',
+            participantsCount: 3,
+            priceLevel: 1,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.warn('[History] LocalStorage read error:', err);
     }
-  };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] dark:bg-black transition-colors select-none pb-12">
-      {/* Header */}
-      <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] dark:border-white/[0.08] px-4 py-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-[#007AFF] font-medium active:opacity-70 flex items-center min-h-[44px] -ml-1 px-1"
-        >
-          <ChevronLeft className="w-5 h-5 -ml-1" />
-          <span>Back</span>
-        </button>
-        <h2 className="font-semibold text-black dark:text-white">Past Decisions</h2>
-        <ThemeToggle />
-      </div>
+    <div className="min-h-screen pb-16 select-none">
+      
+      {/* Top Header */}
+      <header className="sticky top-0 z-30 liquid-glass border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1 text-sm font-medium text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
+          >
+            <ChevronLeft size={18} />
+            <span>Home</span>
+          </button>
 
-      <div className="max-w-md mx-auto p-4 space-y-4 mt-2">
-        {history.length === 0 ? (
-          <div className="text-center py-16 px-4">
-            <div className="w-16 h-16 bg-black/[0.03] dark:bg-white/[0.05] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-[#8E8E93]" />
-            </div>
-            <h3 className="text-lg font-bold text-black dark:text-white mb-1">No History Yet</h3>
-            <p className="text-sm text-[#6E6E73] dark:text-[#8E8E93]">
-              Your completed group decisions will appear here automatically.
+          <h2 className="text-base font-semibold text-[var(--ios-label)]">
+            Past Decisions Log
+          </h2>
+
+          <ThemeToggle />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-3xl mx-auto px-4 pt-6 flex flex-col gap-6">
+        
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--ios-label)]">
+              Resolved Sessions
+            </h1>
+            <p className="text-xs text-[var(--ios-secondary-label)] mt-0.5">
+              Historical record of group consensus agreements
             </p>
           </div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center px-1 mb-2">
-              <span className="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">
-                Saved locally on this device
-              </span>
-              <button 
-                type="button"
-                onClick={clearHistory}
-                className="text-xs text-[#FF3B30] font-medium min-h-[44px] flex items-center hover:opacity-80 transition-opacity duration-100"
-              >
-                Clear
-              </button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/host')}
+            icon={Sparkles}
+          >
+            New Session
+          </Button>
+        </div>
+
+        {sessions.length === 0 ? (
+          /* Empty State */
+          <div className="liquid-glass rounded-3xl p-10 text-center flex flex-col items-center gap-4 my-8 border border-[var(--border-glass)]">
+            <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/10 flex items-center justify-center text-[var(--ios-secondary-label)]">
+              <Clock size={28} />
             </div>
-
-            {history.map((session) => {
-              const isExpanded = expandedId === session.id;
-              const formattedDate = new Date(session.timestamp).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              });
-
-              return (
-                <div 
-                  key={session.id} 
-                  className="apple-card overflow-hidden cursor-pointer"
-                  onClick={() => setExpandedId(isExpanded ? null : session.id)}
-                >
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex-1">
-                      <span className="text-[10px] font-semibold text-[#8E8E93] uppercase tracking-wider block mb-1">
-                        {formattedDate} • {session.topic}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{session.winner?.emoji}</span>
-                        <h3 className="text-lg font-black text-black dark:text-white tracking-tight">
-                          {session.winner?.name}
-                        </h3>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-base font-semibold text-[var(--ios-label)]">
+                No Decisions Yet
+              </h3>
+              <p className="text-xs text-[var(--ios-secondary-label)] max-w-xs">
+                When your group completes a room vote, the consensus winner will be archived here.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/host')}
+            >
+              Host First Decision
+            </Button>
+          </div>
+        ) : (
+          /* Zero-Reflow Table with Hardware <colgroup> */
+          <div className="settings-card-group overflow-x-auto">
+            <table className="w-full text-left border-collapse table-fixed min-w-[540px]">
+              <colgroup>
+                <col className="w-[100px]" />
+                <col className="w-[180px]" />
+                <col className="w-[150px]" />
+                <col className="w-[110px]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.04]">
+                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+                    Room PIN
+                  </th>
+                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+                    Topic
+                  </th>
+                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+                    Winner
+                  </th>
+                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)] text-right">
+                    Quorum
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {sessions.map((s, idx) => (
+                  <tr
+                    key={s.pin || idx}
+                    className="hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-colors"
+                  >
+                    <td className="py-3 px-3.5 font-mono text-xs font-bold text-[var(--accent-bg)]">
+                      #{s.pin}
+                    </td>
+                    <td className="py-3 px-3.5">
+                      <div className="text-xs font-semibold text-[var(--ios-label)] truncate">
+                        {s.topic}
                       </div>
-                    </div>
-                    <div className="text-[#8E8E93] pl-3">
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="px-4 pb-4 border-t border-black/[0.04] dark:border-white/[0.06] pt-3 bg-[#F8F8FA]/50 dark:bg-[#1C1C1E]/50">
-                      <h4 className="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider mb-2">
-                        Other Options Evaluated
-                      </h4>
-                      <div className="space-y-1.5">
-                        {session.options?.filter(o => o.id !== session.winner?.id).map((opt) => (
-                          <div key={opt.id} className="flex justify-between items-center text-sm">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white">
-                              <span>{opt.emoji}</span>
-                              <span className="font-medium">{opt.name}</span>
-                            </div>
-                            <span className="text-xs text-[#8E8E93] bg-black/[0.03] dark:bg-white/[0.05] px-2 py-0.5 rounded-md">
-                              Passed
-                            </span>
-                          </div>
-                        ))}
-                        {(!session.options || session.options.length <= 1) && (
-                          <p className="text-xs text-[#8E8E93]">No other options.</p>
-                        )}
+                      <div className="text-[10px] text-[var(--ios-tertiary-label)] flex items-center gap-1 mt-0.5">
+                        <Calendar size={10} />
+                        <span>{s.date}</span>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </>
+                    </td>
+                    <td className="py-3 px-3.5">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ios-label)]">
+                        <Trophy size={13} className="text-[var(--semantic-warning)] shrink-0" />
+                        <span className="truncate">{s.winner}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3.5 text-right">
+                      <StatusBadge
+                        status="neutral"
+                        label={`${s.participantsCount || 4} Peers`}
+                        size="sm"
+                        className="ml-auto"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
