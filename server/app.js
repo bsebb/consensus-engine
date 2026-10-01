@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { searchRestaurants } = require('./utils/foursquarePlaces');
+const { searchRestaurants } = require('./src/utils/foursquarePlaces');
 const roomRoutes = require('./routes/roomRoutes');
 //Lilia: access the shared Socket.io instance from other server modules
-const { setIO } = require('./utils/socket');
+const { setIO } = require('./src/utils/socket');
 const cors = require('cors');
 
 const app = express();
