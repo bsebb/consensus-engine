@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
@@ -6,19 +6,14 @@ import {
   Clock,
   Compass,
   Users,
-  ShieldCheck,
-  ShieldAlert,
-  ThumbsUp,
-  ThumbsDown,
   Utensils,
   Coffee,
   Wine,
   Film,
-  Flame,
+  Plus,
+  Minus,
   Check,
-  RotateCcw,
-  MapPin,
-  Star,
+  User,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -28,60 +23,74 @@ import StatusBadge from '../components/ui/StatusBadge';
 import SegmentedControl from '../components/ui/SegmentedControl';
 
 export default function JoinRoom() {
-  const [activeTab, setActiveTab] = useState('join'); // 'join' | 'host'
-  const [pin, setPin] = useState('');
-  const [name, setName] = useState('');
+  const [activeTab, setActiveTab] = useState('join'); // 'join' | 'create'
+  const [pinDigits, setPinDigits] = useState(['', '', '', '']);
+  const [name, setName] = useState(() => localStorage.getItem('consensus_user_name') || '');
   const [loading, setLoading] = useState(false);
+  const [recentSession, setRecentSession] = useState(null);
+
+  // Host quick setup states
+  const [quickCategory, setQuickCategory] = useState('Restaurants');
+  const [groupSize, setGroupSize] = useState(4);
+
+  const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
   const { isConnected, participantId, emit } = useSocket();
   const { addToast } = useToast();
 
-  // Interactive Live Simulator State (for mentors and users to test swiping on the home page)
-  const [practiceVote, setPracticeVote] = useState(null); // 'approve' | 'pass' | 'veto'
-  const [practiceCardIndex, setPracticeCardIndex] = useState(0);
+  const pin = pinDigits.join('');
 
-  const practiceCards = [
-    {
-      name: 'La Taverna Bistro',
-      cuisine: 'Italian & Wine Bar',
-      rating: '4.8',
-      price: '$$',
-      distance: '1.1 km',
-      tags: ['Handmade Pasta', 'Outdoor Patio'],
-    },
-    {
-      name: 'Umami Ramen Lab',
-      cuisine: 'Japanese Broth & Bites',
-      rating: '4.9',
-      price: '$$',
-      distance: '0.8 km',
-      tags: ['Rich Tonkotsu', 'Late Night'],
-    },
-    {
-      name: 'Rooftop Lounge 360',
-      cuisine: 'Cocktails & Tapas',
-      rating: '4.7',
-      price: '$$$',
-      distance: '2.4 km',
-      tags: ['Panoramic View', 'Sunset Vibe'],
-    },
-  ];
+  // Load recent session from history
+  useEffect(() => {
+    try {
+      const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+      if (Array.isArray(history) && history.length > 0) {
+        setRecentSession(history[0]);
+      }
+    } catch (err) {
+      console.warn('[JoinRoom] Local history check:', err);
+    }
+  }, []);
 
-  const handlePracticeSwipe = (type) => {
-    setPracticeVote(type);
-    setTimeout(() => {
-      setPracticeCardIndex((prev) => (prev + 1) % practiceCards.length);
-      setPracticeVote(null);
-    }, 450);
+  const handleDigitChange = (index, value) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newDigits = [...pinDigits];
+    newDigits[index] = digit;
+    setPinDigits(newDigits);
+
+    if (digit && index < 3) {
+      digitInputRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleDigitKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
+      digitInputRefs[index - 1].current?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (pasted.length > 0) {
+      const newDigits = ['', '', '', ''];
+      for (let i = 0; i < pasted.length; i++) {
+        newDigits[i] = pasted[i];
+      }
+      setPinDigits(newDigits);
+      const nextIndex = Math.min(pasted.length, 3);
+      digitInputRefs[nextIndex].current?.focus();
+    }
   };
 
   const handleJoin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const cleanPin = pin.trim();
     const cleanName = name.trim();
 
     if (cleanPin.length !== 4 || !cleanName) return;
 
+    localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
 
     try {
@@ -95,7 +104,7 @@ export default function JoinRoom() {
         });
 
         addToast({
-          title: 'Connected to Room',
+          title: 'Connected',
           message: `Joined session #${cleanPin}`,
           type: 'success',
         });
@@ -110,12 +119,12 @@ export default function JoinRoom() {
         return;
       }
     } catch (err) {
-      console.warn('[JoinRoom] Server unreachable, using local session:', err);
+      console.warn('[JoinRoom] Server unreachable, entering local session:', err);
     }
 
     addToast({
-      title: 'Local Room Session',
-      message: `Entering room #${cleanPin} in local mode`,
+      title: 'Local Session',
+      message: `Entering room #${cleanPin}`,
       type: 'info',
     });
 
@@ -129,38 +138,72 @@ export default function JoinRoom() {
     setLoading(false);
   };
 
-  const quickPresets = [
-    { label: 'Dinner & Wine', icon: Utensils, category: 'Restaurants' },
-    { label: 'Coffee & Chill', icon: Coffee, category: 'Cafes' },
-    { label: 'Drinks & Pubs', icon: Wine, category: 'Bars & Pubs' },
-    { label: 'Cinema & Arts', icon: Film, category: 'Cinema' },
+  const handleQuickHost = async () => {
+    const cleanName = name.trim() || 'Host';
+    localStorage.setItem('consensus_user_name', cleanName);
+    setLoading(true);
+
+    let generatedPin = '4921';
+    let realRoom = null;
+
+    try {
+      const response = await fetch('/api/v1/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host_id: participantId,
+          mode: 'DISCOVERY',
+          theme: quickCategory.toLowerCase(),
+          radius: 5000,
+        }),
+      });
+
+      if (response.ok) {
+        realRoom = await response.json();
+        generatedPin = realRoom.pin;
+      }
+    } catch (err) {
+      console.warn('[JoinRoom] Server offline, using local host PIN:', err);
+    }
+
+    setLoading(false);
+
+    navigate(`/lobby/${generatedPin}`, {
+      state: {
+        mode: 'DISCOVERY',
+        isHost: true,
+        userName: cleanName,
+        groupSize,
+        category: quickCategory,
+        topic: `Where should we go for ${quickCategory}?`,
+        radiusKm: 5,
+        roomData: realRoom,
+      },
+    });
+  };
+
+  const quickCategories = [
+    { label: 'Restaurants', title: 'Dinner', icon: Utensils, desc: 'Dining & Bistros' },
+    { label: 'Cafes', title: 'Coffee', icon: Coffee, desc: 'Espresso & Sweets' },
+    { label: 'Bars & Pubs', title: 'Drinks', icon: Wine, desc: 'Beer & Cocktails' },
+    { label: 'Cinema', title: 'Movies', icon: Film, desc: 'Films & Shows' },
   ];
 
   return (
     <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none">
       
       {/* Top Application Bar */}
-      <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between pb-4 border-b border-[var(--border-subtle)]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-[0_4px_16px_var(--accent-glow)]">
-            <Sparkles size={20} />
+      <header className="w-full max-w-xl mx-auto flex items-center justify-between pb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-[0_4px_16px_var(--accent-glow)]">
+            <Sparkles size={18} />
           </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base tracking-tight text-[var(--ios-label)]">
-                Consensus Engine
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]">
-                v2.0
-              </span>
-            </div>
-            <span className="text-xs text-[var(--ios-secondary-label)]">
-              Multiplayer Social Choice Protocol
-            </span>
-          </div>
+          <span className="font-extrabold text-lg tracking-tight text-[var(--ios-label)]">
+            Consensus
+          </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => navigate('/history')}
@@ -173,7 +216,7 @@ export default function JoinRoom() {
           
           <StatusBadge
             status={isConnected ? 'success' : 'neutral'}
-            label={isConnected ? 'Live Sync' : 'Local Engine'}
+            label={isConnected ? 'Live' : 'Local'}
             pulse={isConnected}
             size="sm"
           />
@@ -181,77 +224,93 @@ export default function JoinRoom() {
         </div>
       </header>
 
-      {/* Main Expansive Multi-Wing Canvas */}
-      <main className="w-full max-w-6xl mx-auto my-auto py-6 sm:py-10 grid lg:grid-cols-12 gap-8 items-center">
-        
-        {/* Left Wing (Cols 1-7): Ingress Command Center */}
-        <div className="lg:col-span-7 flex flex-col gap-6">
-          <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-[0_24px_64px_rgba(0,0,0,0.20)] border border-[var(--border-glass)] flex flex-col gap-6">
-            
-            {/* Header with Segmented Navigation */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--ios-label)]">
-                  End the Group Debate.
-                </h1>
-                <p className="text-xs sm:text-sm text-[var(--ios-secondary-label)] mt-1">
-                  Algorithmic consensus in under 3 minutes with zero social pressure.
-                </p>
-              </div>
+      {/* Main Product Window Frame */}
+      <main className="w-full max-w-xl mx-auto my-auto py-2">
+        <div className="apple-card shadow-[0_32px_80px_rgba(0,0,0,0.18)] dark:shadow-[0_32px_80px_rgba(0,0,0,0.55)] border border-[var(--border-main)] rounded-3xl overflow-hidden">
+          
+          {/* Subtle Window Title Bar */}
+          <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between bg-black/[0.02] dark:bg-white/[0.02]">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E]/40" />
+              <span className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123]/40" />
+              <span className="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29]/40" />
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--ios-secondary-label)] uppercase tracking-wider font-mono">
+              Consensus Protocol
+            </span>
+            <div className="w-12" />
+          </div>
 
-              <div className="w-full sm:w-auto">
-                <SegmentedControl
-                  options={[
-                    { value: 'join', label: 'Join Room' },
-                    { value: 'host', label: 'Host Room' },
-                  ]}
-                  value={activeTab}
-                  onChange={setActiveTab}
-                  size="sm"
+          <div className="p-6 sm:p-8 flex flex-col gap-6">
+            {/* Segmented Control Pill */}
+            <SegmentedControl
+              options={[
+                { value: 'join', label: 'Join Room' },
+                { value: 'create', label: 'Start Session' },
+              ]}
+              value={activeTab}
+              onChange={setActiveTab}
+              size="md"
+            />
+
+            {/* User Name Input */}
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="userName"
+                className="text-[11px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)] px-1"
+              >
+                Your Nickname
+              </label>
+              <div className="relative">
+                <input
+                  id="userName"
+                  name="userName"
+                  type="text"
+                  placeholder="e.g. Sebastian"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full min-h-[48px] pl-10 pr-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-sm font-medium text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none transition-all"
+                  required
                 />
+                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--ios-tertiary-label)] pointer-events-none" />
               </div>
             </div>
 
-            {/* TAB 1: JOIN ROOM */}
+            {/* TAB 1: JOIN WITH 4-BOX OTP PASSKEY */}
             {activeTab === 'join' ? (
-              <form onSubmit={handleJoin} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="userName"
-                    className="text-[11px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)] px-1"
-                  >
-                    Your Nickname / Display Name
-                  </label>
-                  <input
-                    id="userName"
-                    name="userName"
-                    type="text"
-                    placeholder="e.g. Sebastian or Gabi"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full min-h-[48px] px-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-sm text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none transition-all"
-                    required
-                  />
-                </div>
+              <form onSubmit={handleJoin} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+                      4-Digit Room Code
+                    </label>
+                    <span className="text-[11px] text-[var(--ios-tertiary-label)] font-mono">
+                      Enter PIN from host
+                    </span>
+                  </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="roomPin"
-                    className="text-[11px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)] px-1"
-                  >
-                    4-Digit Room PIN
-                  </label>
-                  <input
-                    id="roomPin"
-                    name="roomPin"
-                    type="text"
-                    placeholder="0000"
-                    maxLength={4}
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                    className="w-full min-h-[54px] px-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-center font-mono text-2xl tracking-[0.4em] text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none transition-all"
-                    required
-                  />
+                  {/* 4 Distinct OTP Passkey Cells */}
+                  <div className="grid grid-cols-4 gap-3" onPaste={handlePaste}>
+                    {pinDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={digitInputRefs[index]}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleDigitChange(index, e.target.value)}
+                        onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                        className={`h-16 text-center font-mono text-2xl font-black rounded-2xl border transition-all outline-none ${
+                          digit
+                            ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--ios-label)] shadow-[0_0_16px_var(--accent-glow-subtle)]'
+                            : 'border-[var(--border-main)] bg-black/[0.03] dark:bg-white/[0.06] text-[var(--ios-label)]'
+                        } focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)]`}
+                        aria-label={`Digit ${index + 1}`}
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 <Button
@@ -261,221 +320,127 @@ export default function JoinRoom() {
                   loading={loading}
                   disabled={pin.length !== 4 || !name.trim()}
                   icon={ArrowRight}
-                  className="w-full mt-2"
+                  className="w-full mt-1 min-h-[50px] shadow-[0_4px_16px_var(--accent-glow)]"
                 >
                   Enter Room Lobby
                 </Button>
               </form>
             ) : (
-              /* TAB 2: HOST QUICK START */
-              <div className="flex flex-col gap-4">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)] px-1">
-                  Pick a Quick Vibe or Customize
-                </span>
+              /* TAB 2: INSTANT ROOM CREATION */
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)] px-1">
+                    Select Activity Domain
+                  </label>
 
-                <div className="grid grid-cols-2 gap-2.5">
-                  {quickPresets.map((preset) => {
-                    const IconComponent = preset.icon;
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => navigate('/host')}
-                        className="apple-card p-3.5 flex items-center gap-3 text-left hover:border-[var(--accent-bg)] hover:bg-[var(--accent-bg)]/5 transition-all cursor-pointer group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                          <IconComponent size={20} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-[var(--ios-label)]">
-                            {preset.label}
-                          </span>
-                          <span className="text-[11px] text-[var(--ios-secondary-label)]">
-                            Foursquare live venues
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {quickCategories.map((cat) => {
+                      const isSelected = quickCategory === cat.label;
+                      const IconComp = cat.icon;
+                      return (
+                        <button
+                          key={cat.label}
+                          type="button"
+                          onClick={() => setQuickCategory(cat.label)}
+                          className={`p-3.5 rounded-2xl border flex items-center gap-3 text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_2px_12px_var(--accent-glow-subtle)]'
+                              : 'bg-black/[0.02] dark:bg-white/[0.04] border-[var(--border-subtle)] text-[var(--ios-label)] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]'
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-[var(--accent-bg)]/20 text-[var(--accent-bg)]' : 'bg-black/[0.04] dark:bg-white/[0.08] text-[var(--ios-secondary-label)]'
+                          }`}>
+                            <IconComp size={20} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold leading-tight">{cat.title}</span>
+                            <span className="text-[10px] text-[var(--ios-secondary-label)]">{cat.desc}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {/* Group Size Row */}
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-2.5">
+                    <Users size={16} className="text-[var(--accent-bg)]" />
+                    <span className="text-xs font-semibold text-[var(--ios-label)]">Expected Group Size</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setGroupSize((p) => Math.max(2, p - 1))}
+                      className="w-8 h-8 rounded-lg bg-black/[0.05] dark:bg-white/[0.1] text-[var(--ios-label)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                    >
+                      <Minus size={13} />
+                    </button>
+                    <span className="w-6 text-center font-bold text-sm font-mono">{groupSize}</span>
+                    <button
+                      type="button"
+                      onClick={() => setGroupSize((p) => Math.min(12, p + 1))}
+                      className="w-8 h-8 rounded-lg bg-black/[0.05] dark:bg-white/[0.1] text-[var(--ios-label)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="lg"
+                  loading={loading}
+                  disabled={!name.trim()}
+                  onClick={handleQuickHost}
+                  icon={ArrowRight}
+                  className="w-full min-h-[50px] shadow-[0_4px_16px_var(--accent-glow)]"
+                >
+                  Launch Consensus Session
+                </Button>
 
                 <button
                   type="button"
                   onClick={() => navigate('/host')}
-                  className="w-full py-3.5 px-4 rounded-xl border border-[var(--border-main)] apple-card flex items-center justify-center gap-2 text-sm font-semibold text-[var(--ios-label)] hover:bg-black/[0.03] dark:hover:bg-white/[0.05] active:scale-[0.98] transition-all cursor-pointer mt-1"
+                  className="text-xs text-[var(--ios-secondary-label)] hover:text-[var(--ios-label)] text-center underline cursor-pointer"
                 >
-                  <Compass size={17} className="text-[var(--accent-bg)]" />
-                  <span>Open Full Host Configuration Studio</span>
+                  Custom Search Parameters (Radius, Custom Topics)
+                </button>
+              </div>
+            )}
+
+            {/* Quick Resume Recent Session */}
+            {recentSession && activeTab === 'join' && (
+              <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+                    Previous Decision
+                  </span>
+                  <span className="text-xs font-semibold text-[var(--ios-label)]">
+                    #{recentSession.pin} • {recentSession.topic}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const digits = recentSession.pin.split('').slice(0, 4);
+                    setPinDigits(digits);
+                  }}
+                  className="text-xs font-bold text-[var(--accent-bg)] hover:underline cursor-pointer"
+                >
+                  Fill Code
                 </button>
               </div>
             )}
           </div>
         </div>
-
-        {/* Right Wing (Cols 8-12): Interactive Live Simulator / Practice Deck */}
-        <div className="lg:col-span-5 flex flex-col gap-4">
-          <div className="liquid-glass rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.18)] border border-[var(--border-glass)] flex flex-col gap-4 relative overflow-hidden">
-            
-            {/* Top Indicator */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[var(--semantic-success)] animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider text-[var(--ios-label)]">
-                  Live Swipe Simulator
-                </span>
-              </div>
-              <span className="text-[11px] text-[var(--ios-secondary-label)] font-mono">
-                Card {practiceCardIndex + 1} of {practiceCards.length}
-              </span>
-            </div>
-
-            {/* The Interactive Sample Card */}
-            <div
-              className={`relative rounded-2xl p-5 border border-[var(--border-main)] bg-[var(--ios-card)] shadow-lg transition-all duration-300 ${
-                practiceVote === 'approve'
-                  ? 'translate-x-12 rotate-6 opacity-0 bg-[var(--semantic-success)]/10 border-[var(--semantic-success)]'
-                  : practiceVote === 'pass'
-                  ? '-translate-x-12 -rotate-6 opacity-0 bg-neutral-500/10'
-                  : practiceVote === 'veto'
-                  ? 'translate-y-12 scale-90 opacity-0 bg-[var(--semantic-error)]/10 border-[var(--semantic-error)]'
-                  : 'translate-x-0 rotate-0 opacity-100'
-              }`}
-            >
-              {/* Overlay Vote Badges */}
-              {practiceVote === 'approve' && (
-                <div className="absolute top-4 right-4 px-3 py-1 rounded-lg bg-[var(--semantic-success)] text-white text-xs font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-md">
-                  <ThumbsUp size={14} /> Approve (+1)
-                </div>
-              )}
-              {practiceVote === 'pass' && (
-                <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-neutral-600 text-white text-xs font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-md">
-                  <ThumbsDown size={14} /> Pass (-1)
-                </div>
-              )}
-              {practiceVote === 'veto' && (
-                <div className="absolute inset-0 bg-red-600/90 rounded-2xl flex flex-col items-center justify-center text-white gap-1 z-20">
-                  <ShieldAlert size={36} />
-                  <span className="text-sm font-black tracking-wider uppercase">VETO ELIMINATED (-100)</span>
-                </div>
-              )}
-
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]">
-                  {practiceCards[practiceCardIndex].cuisine}
-                </span>
-                <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
-                  <Star size={13} fill="currentColor" />
-                  <span>{practiceCards[practiceCardIndex].rating}</span>
-                </div>
-              </div>
-
-              <h3 className="text-lg font-bold text-[var(--ios-label)]">
-                {practiceCards[practiceCardIndex].name}
-              </h3>
-
-              <div className="flex items-center gap-3 text-xs text-[var(--ios-secondary-label)] mt-1 mb-4">
-                <span className="font-semibold">{practiceCards[practiceCardIndex].price}</span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <MapPin size={12} /> {practiceCards[practiceCardIndex].distance}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {practiceCards[practiceCardIndex].tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[10px] px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[var(--ios-secondary-label)]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              {/* 3 Interactive Buttons */}
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border-subtle)]">
-                <button
-                  type="button"
-                  onClick={() => handlePracticeSwipe('pass')}
-                  className="py-2.5 px-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/10 dark:hover:bg-white/15 text-xs font-semibold text-[var(--ios-secondary-label)] flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
-                  title="Pass (-1 point)"
-                >
-                  <ThumbsDown size={14} />
-                  <span>Pass</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handlePracticeSwipe('veto')}
-                  className="py-2.5 px-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer border border-red-500/20"
-                  title="Absolute Refusal (-100 points)"
-                >
-                  <ShieldAlert size={14} />
-                  <span>VETO</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handlePracticeSwipe('approve')}
-                  className="py-2.5 px-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer border border-emerald-500/20"
-                  title="Approve (+1 point)"
-                >
-                  <ThumbsUp size={14} />
-                  <span>Approve</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Explanatory Caption */}
-            <p className="text-[11px] text-[var(--ios-secondary-label)] text-center">
-              Try clicking the buttons above to test the 3-way consensus engine.
-            </p>
-          </div>
-        </div>
       </main>
 
-      {/* Three Core Architectural Value Pillars */}
-      <section className="w-full max-w-6xl mx-auto py-6 border-t border-[var(--border-subtle)] grid sm:grid-cols-3 gap-6">
-        <div className="flex gap-3 items-start">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
-            <ShieldCheck size={20} />
-          </div>
-          <div className="flex flex-col">
-            <h4 className="text-sm font-bold text-[var(--ios-label)]">Step Zero Confidentiality</h4>
-            <p className="text-xs text-[var(--ios-secondary-label)] mt-0.5">
-              Privately cap your budget in the lobby. The engine silently prunes unaffordable venues before voting starts.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 items-start">
-          <div className="p-2.5 rounded-xl bg-red-500/10 text-red-500 shrink-0">
-            <ShieldAlert size={20} />
-          </div>
-          <div className="flex flex-col">
-            <h4 className="text-sm font-bold text-[var(--ios-label)]">VETO Safety Barrier</h4>
-            <p className="text-xs text-[var(--ios-secondary-label)] mt-0.5">
-              Swipe down to VETO (-100). If one person has a severe allergy or refusal, the venue is mathematically disqualified.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 items-start">
-          <div className="p-2.5 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shrink-0">
-            <Compass size={20} />
-          </div>
-          <div className="flex flex-col">
-            <h4 className="text-sm font-bold text-[var(--ios-label)]">Condorcet & Schulze Choice</h4>
-            <p className="text-xs text-[var(--ios-secondary-label)] mt-0.5">
-              Pairwise elimination beats naive majority voting, finding the compromise that makes the whole group happiest.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer Info */}
-      <footer className="w-full max-w-6xl mx-auto text-center text-xs text-[var(--ios-tertiary-label)] pt-4 pb-2 select-none">
-        Consensus Engine • Apple HIG Design Craft Architecture • Team 1 Frontend
+      {/* Clean Mobile Safe Area Footer */}
+      <footer className="w-full text-center text-xs text-[var(--ios-tertiary-label)] pb-2">
+        Consensus Engine • Apple HIG Design Craft Architecture
       </footer>
     </div>
   );
