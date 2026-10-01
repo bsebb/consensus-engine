@@ -73,21 +73,21 @@ export default function SegmentedControl({
   }[size] || 'p-1 text-sm';
 
   const btnPadding = {
-    sm: 'py-1 px-2.5',
-    md: 'py-1.5 px-3.5',
-    lg: 'py-2 px-4',
-  }[size] || 'py-1.5 px-3.5';
+    sm: 'py-1 px-2.5 min-h-[32px]',
+    md: 'py-1.5 px-3.5 min-h-[36px]',
+    lg: 'py-2 px-4 min-h-[40px]',
+  }[size] || 'py-1.5 px-3.5 min-h-[36px]';
 
   return (
     <div
       ref={containerRef}
       role="tablist"
-      className={`relative inline-flex items-center w-full bg-black/[0.04] dark:bg-white/[0.08] border border-[var(--border-subtle)] rounded-xl ${sizeClasses} select-none ${className}`}
+      className={`relative inline-flex items-center w-full bg-black/[0.04] dark:bg-white/[0.06] border border-[var(--border-subtle)] rounded-lg ${sizeClasses} select-none ${className}`}
     >
-      {/* 60fps GPU Sliding Indicator Thumb */}
+      {/* 60fps GPU Sliding Indicator Thumb (INV-03) */}
       <div
         aria-hidden="true"
-        className={`absolute top-0 left-0 m-0 rounded-lg bg-white dark:bg-[#2C2C2E] shadow-[0_1px_4px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.08] pointer-events-none z-10 ${
+        className={`seg-thumb absolute top-0 left-0 m-0 rounded-md bg-white dark:bg-[var(--bg-elevated)] shadow-[0_1px_4px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.08] pointer-events-none z-10 ${
           !isMounted || !thumbMetrics.ready ? 'opacity-0' : 'opacity-100'
         }`}
         style={{
@@ -95,7 +95,7 @@ export default function SegmentedControl({
           width: thumbMetrics.width > 0 ? `${thumbMetrics.width}px` : undefined,
           height: thumbMetrics.height > 0 ? `${thumbMetrics.height}px` : undefined,
           transition: isMounted && thumbMetrics.ready
-            ? 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            ? 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), width 0.26s cubic-bezier(0.16, 1, 0.3, 1), height 0.26s cubic-bezier(0.16, 1, 0.3, 1)'
             : 'none',
         }}
       />
@@ -115,10 +115,10 @@ export default function SegmentedControl({
             type="button"
             aria-selected={isSelected}
             onClick={() => onChange(opt.value)}
-            className={`relative z-20 flex-1 flex items-center justify-center gap-1.5 ${btnPadding} rounded-lg font-medium cursor-pointer transition-colors duration-150 ${
+            className={`relative z-20 flex-1 flex items-center justify-center gap-1.5 ${btnPadding} rounded-md font-medium cursor-pointer transition-colors duration-150 ${
               isSelected
-                ? 'text-[var(--ios-label)] font-semibold'
-                : 'text-[var(--ios-secondary-label)] hover:text-[var(--ios-label)]'
+                ? 'text-[var(--text-primary)] font-semibold'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             {Icon && <Icon size={15} className="shrink-0" />}
