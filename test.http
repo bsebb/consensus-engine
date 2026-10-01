@@ -1,0 +1,9 @@
+POST http://localhost:3000/api/v1/rooms/7777/feedback
+Content-Type: application/json
+
+{
+  "participant_id": "123e4567-e89b-12d3-a456-426614174000",
+  "option_id": "123e4567-e89b-12d3-a456-426614174001",
+  "satisfaction_score": 5,
+  "price_accuracy_score": 4
+}
