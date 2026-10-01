@@ -22,26 +22,17 @@ function App() {
           </div>
 
           <BrowserRouter>
-            <div className="pwa-viewport-container">
-              <div className="pwa-shell">
-                {/* Desktop Mobile Device Chassis Hardware Island */}
-                <div className="device-hardware-island" aria-hidden="true">
-                  <div className="hardware-pill">
-                    <span className="camera-lens" />
-                  </div>
-                </div>
-
-                <Routes>
-                  <Route path="/" element={<JoinRoom />} />
-                  <Route path="/host" element={<HostSettings />} />
-                  <Route path="/lobby/:pin" element={<RoomLobby />} />
-                  <Route path="/deck/:pin" element={<SwipeDeck />} />
-                  <Route path="/history" element={<History />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-                <MobileNav />
-                <InstallPrompt />
-              </div>
+            <div className="pwa-shell">
+              <Routes>
+                <Route path="/" element={<JoinRoom />} />
+                <Route path="/host" element={<HostSettings />} />
+                <Route path="/lobby/:pin" element={<RoomLobby />} />
+                <Route path="/deck/:pin" element={<SwipeDeck />} />
+                <Route path="/history" element={<History />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+              <MobileNav />
+              <InstallPrompt />
             </div>
           </BrowserRouter>
         </ToastProvider>
