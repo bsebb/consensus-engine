@@ -11,6 +11,9 @@ import {
   Trash2,
   Lock,
   Sparkles,
+  Share2,
+  AlertTriangle,
+  Crown,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -85,6 +88,11 @@ export default function RoomLobby() {
   const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft']);
   const [copied, setCopied] = useState(false);
 
+  // Check for real-time duplicate warning as user types
+  const duplicateMatch = suggestion.trim().length >= 3
+    ? groupPool.find((item) => levenshteinDistance(item.toLowerCase(), suggestion.toLowerCase().trim()) <= 2)
+    : null;
+
   // Handle Socket.io synchronization
   useEffect(() => {
     // 1. Join room
@@ -146,17 +154,26 @@ export default function RoomLobby() {
     setCopied(true);
     addToast({
       title: 'PIN Copied',
-      message: `Room #${pin} copied to clipboard`,
+      message: `Room PIN #${pin} copied to clipboard`,
       type: 'success',
     });
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareInvite = () => {
+    const inviteUrl = `${window.location.origin}/?pin=${pin}`;
+    navigator.clipboard.writeText(inviteUrl);
+    addToast({
+      title: 'Invite Link Copied',
+      message: 'Share this link with your friends to join instantly',
+      type: 'success',
+    });
   };
 
   // Submit Step Zero constraint to backend
   const handleLockConstraint = async () => {
     setLockingBudget(true);
 
-    // Map 50-800 MDL slider into price level 1-4
     const priceLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
 
     try {
@@ -171,13 +188,13 @@ export default function RoomLobby() {
 
       if (response.ok) {
         addToast({
-          title: 'Budget Constraint Locked',
+          title: 'Budget Constraint Sealed',
           message: 'Backend pruned options above group budget',
           type: 'success',
         });
       }
     } catch (err) {
-      console.warn('[Lobby] Backend constraint call offline, locking locally:', err);
+      console.warn('[Lobby] Server constraint offline, locking locally:', err);
     }
 
     setLockingBudget(false);
@@ -216,7 +233,6 @@ export default function RoomLobby() {
         if (matched.length > 0) pool = matched;
       }
 
-      // Filter by secret budget cap
       const maxLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
       const budgetFiltered = pool.filter((r) => (r.price_level || 1) <= maxLevel);
       if (budgetFiltered.length > 0) pool = budgetFiltered;
@@ -224,14 +240,12 @@ export default function RoomLobby() {
       cardsToPass = pool;
     }
 
-    // Broadcast via socket
     emit('host_start_voting', {
       pin,
       host_id: participantId,
       options: cardsToPass,
     });
 
-    // Fallback navigation
     navigate(`/deck/${pin}`, {
       state: {
         mode,
@@ -248,28 +262,38 @@ export default function RoomLobby() {
       
       {/* Top Header */}
       <header className="sticky top-0 z-30 liquid-glass border-b border-[var(--border-subtle)] px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-[var(--ios-secondary-label)] uppercase tracking-wider">
-                Room PIN
+                Session PIN
               </span>
-              <button
-                type="button"
-                onClick={handleCopyPin}
-                className="flex items-center gap-1.5 font-mono text-xl font-extrabold text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
-                title="Click to copy PIN"
-              >
-                <span>{pin}</span>
-                {copied ? <Check size={16} className="text-[var(--semantic-success)]" /> : <Copy size={16} />}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyPin}
+                  className="flex items-center gap-1.5 font-mono text-xl font-black text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
+                  title="Click to copy PIN"
+                >
+                  <span>{pin}</span>
+                  {copied ? <Check size={16} className="text-[var(--semantic-success)]" /> : <Copy size={16} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareInvite}
+                  className="p-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/10 dark:hover:bg-white/15 text-[var(--ios-secondary-label)] transition-colors cursor-pointer"
+                  title="Share invite link"
+                >
+                  <Share2 size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
             <StatusBadge
               status={isConnected ? 'success' : 'neutral'}
-              label={isConnected ? 'Live Room' : 'Local Room'}
+              label={isConnected ? 'Live Sync' : 'Local'}
               pulse={isConnected}
               size="sm"
             />
@@ -279,17 +303,17 @@ export default function RoomLobby() {
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-2xl mx-auto px-4 pt-6 flex flex-col gap-6">
+      <main className="max-w-3xl mx-auto px-4 pt-6 flex flex-col gap-6">
         
         {/* Room Headline & Topic */}
-        <section className="flex flex-col gap-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
-            Consensus Topic
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-[var(--ios-secondary-label)]">
+            Active Consensus Target
           </span>
-          <h2 className="text-2xl font-bold text-[var(--ios-label)] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--ios-label)] tracking-tight">
             {topic}
           </h2>
-        </section>
+        </div>
 
         {/* Live Roll-Call Roster */}
         <section className="flex flex-col gap-2">
@@ -301,25 +325,30 @@ export default function RoomLobby() {
           </div>
 
           {/* Quorum Progress Bar */}
-          <div className="w-full h-1.5 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
             <div
               className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
               style={{ width: `${Math.min(100, Math.round((participants.length / groupSize) * 100))}%` }}
             />
           </div>
 
-          <div className="settings-card-group p-3 flex flex-wrap gap-2">
+          <div className="settings-card-group p-4 flex flex-wrap gap-2.5">
             {participants.map((p, idx) => (
               <div
                 key={p.id || idx}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-subtle)]"
+                className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-subtle)]"
               >
-                <div className="w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-xs font-bold flex items-center justify-center">
-                  {p.name.charAt(0).toUpperCase()}
+                <div className="relative">
+                  <div className="w-7 h-7 rounded-full bg-[var(--accent-bg)] text-white text-xs font-bold flex items-center justify-center">
+                    {p.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--semantic-success)] border-2 border-[var(--ios-card)]" />
                 </div>
-                <span className="text-sm font-medium text-[var(--ios-label)]">{p.name}</span>
+                <span className="text-sm font-semibold text-[var(--ios-label)]">{p.name}</span>
                 {p.isHost && (
-                  <StatusBadge status="info" label="Host" size="sm" />
+                  <span className="flex items-center gap-0.5 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-md bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]">
+                    <Crown size={11} /> Host
+                  </span>
                 )}
               </div>
             ))}
@@ -329,26 +358,31 @@ export default function RoomLobby() {
         {/* Step Zero: Secret Budget Cap */}
         <section className="flex flex-col gap-2">
           <div className="settings-section-label">Step Zero: Confidential Budget Guard</div>
-          <div className="settings-card-group p-4 flex flex-col gap-4">
+          <div className="settings-card-group p-5 flex flex-col gap-4">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-[rgba(255,149,0,0.12)] text-[var(--semantic-warning)] shrink-0 mt-0.5">
-                <Coins size={20} />
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 shrink-0 mt-0.5">
+                <Coins size={22} />
               </div>
               <div className="flex flex-col">
-                <h4 className="text-sm font-semibold text-[var(--ios-label)]">
-                  Private Spending Ceiling
-                </h4>
-                <p className="text-xs text-[var(--ios-secondary-label)] leading-relaxed">
-                  Your budget limit is sealed. Options exceeding the group's lowest constraint are pruned from the deck.
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-[var(--ios-label)]">
+                    Private Spending Ceiling
+                  </h4>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500">
+                    Encrypted & Anonymous
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--ios-secondary-label)] leading-relaxed mt-0.5">
+                  Set the highest amount you are comfortable spending. The engine automatically prunes options exceeding the group's minimum, protecting you from social embarrassment.
                 </p>
               </div>
             </div>
 
             {lockedConstraint ? (
-              <MilledTray className="flex items-center justify-between">
+              <MilledTray className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-2 text-xs font-semibold text-[var(--semantic-success)]">
                   <ShieldCheck size={16} />
-                  <span>Constraint Sealed: Max {budgetLimit} MDL</span>
+                  <span>Constraint Sealed: Max {budgetLimit} MDL (Options pruned)</span>
                 </div>
                 <button
                   type="button"
@@ -367,7 +401,7 @@ export default function RoomLobby() {
                   value={budgetLimit}
                   onChange={setBudgetLimit}
                   unit="MDL"
-                  label="My Personal Maximum"
+                  label="My Personal Maximum Budget"
                 />
 
                 <Button
@@ -377,7 +411,7 @@ export default function RoomLobby() {
                   loading={lockingBudget}
                   icon={Lock}
                 >
-                  Lock Secret Limit ({budgetLimit} MDL)
+                  Seal Secret Limit ({budgetLimit} MDL)
                 </Button>
               </div>
             )}
@@ -387,32 +421,45 @@ export default function RoomLobby() {
         {/* Custom Suggestions Pool (if Custom mode) */}
         {mode === 'CUSTOM' && (
           <section className="flex flex-col gap-2">
-            <div className="settings-section-label">Crowdsourced Suggestions</div>
-            <div className="settings-card-group p-4 flex flex-col gap-4">
-              <form onSubmit={handleAddSuggestion} className="flex gap-2">
-                <input
-                  type="text"
-                  value={suggestion}
-                  onChange={(e) => setSuggestion(e.target.value)}
-                  placeholder="Propose an option..."
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-sm text-[var(--ios-label)] outline-none focus:border-[var(--accent-bg)]"
-                />
-                <Button type="submit" variant="primary" size="sm" icon={Plus}>
-                  Add
-                </Button>
+            <div className="settings-section-label">Crowdsourced Suggestions & Fuzzy Match</div>
+            <div className="settings-card-group p-5 flex flex-col gap-4">
+              <form onSubmit={handleAddSuggestion} className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={suggestion}
+                    onChange={(e) => setSuggestion(e.target.value)}
+                    placeholder="Suggest a venue or idea..."
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-sm text-[var(--ios-label)] outline-none focus:border-[var(--accent-bg)]"
+                  />
+                  <Button type="submit" variant="primary" size="sm" icon={Plus}>
+                    Propose
+                  </Button>
+                </div>
+
+                {/* Live Client-Side Levenshtein Duplicate Warning */}
+                {duplicateMatch && (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
+                    <AlertTriangle size={14} className="shrink-0" />
+                    <span>
+                      Very similar to <strong>"{duplicateMatch}"</strong> (Levenshtein distance &le; 2). Will be merged.
+                    </span>
+                  </div>
+                )}
               </form>
 
               <div className="flex flex-wrap gap-2">
                 {groupPool.map((item, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] text-xs font-medium text-[var(--ios-label)] border border-[var(--border-subtle)]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] text-xs font-semibold text-[var(--ios-label)] border border-[var(--border-subtle)]"
                   >
                     <span>{item}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveSuggestion(idx)}
                       className="text-[var(--ios-tertiary-label)] hover:text-[var(--semantic-error)] cursor-pointer"
+                      title="Remove suggestion"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -427,13 +474,13 @@ export default function RoomLobby() {
       {/* Sticky Host Action Bar */}
       {isHost && (
         <footer className="fixed bottom-0 inset-x-0 z-30 liquid-glass border-t border-[var(--border-subtle)] p-4">
-          <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+          <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-[var(--ios-label)]">
-                Host Control
+                Host Action Control
               </span>
               <span className="text-[11px] text-[var(--ios-secondary-label)]">
-                {participants.length} connected
+                {participants.length} friends connected in room #{pin}
               </span>
             </div>
 
@@ -442,9 +489,9 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="px-6"
+              className="px-8 shadow-[0_4px_20px_var(--accent-glow)]"
             >
-              Start Swiping
+              Launch Consensus Voting
             </Button>
           </div>
         </footer>

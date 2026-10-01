@@ -3,32 +3,32 @@
 
 @layer base {
   :root {
-    --ios-bg: #F2F2F7;
+    --ios-bg: #F4F5F8;
     --ios-card: #FFFFFF;
-    --ios-inset: #F8F8FA;
+    --ios-inset: #F8F9FA;
     --ios-separator: rgba(60, 60, 67, 0.12);
     --border-main: rgba(0, 0, 0, 0.08);
     --border-subtle: rgba(0, 0, 0, 0.05);
-    --border-glass: rgba(0, 0, 0, 0.08);
+    --border-glass: rgba(0, 0, 0, 0.09);
     
-    --ios-label: #000000;
-    --ios-secondary-label: #6E6E73;
-    --ios-tertiary-label: #8E8E93;
+    --ios-label: #111827;
+    --ios-secondary-label: #6B7280;
+    --ios-tertiary-label: #9CA3AF;
     
     --accent-bg: #007AFF;
     --accent-bg-hover: color-mix(in srgb, var(--accent-bg) 88%, black);
-    --accent-glow: color-mix(in srgb, var(--accent-bg) 35%, transparent);
-    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 50%, transparent);
-    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 24%, transparent);
-    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 14%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent-bg) 28%, transparent);
+    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 45%, transparent);
+    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 22%, transparent);
+    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 12%, transparent);
 
     --semantic-success: #34C759;
     --semantic-warning: #FF9500;
     --semantic-error: #FF3B30;
     --semantic-info: #007AFF;
 
-    --ios-glass-bg: rgba(255, 255, 255, 0.78);
-    --ios-glass-shadow: rgba(0, 0, 0, 0.08);
+    --ios-glass-bg: rgba(255, 255, 255, 0.82);
+    --ios-glass-shadow: rgba(0, 0, 0, 0.07);
     --milled-bg: rgba(0, 0, 0, 0.03);
 
     --spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);
@@ -37,33 +37,33 @@
   }
 
   .dark {
-    --ios-bg: #000000;
-    --ios-card: #1C1C1E;
-    --ios-inset: #2C2C2E;
-    --ios-separator: rgba(255, 255, 255, 0.12);
-    --border-main: rgba(255, 255, 255, 0.12);
-    --border-subtle: rgba(255, 255, 255, 0.06);
+    --ios-bg: #090A0F;
+    --ios-card: #14161D;
+    --ios-inset: #1E2029;
+    --ios-separator: rgba(255, 255, 255, 0.10);
+    --border-main: rgba(255, 255, 255, 0.10);
+    --border-subtle: rgba(255, 255, 255, 0.05);
     --border-glass: rgba(255, 255, 255, 0.12);
 
-    --ios-label: #FFFFFF;
-    --ios-secondary-label: #8E8E93;
-    --ios-tertiary-label: #636366;
+    --ios-label: #F9FAFB;
+    --ios-secondary-label: #9CA3AF;
+    --ios-tertiary-label: #6B7280;
 
     --accent-bg: #0A84FF;
     --accent-bg-hover: color-mix(in srgb, var(--accent-bg) 88%, white);
-    --accent-glow: color-mix(in srgb, var(--accent-bg) 40%, transparent);
-    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 60%, transparent);
-    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 28%, transparent);
-    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 18%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent-bg) 35%, transparent);
+    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 55%, transparent);
+    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 26%, transparent);
+    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 16%, transparent);
 
     --semantic-success: #30D158;
     --semantic-warning: #FF9F0A;
     --semantic-error: #FF453A;
     --semantic-info: #0A84FF;
 
-    --ios-glass-bg: rgba(28, 28, 30, 0.82);
-    --ios-glass-shadow: rgba(0, 0, 0, 0.5);
-    --milled-bg: rgba(0, 0, 0, 0.35);
+    --ios-glass-bg: rgba(20, 22, 29, 0.85);
+    --ios-glass-shadow: rgba(0, 0, 0, 0.6);
+    --milled-bg: rgba(0, 0, 0, 0.4);
   }
 
   html, body {
@@ -120,8 +120,13 @@
 }
 
 @keyframes pulseGlow {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.04); }
+}
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
 }
 
 /* Dual-Div Ambient Mesh Background */
@@ -141,17 +146,19 @@
 
 .bg-mesh-light {
   background: 
-    radial-gradient(circle at 15% 15%, rgba(0, 122, 255, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 85% 85%, rgba(52, 199, 89, 0.06) 0%, transparent 40%),
-    #F2F2F7;
+    radial-gradient(circle at 10% 10%, rgba(0, 122, 255, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 90% 20%, rgba(52, 199, 89, 0.07) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(175, 82, 222, 0.06) 0%, transparent 50%),
+    #F4F5F8;
   opacity: 1;
 }
 
 .bg-mesh-dark {
   background: 
-    radial-gradient(circle at 15% 15%, rgba(10, 132, 255, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 85% 85%, rgba(48, 209, 88, 0.08) 0%, transparent 50%),
-    #050508;
+    radial-gradient(circle at 12% 12%, rgba(10, 132, 255, 0.16) 0%, transparent 50%),
+    radial-gradient(circle at 88% 18%, rgba(48, 209, 88, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 50% 85%, rgba(191, 90, 242, 0.10) 0%, transparent 55%),
+    #090A0F;
   opacity: 0;
 }
 
@@ -161,17 +168,17 @@
 /* Focus Glass & Apple Liquid Glass */
 .liquid-glass {
   background-color: var(--ios-glass-bg);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
   border: 1px solid var(--border-glass);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 32px 0 var(--ios-glass-shadow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 12px 36px 0 var(--ios-glass-shadow);
 }
 
 .apple-card {
   background-color: var(--ios-card);
   border-radius: 1rem;
   border: 1px solid var(--border-main);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 10px rgba(0, 0, 0, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.04);
   transition: transform var(--spring-fast), box-shadow var(--spring-fast), background-color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -180,7 +187,7 @@
   background-color: var(--milled-bg);
   border-radius: 0.75rem;
   border: 1px solid var(--border-subtle);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.10);
 }
 
 .dark .milled-tray {
@@ -200,7 +207,7 @@
 
 .settings-card-group {
   background-color: var(--ios-card);
-  border-radius: 0.875rem;
+  border-radius: 1rem;
   border: 1px solid var(--border-main);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 4px rgba(0, 0, 0, 0.03);
   overflow: hidden;
@@ -210,7 +217,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.1rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -292,36 +299,6 @@ input[type="range"].calibrated-slider::-webkit-slider-thumb:active {
   transform: scale(0.95);
 }
 
-/* Theme Switching Transition lock */
-.theme-switching,
-.theme-switching *:not(.sidebar):not(.top-nav-bar):not(.app-frame):not(.detail-pane) {
-  transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              color 250ms cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-/* Hardware View Transitions API (120 FPS GPU cross-fade) */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-::view-transition-old(root) {
-  animation-name: vt-fade-out;
-}
-::view-transition-new(root) {
-  animation-name: vt-fade-in;
-}
-@keyframes vt-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-@keyframes vt-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 /* Tactile 0ms Button Snap */
 button:active:not(:disabled),
 .btn-snap:active:not(:disabled) {
@@ -352,7 +329,7 @@ button:active:not(:disabled),
   z-index: 1;
 }
 .dark .seg-thumb {
-  background: #2C2C2E;
+  background: #252834;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
 }
 .seg-button {
@@ -362,7 +339,7 @@ button:active:not(:disabled),
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 14px;
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
   color: var(--ios-secondary-label);

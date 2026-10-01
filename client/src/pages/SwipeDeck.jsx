@@ -18,6 +18,7 @@ import {
   Flame,
   Check,
   Star,
+  ExternalLink,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -88,6 +89,7 @@ export default function SwipeDeck() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [myVotes, setMyVotes] = useState([]);
   const [exitDirection, setExitDirection] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showWinner, setShowWinner] = useState(false);
   const [serverWinner, setServerWinner] = useState(null);
   const [votesReceived, setVotesReceived] = useState(1);
@@ -101,7 +103,6 @@ export default function SwipeDeck() {
       message: `You rated this decision ${rating} stars`,
       type: 'success',
     });
-    // Send feedback to relative endpoint
     fetch(`/api/v1/rooms/${pin}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -123,6 +124,7 @@ export default function SwipeDeck() {
 
     const dir = score === 1 ? 'right' : score === -100 ? 'down' : 'left';
     setExitDirection(dir);
+    setDragOffset({ x: 0, y: 0 });
 
     setTimeout(() => {
       const current = cards[currentIndex];
@@ -138,6 +140,13 @@ export default function SwipeDeck() {
     touchStartY.current = e.touches[0].clientY;
   };
 
+  const handleTouchMove = (e) => {
+    if (!touchStartX.current || !touchStartY.current) return;
+    const diffX = e.touches[0].clientX - touchStartX.current;
+    const diffY = e.touches[0].clientY - touchStartY.current;
+    setDragOffset({ x: diffX, y: diffY });
+  };
+
   const handleTouchEnd = (e) => {
     if (!touchStartX.current || !touchStartY.current) return;
     const diffX = e.changedTouches[0].clientX - touchStartX.current;
@@ -146,10 +155,12 @@ export default function SwipeDeck() {
     touchStartX.current = null;
     touchStartY.current = null;
 
-    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
+    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
       handleVote(diffX > 0 ? 1 : -1);
-    } else if (diffY > 60 && Math.abs(diffY) > Math.abs(diffX)) {
+    } else if (diffY > 70 && Math.abs(diffY) > Math.abs(diffX)) {
       handleVote(-100); // Down swipe = VETO
+    } else {
+      setDragOffset({ x: 0, y: 0 });
     }
   };
 
@@ -175,10 +186,8 @@ export default function SwipeDeck() {
   // Submit votes and resolve consensus
   useEffect(() => {
     if (currentIndex >= cards.length && !showWinner) {
-      // 1. Notify server
       emit('notify_votes_submitted', { pin, participant_id: participantId });
 
-      // 2. Post batched votes to backend
       if (myVotes.length > 0) {
         fetch(`/api/v1/rooms/${pin}/votes`, {
           method: 'POST',
@@ -190,7 +199,6 @@ export default function SwipeDeck() {
         })
           .then(async (res) => {
             if (res.ok) {
-              // Try auto-finalizing Schulze algorithm on server
               fetch(`/api/v1/rooms/${pin}/finalize`, { method: 'POST' })
                 .catch(() => {});
             }
@@ -198,8 +206,6 @@ export default function SwipeDeck() {
           .catch((err) => console.warn('[SwipeDeck] REST vote submit offline:', err));
       }
 
-      // Offline simulation fallback if no server
-      let timer;
       if (!isConnected) {
         let step = 1;
         const interval = setInterval(() => {
@@ -207,17 +213,13 @@ export default function SwipeDeck() {
           setVotesReceived(Math.min(step, totalParticipants));
           if (step >= totalParticipants) {
             clearInterval(interval);
-            timer = setTimeout(() => setShowWinner(true), 400);
+            setTimeout(() => setShowWinner(true), 400);
           }
         }, 300);
 
-        return () => {
-          clearInterval(interval);
-          clearTimeout(timer);
-        };
+        return () => clearInterval(interval);
       }
 
-      // Socket listeners
       const handleVoteProgress = (data) => {
         if (data?.voted_participants || data?.votes_received) {
           setVotesReceived(data.voted_participants || data.votes_received);
@@ -239,7 +241,6 @@ export default function SwipeDeck() {
       on('MATCH_FOUND', handleWinner);
       on('winner_announced', handleWinner);
 
-      // Safety fallback: auto-reveal after 3.5s
       const fallback = setTimeout(() => {
         setShowWinner(true);
       }, 3500);
@@ -305,7 +306,11 @@ export default function SwipeDeck() {
   }, [showWinner, consensusResult, pin, topic, totalParticipants]);
 
   const activeCard = cards[currentIndex];
-  const progressPercent = Math.min(100, Math.round(((currentIndex) / cards.length) * 100));
+  const mapsUrl = consensusResult.winner
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        consensusResult.winner.name + ' ' + (consensusResult.winner.address || '')
+      )}`
+    : '#';
 
   return (
     <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 select-none">
@@ -315,13 +320,13 @@ export default function SwipeDeck() {
         <button
           type="button"
           onClick={() => navigate(`/lobby/${pin}`)}
-          className="text-xs font-semibold text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
+          className="text-xs font-bold text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
         >
           Room #{pin}
         </button>
 
         <div className="flex items-center gap-3">
-          <span className="text-xs font-mono font-medium text-[var(--ios-secondary-label)]">
+          <span className="text-xs font-mono font-bold text-[var(--ios-secondary-label)]">
             {Math.min(currentIndex + 1, cards.length)} of {cards.length}
           </span>
           <ThemeToggle />
@@ -334,8 +339,8 @@ export default function SwipeDeck() {
           <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-[0_24px_64px_rgba(0,0,0,0.22)] border border-[var(--border-glass)] flex flex-col items-center text-center gap-5">
             
             {/* Trophy Emblem */}
-            <div className="w-20 h-20 rounded-3xl bg-[rgba(255,149,0,0.14)] text-[var(--semantic-warning)] flex items-center justify-center shadow-[0_8px_30px_rgba(255,149,0,0.25)] animate-bounce">
-              <Trophy size={40} />
+            <div className="w-20 h-20 rounded-3xl bg-amber-500/15 text-amber-500 flex items-center justify-center shadow-[0_8px_30px_rgba(255,149,0,0.30)] animate-bounce">
+              <Trophy size={42} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -372,10 +377,22 @@ export default function SwipeDeck() {
               </MilledTray>
             </div>
 
+            {/* Directions & Map Link */}
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/10 dark:hover:bg-white/15 flex items-center justify-center gap-2 text-xs font-bold text-[var(--ios-label)] transition-colors"
+            >
+              <MapPin size={15} className="text-[var(--accent-bg)]" />
+              <span>Open in Google Maps</span>
+              <ExternalLink size={13} className="text-[var(--ios-secondary-label)]" />
+            </a>
+
             {/* Inline Quick Rating (Zero Modal Friction) */}
-            <div className="w-full flex flex-col items-center gap-2 py-3 my-1 border-y border-[var(--border-subtle)]">
+            <div className="w-full flex flex-col items-center gap-2 py-3 border-y border-[var(--border-subtle)]">
               <span className="text-xs font-semibold text-[var(--ios-secondary-label)]">
-                {userRating > 0 ? `Your Rating: ${userRating} of 5 Stars` : 'Rate This Consensus Choice'}
+                {userRating > 0 ? `Your Rating: ${userRating} of 5 Stars` : 'Rate This Consensus Decision'}
               </span>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -388,7 +405,7 @@ export default function SwipeDeck() {
                   >
                     <Star
                       size={24}
-                      className={star <= userRating ? 'fill-[#FF9500] text-[#FF9500]' : 'text-[var(--ios-tertiary-label)]'}
+                      className={star <= userRating ? 'fill-amber-500 text-amber-500' : 'text-[var(--ios-tertiary-label)]'}
                     />
                   </button>
                 ))}
@@ -414,7 +431,7 @@ export default function SwipeDeck() {
                 icon={Clock}
                 className="w-full"
               >
-                View Past History
+                View Past Sessions
               </Button>
             </div>
           </div>
@@ -423,8 +440,8 @@ export default function SwipeDeck() {
         /* WAITING FOR PEER VOTES */
         <main className="w-full max-w-md mx-auto my-auto py-8 text-center animate-[modalSpring_0.35s_var(--spring-smooth)]">
           <div className="liquid-glass rounded-3xl p-8 border border-[var(--border-glass)] flex flex-col items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shadow-[0_8px_24px_var(--accent-glow)] animate-pulse">
-              <Sparkles size={28} />
+            <div className="w-16 h-16 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shadow-[0_8px_24px_var(--accent-glow)] animate-pulse">
+              <Sparkles size={32} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -436,10 +453,9 @@ export default function SwipeDeck() {
               </p>
             </div>
 
-            {/* Live progress indicator */}
             <div className="w-full flex flex-col gap-2">
-              <div className="flex justify-between text-xs font-medium text-[var(--ios-secondary-label)]">
-                <span>Completed</span>
+              <div className="flex justify-between text-xs font-semibold text-[var(--ios-secondary-label)]">
+                <span>Quorum Status</span>
                 <span className="font-mono tabular-nums">{votesReceived} of {totalParticipants}</span>
               </div>
               <div className="w-full h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
@@ -465,21 +481,47 @@ export default function SwipeDeck() {
         <main className="w-full max-w-md mx-auto my-auto py-4">
           <div
             onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             style={{
-              transform:
-                exitDirection === 'right'
-                  ? 'translate3d(120%, 0, 0) rotate(15deg)'
-                  : exitDirection === 'left'
-                  ? 'translate3d(-120%, 0, 0) rotate(-15deg)'
-                  : exitDirection === 'down'
-                  ? 'translate3d(0, 120%, 0) scale(0.9)'
-                  : 'translate3d(0, 0, 0)',
+              transform: exitDirection === 'right'
+                ? 'translate3d(120%, 0, 0) rotate(15deg)'
+                : exitDirection === 'left'
+                ? 'translate3d(-120%, 0, 0) rotate(-15deg)'
+                : exitDirection === 'down'
+                ? 'translate3d(0, 120%, 0) scale(0.9)'
+                : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.08}deg)`,
               transition: exitDirection ? 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s' : 'none',
               opacity: exitDirection ? 0 : 1,
             }}
             className="apple-card p-6 shadow-[0_16px_48px_rgba(0,0,0,0.14)] border border-[var(--border-main)] flex flex-col gap-5 select-none relative overflow-hidden"
           >
+            {/* Dynamic On-Drag Badges */}
+            {dragOffset.x > 30 && (
+              <div
+                style={{ opacity: Math.min(1, dragOffset.x / 80) }}
+                className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1 shadow-lg z-20"
+              >
+                <ThumbsUp size={15} /> Approve (+1)
+              </div>
+            )}
+            {dragOffset.x < -30 && (
+              <div
+                style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 80) }}
+                className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-neutral-600 text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1 shadow-lg z-20"
+              >
+                <ThumbsDown size={15} /> Pass (-1)
+              </div>
+            )}
+            {dragOffset.y > 40 && Math.abs(dragOffset.x) < 50 && (
+              <div
+                style={{ opacity: Math.min(1, dragOffset.y / 70) }}
+                className="absolute inset-x-6 top-6 py-2 rounded-xl bg-red-600 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xl z-20"
+              >
+                <ShieldAlert size={16} /> VETO ELIMINATE (-100)
+              </div>
+            )}
+
             {/* Card Category & Badge */}
             <div className="flex items-center justify-between">
               <StatusBadge
@@ -517,20 +559,19 @@ export default function SwipeDeck() {
               </div>
             )}
 
-            {/* Tactile Gestures Indicator */}
+            {/* Tactile Gestures & Keyboard Indicators */}
             <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-medium text-[var(--ios-tertiary-label)]">
-              <span>← Left: Pass</span>
-              <span className="text-[var(--semantic-error)]">↓ Down: VETO</span>
-              <span>Right: Approve →</span>
+              <span>[←] Pass</span>
+              <span className="text-[var(--semantic-error)] font-bold">[↓] VETO</span>
+              <span>Approve [→]</span>
             </div>
           </div>
         </main>
       )}
 
-      {/* Floating Apple Liquid Glass Control Dock (Always Visible During Voting) */}
+      {/* Floating Apple Liquid Glass Control Dock */}
       {!showWinner && currentIndex < cards.length && (
         <div className="fixed bottom-6 inset-x-0 mx-auto w-max z-40 liquid-glass py-2 px-6 rounded-full flex items-center gap-6 shadow-[0_12px_40px_rgba(0,0,0,0.28)] border border-[var(--border-glass)] select-none">
-          {/* Pass button (Red X 52px) */}
           <button
             type="button"
             onClick={() => handleVote(-1)}
@@ -540,7 +581,6 @@ export default function SwipeDeck() {
             <X size={22} strokeWidth={2.5} />
           </button>
 
-          {/* VETO button (Orange Flame 60px with specular glow) */}
           <button
             type="button"
             onClick={() => handleVote(-100)}
@@ -551,7 +591,6 @@ export default function SwipeDeck() {
             <span className="font-bold text-[9px] uppercase tracking-wider">VETO</span>
           </button>
 
-          {/* Approve button (Green Check 52px) */}
           <button
             type="button"
             onClick={() => handleVote(1)}
