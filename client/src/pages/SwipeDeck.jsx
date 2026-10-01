@@ -152,9 +152,10 @@ export default function SwipeDeck() {
     }).catch(() => {});
   };
 
-  // Touch & Pointer gesture state
-  const touchStartX = useRef(null);
-  const touchStartY = useRef(null);
+  // Hardware Pointer Gesture Engine
+  const pointerStart = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const rafId = useRef(null);
 
   // Vote handler with spring exit direction
   const handleVote = useCallback((score) => {
@@ -162,77 +163,90 @@ export default function SwipeDeck() {
 
     const dir = score === 1 ? 'right' : score === -100 ? 'down' : 'left';
     setExitDirection(dir);
-    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
 
     setTimeout(() => {
       const current = cards[currentIndex];
       setMyVotes((prev) => [...prev, { option_id: current.id, score }]);
       setCurrentIndex((prev) => prev + 1);
       setExitDirection(null);
-    }, 180);
+      setDragOffset({ x: 0, y: 0 });
+    }, 200);
   }, [cards, currentIndex, exitDirection]);
 
-  // Touch gesture listeners
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchMove = (e) => {
-    if (!touchStartX.current || !touchStartY.current) return;
-    const diffX = e.touches[0].clientX - touchStartX.current;
-    const diffY = e.touches[0].clientY - touchStartY.current;
-    setDragOffset({ x: diffX, y: diffY });
-  };
-
-  const handleTouchEnd = (e) => {
-    if (!touchStartX.current || !touchStartY.current) return;
-    const diffX = e.changedTouches[0].clientX - touchStartX.current;
-    const diffY = e.changedTouches[0].clientY - touchStartY.current;
-
-    touchStartX.current = null;
-    touchStartY.current = null;
-
-    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
-      handleVote(diffX > 0 ? 1 : -1);
-    } else if (diffY > 70 && Math.abs(diffY) > Math.abs(diffX)) {
-      handleVote(-100); // Down swipe = VETO
-    } else {
-      setDragOffset({ x: 0, y: 0 });
-    }
-  };
-
-  // Pointer events for desktop drag support
-  const isPointerDown = useRef(false);
+  // Pointer event handlers with hardware setPointerCapture
   const handlePointerDown = (e) => {
-    isPointerDown.current = true;
-    touchStartX.current = e.clientX;
-    touchStartY.current = e.clientY;
+    if (exitDirection || currentIndex >= cards.length) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+
+    pointerStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      pointerId: e.pointerId,
+    };
+    setIsDragging(true);
   };
 
   const handlePointerMove = (e) => {
-    if (!isPointerDown.current || !touchStartX.current || !touchStartY.current) return;
-    const diffX = e.clientX - touchStartX.current;
-    const diffY = e.clientY - touchStartY.current;
-    setDragOffset({ x: diffX, y: diffY });
+    if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
+
+    const diffX = e.clientX - pointerStart.current.x;
+    const rawDiffY = e.clientY - pointerStart.current.y;
+    // Upward dragging is resistance-damped
+    const diffY = rawDiffY < 0 ? rawDiffY * 0.25 : rawDiffY;
+
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      setDragOffset({ x: diffX, y: diffY });
+    });
   };
 
   const handlePointerUp = (e) => {
-    if (!isPointerDown.current) return;
-    isPointerDown.current = false;
-    const diffX = e.clientX - (touchStartX.current || e.clientX);
-    const diffY = e.clientY - (touchStartY.current || e.clientY);
+    if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
 
-    touchStartX.current = null;
-    touchStartY.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
 
-    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
-      handleVote(diffX > 0 ? 1 : -1);
-    } else if (diffY > 70 && Math.abs(diffY) > Math.abs(diffX)) {
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+
+    const diffX = e.clientX - pointerStart.current.x;
+    const diffY = e.clientY - pointerStart.current.y;
+
+    pointerStart.current = null;
+    setIsDragging(false);
+
+    // Vote classification thresholds
+    // Right swipe: Approve (+1)
+    if (diffX > 70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
+      handleVote(1);
+    }
+    // Left swipe: Pass (-1)
+    else if (diffX < -70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
+      handleVote(-1);
+    }
+    // Downward pull: Veto (-100)
+    else if (diffY > 80 && Math.abs(diffY) > Math.abs(diffX)) {
       handleVote(-100);
-    } else {
+    }
+    // Snap back to center with spring physics
+    else {
       setDragOffset({ x: 0, y: 0 });
     }
+  };
+
+  const handlePointerCancel = (e) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    pointerStart.current = null;
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
   };
 
   // Keyboard controls
@@ -426,7 +440,13 @@ export default function SwipeDeck() {
   const progressPercent = cards.length > 0 ? Math.min(100, (currentIndex / cards.length) * 100) : 0;
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
+    <div
+      className={`flex-1 flex flex-col select-none ${
+        !showWinner && currentIndex < cards.length
+          ? 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-none'
+          : 'min-h-screen pb-16 overflow-y-auto'
+      }`}
+    >
       {/* PWA Mobile Header */}
       <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3 relative">
         <div className="flex items-center justify-between">
@@ -677,12 +697,10 @@ export default function SwipeDeck() {
         /* ACTIVE SWIPE CARD */
         <main className="px-4 py-4 flex flex-col justify-center flex-1">
           <div
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
             style={{
               transform: exitDirection === 'right'
                 ? 'translate3d(120%, 0, 0) rotate(15deg)'
@@ -691,11 +709,16 @@ export default function SwipeDeck() {
                 : exitDirection === 'down'
                 ? 'translate3d(0, 120%, 0) scale(0.9)'
                 : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.08}deg)`,
-              transition: exitDirection ? 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s' : 'none',
+              transition: exitDirection
+                ? 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s'
+                : isDragging
+                ? 'none'
+                : 'transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1)',
               opacity: exitDirection ? 0 : 1,
               touchAction: 'none',
+              willChange: isDragging ? 'transform' : 'auto',
             }}
-            className="w-full rounded-2xl bg-[var(--bg-elevated)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.16)] border border-[var(--border-main)] flex flex-col gap-4 select-none relative overflow-hidden cursor-grab active:cursor-grabbing"
+            className="w-full rounded-2xl bg-[var(--bg-elevated)] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.16)] border border-[var(--border-main)] flex flex-col gap-3 select-none relative overflow-hidden cursor-grab active:cursor-grabbing"
           >
             {/* Dynamic On-Drag Optical Stamps */}
             {dragOffset.x > 30 && (
@@ -791,10 +814,10 @@ export default function SwipeDeck() {
             )}
 
             {/* Gesture Helper Hint */}
-            <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-medium text-[var(--text-tertiary)]">
-              <span>[←] Pass</span>
-              <span className="text-[var(--status-danger)] font-bold">[↓] VETO</span>
-              <span>Approve [→]</span>
+            <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-semibold text-[var(--text-tertiary)]">
+              <span className="flex items-center gap-1"><ThumbsDown size={11} /> Pass</span>
+              <span className="text-[var(--status-danger)] font-bold flex items-center gap-1"><Flame size={11} /> Veto</span>
+              <span className="flex items-center gap-1">Approve <ThumbsUp size={11} /></span>
             </div>
           </div>
         </main>

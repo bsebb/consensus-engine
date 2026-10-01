@@ -27,13 +27,15 @@ export default function MobileNav({ isHidden = false }) {
 
   // When navigating away from /deck/, ensure isSwipingActive is cleared
   useEffect(() => {
-    if (!location.pathname.startsWith('/deck/')) {
+    if (!location.pathname.startsWith('/deck')) {
       setIsSwipingActive(false);
       document.body.removeAttribute('data-swiping-active');
-    } else {
-      setIsSwipingActive(document.body.getAttribute('data-swiping-active') === 'true');
     }
   }, [location.pathname]);
+
+  if (location.pathname.startsWith('/deck')) {
+    return null;
+  }
 
   const shouldHide = isHidden || isSwipingActive;
 
