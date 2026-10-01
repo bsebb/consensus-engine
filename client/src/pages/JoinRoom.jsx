@@ -28,7 +28,7 @@ export default function JoinRoom() {
 
     try {
       // 1. Verify room existence on backend if online
-      const response = await fetch(`http://localhost:3000/api/v1/rooms/${cleanPin}`);
+      const response = await fetch(`/api/v1/rooms/${cleanPin}`);
       
       if (response.ok) {
         const roomData = await response.json();
@@ -119,19 +119,6 @@ export default function JoinRoom() {
             </p>
           </div>
 
-          {/* Mode Switcher */}
-          <SegmentedControl
-            options={[
-              { value: 'join', label: 'Join Room', icon: LogIn },
-              { value: 'host', label: 'Host Session', icon: Compass },
-            ]}
-            value={activeTab}
-            onChange={(tab) => {
-              setActiveTab(tab);
-              if (tab === 'host') navigate('/host');
-            }}
-          />
-
           {/* Join Form */}
           <form onSubmit={handleJoin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
@@ -185,6 +172,19 @@ export default function JoinRoom() {
               Enter Room Lobby
             </Button>
           </form>
+
+          {/* Bottom Thumb-Zone Host CTA */}
+          <div className="pt-4 border-t border-[var(--border-subtle)] flex flex-col items-center gap-2">
+            <span className="text-xs text-[var(--ios-secondary-label)]">Starting a new group vote?</span>
+            <button
+              type="button"
+              onClick={() => navigate('/host')}
+              className="w-full py-3 px-4 rounded-xl border border-[var(--border-main)] apple-card flex items-center justify-center gap-2 text-sm font-semibold text-[var(--ios-label)] hover:bg-black/[0.03] dark:hover:bg-white/[0.05] active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <Compass size={17} className="text-[var(--accent-bg)]" />
+              <span>Host a New Session</span>
+            </button>
+          </div>
         </div>
       </main>
 
