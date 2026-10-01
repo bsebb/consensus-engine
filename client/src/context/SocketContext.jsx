@@ -1,12 +1,12 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
 export function SocketProvider({ children }) {
-  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
 
@@ -14,9 +14,17 @@ export function SocketProvider({ children }) {
 const [participantId] = useState(() => {
   let id = sessionStorage.getItem('consensus_participant_id');
 
-  //Lilia: use a UUID because participant_id must match the backend API contract
+  // UUID compliant generator with fallback for non-secure HTTP contexts on LAN/mobile
   if (!id) {
-    id = crypto.randomUUID();
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      id = crypto.randomUUID();
+    } else {
+      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    }
     sessionStorage.setItem('consensus_participant_id', id);
   }
 
@@ -50,38 +58,43 @@ const [participantId] = useState(() => {
       setConnectionError(err.message);
     });
 
-    setSocket(socketInstance);
+    socketRef.current = socketInstance;
 
     return () => {
-      console.log('[Socket] Cleaning up socket connection...');
-      socketInstance.disconnect();
+      if (socketInstance.connected) {
+        socketInstance.disconnect();
+      } else {
+        socketInstance.once('connect', () => {
+          socketInstance.disconnect();
+        });
+      }
     };
   }, []);
 
   const emit = useCallback((event, payload) => {
-    if (socket && isConnected) {
-      socket.emit(event, payload);
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit(event, payload);
     } else {
       console.log(`[Socket:Offline Mock] Emitted '${event}':`, payload);
     }
-  }, [socket, isConnected]);
+  }, [isConnected]);
 
   const on = useCallback((event, callback) => {
-    if (socket) {
-      socket.on(event, callback);
+    if (socketRef.current) {
+      socketRef.current.on(event, callback);
     }
-  }, [socket]);
+  }, []);
 
   const off = useCallback((event, callback) => {
-    if (socket) {
-      socket.off(event, callback);
+    if (socketRef.current) {
+      socketRef.current.off(event, callback);
     }
-  }, [socket]);
+  }, []);
 
   return (
     <SocketContext.Provider
       value={{
-        socket,
+        socket: socketRef.current,
         isConnected,
         connectionError,
         participantId,
