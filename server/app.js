@@ -64,6 +64,7 @@ const io = new Server(httpServer, {
 setIO(io);
 //Lilia: handle Socket.io room joining for real-time lobby updates
 io.on('connection', (socket) => {
+  //Lilia: handle lobby join - join the socket room and emit participant_joined
   socket.on('join_lobby', async (data) => {
     try {
       const { pin, participant_id, user_name } = data;
@@ -75,9 +76,26 @@ io.on('connection', (socket) => {
         return;
       }
 
+      socket.data.pin = pin;
+      socket.data.participantId = participant_id;
+      socket.data.userName = user_name || 'Guest';
 
-  //Lilia: start the voting phase for everyone in the room
-   //Lilia: start the voting phase and prepare room options
+      socket.join(pin);
+
+      io.to(pin).emit('participant_joined', {
+        pin,
+        participant_id,
+        user_name: user_name || 'Guest',
+      });
+
+      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin}`);
+    } catch (error) {
+      console.error('[Socket] join_lobby error:', error.message);
+      socket.emit('room_error', { message: 'Failed to join room.' });
+    }
+  });
+
+  //Lilia: start the voting phase and prepare room options
   socket.on('host_start_voting', async (data) => {
     try {
       const { pin, host_id, options } = data;
@@ -136,47 +154,11 @@ io.on('connection', (socket) => {
         `[Socket] Voting started in room ${pin} with ${roomOptions.length} options`
       );
     } catch (error) {
-      console.error(
-        '[Socket] Failed to start voting:',
-        error.message
-      );
-
-      socket.emit('room_error', {
-        message: 'Failed to start voting.',
-      });
+      console.error('[Socket] Failed to start voting:', error.message);
+      socket.emit('room_error', { message: 'Failed to start voting.' });
     }
   });
 
-      const room = await require('./db/helpers').getRoomByPin(pin);
-
-      //Lilia: only the room host can start the voting phase
-      if (room.hostId !== host_id) {
-        socket.emit('room_error', {
-          message: 'Only the room host can start voting.',
-        });
-        return;
-      }
-
-      //Lilia: broadcast the voting phase to everyone in this Socket.io room
-      io.to(pin).emit('voting_started', {
-        pin,
-        options,
-      });
-
-      console.log(
-        `[Socket] Voting started in room ${pin} with ${options.length} options`
-      );
-    } catch (error) {
-      console.error(
-        '[Socket] Failed to start voting:',
-        error.message
-      );
-
-      socket.emit('room_error', {
-        message: 'Failed to start voting.',
-      });
-    }
-  });
   //Lilia: notify the room when a participant disconnects
   socket.on('disconnect', () => {
     const pin = socket.data.pin;
@@ -198,9 +180,7 @@ io.on('connection', (socket) => {
       total_participants: totalParticipants,
     });
 
-    console.log(
-      `[Socket] ${userName} left room ${pin}`
-    );
+    console.log(`[Socket] ${userName} left room ${pin}`);
   });
 });
 
