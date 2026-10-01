@@ -77,8 +77,6 @@ export default function RoomLobby() {
   // Live participant state with budgetSealed tracking
   const [participants, setParticipants] = useState(() => [
     { id: participantId || 'host_1', name: currentUserName, isHost, budgetSealed: false },
-    { id: 'peer_2', name: 'Elena', isHost: false, budgetSealed: true },
-    { id: 'peer_3', name: 'Marcus', isHost: false, budgetSealed: true },
   ]);
 
   // Step Zero Budget Constraint State

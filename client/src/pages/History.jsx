@@ -68,7 +68,7 @@ export default function History() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
+    <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
       {/* PWA Mobile Header */}
       <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
         <div className="flex items-center justify-between">
@@ -187,10 +187,10 @@ export default function History() {
 
                   <button
                     type="button"
-                    onClick={() => navigate(`/deck/${s.pin}`)}
+                    onClick={() => navigate(`/lobby/${s.pin}`)}
                     className="flex items-center gap-1 text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer"
                   >
-                    <span>View Arena</span>
+                    <span>Rejoin</span>
                     <ArrowRight size={13} />
                   </button>
                 </div>
