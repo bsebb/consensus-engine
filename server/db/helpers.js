@@ -159,6 +159,7 @@ async function updateParticipantBudget(participantId, budgetCap) {
         throw new Error("Failed to update participant budget");
     }
 }
+
 //Lilia: remove options that exceed the group's budget limit
 async function pruneOptionsByBudget(roomId, maxPriceLevel) {
     try {
@@ -175,6 +176,9 @@ async function pruneOptionsByBudget(roomId, maxPriceLevel) {
         throw new Error("Failed to prune options by budget");
     }
 }
+
+
+
 //Lilia: count unique participants who have submitted votes in a room
 async function countVotedParticipants(roomId) {
     try {
@@ -196,6 +200,76 @@ async function countVotedParticipants(roomId) {
         throw new Error("Failed to count voted participants");
     }
 }
+
+
+
+/** AFINA:
+ * Records user feedback and atomically recalculates continuous venue analytics
+ * using Prisma transactions to prevent race conditions during concurrent voting.
+ */
+async function submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score) {
+    try {
+        return await prisma.$transaction(async (tx) => {
+            const option = await tx.option.findUnique({
+                where: { id: option_id }
+            });
+
+            if (!option || !option.google_place_id) {
+                throw new Error("Option not found or missing google_place_id for analytics.");
+            }
+
+            // -- Recording the individual user feedback
+            const feedback = await tx.feedback.create({
+                data: {
+                    participant_id,
+                    option_id,
+                    satisfaction_score,
+                    price_accuracy_score
+                }
+            });
+
+            const existingAnalytics = await tx.venueAnalytics.findUnique({
+                where: { google_place_id: option.google_place_id }
+            });
+
+            let analytics;
+
+            if (!existingAnalytics) {
+                // Initializing analytics on first review
+                analytics = await tx.venueAnalytics.create({
+                    data: {
+                        google_place_id: option.google_place_id,
+                        name: option.name,
+                        satisfaction_avg: satisfaction_score,
+                        true_price_avg: price_accuracy_score,
+                        total_reviews: 1
+                    }
+                });
+            } else {
+                // -- Recalculating continuous averages based on existing total
+                const newCount = existingAnalytics.total_reviews + 1;
+                const newSatAvg = ((existingAnalytics.satisfaction_avg * existingAnalytics.total_reviews) + satisfaction_score) / newCount;
+                const newPriceAvg = ((existingAnalytics.true_price_avg * existingAnalytics.total_reviews) + price_accuracy_score) / newCount;
+
+                analytics = await tx.venueAnalytics.update({
+                    where: { id: existingAnalytics.id },
+                    data: {
+                        satisfaction_avg: newSatAvg,
+                        true_price_avg: newPriceAvg,
+                        total_reviews: newCount
+                    }
+                });
+            }
+
+            return { feedback, analytics };
+        });
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to process venue feedback and update analytics.");
+    }
+}
+
+
 module.exports = {
     createRoom,
     createParticipant,
@@ -207,7 +281,10 @@ module.exports = {
     countVotedParticipants,
     updateRoomConfig,
     updateParticipantBudget,
+    //Lilia: export Step Zero pruning helper
     pruneOptionsByBudget,
     //Lilia: export participant creation helper for Socket.io room joining
     createParticipantWithId,
+    //Afina
+    submitVenueFeedback,
 };
