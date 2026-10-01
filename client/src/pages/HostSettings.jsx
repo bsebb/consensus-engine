@@ -54,11 +54,13 @@ export default function HostSettings() {
   ];
 
   const priceTiers = [
-    { value: '$', label: '$' },
-    { value: '$$', label: '$$' },
-    { value: '$$$', label: '$$$' },
-    { value: '$$$$', label: '$$$$' },
+    { value: '$', label: '$', desc: '<150 MDL' },
+    { value: '$$', label: '$$', desc: '150-300 MDL' },
+    { value: '$$$', label: '$$$', desc: '300-500 MDL' },
+    { value: '$$$$', label: '$$$$', desc: '500+ MDL' },
   ];
+
+  const radiusPresets = [1, 3, 5, 10];
 
   const handleCreateRoom = async (e) => {
     if (e) e.preventDefault();
@@ -116,7 +118,7 @@ export default function HostSettings() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
+    <div className="flex-1 flex flex-col min-h-screen pb-44 select-none">
       {/* PWA Mobile Header */}
       <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
         <div className="flex items-center justify-between">
@@ -164,7 +166,7 @@ export default function HostSettings() {
         {/* Discovery Mode Settings */}
         {mode === 'DISCOVERY' ? (
           <>
-            {/* Category Symmetrical 2x3 Grid */}
+            {/* Category Symmetrical 2x3 Grid with Rich Tactile Visual Feedback */}
             <section className="flex flex-col gap-1.5">
               <span className="section-label">Category Selection</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -176,12 +178,15 @@ export default function HostSettings() {
                       key={cat.label}
                       type="button"
                       onClick={() => setCategory(cat.label)}
-                      className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-200 cursor-pointer ${
+                      className={`relative flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-200 cursor-pointer active:scale-95 ${
                         isSelected
-                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_4px_16px_var(--accent-glow-subtle)]'
+                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_4px_16px_var(--accent-glow-subtle)] ring-1 ring-[var(--accent-bg)]'
                           : 'bg-[var(--bg-elevated)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--text-tertiary)]'
                       }`}
                     >
+                      {isSelected && (
+                        <div className="absolute inset-0 rounded-2xl bg-[var(--accent-bg)]/5 pointer-events-none -z-10 animate-[stampPop_0.2s_ease-out]" />
+                      )}
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1.5 transition-colors ${
                           isSelected
@@ -201,9 +206,36 @@ export default function HostSettings() {
               </div>
             </section>
 
-            {/* Radius Slider with Monospace readout */}
-            <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2">
-              <span className="section-label">Search Radius</span>
+            {/* Radius Slider with Quick Preset Buttons */}
+            <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="section-label m-0 p-0">Search Radius</span>
+                <span className="font-mono text-xs font-extrabold text-[var(--accent-bg)]">
+                  {radiusKm.toFixed(1)} km
+                </span>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="flex items-center gap-2">
+                {radiusPresets.map((preset) => {
+                  const isPresetActive = radiusKm === preset;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setRadiusKm(preset)}
+                      className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-mono font-bold border transition-all duration-150 cursor-pointer active:scale-95 ${
+                        isPresetActive
+                          ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-[0_2px_8px_var(--accent-glow)] scale-[1.02]'
+                          : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
+                      }`}
+                    >
+                      {preset} km
+                    </button>
+                  );
+                })}
+              </div>
+
               <RangeSlider
                 min={1}
                 max={15}
@@ -215,15 +247,31 @@ export default function HostSettings() {
               />
             </section>
 
-            {/* Price Tier Segmented Pills */}
+            {/* Price Tier Segmented Pills with Exact Price Descriptions */}
             <section className="flex flex-col gap-1.5">
               <span className="section-label">Target Budget Tier</span>
-              <SegmentedControl
-                options={priceTiers}
-                value={priceTier}
-                onChange={setPriceTier}
-                size="md"
-              />
+              <div className="grid grid-cols-4 gap-2">
+                {priceTiers.map((tier) => {
+                  const isSelected = priceTier === tier.value;
+                  return (
+                    <button
+                      key={tier.value}
+                      type="button"
+                      onClick={() => setPriceTier(tier.value)}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200 cursor-pointer active:scale-95 ${
+                        isSelected
+                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_2px_10px_var(--accent-glow-subtle)] ring-1 ring-[var(--accent-bg)]'
+                          : 'bg-[var(--bg-elevated)] border-[var(--border-main)] text-[var(--text-secondary)] hover:border-[var(--text-tertiary)]'
+                      }`}
+                    >
+                      <span className="font-mono text-sm font-black">{tier.label}</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] font-mono mt-0.5">
+                        {tier.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </section>
           </>
         ) : (
@@ -309,7 +357,7 @@ export default function HostSettings() {
         </section>
 
         {/* Primary CTA */}
-        <div className="pt-2 pb-4">
+        <div className="pt-3 pb-8">
           <Button
             type="button"
             variant="primary"
@@ -317,7 +365,7 @@ export default function HostSettings() {
             onClick={handleCreateRoom}
             loading={loading}
             icon={ArrowRight}
-            className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)]"
+            className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
           >
             Launch Room & Enter Lobby
           </Button>
