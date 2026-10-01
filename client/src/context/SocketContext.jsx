@@ -14,9 +14,17 @@ export function SocketProvider({ children }) {
 const [participantId] = useState(() => {
   let id = sessionStorage.getItem('consensus_participant_id');
 
-  //Lilia: use a UUID because participant_id must match the backend API contract
+  // UUID compliant generator with fallback for non-secure HTTP contexts on LAN/mobile
   if (!id) {
-    id = crypto.randomUUID();
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      id = crypto.randomUUID();
+    } else {
+      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    }
     sessionStorage.setItem('consensus_participant_id', id);
   }
 
