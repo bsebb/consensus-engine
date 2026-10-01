@@ -1,290 +1,235 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+/**
+ * In-memory store - replaces Prisma/PostgreSQL for demo.
+ * Exports the same function signatures as the original helpers.js.
+ * All data lives in process memory and resets on server restart.
+ */
+const { randomUUID } = require('crypto');
+const uuidv4 = () => randomUUID();
+
+// Core in-memory tables
+const rooms = new Map();        // pin -> room object
+const roomsById = new Map();    // id  -> room object
+const participants = new Map(); // id  -> participant object
+const options = new Map();      // id  -> option object
+const votes = new Map();        // id  -> vote object
+const feedbacks = new Map();    // id  -> feedback object
+const venueAnalytics = new Map(); // google_place_id -> analytics object
+
+// ─── ROOMS ──────────────────────────────────────────────────────────────────
 
 async function createRoom(hostId, pin) {
-    try {
-        const room = await prisma.room.create({
-            data: {
-                hostId,
-                pin,
-            },
-        });
-        return room;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to create room");
-    }
-}
-async function createParticipant(roomId, budgetCap) {
-    try {
-        const participant = await prisma.participant.create({
-            data: {
-                roomId,
-                budgetCap,
-            },
-        });
-
-        return participant;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to create participant");
-    }
-}
-// Lilia: create a participant with the UUID provided by the Socket.io client
-async function createParticipantWithId(roomId, participantId, budgetCap = null) {
-    try {
-        const participant = await prisma.participant.create({
-            data: {
-                id: participantId,
-                roomId,
-                budgetCap,
-            },
-        });
-
-        return participant;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to create participant with ID");
-    }
-}
-
-async function createOption(roomId, name, source, googlePlaceId, priceLevel) {
-    try {
-        const option = await prisma.option.create({
-            data: {
-                roomId,
-                name,
-                source,
-                googlePlaceId,
-                priceLevel,
-            },
-        });
-        return option;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to create option");
-    }
-}
-
-async function getRoomById(roomId) {
-    try {
-        const room = await prisma.room.findUnique({
-            where: { id: roomId },
-            include: {
-                participants: {
-                    include: { votes: true } 
-                },
-                options: true,
-            },
-        });
-        if (!room) {
-            throw new Error("Room not found");
-        }
-        return room;
-    } catch (error) {
-        console.error(error);
-        if (error.message === "Room not found") {
-            throw error;
-        }
-        throw new Error("Failed to get room by ID");
-    }
+    const room = {
+        id: uuidv4(),
+        pin,
+        hostId,
+        status: 'CONFIGURING',
+        theme: null,
+        radius: null,
+        winnerOptionId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        participants: [],
+        options: [],
+    };
+    rooms.set(pin, room);
+    roomsById.set(room.id, room);
+    return room;
 }
 
 async function getRoomByPin(pin) {
-    try {
-        const room = await prisma.room.findUnique({
-            where: { pin },
-            include: {
-                participants: {
-                    include: { votes: true } 
-                },
-                options: true,
-            },
-        });
-        if (!room) {
-            throw new Error("Room not found");
-        }
-        return room;
-    } catch (error) {
-        console.error(error);
-        if (error.message === "Room not found") {
-            throw error;
-        }
-        throw new Error("Failed to get room by PIN");
-    }
+    const room = rooms.get(pin);
+    if (!room) throw new Error('Room not found');
+    // Hydrate with live participant/option/vote data
+    return _hydrateRoom(room);
 }
+
+async function getRoomById(roomId) {
+    const room = roomsById.get(roomId);
+    if (!room) throw new Error('Room not found');
+    return _hydrateRoom(room);
+}
+
+function _hydrateRoom(room) {
+    const hydratedParticipants = room.participants.map((pid) => {
+        const p = participants.get(pid);
+        if (!p) return null;
+        const pVotes = [...votes.values()].filter(v => v.participantId === pid);
+        return { ...p, votes: pVotes };
+    }).filter(Boolean);
+
+    const hydratedOptions = room.options.map((oid) => options.get(oid)).filter(Boolean);
+
+    return { ...room, participants: hydratedParticipants, options: hydratedOptions };
+}
+
+async function updateRoomConfig(roomId, updateData) {
+    const room = roomsById.get(roomId);
+    if (!room) throw new Error('Room not found');
+    Object.assign(room, updateData, { updatedAt: new Date() });
+    return room;
+}
+
+// ─── PARTICIPANTS ────────────────────────────────────────────────────────────
+
+async function createParticipant(roomId, budgetCap) {
+    return createParticipantWithId(roomId, uuidv4(), budgetCap);
+}
+
+async function createParticipantWithId(roomId, participantId, budgetCap = null) {
+    // Find room
+    const room = roomsById.get(roomId);
+    if (!room) throw new Error('Room not found');
+
+    const participant = {
+        id: participantId,
+        roomId,
+        budgetCap,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+
+    participants.set(participantId, participant);
+
+    if (!room.participants.includes(participantId)) {
+        room.participants.push(participantId);
+    }
+
+    return participant;
+}
+
+async function updateParticipantBudget(participantId, budgetCap) {
+    const participant = participants.get(participantId);
+    if (!participant) throw new Error('Participant not found');
+    participant.budgetCap = budgetCap;
+    participant.updatedAt = new Date();
+    return participant;
+}
+
+// ─── OPTIONS ─────────────────────────────────────────────────────────────────
+
+async function createOption(roomId, name, source, googlePlaceId, priceLevel) {
+    const room = roomsById.get(roomId);
+    if (!room) throw new Error('Room not found');
+
+    const option = {
+        id: uuidv4(),
+        roomId,
+        name,
+        source: source || 'USER_CUSTOM',
+        googlePlaceId: googlePlaceId || null,
+        priceLevel: priceLevel || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+
+    options.set(option.id, option);
+    if (!room.options.includes(option.id)) {
+        room.options.push(option.id);
+    }
+
+    return option;
+}
+
+async function pruneOptionsByBudget(roomId, maxPriceLevel) {
+    const room = roomsById.get(roomId);
+    if (!room) return;
+
+    room.options = room.options.filter((oid) => {
+        const opt = options.get(oid);
+        if (!opt) return false;
+        if (opt.priceLevel != null && opt.priceLevel > maxPriceLevel) {
+            options.delete(oid);
+            return false;
+        }
+        return true;
+    });
+}
+
+// ─── VOTES ───────────────────────────────────────────────────────────────────
 
 async function createVote(participantId, optionId, score) {
-    try {
-        const vote = await prisma.vote.create({
-            data: {
-                participantId,
-                optionId,
-                score,
-            },
-        });
-        return vote;
-    } catch (error) {
-        console.error(error);
-        if (error.code === 'P2002') {
-            throw new Error("User has already voted for this option");
-        }
-        throw new Error("Failed to create vote");
-    }
-}
-async function updateRoomConfig(roomId, updateData) {
-    try {
-        const room = await prisma.room.update({
-            where: { id: roomId },
-            data: updateData,
-        });
-        return room;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to update room configuration");
-    }
+    // Enforce unique(participantId, optionId)
+    const existing = [...votes.values()].find(
+        v => v.participantId === participantId && v.optionId === optionId
+    );
+    if (existing) throw new Error('User has already voted for this option');
+
+    const vote = {
+        id: uuidv4(),
+        participantId,
+        optionId,
+        score,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+    votes.set(vote.id, vote);
+    return vote;
 }
 
-//Lilia: update the participant's budget limit for Step Zero
-async function updateParticipantBudget(participantId, budgetCap) {
-    try {
-        const participant = await prisma.participant.update({
-            where: { id: participantId },
-            data: { budgetCap },
-        });
-
-        return participant;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to update participant budget");
-    }
-}
-
-//Lilia: remove options that exceed the group's budget limit
-async function pruneOptionsByBudget(roomId, maxPriceLevel) {
-    try {
-        await prisma.option.deleteMany({
-            where: {
-                roomId,
-                priceLevel: {
-                    gt: maxPriceLevel,
-                },
-            },
-        });
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to prune options by budget");
-    }
-}
-
-
-
-//Lilia: count unique participants who have submitted votes in a room
 async function countVotedParticipants(roomId) {
-    try {
-        const result = await prisma.vote.findMany({
-            where: {
-                participant: {
-                    roomId,
-                },
-            },
-            select: {
-                participantId: true,
-            },
-            distinct: ['participantId'],
-        });
+    const room = roomsById.get(roomId);
+    if (!room) return 0;
 
-        return result.length;
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to count voted participants");
-    }
+    const participantIds = new Set(
+        [...votes.values()]
+            .filter(v => room.participants.includes(v.participantId))
+            .map(v => v.participantId)
+    );
+    return participantIds.size;
 }
 
+// ─── FEEDBACK / ANALYTICS ────────────────────────────────────────────────────
 
-
-/** AFINA:
- * Records user feedback and atomically recalculates continuous venue analytics
- * using Prisma transactions to prevent race conditions during concurrent voting.
- */
 async function submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score) {
-    try {
-        return await prisma.$transaction(async (tx) => {
-            const option = await tx.option.findUnique({
-                where: { id: option_id }
-            });
+    const option = options.get(option_id);
+    if (!option) throw new Error('Option not found');
 
-            if (!option || !option.google_place_id) {
-                throw new Error("Option not found or missing google_place_id for analytics.");
-            }
+    const feedback = {
+        id: uuidv4(),
+        participantId: participant_id,
+        optionId: option_id,
+        satisfactionScore: satisfaction_score,
+        priceAccuracyScore: price_accuracy_score,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+    feedbacks.set(feedback.id, feedback);
 
-            // -- Recording the individual user feedback
-            const feedback = await tx.feedback.create({
-                data: {
-                    participant_id,
-                    option_id,
-                    satisfaction_score,
-                    price_accuracy_score
-                }
-            });
-
-            const existingAnalytics = await tx.venueAnalytics.findUnique({
-                where: { google_place_id: option.google_place_id }
-            });
-
-            let analytics;
-
-            if (!existingAnalytics) {
-                // Initializing analytics on first review
-                analytics = await tx.venueAnalytics.create({
-                    data: {
-                        google_place_id: option.google_place_id,
-                        name: option.name,
-                        satisfaction_avg: satisfaction_score,
-                        true_price_avg: price_accuracy_score,
-                        total_reviews: 1
-                    }
-                });
-            } else {
-                // -- Recalculating continuous averages based on existing total
-                const newCount = existingAnalytics.total_reviews + 1;
-                const newSatAvg = ((existingAnalytics.satisfaction_avg * existingAnalytics.total_reviews) + satisfaction_score) / newCount;
-                const newPriceAvg = ((existingAnalytics.true_price_avg * existingAnalytics.total_reviews) + price_accuracy_score) / newCount;
-
-                analytics = await tx.venueAnalytics.update({
-                    where: { id: existingAnalytics.id },
-                    data: {
-                        satisfaction_avg: newSatAvg,
-                        true_price_avg: newPriceAvg,
-                        total_reviews: newCount
-                    }
-                });
-            }
-
-            return { feedback, analytics };
+    // Update running averages
+    const placeKey = option.googlePlaceId || option_id;
+    const existing = venueAnalytics.get(placeKey);
+    if (!existing) {
+        venueAnalytics.set(placeKey, {
+            id: uuidv4(),
+            google_place_id: placeKey,
+            name: option.name,
+            satisfaction_avg: satisfaction_score,
+            true_price_avg: price_accuracy_score,
+            total_reviews: 1,
         });
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to process venue feedback and update analytics.");
+    } else {
+        const n = existing.total_reviews + 1;
+        existing.satisfaction_avg = ((existing.satisfaction_avg * existing.total_reviews) + satisfaction_score) / n;
+        existing.true_price_avg = ((existing.true_price_avg * existing.total_reviews) + price_accuracy_score) / n;
+        existing.total_reviews = n;
     }
+
+    return { feedback, analytics: venueAnalytics.get(placeKey) };
 }
 
+// ─── EXPORTS ─────────────────────────────────────────────────────────────────
 
 module.exports = {
     createRoom,
     createParticipant,
+    createParticipantWithId,
     createOption,
     getRoomById,
     getRoomByPin,
     createVote,
-    //Lilia: export vote progress helper
     countVotedParticipants,
     updateRoomConfig,
     updateParticipantBudget,
-    //Lilia: export Step Zero pruning helper
     pruneOptionsByBudget,
-    //Lilia: export participant creation helper for Socket.io room joining
-    createParticipantWithId,
-    //Afina
     submitVenueFeedback,
 };
