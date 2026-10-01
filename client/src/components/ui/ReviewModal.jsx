@@ -7,6 +7,7 @@ export default function ReviewModal({
   onClose,
   pin,
   winnerName,
+  optionId,
   participantId,
 }) {
   const [satisfaction, setSatisfaction] = useState(5);
@@ -23,17 +24,21 @@ export default function ReviewModal({
 
     const feedbackPayload = {
       participant_id: participantId,
-      winner_name: winnerName,
-      satisfaction_score: satisfaction,
-      price_accuracy_score: priceAccuracy,
-      comment: comment.trim(),
-      created_at: new Date().toISOString(),
+      option_id: optionId || 'local-option',
+      satisfaction_score: Number(satisfaction),
+      price_accuracy_score: Number(priceAccuracy),
     };
 
-    // Save locally
+    // Save locally including comment and winner name
     try {
       const stored = JSON.parse(localStorage.getItem('consensus_feedbacks') || '[]');
-      stored.unshift({ ...feedbackPayload, pin });
+      stored.unshift({
+        ...feedbackPayload,
+        winner_name: winnerName,
+        comment: comment.trim(),
+        pin,
+        created_at: new Date().toISOString(),
+      });
       localStorage.setItem('consensus_feedbacks', JSON.stringify(stored.slice(0, 50)));
     } catch (err) {
       console.warn('[ReviewModal] LocalStorage error:', err);

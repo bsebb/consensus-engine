@@ -569,6 +569,7 @@ export default function SwipeDeck() {
         onClose={() => setIsReviewOpen(false)}
         pin={pin}
         winnerName={consensusResult.winner?.name}
+        optionId={consensusResult.winner?.id}
         participantId={participantId}
       />
     </div>
