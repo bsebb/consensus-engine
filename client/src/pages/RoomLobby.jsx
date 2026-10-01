@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Copy,
@@ -74,9 +74,11 @@ export default function RoomLobby() {
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || 'Where should we go?';
 
-  // Live participant state
+  // Live participant state with budgetSealed tracking
   const [participants, setParticipants] = useState(() => [
-    { id: participantId || 'host_1', name: currentUserName, isHost },
+    { id: participantId || 'host_1', name: currentUserName, isHost, budgetSealed: false },
+    { id: 'peer_2', name: 'Elena', isHost: false, budgetSealed: true },
+    { id: 'peer_3', name: 'Marcus', isHost: false, budgetSealed: true },
   ]);
 
   // Step Zero Budget Constraint State
@@ -86,7 +88,7 @@ export default function RoomLobby() {
 
   // Suggestions state (for custom mode)
   const [suggestion, setSuggestion] = useState('');
-  const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft']);
+  const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft', 'Rooftop Lounge']);
   const [copied, setCopied] = useState(false);
 
   // Track active PIN in localStorage for mobile navigation dock
@@ -118,12 +120,13 @@ export default function RoomLobby() {
             id: p.id,
             name: p.name || p.userName || 'Peer',
             isHost: p.id === data.host_id,
+            budgetSealed: Boolean(p.budgetSealed),
           }))
         );
       } else if (data?.user_name) {
         setParticipants((prev) => {
           if (prev.some((p) => p.name === data.user_name)) return prev;
-          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false }];
+          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: true }];
         });
       }
     };
@@ -210,8 +213,15 @@ export default function RoomLobby() {
 
     setLockingBudget(false);
     setLockedConstraint(true);
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.name === currentUserName || p.id === participantId
+          ? { ...p, budgetSealed: true }
+          : p
+      )
+    );
     addToast({
-      title: 'Budget Sealed',
+      title: 'Budget Sealed in Vault',
       message: `Max ${budgetLimit} MDL applied anonymously`,
       type: 'success',
     });
@@ -243,6 +253,42 @@ export default function RoomLobby() {
   const handleRemoveSuggestion = (idx) => {
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
+
+  // Candidate pool resolution
+  const candidatePoolPreview = useMemo(() => {
+    if (mode === 'CUSTOM') {
+      return groupPool.map((name, idx) => ({
+        id: `c-${idx}`,
+        name,
+        category: 'Suggestion',
+        price_level: 2,
+        distance_km: 1.2,
+        tags: ['Custom'],
+      }));
+    }
+    let pool = restaurantsMock || [];
+    const category = location.state?.category;
+    if (category && category !== 'Restaurants') {
+      const catLower = category.toLowerCase();
+      const matched = pool.filter(
+        (r) =>
+          r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
+          r.name?.toLowerCase().includes(catLower)
+      );
+      if (matched.length > 0) pool = matched;
+    }
+    return pool;
+  }, [mode, groupPool, location.state?.category]);
+
+  const maxBudgetLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
+  const filteredCandidates = useMemo(() => {
+    if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
+    return candidatePoolPreview.filter((item) => (item.price_level || 1) <= maxBudgetLevel);
+  }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
+
+  const prunedCount = lockedConstraint && mode !== 'CUSTOM'
+    ? candidatePoolPreview.length - filteredCandidates.length
+    : 0;
 
   const handleStartVoting = () => {
     let cardsToPass = [];
@@ -285,6 +331,8 @@ export default function RoomLobby() {
       },
     });
   };
+
+  const sealedCount = participants.filter((p) => p.budgetSealed).length;
 
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
@@ -361,7 +409,7 @@ export default function RoomLobby() {
           </h2>
         </div>
 
-        {/* Live Roll-Call Roster */}
+        {/* Live Roll-Call Roster with Budget Sealed Indicators */}
         <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -370,12 +418,19 @@ export default function RoomLobby() {
                 Participant Quorum
               </span>
             </div>
-            <span className="text-xs font-mono font-semibold text-[var(--text-secondary)] tabular-nums">
-              {participants.length} / {groupSize} joined
-            </span>
+            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold">
+              <span className="text-[var(--text-secondary)] tabular-nums">
+                {participants.length} / {groupSize} joined
+              </span>
+              <span className="text-[var(--text-tertiary)]">•</span>
+              <span className="text-emerald-500 font-bold tabular-nums flex items-center gap-0.5">
+                <ShieldCheck size={13} className="text-emerald-500" />
+                {sealedCount} of {participants.length} sealed
+              </span>
+            </div>
           </div>
 
-          {/* Avatar circles */}
+          {/* Avatar chips with Step Zero shield indicators */}
           <div className="flex flex-wrap gap-2 pt-1">
             {participants.map((p, idx) => (
               <div
@@ -391,34 +446,39 @@ export default function RoomLobby() {
                 {p.isHost && (
                   <Crown size={12} className="text-[var(--status-warning)] fill-[var(--status-warning)]" />
                 )}
+                {p.budgetSealed && (
+                  <ShieldCheck size={13} className="text-emerald-500 shrink-0" title="Budget Sealed Anonymously" />
+                )}
               </div>
             ))}
           </div>
         </section>
 
-        {/* Step Zero: Anonymous Budget Calibration */}
+        {/* Step Zero: Anonymous Privacy Vault & Ceiling */}
         <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Coins size={16} className="text-[var(--status-warning)]" />
               <span className="text-xs font-bold text-[var(--text-primary)]">
-                Step Zero Budget Ceiling
+                Step Zero Privacy Shield
               </span>
             </div>
             {lockedConstraint ? (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--status-success)] bg-[rgba(16,185,129,0.12)] px-2 py-0.5 rounded-full">
-                <Lock size={11} /> Sealed
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full shadow-[0_0_16px_rgba(16,185,129,0.35)] animate-[stampPop_0.3s_var(--spring-bounce)]">
+                <Lock size={12} className="text-emerald-400" />
+                <span>Vault Sealed</span>
               </span>
             ) : (
-              <span className="text-[10px] text-[var(--text-tertiary)]">
-                Anonymous
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-tertiary)]">
+                Anonymous Vault
               </span>
             )}
           </div>
 
-          <p className="text-xs text-[var(--text-secondary)]">
-            Set your private ceiling. Venues above any peer's threshold are silently pruned before voting begins.
-          </p>
+          {/* Clear Privacy Shield Explanation */}
+          <div className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
+            <strong className="text-[var(--text-primary)]">Anonymous Privacy Vault:</strong> Venues exceeding any peer ceiling are pruned before voting opens. No participant ever sees your personal spending boundary.
+          </div>
 
           <RangeSlider
             min={100}
@@ -431,7 +491,7 @@ export default function RoomLobby() {
             className={lockedConstraint ? 'opacity-50 pointer-events-none' : ''}
           />
 
-          {!lockedConstraint && (
+          {!lockedConstraint ? (
             <Button
               type="button"
               variant="secondary"
@@ -439,23 +499,73 @@ export default function RoomLobby() {
               onClick={handleLockBudget}
               loading={lockingBudget}
               icon={ShieldCheck}
-              className="mt-1"
+              className="mt-1 shadow-sm"
             >
               Seal Budget Anonymously
             </Button>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
+              <Check size={14} className="shrink-0" />
+              <span>Ceiling locked at {budgetLimit} MDL. Filter active in voting engine.</span>
+            </div>
           )}
         </section>
 
-        {/* Brainstorm Suggestions Pool (Custom mode) */}
+        {/* Symmetrical Candidate Pool Preview (INV-12 Grid Modulo Symmetry) */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-[var(--accent-bg)]" />
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Candidate Pool Preview ({filteredCandidates.length})
+              </span>
+            </div>
+            <span className="text-[11px] font-mono font-semibold text-[var(--text-tertiary)]">
+              Balanced 2x2 Deck
+            </span>
+          </div>
+
+          {/* Confidential Step Zero Pruning Proof */}
+          {lockedConstraint && prunedCount > 0 && (
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-amber-500 shrink-0" />
+                <span>Step Zero: {prunedCount} venue(s) exceeding {budgetLimit} MDL ceiling pruned</span>
+              </div>
+              <span className="font-mono text-[9px] uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">Confidential</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            {filteredCandidates.slice(0, 4).map((item, idx) => (
+              <div
+                key={item.id || idx}
+                className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between gap-1.5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1">
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
+                    {'$'.repeat(item.price_level || 2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+                  <span>{item.tags?.[0] || item.category || 'Venue'}</span>
+                  <span>{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Brainstorm Suggestions Input (Custom mode) */}
         {mode === 'CUSTOM' && (
           <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-[var(--accent-bg)]" />
-                <span className="text-xs font-bold text-[var(--text-primary)]">
-                  Candidate Pool ({groupPool.length})
-                </span>
-              </div>
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Suggest More Options
+              </span>
             </div>
 
             <form onSubmit={handleAddSuggestion} className="flex gap-2">
@@ -507,7 +617,7 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)]"
+              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
             >
               Start Consensus Voting
             </Button>

@@ -91,6 +91,10 @@ export default function SegmentedControl({
           !isMounted || !thumbMetrics.ready ? 'opacity-0' : 'opacity-100'
         }`}
         style={{
+          top: 0,
+          left: 0,
+          bottom: 'auto',
+          margin: 0,
           transform: `translate3d(${thumbMetrics.left}px, ${thumbMetrics.top}px, 0)`,
           width: thumbMetrics.width > 0 ? `${thumbMetrics.width}px` : undefined,
           height: thumbMetrics.height > 0 ? `${thumbMetrics.height}px` : undefined,

@@ -264,13 +264,19 @@ export default function JoinRoom() {
                 className="w-full min-h-[44px] pl-10 pr-4 rounded-lg bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none transition-all"
                 required
               />
-              <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+              {name.trim() ? (
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none shadow-sm">
+                  {name.trim().slice(0, 2).toUpperCase()}
+                </div>
+              ) : (
+                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+              )}
             </div>
           </div>
 
           {/* TAB 1: JOIN WITH 4-BOX OTP PASSKEY */}
           {activeTab === 'join' ? (
-            <form onSubmit={handleJoin} className="flex flex-col gap-5">
+            <form onSubmit={handleJoin} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
@@ -281,7 +287,7 @@ export default function JoinRoom() {
                   </span>
                 </div>
 
-                {/* 4 Distinct OTP Passkey Cells */}
+                {/* 4 Distinct OTP Passkey Cells with Active Glow & Crisp Monospace */}
                 <div className="grid grid-cols-4 gap-2.5" onPaste={handlePaste}>
                   {pinDigits.map((digit, index) => (
                     <input
@@ -294,16 +300,64 @@ export default function JoinRoom() {
                       value={digit}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                      className={`w-full h-14 text-center text-xl font-bold font-mono rounded-lg border transition-all duration-150 outline-none select-all ${
+                      className={`w-full h-14 text-center font-mono text-2xl font-black rounded-xl border transition-all duration-200 outline-none select-all ${
                         digit
-                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/5 text-[var(--text-primary)] ring-1 ring-[var(--accent-bg)]'
-                          : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)]'
+                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] ring-2 ring-[var(--accent-glow-focus)] shadow-[0_0_16px_var(--accent-glow-focus)]'
+                          : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] focus:shadow-[0_0_16px_var(--accent-glow-focus)]'
                       }`}
                       aria-label={`Digit ${index + 1}`}
                     />
                   ))}
                 </div>
+
+                {/* Quick-Tap Demo Code Chips */}
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinDigits(['4', '9', '2', '1']);
+                      if (!name.trim()) setName('Alex');
+                      addToast({
+                        title: 'Demo Code Applied',
+                        message: 'Room #4921 pre-filled and ready to enter',
+                        type: 'info',
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)]/10 hover:bg-[var(--accent-bg)]/20 text-[var(--accent-bg)] border border-[var(--accent-bg)]/25 text-xs font-mono font-bold tracking-tight transition-all duration-150 cursor-pointer active:scale-95 shadow-sm"
+                  >
+                    <Sparkles size={12} />
+                    <span>#4921 (Dinner)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinDigits(['8', '1', '0', '4']);
+                      if (!name.trim()) setName('Sam');
+                      addToast({
+                        title: 'Demo Code Applied',
+                        message: 'Room #8104 pre-filled and ready to enter',
+                        type: 'info',
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] border border-[var(--border-subtle)] text-xs font-mono font-bold tracking-tight transition-all duration-150 cursor-pointer active:scale-95 shadow-sm"
+                  >
+                    <Sparkles size={12} />
+                    <span>#8104 (Coffee)</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Real-time Room Resolution Card */}
+              {pin.length === 4 && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
+                  <div className="flex items-center gap-1.5">
+                    <Check size={14} className="shrink-0 text-emerald-500" />
+                    <span>{pin === '4921' ? 'Room #4921 Active • Friday Dinner (3 peers joined)' : pin === '8104' ? 'Room #8104 Active • Team Coffee (2 peers joined)' : `Room #${pin} Ready • Live Consensus Session`}</span>
+                  </div>
+                  <span className="font-mono text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">Active</span>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -312,7 +366,11 @@ export default function JoinRoom() {
                 disabled={pin.length !== 4 || !name.trim() || loading}
                 loading={loading}
                 icon={ArrowRight}
-                className="w-full"
+                className={`w-full transition-all duration-200 ${
+                  pin.length === 4 && name.trim()
+                    ? 'bg-gradient-to-r from-[var(--accent-bg)] to-emerald-500 shadow-[0_8px_24px_var(--accent-glow)] scale-[1.01] hover:scale-[1.02] active:scale-[0.98]'
+                    : ''
+                }`}
               >
                 Enter Room
               </Button>
