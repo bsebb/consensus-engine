@@ -174,16 +174,7 @@
 .dark .bg-mesh-light { opacity: 0; }
 .dark .bg-mesh-dark { opacity: 1; }
 
-/* Mobile PWA Device Shell */
-.pwa-viewport-container {
-  min-height: 100dvh;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
+/* Mobile PWA Shell */
 .pwa-shell {
   width: 100%;
   max-width: 480px;
@@ -193,60 +184,13 @@
   flex-direction: column;
   position: relative;
   background-color: var(--bg-surface);
-  border-left: 1px solid var(--border-main);
-  border-right: 1px solid var(--border-main);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 @media (min-width: 641px) {
-  .pwa-viewport-container {
-    padding: 2rem 1rem;
-  }
-
   .pwa-shell {
-    border-radius: 44px;
-    border: 3px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 32px 85px -15px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.4);
-    min-height: 844px;
-    max-height: 92vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .dark .pwa-shell {
-    border-color: rgba(255, 255, 255, 0.14);
-    box-shadow: 0 32px 85px -15px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
-  }
-
-  .device-hardware-island {
-    display: flex;
-    justify-content: center;
-    padding-top: 10px;
-    padding-bottom: 6px;
-    background-color: var(--bg-surface);
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
-
-  .hardware-pill {
-    width: 96px;
-    height: 22px;
-    background: #000000;
-    border-radius: 9999px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 12px;
-    box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.2);
-  }
-
-  .camera-lens {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #2a2c38 0%, #0d0e14 70%);
-    box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.4);
+    border-left: 1px solid var(--border-main);
+    border-right: 1px solid var(--border-main);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -254,12 +198,7 @@
   .pwa-shell {
     border-left: none;
     border-right: none;
-    border-radius: 0;
     box-shadow: none;
-  }
-
-  .device-hardware-island {
-    display: none;
   }
 }
 
