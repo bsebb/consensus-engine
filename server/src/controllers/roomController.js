@@ -1,4 +1,6 @@
 // Lilia: import Step Zero budget and pruning helpers
+const path = require('path');
+const { Worker } = require('worker_threads');
 const {
   createRoom,
   getRoomByPin,
@@ -9,14 +11,38 @@ const {
   createVote,
   countVotedParticipants,
   submitVenueFeedback,   //Afina
-} = require('../db/helpers');
+} = require('../../db/helpers');
 
 // Lilia: access Socket.io for live vote progress updates
 const { getIO } = require('../utils/socket');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
-const { calculateSchulzeWinner } = require('../utils/schulze');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+// Helper to execute Schulze worker thread off the main event loop
+const runSchulzeWorker = (submissions) => {
+  return new Promise((resolve, reject) => {
+    const workerPath = path.resolve(__dirname, '../workers/schulzeWorker.js');
+    const worker = new Worker(workerPath, {
+      workerData: { submissions },
+    });
+
+    worker.on('message', (message) => {
+      if (message.success) {
+        resolve(message.winner);
+      } else {
+        reject(new Error(message.error));
+      }
+    });
+
+    worker.on('error', reject);
+    worker.on('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Worker thread stopped with exit code ${code}`));
+      }
+    });
+  });
+};
 
 const createNewRoom = async (req, res) => {
   // Sprint 2: Added mode, theme, radius, latitude, and longitude
@@ -257,7 +283,7 @@ const submitVotes = async (req, res) => {
   });
 };
 
-// Sprint 3: finalize voting using the graph algorithm
+// Sprint 4: finalize voting using worker_thread to prevent event loop blocking
 const finalizeVoting = async (req, res) => {
   const { pin } = req.params;
   const room = await getRoomByPin(pin);
@@ -279,7 +305,7 @@ const finalizeVoting = async (req, res) => {
   }));
 
   try {
-    const winningOptionId = calculateSchulzeWinner(submissions);
+    const winningOptionId = await runSchulzeWorker(submissions);
 
     if (!winningOptionId) {
       return res.status(400).json({
