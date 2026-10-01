@@ -160,7 +160,7 @@ export default function RoomLobby() {
     const priceLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/v1/rooms/${pin}/constraints`, {
+      const response = await fetch(`/api/v1/rooms/${pin}/constraints`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -298,6 +298,14 @@ export default function RoomLobby() {
             <span className="text-xs font-mono font-semibold text-[var(--ios-secondary-label)]">
               {participants.length} / {groupSize} Quorum
             </span>
+          </div>
+
+          {/* Quorum Progress Bar */}
+          <div className="w-full h-1.5 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
+              style={{ width: `${Math.min(100, Math.round((participants.length / groupSize) * 100))}%` }}
+            />
           </div>
 
           <div className="settings-card-group p-3 flex flex-wrap gap-2">

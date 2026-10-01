@@ -14,6 +14,10 @@ import {
   ChevronRight,
   MessageSquarePlus,
   Share2,
+  X,
+  Flame,
+  Check,
+  Star,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -88,6 +92,26 @@ export default function SwipeDeck() {
   const [serverWinner, setServerWinner] = useState(null);
   const [votesReceived, setVotesReceived] = useState(1);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+
+  const handleInlineRate = (rating) => {
+    setUserRating(rating);
+    addToast({
+      title: 'Rating Saved',
+      message: `You rated this decision ${rating} stars`,
+      type: 'success',
+    });
+    // Send feedback to relative endpoint
+    fetch(`/api/v1/rooms/${pin}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participant_id: participantId,
+        satisfaction_rating: rating,
+        accuracy_rating: rating,
+      }),
+    }).catch(() => {});
+  };
 
   // Touch gesture state
   const touchStartX = useRef(null);
@@ -156,7 +180,7 @@ export default function SwipeDeck() {
 
       // 2. Post batched votes to backend
       if (myVotes.length > 0) {
-        fetch(`http://localhost:3000/api/v1/rooms/${pin}/votes`, {
+        fetch(`/api/v1/rooms/${pin}/votes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -167,7 +191,7 @@ export default function SwipeDeck() {
           .then(async (res) => {
             if (res.ok) {
               // Try auto-finalizing Schulze algorithm on server
-              fetch(`http://localhost:3000/api/v1/rooms/${pin}/finalize`, { method: 'POST' })
+              fetch(`/api/v1/rooms/${pin}/finalize`, { method: 'POST' })
                 .catch(() => {});
             }
           })
@@ -348,8 +372,31 @@ export default function SwipeDeck() {
               </MilledTray>
             </div>
 
+            {/* Inline Quick Rating (Zero Modal Friction) */}
+            <div className="w-full flex flex-col items-center gap-2 py-3 my-1 border-y border-[var(--border-subtle)]">
+              <span className="text-xs font-semibold text-[var(--ios-secondary-label)]">
+                {userRating > 0 ? `Your Rating: ${userRating} of 5 Stars` : 'Rate This Consensus Choice'}
+              </span>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => handleInlineRate(star)}
+                    className="p-1.5 rounded-xl hover:scale-115 active:scale-95 transition-transform cursor-pointer"
+                    aria-label={`Rate ${star} stars`}
+                  >
+                    <Star
+                      size={24}
+                      className={star <= userRating ? 'fill-[#FF9500] text-[#FF9500]' : 'text-[var(--ios-tertiary-label)]'}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Actions */}
-            <div className="flex flex-col gap-2.5 w-full pt-2">
+            <div className="flex flex-col gap-2.5 w-full pt-1">
               <Button
                 variant="primary"
                 size="lg"
@@ -357,7 +404,7 @@ export default function SwipeDeck() {
                 icon={MessageSquarePlus}
                 className="w-full"
               >
-                Rate Decision (Review)
+                Detailed Feedback
               </Button>
 
               <Button
@@ -480,39 +527,40 @@ export default function SwipeDeck() {
         </main>
       )}
 
-      {/* 3-Way Action Deck Control Strip (Always Visible During Voting) */}
+      {/* Floating Apple Liquid Glass Control Dock (Always Visible During Voting) */}
       {!showWinner && currentIndex < cards.length && (
-        <footer className="w-full max-w-md mx-auto grid grid-cols-3 gap-3 pb-2 select-none">
-          <Button
-            variant="secondary"
-            size="lg"
+        <div className="fixed bottom-6 inset-x-0 mx-auto w-max z-40 liquid-glass py-2 px-6 rounded-full flex items-center gap-6 shadow-[0_12px_40px_rgba(0,0,0,0.28)] border border-[var(--border-glass)] select-none">
+          {/* Pass button (Red X 52px) */}
+          <button
+            type="button"
             onClick={() => handleVote(-1)}
-            icon={ThumbsDown}
-            className="flex-col !py-3 !gap-1"
+            aria-label="Pass option"
+            className="w-[52px] h-[52px] rounded-full bg-white dark:bg-[#2C2C2E] border border-black/10 dark:border-white/10 text-[var(--semantic-error)] hover:bg-black/5 dark:hover:bg-white/15 flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
           >
-            <span className="text-xs font-semibold">Pass</span>
-          </Button>
+            <X size={22} strokeWidth={2.5} />
+          </button>
 
-          <Button
-            variant="destructive"
-            size="lg"
+          {/* VETO button (Orange Flame 60px with specular glow) */}
+          <button
+            type="button"
             onClick={() => handleVote(-100)}
-            icon={ShieldAlert}
-            className="flex-col !py-3 !gap-1"
+            aria-label="VETO option"
+            className="w-[60px] h-[60px] rounded-full bg-[var(--semantic-warning)] text-white shadow-[0_4px_20px_rgba(255,149,0,0.45)] hover:brightness-105 active:scale-90 transition-transform flex flex-col items-center justify-center gap-0.5 cursor-pointer"
           >
-            <span className="text-xs font-bold">VETO</span>
-          </Button>
+            <Flame size={22} strokeWidth={2.5} />
+            <span className="font-bold text-[9px] uppercase tracking-wider">VETO</span>
+          </button>
 
-          <Button
-            variant="primary"
-            size="lg"
+          {/* Approve button (Green Check 52px) */}
+          <button
+            type="button"
             onClick={() => handleVote(1)}
-            icon={ThumbsUp}
-            className="flex-col !py-3 !gap-1"
+            aria-label="Approve option"
+            className="w-[52px] h-[52px] rounded-full bg-white dark:bg-[#2C2C2E] border border-black/10 dark:border-white/10 text-[var(--semantic-success)] hover:bg-black/5 dark:hover:bg-white/15 flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
           >
-            <span className="text-xs font-semibold">Approve</span>
-          </Button>
-        </footer>
+            <Check size={22} strokeWidth={2.5} />
+          </button>
+        </div>
       )}
 
       {/* Review Modal Portal */}

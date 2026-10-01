@@ -300,3 +300,80 @@ input[type="range"].calibrated-slider::-webkit-slider-thumb:active {
               color 250ms cubic-bezier(0.4, 0, 0.2, 1),
               box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
+
+/* Hardware View Transitions API (120 FPS GPU cross-fade) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+::view-transition-old(root) {
+  animation-name: vt-fade-out;
+}
+::view-transition-new(root) {
+  animation-name: vt-fade-in;
+}
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Tactile 0ms Button Snap */
+button:active:not(:disabled),
+.btn-snap:active:not(:disabled) {
+  transform: translateY(1px) scale(0.98);
+  transition: transform 0.03s ease-out;
+}
+
+/* Continuous Sliding Segmented Control Pill */
+.seg-track {
+  position: relative;
+  display: flex;
+  background-color: var(--ios-inset);
+  padding: 3px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+  user-select: none;
+}
+.seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: 9999px;
+  background: var(--ios-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.08);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+.dark .seg-thumb {
+  background: #2C2C2E;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 0.5px 0 rgba(255, 255, 255, 0.12);
+}
+.seg-button {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ios-secondary-label);
+  border-radius: 9999px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.seg-button.active {
+  color: var(--ios-label);
+  font-weight: 600;
+}

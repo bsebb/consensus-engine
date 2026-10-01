@@ -49,11 +49,11 @@ export default function HostSettings() {
   const [loading, setLoading] = useState(false);
 
   const categories = [
-    { label: 'Restaurants', icon: Utensils },
-    { label: 'Cafes', icon: Coffee },
-    { label: 'Bars & Pubs', icon: Beer },
-    { label: 'Cinema', icon: Film },
-    { label: 'Activities', icon: Dumbbell },
+    { label: 'Restaurants', icon: Utensils, emoji: '🍽️' },
+    { label: 'Cafes', icon: Coffee, emoji: '☕' },
+    { label: 'Bars & Pubs', icon: Beer, emoji: '🍸' },
+    { label: 'Cinema', icon: Film, emoji: '🎬' },
+    { label: 'Activities', icon: Dumbbell, emoji: '🎳' },
   ];
 
   const priceTiers = [
@@ -71,7 +71,7 @@ export default function HostSettings() {
     let realRoom = null;
 
     try {
-      const response = await fetch('http://localhost:3000/api/v1/rooms', {
+      const response = await fetch('/api/v1/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,8 +187,8 @@ export default function HostSettings() {
                           : 'apple-card text-[var(--ios-label)] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
                       }`}
                     >
-                      <div className={`p-2 rounded-xl ${isSelected ? 'bg-white/20' : 'bg-black/5 dark:bg-white/10'}`}>
-                        <Icon size={18} />
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isSelected ? 'bg-white/20' : 'bg-black/5 dark:bg-white/10'}`}>
+                        <span>{cat.emoji}</span>
                       </div>
                       <span className="text-sm font-semibold">{cat.label}</span>
                     </button>
