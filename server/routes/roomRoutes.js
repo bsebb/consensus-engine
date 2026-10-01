@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const roomController = require('../controllers/roomController');
-const asyncHandler = require('../utils/asyncHandler');
+const roomController = require('../src/controllers/roomController');
+const asyncHandler = require('../src/utils/asyncHandler');
 
 
 router.post('/', asyncHandler(roomController.createNewRoom));
