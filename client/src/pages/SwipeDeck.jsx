@@ -3,21 +3,18 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   ThumbsUp,
   ThumbsDown,
-  ShieldAlert,
   Trophy,
   CheckCircle2,
   Clock,
   Sparkles,
   MapPin,
   MessageSquarePlus,
-  Share2,
   X,
   Flame,
   Check,
   Star,
   ExternalLink,
   ArrowLeft,
-  RotateCcw,
   Coins,
   Navigation,
   ChevronDown,
@@ -727,7 +724,7 @@ export default function SwipeDeck() {
                 className="absolute top-5 right-5 px-3.5 py-1.5 rounded-xl border-[3px] border-emerald-500 bg-emerald-500/15 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-widest -rotate-12 shadow-[0_0_24px_rgba(16,185,129,0.35)] backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none animate-[stampPop_0.15s_ease-out]"
               >
                 <ThumbsUp size={15} strokeWidth={2.5} />
-                <span>APPROVE (+1)</span>
+                <span>APPROVE</span>
               </div>
             )}
             {dragOffset.x < -30 && (
@@ -736,7 +733,7 @@ export default function SwipeDeck() {
                 className="absolute top-5 left-5 px-3.5 py-1.5 rounded-xl border-[3px] border-rose-500 bg-rose-500/15 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-black text-xs uppercase tracking-widest rotate-12 shadow-[0_0_24px_rgba(244,63,94,0.35)] backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none animate-[stampPop_0.15s_ease-out]"
               >
                 <ThumbsDown size={15} strokeWidth={2.5} />
-                <span>PASS (-1)</span>
+                <span>PASS</span>
               </div>
             )}
             {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
@@ -745,7 +742,7 @@ export default function SwipeDeck() {
                 className="absolute inset-x-6 top-6 py-2 rounded-2xl border-[3px] border-amber-400 bg-gradient-to-r from-red-600 to-rose-600 text-amber-200 font-black text-xs uppercase tracking-widest shadow-[0_0_32px_rgba(239,68,68,0.7)] backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none animate-pulse"
               >
                 <Flame size={18} strokeWidth={2.5} />
-                <span>VETO ELIMINATE (-100)</span>
+                <span>VETO</span>
               </div>
             )}
 

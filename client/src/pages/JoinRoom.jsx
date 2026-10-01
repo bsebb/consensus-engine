@@ -4,7 +4,6 @@ import {
   Sparkles,
   ArrowRight,
   Clock,
-  Compass,
   Users,
   Utensils,
   Coffee,
@@ -14,7 +13,6 @@ import {
   Minus,
   Check,
   User,
-  LogIn,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -202,9 +200,6 @@ export default function JoinRoom() {
           <div>
             <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
               Consensus
-            </span>
-            <span className="ml-1.5 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] font-semibold">
-              PWA
             </span>
           </div>
         </div>
@@ -472,7 +467,7 @@ export default function JoinRoom() {
               <Clock size={14} className="text-[var(--text-tertiary)]" />
               <div className="text-xs">
                 <span className="text-[var(--text-tertiary)]">Recent Winner: </span>
-                <span className="font-semibold text-[var(--text-primary)]">{recentSession.winnerName || 'Past Venue'}</span>
+                <span className="font-semibold text-[var(--text-primary)]">{recentSession.winner || 'Past Venue'}</span>
               </div>
             </div>
             <button
