@@ -1,82 +1,151 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Users, DollarSign, Sparkles, Send, Play, CheckCircle2, Shield, UserPlus, Copy, Check, Wifi, WifiOff } from 'lucide-react';
-import { deduplicateSuggestions } from '../utils/levenshtein';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Copy,
+  Check,
+  Users,
+  ShieldCheck,
+  Coins,
+  ArrowRight,
+  Plus,
+  Trash2,
+  Lock,
+  Sparkles,
+  Share2,
+  AlertTriangle,
+  Crown,
+  ArrowLeft,
+} from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
+import Button from '../components/ui/Button';
+import RangeSlider from '../components/ui/RangeSlider';
+import StatusBadge from '../components/ui/StatusBadge';
+import MilledTray from '../components/ui/MilledTray';
+import restaurantsMock from '../mocks/restaurants.json';
+
+// Client-side Levenshtein distance for fuzzy duplicate detection
+function levenshteinDistance(a, b) {
+  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function deduplicateSuggestions(list) {
+  const result = [];
+  list.forEach((item) => {
+    const isDup = result.some((existing) => {
+      const dist = levenshteinDistance(
+        existing.toLowerCase().trim(),
+        item.toLowerCase().trim()
+      );
+      return dist <= 2;
+    });
+    if (!isDup) result.push(item);
+  });
+  return result;
+}
 
 export default function RoomLobby() {
   const { pin } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isConnected, participantId, emit, on, off } = useSocket();
+  const { addToast } = useToast();
 
-  const mode = location.state?.mode || 'CUSTOM';
-  const isHost = location.state?.isHost ?? true;
-  const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Participant');
-  const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Where should we hang out?' : 'Find Places Nearby');
-  const suggestionLimit = location.state?.suggestionLimit || 3;
+  const isHost = location.state?.isHost ?? false;
+  const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
+  const groupSize = location.state?.groupSize || 4;
+  const mode = location.state?.mode || 'DISCOVERY';
+  const topic = location.state?.topic || 'Where should we go?';
 
-  // Expected Group Size defined by host
-  const [groupSize] = useState(location.state?.groupSize || 4);
-
-  // Dynamic participants: starts with only the joined user
-  const [participants, setParticipants] = useState([
-    { name: currentUserName, isMe: true }
+  // Live participant state with budgetSealed tracking
+  const [participants, setParticipants] = useState(() => [
+    { id: participantId || 'host_1', name: currentUserName, isHost, budgetSealed: false },
   ]);
 
+  // Step Zero Budget Constraint State
   const [budgetLimit, setBudgetLimit] = useState(250);
-  const [confirmedConstraint, setConfirmedConstraint] = useState(false);
+  const [lockedConstraint, setLockedConstraint] = useState(false);
+  const [lockingBudget, setLockingBudget] = useState(false);
 
+  // Suggestions state (for custom mode)
   const [suggestion, setSuggestion] = useState('');
-  const [mySuggestions, setMySuggestions] = useState([]);
-  
-  // Group pool starts with host's pre-filled options or default seed
-  const [groupPool, setGroupPool] = useState(() => {
-    if (location.state?.initialOptions) {
-      return location.state.initialOptions.split(',').map(s => s.trim()).filter(Boolean);
-    }
-    return mode === 'CUSTOM' ? ['Game Night', 'Board Game Cafe', 'Movie Marathon'] : [];
-  });
+  const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft', 'Rooftop Lounge']);
+  const [copied, setCopied] = useState(false);
 
-  const { isConnected, participantId, emit, on, off } = useSocket();
-
-  // Listen for real-time multiplayer updates from the server
+  // Track active PIN in localStorage for mobile navigation dock
   useEffect(() => {
-    // 1. Join room lobby namespace
+    if (pin) {
+      localStorage.setItem('consensus_active_pin', pin);
+    }
+  }, [pin]);
+
+  // Check for real-time duplicate warning as user types
+  const duplicateMatch = suggestion.trim().length >= 3
+    ? groupPool.find((item) => levenshteinDistance(item.toLowerCase(), suggestion.toLowerCase().trim()) <= 2)
+    : null;
+
+  // Handle Socket.io synchronization
+  useEffect(() => {
+    // 1. Join room
     emit('join_lobby', {
       pin,
       participant_id: participantId,
-      user_name: currentUserName
+      user_name: currentUserName,
     });
 
-    // 2. Listen for other participants joining
+    // 2. Listen for peers joining
     const handleParticipantJoined = (data) => {
-      if (data?.total_participants) {
+      if (data?.participants && Array.isArray(data.participants)) {
+        setParticipants(
+          data.participants.map((p) => ({
+            id: p.id,
+            name: p.name || p.userName || 'Peer',
+            isHost: p.id === data.host_id,
+            budgetSealed: Boolean(p.budgetSealed),
+          }))
+        );
+      } else if (data?.user_name) {
         setParticipants((prev) => {
-          const count = data.total_participants;
-          if (count > prev.length) {
-            const newOnes = [];
-            for (let i = prev.length; i < count; i++) {
-              newOnes.push({ name: data.user_name || `Friend ${i + 1}`, isMe: false });
-            }
-            return [...prev, ...newOnes];
-          }
-          return prev;
+          if (prev.some((p) => p.name === data.user_name)) return prev;
+          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: true }];
         });
       }
     };
 
-    // 3. Listen for host starting voting (triggers guest navigation)
+    // 3. Listen for host voting trigger
     const handleVotingStarted = (data) => {
-      console.log('[Socket] voting_started received, transitioning to SwipeDeck');
+      addToast({
+        title: 'Voting Started',
+        message: 'Entering the Swipe Deck now...',
+        type: 'info',
+      });
+
       const options = data?.options || [];
-      navigate(`/deck/${pin}`, { 
-        state: { 
+      navigate(`/deck/${pin}`, {
+        state: {
           mode,
           topic,
           totalParticipants: groupSize,
-          customCards: options.length > 0 ? options : undefined
-        } 
+          customCards: options.length > 0 ? options : undefined,
+          budgetLimit: lockedConstraint ? budgetLimit : undefined,
+        },
       });
     };
 
@@ -87,218 +156,413 @@ export default function RoomLobby() {
       off('participant_joined', handleParticipantJoined);
       off('voting_started', handleVotingStarted);
     };
-  }, [pin, participantId, currentUserName, mode, topic, groupSize, navigate, emit, on, off]);
+  }, [pin, participantId, currentUserName, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
 
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyPin = () => {
-    navigator.clipboard.writeText(pin);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const handleCopyPin = async () => {
+    try {
+      await navigator.clipboard.writeText(pin);
+      setCopied(true);
+      addToast({
+        title: 'PIN Copied',
+        message: `Room code #${pin} copied to clipboard`,
+        type: 'success',
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      addToast({
+        title: 'Copy Failed',
+        message: `PIN code is ${pin}`,
+        type: 'warning',
+      });
+    }
   };
 
-  const handleAddTestGuest = () => {
-    const guestNum = participants.length;
-    const newGuest = { name: `Guest ${guestNum}`, isMe: false };
-    setParticipants([...participants, newGuest]);
+  const handleShareInvite = async () => {
+    const inviteUrl = `${window.location.origin}/?pin=${pin}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Join Consensus Room #${pin}`,
+          text: `Join our consensus session: "${topic}"!`,
+          url: inviteUrl,
+        });
+      } catch {
+        handleCopyPin();
+      }
+    } else {
+      handleCopyPin();
+    }
+  };
+
+  const handleLockBudget = async () => {
+    setLockingBudget(true);
+    try {
+      await fetch(`/api/v1/rooms/${pin}/constraints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: participantId,
+          max_budget: budgetLimit,
+        }),
+      });
+    } catch (err) {
+      console.warn('[RoomLobby] Backend constraint offline, saved locally:', err);
+    }
+
+    setLockingBudget(false);
+    setLockedConstraint(true);
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.name === currentUserName || p.id === participantId
+          ? { ...p, budgetSealed: true }
+          : p
+      )
+    );
+    addToast({
+      title: 'Budget Sealed in Vault',
+      message: `Max ${budgetLimit} MDL applied anonymously`,
+      type: 'success',
+    });
   };
 
   const handleAddSuggestion = (e) => {
     e.preventDefault();
-    if (!suggestion.trim() || mySuggestions.length >= suggestionLimit) return;
     const clean = suggestion.trim();
-    setMySuggestions([...mySuggestions, clean]);
-    setGroupPool([...groupPool, clean]);
+    if (!clean) return;
+
+    if (duplicateMatch) {
+      addToast({
+        title: 'Duplicate Detected',
+        message: `Similar to existing candidate "${duplicateMatch}"`,
+        type: 'warning',
+      });
+      return;
+    }
+
+    setGroupPool((prev) => [...prev, clean]);
     setSuggestion('');
+    addToast({
+      title: 'Suggestion Added',
+      message: `"${clean}" added to pool`,
+      type: 'info',
+    });
   };
+
+  const handleRemoveSuggestion = (idx) => {
+    setGroupPool((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Candidate pool resolution
+  const candidatePoolPreview = useMemo(() => {
+    if (mode === 'CUSTOM') {
+      return groupPool.map((name, idx) => ({
+        id: `c-${idx}`,
+        name,
+        category: 'Suggestion',
+        price_level: 2,
+        distance_km: 1.2,
+        tags: ['Custom'],
+      }));
+    }
+    let pool = restaurantsMock || [];
+    const category = location.state?.category;
+    if (category && category !== 'Restaurants') {
+      const catLower = category.toLowerCase();
+      const matched = pool.filter(
+        (r) =>
+          r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
+          r.name?.toLowerCase().includes(catLower)
+      );
+      if (matched.length > 0) pool = matched;
+    }
+    return pool;
+  }, [mode, groupPool, location.state?.category]);
+
+  const maxBudgetLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
+  const filteredCandidates = useMemo(() => {
+    if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
+    return candidatePoolPreview.filter((item) => (item.price_level || 1) <= maxBudgetLevel);
+  }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
+
+  const prunedCount = lockedConstraint && mode !== 'CUSTOM'
+    ? candidatePoolPreview.length - filteredCandidates.length
+    : 0;
+
   const handleStartVoting = () => {
-  // Lilia: prepare custom suggestions before sending them to the server
-  const deduplicated = mode === 'CUSTOM'
-    ? deduplicateSuggestions(
-        groupPool.length > 0 ? groupPool : ['Option 1', 'Option 2']
-      )
-    : [];
+    let cardsToPass = [];
 
-  // Lilia: the server creates database options and broadcasts voting_started
-  // to every participant in this Socket.io room
-  emit('host_start_voting', {
-    pin,
-    host_id: participantId,
-    options: deduplicated
-  });
-};
+    if (mode === 'CUSTOM') {
+      cardsToPass = deduplicateSuggestions(groupPool);
+    } else {
+      let pool = restaurantsMock || [];
+      const category = location.state?.category;
+      if (category && category !== 'Restaurants') {
+        const catLower = category.toLowerCase();
+        const matched = pool.filter(
+          (r) =>
+            r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
+            r.name?.toLowerCase().includes(catLower)
+        );
+        if (matched.length > 0) pool = matched;
+      }
 
-const isFull = participants.length >= groupSize;
+      const maxLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
+      const budgetFiltered = pool.filter((r) => (r.price_level || 1) <= maxLevel);
+      if (budgetFiltered.length > 0) pool = budgetFiltered;
+
+      cardsToPass = pool;
+    }
+
+    emit('host_start_voting', {
+      pin,
+      host_id: participantId,
+      options: cardsToPass,
+    });
+
+    navigate(`/deck/${pin}`, {
+      state: {
+        mode,
+        topic,
+        totalParticipants: groupSize,
+        customCards: cardsToPass,
+        budgetLimit: lockedConstraint ? budgetLimit : undefined,
+      },
+    });
+  };
+
+  const sealedCount = participants.filter((p) => p.budgetSealed).length;
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] dark:bg-black pb-16 select-none transition-colors duration-200">
-      
-      {/* Navigation Header with ThemeToggle */}
-      <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] dark:border-white/[0.08] px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div>
-            <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block">Room PIN</span>
-            <span className="text-base font-black text-black dark:text-white font-mono tracking-widest">{pin}</span>
-          </div>
+    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
+      {/* PWA Mobile Header */}
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center justify-between">
           <button
-            onClick={handleCopyPin}
-            className="p-1.5 rounded-lg text-[#007AFF] hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition"
-            title="Copy PIN"
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            aria-label="Exit Lobby"
           >
-            {copied ? <Check className="w-4 h-4 text-[#34C759]" /> : <Copy className="w-4 h-4" />}
+            <ArrowLeft size={16} />
+            <span>Leave</span>
           </button>
+
+          <div className="flex items-center gap-1.5 font-mono text-sm font-extrabold text-[var(--text-primary)]">
+            <span className="text-[var(--text-tertiary)]">#</span>
+            <span>{pin}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              status={isConnected ? 'success' : 'neutral'}
+              label={isConnected ? 'Live' : 'Local'}
+              pulse={isConnected}
+              size="sm"
+            />
+            <ThemeToggle />
+          </div>
         </div>
+      </header>
 
-        <div className="flex items-center gap-2">
-          <span 
-            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
-              isConnected
-                ? 'bg-[#34C759]/10 text-[#34C759]'
-                : 'bg-black/[0.04] dark:bg-white/[0.06] text-[#8E8E93]'
-            }`}
-            title={isConnected ? 'Live WebSocket Connected' : 'Simulated / Offline Mode'}
-          >
-            {isConnected ? <Wifi className="w-3 h-3 text-[#34C759]" /> : <WifiOff className="w-3 h-3 text-[#8E8E93]" />}
-            <span>{isConnected ? 'Live' : 'Local'}</span>
-          </span>
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${
-            isFull 
-              ? 'bg-[#34C759]/10 text-[#34C759]' 
-              : 'bg-[#007AFF]/10 text-[#007AFF]'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isFull ? 'bg-[#34C759]' : 'bg-[#007AFF] animate-pulse'}`}></span>
-            {participants.length} of {groupSize} Joined
-          </span>
-          <ThemeToggle />
-        </div>
-      </div>
+      {/* Main Content Area */}
+      <main className="px-4 pt-4 flex flex-col gap-4 flex-1">
+        {/* Hero PIN & Share Banner */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-sm">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
+              Room Passkey
+            </span>
+            <span className="font-mono text-2xl font-black text-[var(--accent-bg)] tracking-widest mt-0.5">
+              {pin}
+            </span>
+          </div>
 
-      <div className="max-w-md mx-auto p-4 sm:p-6 space-y-5">
-        
-        {/* Decision Topic Card */}
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.08] shadow-xs transition-colors">
-          <span className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wider block mb-1">
-            Decision Topic
-          </span>
-          <h2 className="text-base font-bold text-black dark:text-white tracking-tight">{topic}</h2>
-        </div>
-
-        {/* Dynamic Participants Roll-Call with Progress Bar */}
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 border border-black/[0.04] dark:border-white/[0.08] shadow-xs space-y-3 transition-colors">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#6E6E73] dark:text-[#8E8E93]" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6E6E73] dark:text-[#8E8E93]">
-                Lobby Roll-Call ({participants.length}/{groupSize})
-              </span>
-            </div>
-
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleAddTestGuest}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] hover:opacity-80 transition"
+              onClick={handleCopyPin}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
             >
-              <UserPlus className="w-3 h-3" />
-              <span>+ Add Friend</span>
+              {copied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleShareInvite}
+              className="p-2 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
+              title="Share Invite"
+            >
+              <Share2 size={16} />
             </button>
           </div>
+        </section>
 
-          {/* Group Fill Progress Bar */}
-          <div className="w-full bg-[#E5E5EA] dark:bg-[#2C2C2E] h-1.5 rounded-full overflow-hidden">
-            <div 
-              className="bg-[#007AFF] h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, Math.round((participants.length / groupSize) * 100))}%` }}
-            ></div>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {participants.map((p, idx) => (
-              <span
-                key={idx}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                  p.isMe
-                    ? 'bg-[#007AFF] text-white shadow-xs'
-                    : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white'
-                }`}
-              >
-                {p.name} {p.isMe && '(You)'}
-              </span>
-            ))}
-          </div>
+        {/* Active Target Banner */}
+        <div className="px-1 flex flex-col">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+            Consensus Target
+          </span>
+          <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">
+            {topic}
+          </h2>
         </div>
 
-        {/* ================= DISCOVERY MODE: STEP ZERO ================= */}
-        {mode === 'DISCOVERY' && (
-          <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.08] shadow-xs space-y-4 transition-colors">
+        {/* Live Roll-Call Roster with Budget Sealed Indicators */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF]">
-                <DollarSign className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-black dark:text-white">Step Zero: Secret Budget Cap</h3>
-                <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">Options exceeding the lowest cap are silently pruned</p>
-              </div>
+              <Users size={16} className="text-[var(--accent-bg)]" />
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Participant Quorum
+              </span>
             </div>
+            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold">
+              <span className="text-[var(--text-secondary)] tabular-nums">
+                {participants.length} / {groupSize} joined
+              </span>
+              <span className="text-[var(--text-tertiary)]">•</span>
+              <span className="text-emerald-500 font-bold tabular-nums flex items-center gap-0.5">
+                <ShieldCheck size={13} className="text-emerald-500" />
+                {sealedCount} of {participants.length} sealed
+              </span>
+            </div>
+          </div>
 
-            {!confirmedConstraint ? (
-              <div className="space-y-4 pt-1">
-                <div className="p-3 bg-[#F8F8FA] dark:bg-[#2C2C2E] rounded-xl flex items-center justify-between transition-colors">
-                  <span className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93]">My Spending Ceiling</span>
-                  <span className="text-base font-bold text-[#007AFF] font-mono">{budgetLimit} MDL</span>
+          {/* Avatar chips with Step Zero shield indicators */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {participants.map((p, idx) => (
+              <div
+                key={p.id || idx}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
+              >
+                <div className="w-5 h-5 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center">
+                  {(p.name || 'P').charAt(0).toUpperCase()}
                 </div>
-
-                <input
-                  type="range"
-                  min="50"
-                  max="800"
-                  step="25"
-                  value={budgetLimit}
-                  onChange={(e) => setBudgetLimit(Number(e.target.value))}
-                  className="w-full h-2 bg-[#E5E5EA] dark:bg-[#2C2C2E] rounded-lg appearance-none cursor-pointer accent-[#007AFF]"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setConfirmedConstraint(true)}
-                  className="w-full min-h-[44px] bg-[#007AFF] hover:bg-[#0071E3] text-white rounded-xl text-xs font-semibold transition active:scale-[0.98]"
-                >
-                  Lock Secret Constraint
-                </button>
+                <span className="text-xs font-medium text-[var(--text-primary)]">
+                  {p.name}
+                </span>
+                {p.isHost && (
+                  <Crown size={12} className="text-[var(--status-warning)] fill-[var(--status-warning)]" />
+                )}
+                {p.budgetSealed && (
+                  <ShieldCheck size={13} className="text-emerald-500 shrink-0" title="Budget Sealed Anonymously" />
+                )}
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Step Zero: Anonymous Privacy Vault & Ceiling */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Coins size={16} className="text-[var(--status-warning)]" />
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Step Zero Privacy Shield
+              </span>
+            </div>
+            {lockedConstraint ? (
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full shadow-[0_0_16px_rgba(16,185,129,0.35)] animate-[stampPop_0.3s_var(--spring-bounce)]">
+                <Lock size={12} className="text-emerald-400" />
+                <span>Vault Sealed</span>
+              </span>
             ) : (
-              <div className="p-3 bg-[#34C759]/10 border border-[#34C759]/20 rounded-xl flex items-center justify-between text-xs text-[#28893F]">
-                <div className="flex items-center gap-2 font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-[#34C759]" />
-                  <span>Locked in ({budgetLimit} MDL max)</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setConfirmedConstraint(false)}
-                  className="underline font-semibold hover:opacity-80"
-                >
-                  Change
-                </button>
-              </div>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-tertiary)]">
+                Anonymous Vault
+              </span>
             )}
           </div>
-        )}
 
-        {/* ================= CUSTOM MODE: ANONYMOUS SUGGESTIONS ================= */}
-        {mode === 'CUSTOM' && (
-          <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-5 border border-black/[0.04] dark:border-white/[0.08] shadow-xs space-y-4 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                  <Sparkles className="w-4 h-4" />
+          {/* Clear Privacy Shield Explanation */}
+          <div className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
+            <strong className="text-[var(--text-primary)]">Anonymous Privacy Vault:</strong> Venues exceeding any peer ceiling are pruned before voting opens. No participant ever sees your personal spending boundary.
+          </div>
+
+          <RangeSlider
+            min={100}
+            max={600}
+            step={25}
+            value={budgetLimit}
+            onChange={setBudgetLimit}
+            label="Personal Max per Person"
+            valueDisplay={`${budgetLimit} MDL`}
+            className={lockedConstraint ? 'opacity-50 pointer-events-none' : ''}
+          />
+
+          {!lockedConstraint ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleLockBudget}
+              loading={lockingBudget}
+              icon={ShieldCheck}
+              className="mt-1 shadow-sm"
+            >
+              Seal Budget Anonymously
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
+              <Check size={14} className="shrink-0" />
+              <span>Ceiling locked at {budgetLimit} MDL. Filter active in voting engine.</span>
+            </div>
+          )}
+        </section>
+
+        {/* Symmetrical Candidate Pool Preview (INV-12 Grid Modulo Symmetry) */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-[var(--accent-bg)]" />
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Candidate Pool Preview ({filteredCandidates.length})
+              </span>
+            </div>
+            <span className="text-[11px] font-mono font-semibold text-[var(--text-tertiary)]">
+              Balanced 2x2 Deck
+            </span>
+          </div>
+
+          {/* Confidential Step Zero Pruning Proof */}
+          {lockedConstraint && prunedCount > 0 && (
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-amber-500 shrink-0" />
+                <span>Step Zero: {prunedCount} venue(s) exceeding {budgetLimit} MDL ceiling pruned</span>
+              </div>
+              <span className="font-mono text-[9px] uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">Confidential</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            {filteredCandidates.slice(0, 4).map((item, idx) => (
+              <div
+                key={item.id || idx}
+                className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between gap-1.5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1">
+                    {item.name}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
+                    {'$'.repeat(item.price_level || 2)}
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-black dark:text-white">Anonymous Suggestions</h3>
-                  <p className="text-[11px] text-[#6E6E73] dark:text-[#8E8E93]">Merged with Levenshtein fuzzy deduplication</p>
+                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+                  <span>{item.tags?.[0] || item.category || 'Venue'}</span>
+                  <span>{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
                 </div>
               </div>
-              <span className="flex items-center gap-1 text-[10px] text-[#8E8E93]">
-                <Shield className="w-3 h-3 text-[#34C759]" />
-                Anonymous
+            ))}
+          </div>
+        </section>
+
+        {/* Brainstorm Suggestions Input (Custom mode) */}
+        {mode === 'CUSTOM' && (
+          <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Suggest More Options
               </span>
             </div>
 
@@ -308,59 +572,65 @@ const isFull = participants.length >= groupSize;
                 value={suggestion}
                 onChange={(e) => setSuggestion(e.target.value)}
                 placeholder="Suggest an option..."
-                maxLength={30}
-                className="flex-1 min-h-[44px] px-3.5 rounded-xl bg-[#F8F8FA] dark:bg-[#2C2C2E] border border-black/[0.06] dark:border-white/[0.08] text-xs text-black dark:text-white placeholder:text-[#8E8E93] outline-none focus:bg-white dark:focus:bg-[#1C1C1E] focus:ring-2 focus:ring-[#007AFF] transition"
+                className="flex-1 text-xs rounded-xl px-3 py-2 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
               />
-              <button
-                type="submit"
-                disabled={!suggestion.trim() || mySuggestions.length >= suggestionLimit}
-                className="min-h-[44px] px-4 bg-black dark:bg-white disabled:opacity-40 text-white dark:text-black rounded-xl text-xs font-semibold transition active:scale-[0.96] flex items-center gap-1"
-              >
-                <Send className="w-3 h-3" />
-                <span>Add</span>
-              </button>
+              <Button type="submit" variant="primary" size="sm" icon={Plus}>
+                Add
+              </Button>
             </form>
 
-            <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8E8E93] block mb-2">
-                Group Options Pool ({groupPool.length})
-              </span>
-              {groupPool.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {groupPool.map((item, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 bg-[#F2F2F7] dark:bg-[#2C2C2E] text-black dark:text-white rounded-lg text-xs font-medium"
-                    >
-                      {item}
-                    </span>
-                  ))}
+            {duplicateMatch && (
+              <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg">
+                <AlertTriangle size={14} />
+                <span>Notice: Similar to "{duplicateMatch}"</span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
+              {groupPool.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)]"
+                >
+                  <span>{item}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSuggestion(idx)}
+                    className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-1"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-              ) : (
-                <p className="text-xs text-[#8E8E93] italic">No suggestions added yet. Type one above!</p>
-              )}
+              ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Start Swiping CTA */}
-        <div className="pt-2">
+        {/* Action Dock */}
+        <div className="pt-2 pb-4">
           {isHost ? (
-            <button
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
               onClick={handleStartVoting}
-              className="w-full min-h-[50px] bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-base rounded-2xl shadow-sm shadow-[#007AFF]/25 transition active:scale-[0.98] flex items-center justify-center gap-2"
+              icon={ArrowRight}
+              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
             >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Start Swiping Phase</span>
-            </button>
+              Start Consensus Voting
+            </Button>
           ) : (
-            <div className="p-4 bg-white/60 dark:bg-[#1C1C1E]/60 backdrop-blur-md rounded-2xl text-center text-xs text-[#6E6E73] dark:text-[#8E8E93] font-medium border border-black/[0.04] dark:border-white/[0.06]">
-              Waiting for host to start voting...
+            <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-center flex flex-col items-center gap-1">
+              <span className="text-xs font-bold text-[var(--text-primary)]">
+                Waiting for Host
+              </span>
+              <span className="text-[11px] text-[var(--text-secondary)]">
+                Voting will automatically open when the host launches the deck.
+              </span>
             </div>
           )}
         </div>
-
-      </div>
+      </main>
     </div>
   );
 }

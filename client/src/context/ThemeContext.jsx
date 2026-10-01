@@ -44,6 +44,12 @@ export function ThemeProvider({ children }) {
   }, [theme]);
 
   const toggleTheme = () => {
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+      });
+      return;
+    }
     const root = document.documentElement;
     root.classList.add('theme-switching');
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));

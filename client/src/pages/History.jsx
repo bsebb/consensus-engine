@@ -1,130 +1,204 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  Trophy,
+  Users,
+  Calendar,
+  Sparkles,
+  ArrowRight,
+  Trash2,
+} from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
+import Button from '../components/ui/Button';
+import StatusBadge from '../components/ui/StatusBadge';
 
 export default function History() {
   const navigate = useNavigate();
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('consensus_history');
-      return saved ? JSON.parse(saved).reverse() : [];
-    } catch (e) {
-      console.error('Failed to parse history', e);
-      return [];
-    }
-  });
-  const [expandedId, setExpandedId] = useState(null);
+  const [sessions, setSessions] = useState([]);
 
-  const clearHistory = () => {
-    if (window.confirm("Are you sure you want to clear your decision history?")) {
-      localStorage.removeItem('consensus_history');
-      setHistory([]);
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+      if (Array.isArray(stored) && stored.length > 0) {
+        const sanitized = stored.map((s) => ({
+          ...s,
+          winner:
+            typeof s.winner === 'object' && s.winner !== null
+              ? s.winner.name || s.winner.id || 'Consensus Option'
+              : String(s.winner || 'Consensus Option'),
+          topic:
+            typeof s.topic === 'object' && s.topic !== null
+              ? s.topic.name || 'Decision'
+              : String(s.topic || 'Decision'),
+          priceLevel: typeof s.priceLevel === 'number' ? s.priceLevel : 2,
+          participantsCount: typeof s.participantsCount === 'number' ? s.participantsCount : 4,
+        }));
+        setSessions(sanitized);
+      } else {
+        // Sample baseline entries for demonstration
+        setSessions([
+          {
+            pin: '4921',
+            topic: 'Friday Dinner Decision',
+            winner: 'Bistro del Sol',
+            date: 'Oct 1, 2026',
+            participantsCount: 4,
+            priceLevel: 2,
+          },
+          {
+            pin: '8104',
+            topic: 'Team Coffee Break',
+            winner: 'Artisan Roasters',
+            date: 'Sep 28, 2026',
+            participantsCount: 3,
+            priceLevel: 1,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.warn('[History] LocalStorage read error:', err);
     }
+  }, []);
+
+  const handleClearHistory = () => {
+    localStorage.removeItem('consensus_history');
+    setSessions([]);
   };
 
   return (
-    <div className="min-h-screen bg-[#F2F2F7] dark:bg-black transition-colors select-none pb-12">
-      {/* Header */}
-      <div className="sticky top-0 z-20 liquid-glass border-b border-black/[0.06] dark:border-white/[0.08] px-4 py-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-[#007AFF] font-medium active:opacity-70 flex items-center min-h-[44px] -ml-1 px-1"
-        >
-          <ChevronLeft className="w-5 h-5 -ml-1" />
-          <span>Back</span>
-        </button>
-        <h2 className="font-semibold text-black dark:text-white">Past Decisions</h2>
-        <ThemeToggle />
-      </div>
+    <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
+      {/* PWA Mobile Header */}
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            aria-label="Back to Home"
+          >
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
 
-      <div className="max-w-md mx-auto p-4 space-y-4 mt-2">
-        {history.length === 0 ? (
-          <div className="text-center py-16 px-4">
-            <div className="w-16 h-16 bg-black/[0.03] dark:bg-white/[0.05] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-8 h-8 text-[#8E8E93]" />
+          <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+            Decision Ledger
+          </h1>
+
+          <ThemeToggle />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="px-4 pt-4 flex flex-col gap-4 flex-1">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+              Historical Agreements
+            </span>
+            <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
+              Resolved Sessions ({sessions.length})
+            </h2>
+          </div>
+
+          {sessions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearHistory}
+              className="text-xs text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors flex items-center gap-1 p-1"
+              title="Clear History"
+            >
+              <Trash2 size={13} />
+              <span>Clear</span>
+            </button>
+          )}
+        </div>
+
+        {sessions.length === 0 ? (
+          /* Empty State */
+          <div className="rounded-2xl bg-[var(--bg-elevated)] p-8 text-center flex flex-col items-center gap-4 my-8 border border-[var(--border-main)]">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--bg-inset)] flex items-center justify-center text-[var(--text-tertiary)]">
+              <Clock size={28} />
             </div>
-            <h3 className="text-lg font-bold text-black dark:text-white mb-1">No History Yet</h3>
-            <p className="text-sm text-[#6E6E73] dark:text-[#8E8E93]">
-              Your completed group decisions will appear here automatically.
-            </p>
+            <div className="flex flex-col gap-1">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                No Decisions Yet
+              </h3>
+              <p className="text-xs text-[var(--text-secondary)] max-w-xs">
+                When your group completes a room vote, the consensus winner will be archived here.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/host')}
+              icon={Sparkles}
+            >
+              Host First Decision
+            </Button>
           </div>
         ) : (
-          <>
-            <div className="flex justify-between items-center px-1 mb-2">
-              <span className="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider">
-                Saved locally on this device
-              </span>
-              <button 
-                type="button"
-                onClick={clearHistory}
-                className="text-xs text-[#FF3B30] font-medium min-h-[44px] flex items-center hover:opacity-80 transition-opacity duration-100"
+          /* Mobile PWA Vertical Decision Cards Feed */
+          <div className="flex flex-col gap-3">
+            {sessions.map((s, idx) => (
+              <div
+                key={s.pin || idx}
+                className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3 shadow-sm hover:border-[var(--accent-bg)]/40 transition-colors"
               >
-                Clear
-              </button>
-            </div>
+                {/* Header row: PIN + Date */}
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-[var(--accent-bg)] bg-[var(--accent-bg)]/10 px-2 py-0.5 rounded-md">
+                    #{s.pin}
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)]">
+                    <Calendar size={12} />
+                    <span>{s.date}</span>
+                  </div>
+                </div>
 
-            {history.map((session) => {
-              const isExpanded = expandedId === session.id;
-              const formattedDate = new Date(session.timestamp).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              });
+                {/* Topic & Winner */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                    {s.topic}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[rgba(245,158,11,0.15)] flex items-center justify-center text-[var(--status-warning)] shrink-0">
+                      <Trophy size={15} />
+                    </div>
+                    <span className="text-base font-extrabold text-[var(--text-primary)] tracking-tight">
+                      {s.winner}
+                    </span>
+                  </div>
+                </div>
 
-              return (
-                <div 
-                  key={session.id} 
-                  className="apple-card overflow-hidden cursor-pointer"
-                  onClick={() => setExpandedId(isExpanded ? null : session.id)}
-                >
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex-1">
-                      <span className="text-[10px] font-semibold text-[#8E8E93] uppercase tracking-wider block mb-1">
-                        {formattedDate} • {session.topic}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{session.winner?.emoji}</span>
-                        <h3 className="text-lg font-black text-black dark:text-white tracking-tight">
-                          {session.winner?.name}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="text-[#8E8E93] pl-3">
-                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                    </div>
+                {/* Footer metadata pills */}
+                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge
+                      status="neutral"
+                      label={`${s.participantsCount || 4} Voters`}
+                      size="sm"
+                    />
+                    <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                      {'$'.repeat(s.priceLevel || 2)}
+                    </span>
                   </div>
 
-                  {isExpanded && (
-                    <div className="px-4 pb-4 border-t border-black/[0.04] dark:border-white/[0.06] pt-3 bg-[#F8F8FA]/50 dark:bg-[#1C1C1E]/50">
-                      <h4 className="text-[11px] font-bold text-[#8E8E93] uppercase tracking-wider mb-2">
-                        Other Options Evaluated
-                      </h4>
-                      <div className="space-y-1.5">
-                        {session.options?.filter(o => o.id !== session.winner?.id).map((opt) => (
-                          <div key={opt.id} className="flex justify-between items-center text-sm">
-                            <div className="flex items-center gap-1.5 text-black dark:text-white">
-                              <span>{opt.emoji}</span>
-                              <span className="font-medium">{opt.name}</span>
-                            </div>
-                            <span className="text-xs text-[#8E8E93] bg-black/[0.03] dark:bg-white/[0.05] px-2 py-0.5 rounded-md">
-                              Passed
-                            </span>
-                          </div>
-                        ))}
-                        {(!session.options || session.options.length <= 1) && (
-                          <p className="text-xs text-[#8E8E93]">No other options.</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/lobby/${s.pin}`)}
+                    className="flex items-center gap-1 text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer"
+                  >
+                    <span>Rejoin</span>
+                    <ArrowRight size={13} />
+                  </button>
                 </div>
-              );
-            })}
-          </>
+              </div>
+            ))}
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
