@@ -15,9 +15,9 @@ export default function SpringToggle({
     <div className={`flex items-center justify-between gap-3 ${className}`}>
       {(label || description) && (
         <label htmlFor={toggleId} className="flex flex-col cursor-pointer select-none">
-          {label && <span className="text-sm font-medium text-[var(--ios-label)]">{label}</span>}
+          {label && <span className="text-sm font-medium text-[var(--text-primary)]">{label}</span>}
           {description && (
-            <span className="text-xs text-[var(--ios-secondary-label)]">{description}</span>
+            <span className="text-xs text-[var(--text-secondary)]">{description}</span>
           )}
         </label>
       )}

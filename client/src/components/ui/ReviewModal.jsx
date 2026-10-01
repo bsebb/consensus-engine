@@ -67,23 +67,23 @@ export default function ReviewModal({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/45 dark:bg-black/70 backdrop-blur-md animate-[fadeBackdrop_0.25s_ease-out]"
+        className="fixed inset-0 bg-black/55 backdrop-blur-md animate-[fadeBackdrop_0.25s_ease-out]"
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-md liquid-glass rounded-3xl p-6 shadow-[0_24px_64px_rgba(0,0,0,0.35)] border border-[var(--border-glass)] animate-[modalSpring_0.35s_var(--spring-smooth)] z-10 select-none">
+      <div className="relative w-full max-w-md glass-surface rounded-2xl p-6 shadow-[0_24px_64px_rgba(0,0,0,0.35)] border border-[var(--border-glass)] animate-[modalSpring_0.35s_var(--spring-smooth)] z-10 select-none">
         
-        {/* Apple HIG 3-Column Modal Header */}
-        <div className="grid grid-cols-[60px_1fr_60px] items-center pb-4 border-b border-[var(--border-subtle)] mb-5">
+        {/* Header */}
+        <div className="grid grid-cols-[40px_1fr_40px] items-center pb-4 border-b border-[var(--border-subtle)] mb-5">
           <div />
-          <h3 className="text-base font-semibold text-center text-[var(--ios-label)] tracking-tight">
+          <h3 className="text-base font-semibold text-center text-[var(--text-primary)] tracking-tight">
             Session Feedback
           </h3>
           <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-[var(--ios-secondary-label)] hover:text-[var(--ios-label)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -92,28 +92,28 @@ export default function ReviewModal({
 
         {submitted ? (
           <div className="py-8 flex flex-col items-center justify-center text-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-[rgba(52,199,89,0.15)] flex items-center justify-center text-[var(--semantic-success)]">
+            <div className="w-14 h-14 rounded-full bg-[rgba(16,185,129,0.15)] flex items-center justify-center text-[var(--status-success)]">
               <CheckCircle2 size={32} />
             </div>
-            <h4 className="text-lg font-semibold text-[var(--ios-label)]">Thank You!</h4>
-            <p className="text-sm text-[var(--ios-secondary-label)] max-w-xs">
-              Your feedback on <strong className="text-[var(--ios-label)]">{winnerName}</strong> has been recorded to calibrate future recommendations.
+            <h4 className="text-lg font-semibold text-[var(--text-primary)]">Thank You!</h4>
+            <p className="text-sm text-[var(--text-secondary)] max-w-xs">
+              Your feedback on <strong className="text-[var(--text-primary)]">{winnerName}</strong> has been recorded to calibrate future recommendations.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)] mb-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">
                 Consensus Winner
               </p>
-              <p className="text-base font-bold text-[var(--ios-label)]">
+              <p className="text-base font-bold text-[var(--text-primary)]">
                 {winnerName || 'Group Consensus Option'}
               </p>
             </div>
 
             {/* Satisfaction Rating */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-[var(--ios-secondary-label)]">
+              <span className="text-xs font-medium text-[var(--text-secondary)]">
                 Overall Satisfaction
               </span>
               <div className="flex items-center gap-2">
@@ -129,8 +129,8 @@ export default function ReviewModal({
                       size={26}
                       className={
                         star <= satisfaction
-                          ? 'fill-[var(--semantic-warning)] text-[var(--semantic-warning)]'
-                          : 'text-[var(--ios-tertiary-label)]'
+                          ? 'fill-[var(--status-warning)] text-[var(--status-warning)]'
+                          : 'text-[var(--text-tertiary)]'
                       }
                     />
                   </button>
@@ -140,7 +140,7 @@ export default function ReviewModal({
 
             {/* Price Accuracy Rating */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-medium text-[var(--ios-secondary-label)]">
+              <span className="text-xs font-medium text-[var(--text-secondary)]">
                 Did the budget match your expectation?
               </span>
               <div className="flex items-center gap-2">
@@ -156,8 +156,8 @@ export default function ReviewModal({
                       size={22}
                       className={
                         star <= priceAccuracy
-                          ? 'fill-[var(--semantic-info)] text-[var(--semantic-info)]'
-                          : 'text-[var(--ios-tertiary-label)]'
+                          ? 'fill-[var(--status-info)] text-[var(--status-info)]'
+                          : 'text-[var(--text-tertiary)]'
                       }
                     />
                   </button>
@@ -167,7 +167,7 @@ export default function ReviewModal({
 
             {/* Comment Area */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="review-comment" className="text-xs font-medium text-[var(--ios-secondary-label)]">
+              <label htmlFor="review-comment" className="text-xs font-medium text-[var(--text-secondary)]">
                 Notes or Recommendations (Optional)
               </label>
               <textarea
@@ -176,7 +176,7 @@ export default function ReviewModal({
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
                 placeholder="Atmosphere, food quality, or venue notes..."
-                className="w-full text-sm rounded-xl p-3 bg-black/[0.03] dark:bg-white/[0.05] border border-[var(--border-main)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] transition-all resize-none"
+                className="w-full text-sm rounded-xl p-3 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-all resize-none"
               />
             </div>
 

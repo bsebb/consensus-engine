@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { SocketProvider } from './context/SocketContext';
 import { ToastProvider } from './components/ui/Toast';
 import InstallPrompt from './components/ui/InstallPrompt';
+import MobileNav from './components/ui/MobileNav';
 import JoinRoom from './pages/JoinRoom';
 import HostSettings from './pages/HostSettings';
 import RoomLobby from './pages/RoomLobby';
@@ -21,15 +22,18 @@ function App() {
           </div>
 
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<JoinRoom />} />
-              <Route path="/host" element={<HostSettings />} />
-              <Route path="/lobby/:pin" element={<RoomLobby />} />
-              <Route path="/deck/:pin" element={<SwipeDeck />} />
-              <Route path="/history" element={<History />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            <InstallPrompt />
+            <div className="pwa-shell">
+              <Routes>
+                <Route path="/" element={<JoinRoom />} />
+                <Route path="/host" element={<HostSettings />} />
+                <Route path="/lobby/:pin" element={<RoomLobby />} />
+                <Route path="/deck/:pin" element={<SwipeDeck />} />
+                <Route path="/history" element={<History />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+              <MobileNav />
+              <InstallPrompt />
+            </div>
           </BrowserRouter>
         </ToastProvider>
       </SocketProvider>

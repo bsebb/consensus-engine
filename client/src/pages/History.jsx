@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Clock, Trophy, Users, Calendar, ArrowRight, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  Trophy,
+  Users,
+  Calendar,
+  Sparkles,
+  ArrowRight,
+  Trash2,
+} from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
@@ -53,63 +62,70 @@ export default function History() {
     }
   }, []);
 
+  const handleClearHistory = () => {
+    localStorage.removeItem('consensus_history');
+    setSessions([]);
+  };
+
   return (
-    <div className="min-h-screen pb-16 select-none">
-      
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 liquid-glass border-b border-[var(--border-subtle)] px-4 py-3">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
+      {/* PWA Mobile Header */}
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-1 text-sm font-medium text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
+            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            aria-label="Back to Home"
           >
-            <ChevronLeft size={18} />
-            <span>Home</span>
+            <ArrowLeft size={16} />
+            <span>Back</span>
           </button>
 
-          <h2 className="text-base font-semibold text-[var(--ios-label)]">
-            Past Decisions Log
-          </h2>
+          <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+            Decision Ledger
+          </h1>
 
           <ThemeToggle />
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-4 pt-6 flex flex-col gap-6">
-        
-        <div className="flex items-center justify-between">
+      <main className="px-4 pt-4 flex flex-col gap-4 flex-1">
+        <div className="flex items-center justify-between px-1">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--ios-label)]">
-              Resolved Sessions
-            </h1>
-            <p className="text-xs text-[var(--ios-secondary-label)] mt-0.5">
-              Historical record of group consensus agreements
-            </p>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+              Historical Agreements
+            </span>
+            <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
+              Resolved Sessions ({sessions.length})
+            </h2>
           </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/host')}
-            icon={Sparkles}
-          >
-            New Session
-          </Button>
+          {sessions.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearHistory}
+              className="text-xs text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors flex items-center gap-1 p-1"
+              title="Clear History"
+            >
+              <Trash2 size={13} />
+              <span>Clear</span>
+            </button>
+          )}
         </div>
 
         {sessions.length === 0 ? (
           /* Empty State */
-          <div className="liquid-glass rounded-3xl p-10 text-center flex flex-col items-center gap-4 my-8 border border-[var(--border-glass)]">
-            <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/10 flex items-center justify-center text-[var(--ios-secondary-label)]">
+          <div className="rounded-2xl bg-[var(--bg-elevated)] p-8 text-center flex flex-col items-center gap-4 my-8 border border-[var(--border-main)]">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--bg-inset)] flex items-center justify-center text-[var(--text-tertiary)]">
               <Clock size={28} />
             </div>
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-semibold text-[var(--ios-label)]">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
                 No Decisions Yet
               </h3>
-              <p className="text-xs text-[var(--ios-secondary-label)] max-w-xs">
+              <p className="text-xs text-[var(--text-secondary)] max-w-xs">
                 When your group completes a room vote, the consensus winner will be archived here.
               </p>
             </div>
@@ -117,76 +133,69 @@ export default function History() {
               variant="primary"
               size="md"
               onClick={() => navigate('/host')}
+              icon={Sparkles}
             >
               Host First Decision
             </Button>
           </div>
         ) : (
-          /* Zero-Reflow Table with Hardware <colgroup> */
-          <div className="settings-card-group overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed min-w-[540px]">
-              <colgroup>
-                <col className="w-[100px]" />
-                <col className="w-[180px]" />
-                <col className="w-[150px]" />
-                <col className="w-[110px]" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.04]">
-                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
-                    Room PIN
-                  </th>
-                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
-                    Topic
-                  </th>
-                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
-                    Winner
-                  </th>
-                  <th className="py-2.5 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)] text-right">
-                    Quorum
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-subtle)]">
-                {sessions.map((s, idx) => (
-                  <tr
-                    key={s.pin || idx}
-                    className="hover:bg-black/[0.02] dark:hover:bg-white/[0.04] transition-colors"
+          /* Mobile PWA Vertical Decision Cards Feed */
+          <div className="flex flex-col gap-3">
+            {sessions.map((s, idx) => (
+              <div
+                key={s.pin || idx}
+                className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3 shadow-sm hover:border-[var(--accent-bg)]/40 transition-colors"
+              >
+                {/* Header row: PIN + Date */}
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-[var(--accent-bg)] bg-[var(--accent-bg)]/10 px-2 py-0.5 rounded-md">
+                    #{s.pin}
+                  </span>
+                  <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)]">
+                    <Calendar size={12} />
+                    <span>{s.date}</span>
+                  </div>
+                </div>
+
+                {/* Topic & Winner */}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                    {s.topic}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[rgba(245,158,11,0.15)] flex items-center justify-center text-[var(--status-warning)] shrink-0">
+                      <Trophy size={15} />
+                    </div>
+                    <span className="text-base font-extrabold text-[var(--text-primary)] tracking-tight">
+                      {s.winner}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Footer metadata pills */}
+                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge
+                      status="neutral"
+                      label={`${s.participantsCount || 4} Voters`}
+                      size="sm"
+                    />
+                    <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                      {'$'.repeat(s.priceLevel || 2)}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/deck/${s.pin}`)}
+                    className="flex items-center gap-1 text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer"
                   >
-                    <td className="py-3 px-3.5 font-mono text-xs font-bold text-[var(--accent-bg)]">
-                      #{s.pin}
-                    </td>
-                    <td className="py-3 px-3.5">
-                      <div className="text-xs font-semibold text-[var(--ios-label)] truncate">
-                        {s.topic}
-                      </div>
-                      <div className="text-[10px] text-[var(--ios-tertiary-label)] flex items-center gap-1 mt-0.5">
-                        <Calendar size={10} />
-                        <span>{s.date}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3.5">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ios-label)]">
-                        <Trophy size={13} className="text-[var(--semantic-warning)] shrink-0" />
-                        <span className="truncate">
-                          {typeof s.winner === 'object' && s.winner !== null
-                            ? s.winner.name || s.winner.id || 'Consensus Option'
-                            : String(s.winner || 'Consensus Option')}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3.5 text-right">
-                      <StatusBadge
-                        status="neutral"
-                        label={`${s.participantsCount || 4} Peers`}
-                        size="sm"
-                        className="ml-auto"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <span>View Arena</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </main>

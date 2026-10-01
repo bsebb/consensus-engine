@@ -1,22 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft,
+  ArrowLeft,
   Compass,
   Sparkles,
-  MapPin,
   Utensils,
   Coffee,
   Wine,
   Film,
   Dumbbell,
   Users,
-  DollarSign,
   ArrowRight,
   Minus,
   Plus,
   Flame,
-  Clock,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -24,7 +21,6 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import RangeSlider from '../components/ui/RangeSlider';
-import SpringToggle from '../components/ui/SpringToggle';
 import StatusBadge from '../components/ui/StatusBadge';
 
 export default function HostSettings() {
@@ -37,14 +33,12 @@ export default function HostSettings() {
 
   // Discovery Mode State
   const [category, setCategory] = useState('Restaurants');
-  const [customKeyword, setCustomKeyword] = useState('');
   const [radiusKm, setRadiusKm] = useState(5);
   const [priceTier, setPriceTier] = useState('$$');
 
   // Custom Mode State
   const [topic, setTopic] = useState('Where should we hang out tonight?');
   const [suggestionLimit, setSuggestionLimit] = useState(3);
-  const [allowParticipantSuggestions, setAllowParticipantSuggestions] = useState(true);
 
   // Group Configuration
   const [groupSize, setGroupSize] = useState(4);
@@ -55,22 +49,22 @@ export default function HostSettings() {
     { label: 'Cafes', icon: Coffee, desc: 'Espresso & Pastries' },
     { label: 'Bars & Pubs', icon: Wine, desc: 'Craft Beer & Cocktails' },
     { label: 'Cinema', icon: Film, desc: 'Movies & Showings' },
-    { label: 'Activities', icon: Dumbbell, desc: 'Bowling, Arcades & Games' },
-    { label: 'Desserts', icon: Flame, desc: 'Gelato, Bakery & Sweets' },
+    { label: 'Activities', icon: Dumbbell, desc: 'Bowling & Arcades' },
+    { label: 'Desserts', icon: Flame, desc: 'Gelato & Bakery' },
   ];
 
   const priceTiers = [
-    { value: '$', label: '$ (Budget)' },
-    { value: '$$', label: '$$ (Moderate)' },
-    { value: '$$$', label: '$$$ (Upscale)' },
-    { value: '$$$$', label: '$$$$ (Fine)' },
+    { value: '$', label: '$' },
+    { value: '$$', label: '$$' },
+    { value: '$$$', label: '$$$' },
+    { value: '$$$$', label: '$$$$' },
   ];
 
   const handleCreateRoom = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
 
-    let generatedPin = '4921';
+    let generatedPin = String(Math.floor(1000 + Math.random() * 9000));
     let realRoom = null;
 
     try {
@@ -103,6 +97,7 @@ export default function HostSettings() {
       });
     }
 
+    localStorage.setItem('consensus_active_pin', generatedPin);
     setLoading(false);
 
     navigate(`/lobby/${generatedPin}`, {
@@ -112,39 +107,37 @@ export default function HostSettings() {
         groupSize,
         topic: mode === 'CUSTOM' ? topic : category,
         category,
-        customKeyword,
         radiusKm,
         priceTier,
         suggestionLimit,
-        allowParticipantSuggestions,
         roomData: realRoom,
       },
     });
   };
 
   return (
-    <div className="min-h-screen pb-16 select-none">
-      
-      {/* Apple HIG Top Navigation Bar */}
-      <header className="sticky top-0 z-30 liquid-glass border-b border-[var(--border-subtle)] px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
+    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
+      {/* PWA Mobile Header */}
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-1 text-sm font-medium text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            aria-label="Back to Join"
           >
-            <ChevronLeft size={18} />
-            <span>Cancel</span>
+            <ArrowLeft size={16} />
+            <span>Back</span>
           </button>
-          
-          <h2 className="text-base font-semibold text-[var(--ios-label)]">
-            Host Configuration Studio
-          </h2>
+
+          <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+            Host Configuration
+          </h1>
 
           <div className="flex items-center gap-2">
             <StatusBadge
               status={isConnected ? 'success' : 'neutral'}
-              label={isConnected ? 'Server Live' : 'Local Mode'}
+              label={isConnected ? 'Online' : 'Local'}
               size="sm"
             />
             <ThemeToggle />
@@ -153,28 +146,27 @@ export default function HostSettings() {
       </header>
 
       {/* Main Configuration Content */}
-      <main className="max-w-2xl mx-auto px-4 pt-6 flex flex-col gap-6">
-        
+      <main className="px-4 pt-5 flex flex-col gap-5 flex-1">
         {/* Mode Selector */}
-        <section className="flex flex-col gap-2">
-          <div className="settings-section-label">Consensus Domain</div>
+        <section className="flex flex-col gap-1.5">
+          <span className="section-label">Consensus Domain</span>
           <SegmentedControl
             options={[
-              { value: 'DISCOVERY', label: 'Local Venues (Foursquare)', icon: Compass },
-              { value: 'CUSTOM', label: 'Custom Topics (Crowdsourced)', icon: Sparkles },
+              { value: 'DISCOVERY', label: 'Local Venues', icon: Compass },
+              { value: 'CUSTOM', label: 'Custom Topics', icon: Sparkles },
             ]}
             value={mode}
             onChange={setMode}
-            size="lg"
+            size="md"
           />
         </section>
 
         {/* Discovery Mode Settings */}
         {mode === 'DISCOVERY' ? (
           <>
-            {/* Category Grid */}
-            <section className="flex flex-col gap-2">
-              <div className="settings-section-label">Venue Category</div>
+            {/* Category Symmetrical 2x3 Grid */}
+            <section className="flex flex-col gap-1.5">
+              <span className="section-label">Category Selection</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {categories.map((cat) => {
                   const isSelected = category === cat.label;
@@ -184,174 +176,150 @@ export default function HostSettings() {
                       key={cat.label}
                       type="button"
                       onClick={() => setCategory(cat.label)}
-                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all duration-150 cursor-pointer ${
+                      className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-200 cursor-pointer ${
                         isSelected
-                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_2px_12px_var(--accent-glow-subtle)]'
-                          : 'apple-card text-[var(--ios-label)] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
+                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_4px_16px_var(--accent-glow-subtle)]'
+                          : 'bg-[var(--bg-elevated)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--text-tertiary)]'
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-2 transition-colors ${
-                        isSelected
-                          ? 'bg-[var(--accent-bg)]/20 text-[var(--accent-bg)]'
-                          : 'bg-black/[0.04] dark:bg-white/[0.08] text-[var(--ios-secondary-label)]'
-                      }`}>
-                        <IconComp size={22} />
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1.5 transition-colors ${
+                          isSelected
+                            ? 'bg-[var(--accent-bg)] text-white shadow-sm'
+                            : 'bg-[var(--bg-inset)] text-[var(--text-secondary)]'
+                        }`}
+                      >
+                        <IconComp size={20} />
                       </div>
                       <span className="text-xs font-bold tracking-tight">{cat.label}</span>
-                      <span className="text-[10px] text-[var(--ios-secondary-label)] mt-0.5">{cat.desc}</span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                        {cat.desc}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </section>
 
-            {/* Foursquare Filters Group */}
-            <section className="flex flex-col gap-2">
-              <div className="settings-section-label">Search & Radius Parameters</div>
-              <div className="settings-card-group">
-                <div className="settings-item-row flex-col sm:flex-row sm:items-center gap-2 items-start">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-[var(--ios-label)]">Keyword Filter</span>
-                    <span className="text-xs text-[var(--ios-secondary-label)]">Optional tag (e.g. ramen, terrace, rooftop)</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={customKeyword}
-                    onChange={(e) => setCustomKeyword(e.target.value)}
-                    placeholder="Search specifics..."
-                    className="w-full sm:w-48 px-3.5 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] border border-[var(--border-subtle)] text-sm text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] outline-none focus:border-[var(--accent-bg)]"
-                  />
-                </div>
+            {/* Radius Slider with Monospace readout */}
+            <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2">
+              <span className="section-label">Search Radius</span>
+              <RangeSlider
+                min={1}
+                max={15}
+                step={0.5}
+                value={radiusKm}
+                onChange={setRadiusKm}
+                label="Maximum Distance"
+                valueDisplay={`${radiusKm.toFixed(1)} km`}
+              />
+            </section>
 
-                <div className="settings-item-row flex-col gap-3 items-stretch">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-[var(--ios-label)]">Search Distance Radius</span>
-                    <span className="text-[var(--accent-bg)] font-mono font-bold">
-                      {radiusKm} km (~{Math.round(radiusKm * 3.5)} min transit)
-                    </span>
-                  </div>
-                  <RangeSlider
-                    min={1}
-                    max={25}
-                    step={1}
-                    value={radiusKm}
-                    onChange={setRadiusKm}
-                    unit="km"
-                  />
-                </div>
-
-                <div className="settings-item-row flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-[var(--ios-label)]">Default Price Tier</span>
-                    <span className="text-xs text-[var(--ios-secondary-label)]">Baseline budget filter</span>
-                  </div>
-                  <SegmentedControl
-                    options={priceTiers.map((p) => ({ value: p.value, label: p.value }))}
-                    value={priceTier}
-                    onChange={setPriceTier}
-                    size="sm"
-                    className="sm:w-48"
-                  />
-                </div>
-              </div>
+            {/* Price Tier Segmented Pills */}
+            <section className="flex flex-col gap-1.5">
+              <span className="section-label">Target Budget Tier</span>
+              <SegmentedControl
+                options={priceTiers}
+                value={priceTier}
+                onChange={setPriceTier}
+                size="md"
+              />
             </section>
           </>
         ) : (
-          /* Custom Mode Settings */
-          <section className="flex flex-col gap-2">
-            <div className="settings-section-label">Decision Topic</div>
-            <div className="settings-card-group">
-              <div className="settings-item-row flex-col gap-2 items-stretch">
-                <label htmlFor="topic-input" className="text-xs font-semibold uppercase tracking-wider text-[var(--ios-secondary-label)]">
-                  Question for the Group
-                </label>
-                <input
-                  id="topic-input"
-                  type="text"
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  placeholder="e.g. Which movie should we stream?"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.06] border border-[var(--border-main)] text-sm text-[var(--ios-label)] focus:border-[var(--accent-bg)] outline-none"
-                  required
-                />
-              </div>
+          /* Custom Brainstorm Mode */
+          <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="custom-topic" className="section-label">
+                Decision Prompt
+              </label>
+              <input
+                id="custom-topic"
+                type="text"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="e.g., Which movie should we stream?"
+                className="w-full text-sm font-semibold rounded-xl p-3 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-all"
+              />
+            </div>
 
-              <div className="settings-item-row">
-                <SpringToggle
-                  checked={allowParticipantSuggestions}
-                  onChange={setAllowParticipantSuggestions}
-                  label="Allow Participant Suggestions"
-                  description="Friends can submit additional options in the lobby"
-                />
-              </div>
-
-              {allowParticipantSuggestions && (
-                <div className="settings-item-row flex-col gap-3 items-stretch">
-                  <RangeSlider
-                    label="Max Suggestions per Friend"
-                    min={1}
-                    max={5}
-                    step={1}
-                    value={suggestionLimit}
-                    onChange={setSuggestionLimit}
-                  />
+            <div className="flex flex-col gap-1.5">
+              <span className="section-label">Max Suggestions per Peer</span>
+              <div className="flex items-center justify-between bg-[var(--bg-inset)] p-2 rounded-xl">
+                <span className="text-xs font-medium text-[var(--text-secondary)] pl-2">
+                  Allowed Candidates
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSuggestionLimit((prev) => Math.max(1, prev - 1))}
+                    className="w-8 h-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="font-mono text-sm font-bold text-[var(--text-primary)] w-6 text-center tabular-nums">
+                    {suggestionLimit}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSuggestionLimit((prev) => Math.min(6, prev + 1))}
+                    className="w-8 h-8 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+                  >
+                    <Plus size={14} />
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           </section>
         )}
 
-        {/* Group Size Stepper */}
-        <section className="flex flex-col gap-2">
-          <div className="settings-section-label">Participant Quorum</div>
-          <div className="settings-card-group">
-            <div className="settings-item-row">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]">
-                  <Users size={18} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-[var(--ios-label)]">Expected Group Size</span>
-                  <span className="text-xs text-[var(--ios-secondary-label)]">Room computes consensus once quorum votes</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 bg-black/[0.04] dark:bg-white/[0.08] p-1 rounded-xl border border-[var(--border-subtle)]">
-                <button
-                  type="button"
-                  onClick={() => setGroupSize((prev) => Math.max(2, prev - 1))}
-                  className="w-8 h-8 rounded-lg bg-white dark:bg-[#2C2C2E] flex items-center justify-center text-[var(--ios-label)] shadow-xs hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform cursor-pointer"
-                  aria-label="Decrease group size"
-                >
-                  <Minus size={14} />
-                </button>
-                <span className="w-6 text-center font-bold text-sm text-[var(--ios-label)] font-mono tabular-nums">
-                  {groupSize}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setGroupSize((prev) => Math.min(12, prev + 1))}
-                  className="w-8 h-8 rounded-lg bg-white dark:bg-[#2C2C2E] flex items-center justify-center text-[var(--ios-label)] shadow-xs hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-transform cursor-pointer"
-                  aria-label="Increase group size"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
+        {/* Expected Group Size Stepper */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center text-[var(--accent-bg)]">
+              <Users size={18} />
             </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-[var(--text-primary)]">Group Quorum</span>
+              <span className="text-[10px] text-[var(--text-secondary)]">Target voter size</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setGroupSize((prev) => Math.max(2, prev - 1))}
+              className="w-9 h-9 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+              aria-label="Decrease group size"
+            >
+              <Minus size={16} />
+            </button>
+            <span className="font-mono text-base font-extrabold text-[var(--text-primary)] w-8 text-center tabular-nums">
+              {groupSize}
+            </span>
+            <button
+              type="button"
+              onClick={() => setGroupSize((prev) => Math.min(16, prev + 1))}
+              className="w-9 h-9 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+              aria-label="Increase group size"
+            >
+              <Plus size={16} />
+            </button>
           </div>
         </section>
 
-        {/* Action Button */}
-        <div className="pt-2">
+        {/* Primary CTA */}
+        <div className="pt-2 pb-4">
           <Button
+            type="button"
             variant="primary"
             size="lg"
             onClick={handleCreateRoom}
             loading={loading}
             icon={ArrowRight}
-            className="w-full"
+            className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)]"
           >
-            Create Consensus Room
+            Launch Room & Enter Lobby
           </Button>
         </div>
       </main>

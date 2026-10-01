@@ -6,12 +6,9 @@ import {
   ShieldAlert,
   Trophy,
   CheckCircle2,
-  RefreshCw,
   Clock,
   Sparkles,
   MapPin,
-  DollarSign,
-  ChevronRight,
   MessageSquarePlus,
   Share2,
   X,
@@ -19,6 +16,8 @@ import {
   Check,
   Star,
   ExternalLink,
+  ArrowLeft,
+  RotateCcw,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -49,6 +48,13 @@ export default function SwipeDeck() {
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
   const totalParticipants = location.state?.totalParticipants || 4;
+
+  // Track active PIN
+  useEffect(() => {
+    if (pin) {
+      localStorage.setItem('consensus_active_pin', pin);
+    }
+  }, [pin]);
 
   // Initialize deck options
   const [cards] = useState(() => {
@@ -114,7 +120,7 @@ export default function SwipeDeck() {
     }).catch(() => {});
   };
 
-  // Touch gesture state
+  // Touch & Pointer gesture state
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
 
@@ -159,6 +165,39 @@ export default function SwipeDeck() {
       handleVote(diffX > 0 ? 1 : -1);
     } else if (diffY > 70 && Math.abs(diffY) > Math.abs(diffX)) {
       handleVote(-100); // Down swipe = VETO
+    } else {
+      setDragOffset({ x: 0, y: 0 });
+    }
+  };
+
+  // Pointer events for desktop drag support
+  const isPointerDown = useRef(false);
+  const handlePointerDown = (e) => {
+    isPointerDown.current = true;
+    touchStartX.current = e.clientX;
+    touchStartY.current = e.clientY;
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isPointerDown.current || !touchStartX.current || !touchStartY.current) return;
+    const diffX = e.clientX - touchStartX.current;
+    const diffY = e.clientY - touchStartY.current;
+    setDragOffset({ x: diffX, y: diffY });
+  };
+
+  const handlePointerUp = (e) => {
+    if (!isPointerDown.current) return;
+    isPointerDown.current = false;
+    const diffX = e.clientX - (touchStartX.current || e.clientX);
+    const diffY = e.clientY - (touchStartY.current || e.clientY);
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY)) {
+      handleVote(diffX > 0 ? 1 : -1);
+    } else if (diffY > 70 && Math.abs(diffY) > Math.abs(diffX)) {
+      handleVote(-100);
     } else {
       setDragOffset({ x: 0, y: 0 });
     }
@@ -312,87 +351,112 @@ export default function SwipeDeck() {
       )}`
     : '#';
 
-  return (
-    <div className="min-h-screen flex flex-col justify-between p-4 sm:p-6 select-none">
-      
-      {/* Top Bar with Progress */}
-      <header className="sticky top-0 z-30 liquid-glass border-b border-[var(--border-subtle)] px-4 py-2.5 rounded-2xl max-w-md w-full mx-auto flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate(`/lobby/${pin}`)}
-          className="text-xs font-bold text-[var(--accent-bg)] hover:opacity-80 transition-opacity cursor-pointer"
-        >
-          Room #{pin}
-        </button>
+  const progressPercent = cards.length > 0 ? Math.min(100, (currentIndex / cards.length) * 100) : 0;
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-mono font-bold text-[var(--ios-secondary-label)]">
-            {Math.min(currentIndex + 1, cards.length)} of {cards.length}
-          </span>
-          <ThemeToggle />
+  return (
+    <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
+      {/* PWA Mobile Header */}
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigate(`/lobby/${pin}`)}
+            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            aria-label="Back to Lobby"
+          >
+            <ArrowLeft size={16} />
+            <span>Lobby</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs font-bold text-[var(--accent-bg)]">
+              #{pin}
+            </span>
+            <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
+              ({Math.min(currentIndex + 1, cards.length)}/{cards.length})
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              status={isConnected ? 'success' : 'neutral'}
+              label={isConnected ? 'Live' : 'Local'}
+              size="sm"
+            />
+            <ThemeToggle />
+          </div>
         </div>
+
+        {/* Progress bar */}
+        {!showWinner && currentIndex < cards.length && (
+          <div className="w-full h-1 bg-[var(--bg-inset)] mt-2 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        )}
       </header>
 
       {/* WINNER REVEAL SCREEN */}
       {showWinner ? (
-        <main className="w-full max-w-md mx-auto my-auto py-6 animate-[modalSpring_0.4s_var(--spring-smooth)]">
-          <div className="liquid-glass rounded-3xl p-6 sm:p-8 shadow-[0_24px_64px_rgba(0,0,0,0.22)] border border-[var(--border-glass)] flex flex-col items-center text-center gap-5">
-            
+        <main className="px-4 py-6 flex flex-col items-center gap-5 flex-1 my-auto animate-[modalSpring_0.4s_var(--spring-smooth)]">
+          <div className="w-full rounded-2xl bg-[var(--bg-elevated)] p-6 shadow-xl border border-[var(--border-main)] flex flex-col items-center text-center gap-4">
             {/* Trophy Emblem */}
-            <div className="w-20 h-20 rounded-3xl bg-amber-500/15 text-amber-500 flex items-center justify-center shadow-[0_8px_30px_rgba(255,149,0,0.30)] animate-bounce">
-              <Trophy size={42} />
+            <div className="w-20 h-20 rounded-2xl bg-[rgba(245,158,11,0.15)] text-[var(--status-warning)] flex items-center justify-center shadow-lg animate-bounce">
+              <Trophy size={40} />
             </div>
 
             <div className="flex flex-col gap-1">
-              <StatusBadge status="success" label="Consensus Reached" pulse size="sm" className="mx-auto" />
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--ios-label)] tracking-tight mt-2">
+              <StatusBadge status="success" label="Consensus Achieved" pulse size="sm" className="mx-auto" />
+              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight mt-1">
                 {consensusResult.winner.name}
               </h2>
-              <p className="text-xs sm:text-sm text-[var(--ios-secondary-label)]">
-                Schulze Algorithm & Condorcet Pairwise Winner
+              <p className="text-xs text-[var(--text-secondary)]">
+                Pairwise Condorcet & Schulze Consensus Result
               </p>
             </div>
 
             {/* Metrics Row */}
             <div className="grid grid-cols-3 gap-2 w-full">
               <MilledTray className="flex flex-col items-center justify-center p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--ios-secondary-label)]">Match</span>
-                <span className="text-base font-extrabold text-[var(--semantic-success)] font-mono">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Match</span>
+                <span className="text-sm font-extrabold text-[var(--status-success)] font-mono">
                   {consensusResult.matchScore}%
                 </span>
               </MilledTray>
 
               <MilledTray className="flex flex-col items-center justify-center p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--ios-secondary-label)]">Price</span>
-                <span className="text-base font-bold text-[var(--ios-label)] font-mono">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Price</span>
+                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
                   {'$'.repeat(consensusResult.winner.price_level || 2)}
                 </span>
               </MilledTray>
 
               <MilledTray className="flex flex-col items-center justify-center p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--ios-secondary-label)]">Distance</span>
-                <span className="text-base font-bold text-[var(--ios-label)] font-mono">
+                <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Distance</span>
+                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
                   {consensusResult.winner.distance_km || 1.2} km
                 </span>
               </MilledTray>
             </div>
 
-            {/* Directions & Map Link */}
+            {/* Google Maps Action */}
             <a
               href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 px-4 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/10 dark:hover:bg-white/15 flex items-center justify-center gap-2 text-xs font-bold text-[var(--ios-label)] transition-colors"
+              className="w-full py-3 px-4 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center gap-2 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors"
             >
               <MapPin size={15} className="text-[var(--accent-bg)]" />
               <span>Open in Google Maps</span>
-              <ExternalLink size={13} className="text-[var(--ios-secondary-label)]" />
+              <ExternalLink size={13} className="text-[var(--text-tertiary)]" />
             </a>
 
-            {/* Inline Quick Rating (Zero Modal Friction) */}
+            {/* Inline Quick Star Rating */}
             <div className="w-full flex flex-col items-center gap-2 py-3 border-y border-[var(--border-subtle)]">
-              <span className="text-xs font-semibold text-[var(--ios-secondary-label)]">
-                {userRating > 0 ? `Your Rating: ${userRating} of 5 Stars` : 'Rate This Consensus Decision'}
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                {userRating > 0 ? `Your Rating: ${userRating} / 5 Stars` : 'Rate This Consensus Decision'}
               </span>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -400,23 +464,23 @@ export default function SwipeDeck() {
                     key={star}
                     type="button"
                     onClick={() => handleInlineRate(star)}
-                    className="p-1.5 rounded-xl hover:scale-115 active:scale-95 transition-transform cursor-pointer"
+                    className="p-1 rounded-xl hover:scale-115 active:scale-95 transition-transform cursor-pointer"
                     aria-label={`Rate ${star} stars`}
                   >
                     <Star
-                      size={24}
-                      className={star <= userRating ? 'fill-amber-500 text-amber-500' : 'text-[var(--ios-tertiary-label)]'}
+                      size={22}
+                      className={star <= userRating ? 'fill-[var(--status-warning)] text-[var(--status-warning)]' : 'text-[var(--text-tertiary)]'}
                     />
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Action Buttons */}
             <div className="flex flex-col gap-2.5 w-full pt-1">
               <Button
                 variant="primary"
-                size="lg"
+                size="md"
                 onClick={() => setIsReviewOpen(true)}
                 icon={MessageSquarePlus}
                 className="w-full"
@@ -431,34 +495,34 @@ export default function SwipeDeck() {
                 icon={Clock}
                 className="w-full"
               >
-                View Past Sessions
+                View Decision Ledger
               </Button>
             </div>
           </div>
         </main>
       ) : currentIndex >= cards.length ? (
-        /* WAITING FOR PEER VOTES */
-        <main className="w-full max-w-md mx-auto my-auto py-8 text-center animate-[modalSpring_0.35s_var(--spring-smooth)]">
-          <div className="liquid-glass rounded-3xl p-8 border border-[var(--border-glass)] flex flex-col items-center gap-5">
+        /* WAITING FOR BALLOTS */
+        <main className="px-4 py-8 flex flex-col items-center justify-center text-center flex-1 my-auto animate-[modalSpring_0.35s_var(--spring-smooth)]">
+          <div className="w-full rounded-2xl bg-[var(--bg-elevated)] p-8 border border-[var(--border-main)] flex flex-col items-center gap-5">
             <div className="w-16 h-16 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shadow-[0_8px_24px_var(--accent-glow)] animate-pulse">
               <Sparkles size={32} />
             </div>
 
             <div className="flex flex-col gap-1">
-              <h3 className="text-xl font-bold text-[var(--ios-label)]">
+              <h3 className="text-lg font-bold text-[var(--text-primary)]">
                 Tallying Group Ballots
               </h3>
-              <p className="text-xs text-[var(--ios-secondary-label)]">
+              <p className="text-xs text-[var(--text-secondary)]">
                 Waiting for peers to complete swiping...
               </p>
             </div>
 
             <div className="w-full flex flex-col gap-2">
-              <div className="flex justify-between text-xs font-semibold text-[var(--ios-secondary-label)]">
+              <div className="flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
                 <span>Quorum Status</span>
                 <span className="font-mono tabular-nums">{votesReceived} of {totalParticipants}</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-[var(--bg-inset)] overflow-hidden">
                 <div
                   className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
                   style={{ width: `${(votesReceived / totalParticipants) * 100}%` }}
@@ -478,11 +542,14 @@ export default function SwipeDeck() {
         </main>
       ) : (
         /* ACTIVE SWIPE CARD */
-        <main className="w-full max-w-md mx-auto my-auto py-4">
+        <main className="px-4 py-4 flex flex-col justify-center flex-1">
           <div
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
             style={{
               transform: exitDirection === 'right'
                 ? 'translate3d(120%, 0, 0) rotate(15deg)'
@@ -493,14 +560,15 @@ export default function SwipeDeck() {
                 : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.08}deg)`,
               transition: exitDirection ? 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s' : 'none',
               opacity: exitDirection ? 0 : 1,
+              touchAction: 'none',
             }}
-            className="apple-card p-6 shadow-[0_16px_48px_rgba(0,0,0,0.14)] border border-[var(--border-main)] flex flex-col gap-5 select-none relative overflow-hidden"
+            className="w-full rounded-2xl bg-[var(--bg-elevated)] p-6 shadow-[0_16px_48px_rgba(0,0,0,0.16)] border border-[var(--border-main)] flex flex-col gap-4 select-none relative overflow-hidden cursor-grab active:cursor-grabbing"
           >
-            {/* Dynamic On-Drag Badges */}
+            {/* Dynamic On-Drag Optical Stamps */}
             {dragOffset.x > 30 && (
               <div
                 style={{ opacity: Math.min(1, dragOffset.x / 80) }}
-                className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1 shadow-lg z-20"
+                className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-[var(--status-success)] text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1 shadow-lg z-20"
               >
                 <ThumbsUp size={15} /> Approve (+1)
               </div>
@@ -508,7 +576,7 @@ export default function SwipeDeck() {
             {dragOffset.x < -30 && (
               <div
                 style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 80) }}
-                className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-neutral-600 text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1 shadow-lg z-20"
+                className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-[var(--text-secondary)] text-white font-extrabold text-xs uppercase tracking-wider flex items-center gap-1 shadow-lg z-20"
               >
                 <ThumbsDown size={15} /> Pass (-1)
               </div>
@@ -516,30 +584,30 @@ export default function SwipeDeck() {
             {dragOffset.y > 40 && Math.abs(dragOffset.x) < 50 && (
               <div
                 style={{ opacity: Math.min(1, dragOffset.y / 70) }}
-                className="absolute inset-x-6 top-6 py-2 rounded-xl bg-red-600 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xl z-20"
+                className="absolute inset-x-6 top-6 py-2 rounded-xl bg-[var(--status-danger)] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xl z-20"
               >
-                <ShieldAlert size={16} /> VETO ELIMINATE (-100)
+                <ShieldAlert size={16} /> VETO (-100)
               </div>
             )}
 
-            {/* Card Category & Badge */}
+            {/* Category badge & Price */}
             <div className="flex items-center justify-between">
               <StatusBadge
                 status="neutral"
                 label={activeCard.category || 'Spot'}
                 size="sm"
               />
-              <span className="text-xs font-semibold text-[var(--ios-secondary-label)] font-mono">
+              <span className="text-xs font-semibold text-[var(--text-secondary)] font-mono">
                 {'$'.repeat(activeCard.price_level || 1)}
               </span>
             </div>
 
             {/* Venue Headline */}
-            <div className="flex flex-col gap-1.5 py-4">
-              <h3 className="text-2xl font-extrabold text-[var(--ios-label)] tracking-tight">
+            <div className="flex flex-col gap-1 py-2">
+              <h3 className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight">
                 {activeCard.name}
               </h3>
-              <div className="flex items-center gap-2 text-xs text-[var(--ios-secondary-label)]">
+              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                 <MapPin size={13} className="shrink-0 text-[var(--accent-bg)]" />
                 <span>{activeCard.distance_km || '1.0'} km away</span>
               </div>
@@ -551,7 +619,7 @@ export default function SwipeDeck() {
                 {activeCard.tags.map((tag, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-1 rounded-lg bg-black/[0.04] dark:bg-white/[0.06] text-[11px] font-medium text-[var(--ios-secondary-label)]"
+                    className="px-2.5 py-1 rounded-lg bg-[var(--bg-inset)] text-[11px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)]"
                   >
                     {tag}
                   </span>
@@ -559,45 +627,45 @@ export default function SwipeDeck() {
               </div>
             )}
 
-            {/* Tactile Gestures & Keyboard Indicators */}
-            <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-medium text-[var(--ios-tertiary-label)]">
+            {/* Gesture Helper Hint */}
+            <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-medium text-[var(--text-tertiary)]">
               <span>[←] Pass</span>
-              <span className="text-[var(--semantic-error)] font-bold">[↓] VETO</span>
+              <span className="text-[var(--status-danger)] font-bold">[↓] VETO</span>
               <span>Approve [→]</span>
             </div>
           </div>
         </main>
       )}
 
-      {/* Floating Apple Liquid Glass Control Dock */}
+      {/* Floating Tactical Control Dock */}
       {!showWinner && currentIndex < cards.length && (
-        <div className="fixed bottom-6 inset-x-0 mx-auto w-max z-40 liquid-glass py-2 px-6 rounded-full flex items-center gap-6 shadow-[0_12px_40px_rgba(0,0,0,0.28)] border border-[var(--border-glass)] select-none">
+        <div className="fixed bottom-20 inset-x-0 mx-auto w-max z-30 glass-surface py-2 px-5 rounded-full flex items-center gap-5 shadow-[0_12px_36px_rgba(0,0,0,0.25)] border border-[var(--border-glass)] select-none">
           <button
             type="button"
             onClick={() => handleVote(-1)}
             aria-label="Pass option"
-            className="w-[52px] h-[52px] rounded-full bg-white dark:bg-[#2C2C2E] border border-black/10 dark:border-white/10 text-[var(--semantic-error)] hover:bg-black/5 dark:hover:bg-white/15 flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
+            className="w-12 h-12 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--status-danger)] hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform cursor-pointer"
           >
-            <X size={22} strokeWidth={2.5} />
+            <X size={20} strokeWidth={2.5} />
           </button>
 
           <button
             type="button"
             onClick={() => handleVote(-100)}
             aria-label="VETO option"
-            className="w-[60px] h-[60px] rounded-full bg-[var(--semantic-warning)] text-white shadow-[0_4px_20px_rgba(255,149,0,0.45)] hover:brightness-105 active:scale-90 transition-transform flex flex-col items-center justify-center gap-0.5 cursor-pointer"
+            className="w-14 h-14 rounded-full bg-[var(--status-warning)] text-white shadow-[0_4px_16px_rgba(245,158,11,0.4)] hover:brightness-105 active:scale-90 transition-transform flex flex-col items-center justify-center gap-0.5 cursor-pointer"
           >
-            <Flame size={22} strokeWidth={2.5} />
-            <span className="font-bold text-[9px] uppercase tracking-wider">VETO</span>
+            <Flame size={20} strokeWidth={2.5} />
+            <span className="font-bold text-[8px] uppercase tracking-wider">VETO</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleVote(1)}
             aria-label="Approve option"
-            className="w-[52px] h-[52px] rounded-full bg-white dark:bg-[#2C2C2E] border border-black/10 dark:border-white/10 text-[var(--semantic-success)] hover:bg-black/5 dark:hover:bg-white/15 flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
+            className="w-12 h-12 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--status-success)] hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center shadow-sm active:scale-90 transition-transform cursor-pointer"
           >
-            <Check size={22} strokeWidth={2.5} />
+            <Check size={20} strokeWidth={2.5} />
           </button>
         </div>
       )}

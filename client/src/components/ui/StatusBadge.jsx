@@ -9,19 +9,19 @@ export default function StatusBadge({
   mono = false,
 }) {
   const statusStyles = {
-    success: 'bg-[rgba(52,199,89,0.12)] text-[var(--semantic-success)] border-[rgba(52,199,89,0.25)]',
-    warning: 'bg-[rgba(255,149,0,0.12)] text-[var(--semantic-warning)] border-[rgba(255,149,0,0.25)]',
-    error: 'bg-[rgba(255,59,48,0.12)] text-[var(--semantic-error)] border-[rgba(255,59,48,0.25)]',
-    info: 'bg-[rgba(0,122,255,0.12)] text-[var(--semantic-info)] border-[rgba(0,122,255,0.25)]',
-    neutral: 'bg-black/5 dark:bg-white/10 text-[var(--ios-secondary-label)] border-[var(--border-subtle)]',
-  }[status] || 'bg-black/5 text-[var(--ios-secondary-label)] border-[var(--border-subtle)]';
+    success: 'bg-[rgba(16,185,129,0.12)] text-[var(--status-success)] border-[rgba(16,185,129,0.25)]',
+    warning: 'bg-[rgba(245,158,11,0.12)] text-[var(--status-warning)] border-[rgba(245,158,11,0.25)]',
+    error: 'bg-[rgba(239,68,68,0.12)] text-[var(--status-danger)] border-[rgba(239,68,68,0.25)]',
+    info: 'bg-[rgba(99,102,241,0.12)] text-[var(--status-info)] border-[rgba(99,102,241,0.25)]',
+    neutral: 'bg-black/5 dark:bg-white/10 text-[var(--text-secondary)] border-[var(--border-subtle)]',
+  }[status] || 'bg-black/5 text-[var(--text-secondary)] border-[var(--border-subtle)]';
 
   const dotColors = {
-    success: 'bg-[var(--semantic-success)]',
-    warning: 'bg-[var(--semantic-warning)]',
-    error: 'bg-[var(--semantic-error)]',
-    info: 'bg-[var(--semantic-info)]',
-    neutral: 'bg-[var(--ios-tertiary-label)]',
+    success: 'bg-[var(--status-success)]',
+    warning: 'bg-[var(--status-warning)]',
+    error: 'bg-[var(--status-danger)]',
+    info: 'bg-[var(--status-info)]',
+    neutral: 'bg-[var(--text-tertiary)]',
   }[status] || 'bg-current';
 
   const sizeClasses = {

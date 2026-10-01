@@ -13,22 +13,22 @@ export default function Button({
   ...props
 }) {
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs rounded-lg gap-1.5',
-    md: 'px-4 py-2.5 text-sm rounded-xl gap-2 font-medium',
-    lg: 'px-6 py-3.5 text-base rounded-2xl gap-2.5 font-semibold',
-  }[size] || 'px-4 py-2.5 text-sm rounded-xl gap-2';
+    sm: 'px-3 py-1.5 text-xs rounded-lg gap-1.5 min-h-[36px]',
+    md: 'px-4 py-2.5 text-sm rounded-lg gap-2 font-medium min-h-[42px]',
+    lg: 'px-6 py-3.5 text-base rounded-xl gap-2.5 font-semibold min-h-[48px]',
+  }[size] || 'px-4 py-2.5 text-sm rounded-lg gap-2 min-h-[42px]';
 
   const variantClasses = {
     primary:
       'bg-[var(--accent-bg)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_3px_12px_var(--accent-glow)] hover:shadow-[0_6px_18px_var(--accent-glow-hover)] border border-transparent',
     secondary:
-      'bg-black/5 dark:bg-white/10 text-[var(--ios-label)] hover:bg-black/10 dark:hover:bg-white/15 border border-[var(--border-main)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+      'bg-black/5 dark:bg-white/10 text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15 border border-[var(--border-main)] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
     destructive:
-      'bg-[var(--semantic-error)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_3px_12px_rgba(255,69,58,0.35)] hover:shadow-[0_6px_18px_rgba(255,69,58,0.5)] border border-transparent',
+      'bg-[var(--status-danger)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_3px_12px_rgba(239,68,68,0.35)] hover:shadow-[0_6px_18px_rgba(239,68,68,0.5)] border border-transparent',
     ghost:
-      'bg-transparent text-[var(--ios-secondary-label)] hover:text-[var(--ios-label)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent',
+      'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 border border-transparent',
     glass:
-      'liquid-glass text-[var(--ios-label)] hover:bg-white/90 dark:hover:bg-black/60 shadow-[0_4px_16px_rgba(0,0,0,0.06)]',
+      'glass-surface text-[var(--text-primary)] hover:bg-white/90 dark:hover:bg-black/60 shadow-[0_4px_16px_rgba(0,0,0,0.06)]',
   }[variant] || 'bg-[var(--accent-bg)] text-white';
 
   return (

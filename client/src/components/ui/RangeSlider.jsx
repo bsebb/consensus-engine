@@ -17,8 +17,8 @@ export default function RangeSlider({
     <div className={`w-full flex flex-col gap-1.5 ${className}`}>
       {(label || valueDisplay !== undefined) && (
         <div className="flex items-center justify-between text-xs">
-          {label && <span className="font-medium text-[var(--ios-secondary-label)]">{label}</span>}
-          <span className="font-semibold text-[var(--ios-label)] font-mono tabular-nums">
+          {label && <span className="font-medium text-[var(--text-secondary)]">{label}</span>}
+          <span className="font-semibold text-[var(--text-primary)] font-mono tabular-nums">
             {valueDisplay !== undefined ? valueDisplay : `${value}${unit ? ` ${unit}` : ''}`}
           </span>
         </div>
@@ -31,7 +31,7 @@ export default function RangeSlider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         style={{
-          background: `linear-gradient(to right, var(--accent-bg) ${percentage}%, var(--ios-inset) ${percentage}%)`,
+          background: `linear-gradient(to right, var(--accent-bg) ${percentage}%, var(--bg-inset) ${percentage}%)`,
         }}
         className="calibrated-slider"
       />
