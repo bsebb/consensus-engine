@@ -1,4 +1,4 @@
-import React, { useRef, useState, useLayoutEffect, useCallback } from 'react';
+import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from 'react';
 
 export default function SegmentedControl({
   options = [],
@@ -22,27 +22,37 @@ export default function SegmentedControl({
       return;
     }
 
-    const containerRect = container.getBoundingClientRect();
-    const activeRect = activeButton.getBoundingClientRect();
+    const left = activeButton.offsetLeft;
+    const top = activeButton.offsetTop;
+    const width = activeButton.offsetWidth;
+    const height = activeButton.offsetHeight;
 
-    setThumbMetrics({
-      left: activeRect.left - containerRect.left,
-      top: activeRect.top - containerRect.top,
-      width: activeRect.width,
-      height: activeRect.height,
-      ready: true,
+    setThumbMetrics((prev) => {
+      if (
+        prev.left === left &&
+        prev.top === top &&
+        prev.width === width &&
+        prev.height === height &&
+        prev.ready
+      ) {
+        return prev;
+      }
+      return { left, top, width, height, ready: true };
     });
   }, [value]);
 
   useLayoutEffect(() => {
     updateThumbMetrics();
-    const raf = requestAnimationFrame(() => setIsMounted(true));
-    return () => cancelAnimationFrame(raf);
-  }, [updateThumbMetrics]);
+  }, [updateThumbMetrics, options]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || typeof ResizeObserver === 'undefined') return;
 
     const ro = new ResizeObserver(() => {
       updateThumbMetrics();
@@ -59,7 +69,7 @@ export default function SegmentedControl({
   const sizeClasses = {
     sm: 'p-0.5 text-xs',
     md: 'p-1 text-sm',
-    lg: 'p-1.5 text-base',
+    lg: 'p-1 text-sm sm:p-1.5 sm:text-base',
   }[size] || 'p-1 text-sm';
 
   const btnPadding = {
@@ -77,14 +87,16 @@ export default function SegmentedControl({
       {/* 60fps GPU Sliding Indicator Thumb */}
       <div
         aria-hidden="true"
-        className={`absolute rounded-lg bg-white dark:bg-[#2C2C2E] shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-black/[0.04] dark:border-white/[0.06] pointer-events-none z-10 ${
+        className={`absolute top-0 left-0 m-0 rounded-lg bg-white dark:bg-[#2C2C2E] shadow-[0_1px_4px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.08] pointer-events-none z-10 ${
           !isMounted || !thumbMetrics.ready ? 'opacity-0' : 'opacity-100'
         }`}
         style={{
           transform: `translate3d(${thumbMetrics.left}px, ${thumbMetrics.top}px, 0)`,
           width: thumbMetrics.width > 0 ? `${thumbMetrics.width}px` : undefined,
           height: thumbMetrics.height > 0 ? `${thumbMetrics.height}px` : undefined,
-          transition: isMounted && thumbMetrics.ready ? 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1)' : 'none',
+          transition: isMounted && thumbMetrics.ready
+            ? 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            : 'none',
         }}
       />
 

@@ -54,6 +54,7 @@ export default function HostSettings() {
     { label: 'Bars & Pubs', icon: Beer, emoji: '🍸' },
     { label: 'Cinema', icon: Film, emoji: '🎬' },
     { label: 'Activities', icon: Dumbbell, emoji: '🎳' },
+    { label: 'Desserts', icon: Sparkles, emoji: '🍦' },
   ];
 
   const priceTiers = [
@@ -172,25 +173,28 @@ export default function HostSettings() {
             {/* Category Grid */}
             <section className="flex flex-col gap-2">
               <div className="settings-section-label">Category</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2.5">
                 {categories.map((cat) => {
                   const isSelected = category === cat.label;
-                  const Icon = cat.icon;
                   return (
                     <button
                       key={cat.label}
                       type="button"
                       onClick={() => setCategory(cat.label)}
-                      className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all duration-150 cursor-pointer ${
+                      className={`flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl border text-center transition-all duration-150 cursor-pointer ${
                         isSelected
-                          ? 'bg-[var(--accent-bg)] text-white border-transparent shadow-[0_4px_14px_var(--accent-glow)]'
+                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_2px_12px_var(--accent-glow-subtle)]'
                           : 'apple-card text-[var(--ios-label)] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
                       }`}
                     >
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg ${isSelected ? 'bg-white/20' : 'bg-black/5 dark:bg-white/10'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-1.5 transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--accent-bg)]/15 text-[var(--accent-bg)]'
+                          : 'bg-black/[0.04] dark:bg-white/[0.08]'
+                      }`}>
                         <span>{cat.emoji}</span>
                       </div>
-                      <span className="text-sm font-semibold">{cat.label}</span>
+                      <span className="text-xs font-semibold tracking-tight">{cat.label}</span>
                     </button>
                   );
                 })}
