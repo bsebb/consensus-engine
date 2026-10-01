@@ -7,7 +7,7 @@ import {
   MapPin,
   Utensils,
   Coffee,
-  Beer,
+  Wine,
   Film,
   Dumbbell,
   Users,
@@ -15,6 +15,8 @@ import {
   ArrowRight,
   Minus,
   Plus,
+  Flame,
+  Clock,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -49,19 +51,19 @@ export default function HostSettings() {
   const [loading, setLoading] = useState(false);
 
   const categories = [
-    { label: 'Restaurants', icon: Utensils, emoji: '🍽️' },
-    { label: 'Cafes', icon: Coffee, emoji: '☕' },
-    { label: 'Bars & Pubs', icon: Beer, emoji: '🍸' },
-    { label: 'Cinema', icon: Film, emoji: '🎬' },
-    { label: 'Activities', icon: Dumbbell, emoji: '🎳' },
-    { label: 'Desserts', icon: Sparkles, emoji: '🍦' },
+    { label: 'Restaurants', icon: Utensils, desc: 'Dining & Bistros' },
+    { label: 'Cafes', icon: Coffee, desc: 'Espresso & Pastries' },
+    { label: 'Bars & Pubs', icon: Wine, desc: 'Craft Beer & Cocktails' },
+    { label: 'Cinema', icon: Film, desc: 'Movies & Showings' },
+    { label: 'Activities', icon: Dumbbell, desc: 'Bowling, Arcades & Games' },
+    { label: 'Desserts', icon: Flame, desc: 'Gelato, Bakery & Sweets' },
   ];
 
   const priceTiers = [
-    { value: '$', label: '$ (50-200 MDL)' },
-    { value: '$$', label: '$$ (201-350 MDL)' },
-    { value: '$$$', label: '$$$ (351-500 MDL)' },
-    { value: '$$$$', label: '$$$$ (>500 MDL)' },
+    { value: '$', label: '$ (Budget)' },
+    { value: '$$', label: '$$ (Moderate)' },
+    { value: '$$$', label: '$$$ (Upscale)' },
+    { value: '$$$$', label: '$$$$ (Fine)' },
   ];
 
   const handleCreateRoom = async (e) => {
@@ -88,7 +90,7 @@ export default function HostSettings() {
         generatedPin = realRoom.pin;
         addToast({
           title: 'Room Created Online',
-          message: `PIN #${generatedPin} generated in PostgreSQL`,
+          message: `PIN #${generatedPin} registered with server`,
           type: 'success',
         });
       }
@@ -136,13 +138,13 @@ export default function HostSettings() {
           </button>
           
           <h2 className="text-base font-semibold text-[var(--ios-label)]">
-            Room Configuration
+            Host Configuration Studio
           </h2>
 
           <div className="flex items-center gap-2">
             <StatusBadge
               status={isConnected ? 'success' : 'neutral'}
-              label={isConnected ? 'Server' : 'Offline'}
+              label={isConnected ? 'Server Live' : 'Local Mode'}
               size="sm"
             />
             <ThemeToggle />
@@ -155,11 +157,11 @@ export default function HostSettings() {
         
         {/* Mode Selector */}
         <section className="flex flex-col gap-2">
-          <div className="settings-section-label">Decision Type</div>
+          <div className="settings-section-label">Consensus Domain</div>
           <SegmentedControl
             options={[
-              { value: 'DISCOVERY', label: 'Local Places (Discovery)', icon: Compass },
-              { value: 'CUSTOM', label: 'Custom Topic (Crowdsourced)', icon: Sparkles },
+              { value: 'DISCOVERY', label: 'Local Venues (Foursquare)', icon: Compass },
+              { value: 'CUSTOM', label: 'Custom Topics (Crowdsourced)', icon: Sparkles },
             ]}
             value={mode}
             onChange={setMode}
@@ -172,29 +174,31 @@ export default function HostSettings() {
           <>
             {/* Category Grid */}
             <section className="flex flex-col gap-2">
-              <div className="settings-section-label">Category</div>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="settings-section-label">Venue Category</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {categories.map((cat) => {
                   const isSelected = category === cat.label;
+                  const IconComp = cat.icon;
                   return (
                     <button
                       key={cat.label}
                       type="button"
                       onClick={() => setCategory(cat.label)}
-                      className={`flex flex-col items-center justify-center py-3.5 px-2 rounded-2xl border text-center transition-all duration-150 cursor-pointer ${
+                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all duration-150 cursor-pointer ${
                         isSelected
                           ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_2px_12px_var(--accent-glow-subtle)]'
                           : 'apple-card text-[var(--ios-label)] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-1.5 transition-colors ${
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-2 transition-colors ${
                         isSelected
-                          ? 'bg-[var(--accent-bg)]/15 text-[var(--accent-bg)]'
-                          : 'bg-black/[0.04] dark:bg-white/[0.08]'
+                          ? 'bg-[var(--accent-bg)]/20 text-[var(--accent-bg)]'
+                          : 'bg-black/[0.04] dark:bg-white/[0.08] text-[var(--ios-secondary-label)]'
                       }`}>
-                        <span>{cat.emoji}</span>
+                        <IconComp size={22} />
                       </div>
-                      <span className="text-xs font-semibold tracking-tight">{cat.label}</span>
+                      <span className="text-xs font-bold tracking-tight">{cat.label}</span>
+                      <span className="text-[10px] text-[var(--ios-secondary-label)] mt-0.5">{cat.desc}</span>
                     </button>
                   );
                 })}
@@ -207,7 +211,7 @@ export default function HostSettings() {
               <div className="settings-card-group">
                 <div className="settings-item-row flex-col sm:flex-row sm:items-center gap-2 items-start">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-[var(--ios-label)]">Keyword Filter</span>
+                    <span className="text-sm font-semibold text-[var(--ios-label)]">Keyword Filter</span>
                     <span className="text-xs text-[var(--ios-secondary-label)]">Optional tag (e.g. ramen, terrace, rooftop)</span>
                   </div>
                   <input
@@ -215,13 +219,18 @@ export default function HostSettings() {
                     value={customKeyword}
                     onChange={(e) => setCustomKeyword(e.target.value)}
                     placeholder="Search specifics..."
-                    className="w-full sm:w-48 px-3 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] border border-[var(--border-subtle)] text-sm text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] outline-none focus:border-[var(--accent-bg)]"
+                    className="w-full sm:w-48 px-3.5 py-1.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] border border-[var(--border-subtle)] text-sm text-[var(--ios-label)] placeholder:text-[var(--ios-tertiary-label)] outline-none focus:border-[var(--accent-bg)]"
                   />
                 </div>
 
                 <div className="settings-item-row flex-col gap-3 items-stretch">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-[var(--ios-label)]">Search Distance Radius</span>
+                    <span className="text-[var(--accent-bg)] font-mono font-bold">
+                      {radiusKm} km (~{Math.round(radiusKm * 3.5)} min transit)
+                    </span>
+                  </div>
                   <RangeSlider
-                    label="Search Distance Radius"
                     min={1}
                     max={25}
                     step={1}
@@ -233,15 +242,15 @@ export default function HostSettings() {
 
                 <div className="settings-item-row flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-[var(--ios-label)]">Default Price Tier</span>
-                    <span className="text-xs text-[var(--ios-secondary-label)]">Baseline budget tier filter</span>
+                    <span className="text-sm font-semibold text-[var(--ios-label)]">Default Price Tier</span>
+                    <span className="text-xs text-[var(--ios-secondary-label)]">Baseline budget filter</span>
                   </div>
                   <SegmentedControl
                     options={priceTiers.map((p) => ({ value: p.value, label: p.value }))}
                     value={priceTier}
                     onChange={setPriceTier}
                     size="sm"
-                    className="sm:w-44"
+                    className="sm:w-48"
                   />
                 </div>
               </div>
@@ -298,12 +307,12 @@ export default function HostSettings() {
           <div className="settings-card-group">
             <div className="settings-item-row">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-[rgba(0,122,255,0.1)] text-[var(--accent-bg)]">
+                <div className="p-2.5 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]">
                   <Users size={18} />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-semibold text-[var(--ios-label)]">Expected Group Size</span>
-                  <span className="text-xs text-[var(--ios-secondary-label)]">Room locks and computes consensus automatically</span>
+                  <span className="text-xs text-[var(--ios-secondary-label)]">Room computes consensus once quorum votes</span>
                 </div>
               </div>
 
