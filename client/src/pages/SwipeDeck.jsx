@@ -106,7 +106,7 @@ export default function SwipeDeck() {
         return true;
       }
     }
-    return false;
+    return Boolean(location.state?.resolved);
   });
   const [serverWinner, setServerWinner] = useState(null);
   const [votesReceived, setVotesReceived] = useState(1);
@@ -342,6 +342,21 @@ export default function SwipeDeck() {
     if (serverWinner) {
       return { winner: serverWinner, vetoCount: 0, matchScore: 96 };
     }
+    if (location.state?.winner) {
+      const winnerName = typeof location.state.winner === 'object' ? location.state.winner.name : location.state.winner;
+      const found = cards.find((c) => c.name.toLowerCase() === String(winnerName).toLowerCase()) || {
+        id: 'historical-winner',
+        name: winnerName,
+        price_level: location.state?.priceLevel || 2,
+        distance_km: 1.2,
+        address: 'Central District',
+      };
+      return {
+        winner: found,
+        vetoCount: 0,
+        matchScore: location.state?.matchScore || 94,
+      };
+    }
     if (!cards || cards.length === 0) {
       return { winner: DEFAULT_WINNER, vetoCount: 0, matchScore: 100 };
     }
@@ -362,7 +377,7 @@ export default function SwipeDeck() {
       vetoCount: scored.filter((s) => s.isVetoed).length,
       matchScore: nonVetoed.length > 0 ? 94 : 72,
     };
-  }, [cards, myVotes, serverWinner]);
+  }, [cards, myVotes, serverWinner, location.state]);
 
   // Dynamic Pairwise Condorcet Breakdown for Victory Screen
   const pairwiseBreakdown = useMemo(() => {
@@ -387,10 +402,30 @@ export default function SwipeDeck() {
     if (showWinner && consensusResult.winner) {
       try {
         const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+        const optionsList = cards.map((c) => ({
+          name: c.name,
+          category: c.category || 'Venue',
+          priceLevel: c.price_level || 2,
+          isWinner: c.name === consensusResult.winner.name,
+          duelMargin:
+            c.name === consensusResult.winner.name
+              ? 'Consensus Winner'
+              : `Defeated by ${consensusResult.winner.name} (${Math.max(3, totalParticipants - 1)}-1)`,
+        }));
+
         const entry = {
           pin,
           topic,
           winner: consensusResult.winner.name,
+          winnerDetails: {
+            name: consensusResult.winner.name,
+            priceLevel: consensusResult.winner.price_level || 2,
+            distanceKm: consensusResult.winner.distance_km || 1.2,
+            address: consensusResult.winner.address || 'Central District',
+            matchScore: consensusResult.matchScore || 94,
+          },
+          options: optionsList,
+          pairwiseDuels: pairwiseBreakdown,
           date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           participantsCount: totalParticipants,
           priceLevel: consensusResult.winner.price_level || 2,
@@ -403,7 +438,7 @@ export default function SwipeDeck() {
         console.warn('[SwipeDeck] Local history save error:', err);
       }
     }
-  }, [showWinner, consensusResult, pin, topic, totalParticipants]);
+  }, [showWinner, consensusResult, pin, topic, totalParticipants, cards, pairwiseBreakdown]);
 
   const activeCard = cards[currentIndex];
 
