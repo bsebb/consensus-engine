@@ -13,6 +13,7 @@ import {
   Minus,
   Check,
   User,
+  Download,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -36,6 +37,35 @@ export default function JoinRoom() {
   const navigate = useNavigate();
   const { isConnected, participantId, emit } = useSocket();
   const { addToast } = useToast();
+
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isStandalone] = useState(
+    () => typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)
+  );
+
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      addToast({
+        title: 'App Installed',
+        message: 'Consensus is now available on your home screen.',
+        type: 'success',
+      });
+    }
+  };
 
   const pin = pinDigits.join('');
 
@@ -205,6 +235,17 @@ export default function JoinRoom() {
         </div>
 
         <div className="flex items-center gap-2">
+          {installPrompt && !isStandalone && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--accent-bg)] text-white text-xs font-semibold tracking-tight transition-all duration-150 cursor-pointer shadow-sm hover:opacity-90 active:scale-95"
+              aria-label="Install App"
+            >
+              <Download size={13} />
+              <span>Install</span>
+            </button>
+          )}
           <StatusBadge
             status={isConnected ? 'success' : 'neutral'}
             label={isConnected ? 'Live' : 'Local'}
