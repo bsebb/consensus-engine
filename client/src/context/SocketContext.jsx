@@ -3,7 +3,18 @@ import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_SERVER_URL) {
+    return import.meta.env.VITE_SERVER_URL;
+  }
+  // When running on standard Vite port 5173, backend is on port 3000 of the same host
+  if (typeof window !== 'undefined' && window.location.port === '5173') {
+    return `${window.location.protocol}//${window.location.hostname}:3000`;
+  }
+  return '';
+};
+
+const SERVER_URL = getSocketUrl();
 
 export function SocketProvider({ children }) {
   const socketRef = useRef(null);
@@ -35,14 +46,14 @@ const [participantId] = useState(() => {
     // Initialize socket connection
     const socketInstance = io(SERVER_URL, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      timeout: 5000,
+      timeout: 8000,
       autoConnect: true
     });
 
     socketInstance.on('connect', () => {
-      console.log('[Socket] Connected to server:', socketInstance.id);
+      console.log('[Socket] Connected to server:', socketInstance.id, 'via', SERVER_URL || 'default proxy');
       setIsConnected(true);
       setConnectionError(null);
     });
@@ -53,7 +64,7 @@ const [participantId] = useState(() => {
     });
 
     socketInstance.on('connect_error', (err) => {
-      console.warn('[Socket] Running in offline fallback mode:', err.message);
+      console.warn('[Socket] Connection error notice:', err.message);
       setIsConnected(false);
       setConnectionError(err.message);
     });
@@ -72,12 +83,12 @@ const [participantId] = useState(() => {
   }, []);
 
   const emit = useCallback((event, payload) => {
-    if (socketRef.current && isConnected) {
+    if (socketRef.current) {
       socketRef.current.emit(event, payload);
     } else {
       console.log(`[Socket:Offline Mock] Emitted '${event}':`, payload);
     }
-  }, [isConnected]);
+  }, []);
 
   const on = useCallback((event, callback) => {
     if (socketRef.current) {

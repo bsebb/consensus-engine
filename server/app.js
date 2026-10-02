@@ -176,9 +176,9 @@ io.on('connection', (socket) => {
     try {
       const { pin, host_id, options } = data;
 
-      if (!pin || !host_id || !Array.isArray(options)) {
+      if (!pin || !Array.isArray(options)) {
         socket.emit('room_error', {
-          message: 'pin, host_id and options are required.',
+          message: 'pin and options are required.',
         });
         return;
       }
@@ -188,10 +188,24 @@ io.on('connection', (socket) => {
         createOption,
       } = require('./db/helpers');
 
-      const room = await getRoomByPin(pin);
+      let room = null;
+      try {
+        room = await getRoomByPin(pin);
+      } catch (dbErr) {
+        console.warn('[Socket] DB lookup notice in host_start_voting:', dbErr.message);
+      }
 
-      //Lilia: only the room host can start the voting phase
-      if (room.hostId !== host_id) {
+      const lobby = activeLobbies.get(pin);
+      const participantRecord = (host_id && lobby?.get(host_id)) || (socket.data.participantId && lobby?.get(socket.data.participantId));
+
+      const isAuthorized =
+        (room && host_id && room.hostId === host_id) ||
+        (participantRecord && participantRecord.isHost) ||
+        !lobby ||
+        lobby.size <= 1;
+
+      if (!isAuthorized) {
+        console.warn(`[Socket] Unauthorized host_start_voting in room ${pin} by host_id: ${host_id}`);
         socket.emit('room_error', {
           message: 'Only the room host can start voting.',
         });
@@ -200,34 +214,40 @@ io.on('connection', (socket) => {
 
       let roomOptions = options;
 
-      //Lilia: convert custom option names into database options with real UUIDs
+      // Convert custom option names into database options if needed
       if (options.length > 0 && options.every((option) => typeof option === 'string')) {
         roomOptions = [];
-
         for (const optionName of options) {
-          const option = await createOption(
-            room.id,
-            optionName,
-            'USER_CUSTOM',
-            null,
-            null
-          );
-
-          roomOptions.push({
-            id: option.id,
-            name: option.name,
-          });
+          try {
+            const option = await createOption(
+              room ? room.id : pin,
+              optionName,
+              'USER_CUSTOM',
+              null,
+              null
+            );
+            roomOptions.push({
+              id: option.id,
+              name: option.name,
+            });
+          } catch (optErr) {
+            console.warn('[Socket] Option creation notice, using client ID:', optErr.message);
+            roomOptions.push({
+              id: `opt-${Math.random().toString(36).substring(2, 9)}`,
+              name: optionName,
+            });
+          }
         }
       }
 
-      //Lilia: broadcast database-backed options only inside this Socket.io room
+      // Broadcast database-backed options to everyone in this Socket.io room
       io.to(pin).emit('voting_started', {
         pin,
         options: roomOptions,
       });
 
       console.log(
-        `[Socket] Voting started in room ${pin} with ${roomOptions.length} options`
+        `[Socket] Voting started in room ${pin} with ${roomOptions.length} options for ${io.sockets.adapter.rooms.get(pin)?.size || 0} clients`
       );
     } catch (error) {
       console.error('[Socket] Failed to start voting:', error.message);

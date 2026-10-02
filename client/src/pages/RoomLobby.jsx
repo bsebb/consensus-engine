@@ -128,12 +128,17 @@ export default function RoomLobby() {
   useEffect(() => {
     if (!pin) return;
 
-    // 1. Join room
-    emit('join_lobby', {
-      pin,
-      participant_id: participantId,
-      user_name: currentUserName,
-    });
+    const sendJoin = () => {
+      emit('join_lobby', {
+        pin,
+        participant_id: participantId,
+        user_name: currentUserName,
+      });
+    };
+
+    // 1. Join room immediately and whenever socket connects
+    sendJoin();
+    on('connect', sendJoin);
 
     // 2. Listen for peers joining and initial roster state
     const handleParticipantJoined = (data) => {
@@ -219,18 +224,30 @@ export default function RoomLobby() {
       });
     };
 
+    const handleRoomError = (data) => {
+      console.warn('[RoomLobby] Room notice from server:', data?.message);
+      addToast({
+        title: 'Room Notice',
+        message: data?.message || 'Notice from server',
+        type: 'warning',
+      });
+    };
+
     on('participant_joined', handleParticipantJoined);
     on('lobby_state', handleParticipantJoined);
     on('budget_updated', handleBudgetUpdated);
     on('participant_left', handleParticipantLeft);
     on('voting_started', handleVotingStarted);
+    on('room_error', handleRoomError);
 
     return () => {
+      off('connect', sendJoin);
       off('participant_joined', handleParticipantJoined);
       off('lobby_state', handleParticipantJoined);
       off('budget_updated', handleBudgetUpdated);
       off('participant_left', handleParticipantLeft);
       off('voting_started', handleVotingStarted);
+      off('room_error', handleRoomError);
     };
   }, [pin, participantId, currentUserName, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
 
