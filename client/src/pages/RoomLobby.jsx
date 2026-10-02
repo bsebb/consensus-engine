@@ -74,7 +74,7 @@ export default function RoomLobby() {
 
   const isHost = location.state?.isHost ?? (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true');
   const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
-  const [expectedGroupSize, setExpectedGroupSize] = useState(location.state?.groupSize || 4);
+  const [groupSize, setGroupSize] = useState(location.state?.groupSize || 4);
   const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
   const [topic, setTopic] = useState(location.state?.topic || 'Where should we go?');
 
@@ -147,7 +147,7 @@ export default function RoomLobby() {
     const handleParticipantJoined = (data) => {
       if (data?.mode) setMode(data.mode);
       if (data?.topic) setTopic(data.topic);
-      if (data?.group_size) setExpectedGroupSize(data.group_size);
+      if (data?.group_size) setGroupSize(data.group_size);
       if (Array.isArray(data?.suggestions)) {
         setGroupPool(data.suggestions);
       }
@@ -244,7 +244,7 @@ export default function RoomLobby() {
           mode,
           topic,
           isHost: Boolean(isHost),
-          totalParticipants: expectedGroupSize,
+          totalParticipants: groupSize,
           customCards: options.length > 0 ? options : undefined,
           budgetLimit: lockedConstraint ? budgetLimit : undefined,
         },
@@ -278,7 +278,7 @@ export default function RoomLobby() {
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, isHost, mode, topic, expectedGroupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
+  }, [pin, participantId, currentUserName, isHost, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
 
   const handleCopyPin = async () => {
     try {
