@@ -17,14 +17,17 @@ import {
   XCircle,
   Flame,
   Award,
+  Settings,
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import MilledTray from '../components/ui/MilledTray';
+import SettingsModal from '../components/ui/SettingsModal';
 
 export default function History() {
   const navigate = useNavigate();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [expandedPin, setExpandedPin] = useState(null);
 
@@ -214,7 +217,18 @@ export default function History() {
             Decision Ledger
           </h1>
 
-          <ThemeToggle />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              aria-label="Open Settings"
+              title="Preferences"
+            >
+              <Settings size={16} />
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -478,6 +492,12 @@ export default function History() {
           </div>
         )}
       </main>
+
+      {/* Global Settings Modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }

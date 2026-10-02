@@ -14,6 +14,7 @@ import {
   Check,
   User,
   Download,
+  Settings,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -21,8 +22,10 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import SettingsModal from '../components/ui/SettingsModal';
 
 export default function JoinRoom() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('join'); // 'join' | 'create'
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [name, setName] = useState(() => localStorage.getItem('consensus_user_name') || '');
@@ -252,6 +255,15 @@ export default function JoinRoom() {
             pulse={isConnected}
             size="sm"
           />
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            aria-label="Open Settings"
+            title="Preferences"
+          >
+            <Settings size={17} />
+          </button>
           <ThemeToggle />
         </div>
       </header>
@@ -528,6 +540,12 @@ export default function JoinRoom() {
           Powered by Schulze Graph Consensus
         </p>
       </footer>
+
+      {/* Global Settings Modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }

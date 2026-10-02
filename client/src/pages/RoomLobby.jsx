@@ -16,6 +16,7 @@ import {
   Crown,
   ArrowLeft,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -24,6 +25,7 @@ import Button from '../components/ui/Button';
 import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
 import MilledTray from '../components/ui/MilledTray';
+import SettingsModal from '../components/ui/SettingsModal';
 import restaurantsMock from '../mocks/restaurants.json';
 
 // Client-side Levenshtein distance for fuzzy duplicate detection
@@ -68,6 +70,7 @@ export default function RoomLobby() {
   const navigate = useNavigate();
   const { isConnected, participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isHost = location.state?.isHost ?? false;
   const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
@@ -457,7 +460,18 @@ export default function RoomLobby() {
               Room Lobby
             </h1>
 
-            <ThemeToggle />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                aria-label="Open Settings"
+                title="Preferences"
+              >
+                <Settings size={16} />
+              </button>
+              <ThemeToggle />
+            </div>
           </div>
         </header>
 
@@ -526,6 +540,15 @@ export default function RoomLobby() {
               pulse={isConnected}
               size="sm"
             />
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              aria-label="Open Settings"
+              title="Preferences"
+            >
+              <Settings size={16} />
+            </button>
             <ThemeToggle />
           </div>
         </div>
@@ -841,6 +864,12 @@ export default function RoomLobby() {
           </button>
         </div>
       </main>
+
+      {/* Global Settings Modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }
