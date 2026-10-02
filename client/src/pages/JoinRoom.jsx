@@ -146,6 +146,8 @@ export default function JoinRoom() {
             isHost: false,
             userName: cleanName,
             roomData,
+            mode: roomData?.mode,
+            topic: roomData?.topic,
           },
         });
         setLoading(false);
