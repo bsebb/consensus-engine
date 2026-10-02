@@ -30,11 +30,16 @@ async function createParticipant(roomId, budgetCap) {
         throw new Error("Failed to create participant");
     }
 }
-// Lilia: create a participant with the UUID provided by the Socket.io client
+// Lilia: create or update a participant with the UUID provided by the Socket.io client
 async function createParticipantWithId(roomId, participantId, budgetCap = null) {
     try {
-        const participant = await prisma.participant.create({
-            data: {
+        const participant = await prisma.participant.upsert({
+            where: { id: participantId },
+            update: {
+                roomId,
+                ...(budgetCap !== null ? { budgetCap } : {}),
+            },
+            create: {
                 id: participantId,
                 roomId,
                 budgetCap,
@@ -43,6 +48,9 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null) 
 
         return participant;
     } catch (error) {
+        if (error.code === 'P2002') {
+            return await prisma.participant.findUnique({ where: { id: participantId } }).catch(() => null);
+        }
         console.error(error);
         throw new Error("Failed to create participant with ID");
     }
