@@ -793,22 +793,23 @@ export default function RoomLobby() {
           )}
         </section>
 
-        {/* Symmetrical Candidate Pool Preview (INV-12 Grid Modulo Symmetry) */}
-        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+        {/* Live Synchronized Candidate Pool Deck */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-[var(--accent-bg)]" />
               <span className="text-xs font-bold text-[var(--text-primary)]">
-                Candidate Pool Preview ({filteredCandidates.length})
+                Candidate Pool Deck ({filteredCandidates.length})
               </span>
             </div>
-            <span className="text-[11px] font-mono font-semibold text-[var(--text-tertiary)]">
-              Balanced 2x2 Deck
-            </span>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Synced</span>
+            </div>
           </div>
 
           {/* Confidential Step Zero Pruning Proof */}
-          {lockedConstraint && prunedCount > 0 && (
+          {lockedConstraint && prunedCount > 0 && mode !== 'CUSTOM' && (
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck size={14} className="text-amber-500 shrink-0" />
@@ -818,83 +819,80 @@ export default function RoomLobby() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            {filteredCandidates.slice(0, 4).map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between gap-1.5 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-1">
-                  <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1">
-                    {item.name}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
-                    {'$'.repeat(item.price_level || 2)}
-                  </span>
+          {/* Brainstorm Input inside custom mode deck */}
+          {mode === 'CUSTOM' && (
+            <div className="flex flex-col gap-2 pt-1 pb-1">
+              <form onSubmit={handleAddSuggestion} className="flex gap-2">
+                <input
+                  type="text"
+                  value={suggestion}
+                  onChange={(e) => setSuggestion(e.target.value)}
+                  placeholder="Suggest a choice (e.g. Bowling, Tacos, Arcade)..."
+                  className="flex-1 text-xs rounded-xl px-3 py-2 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                />
+                <Button type="submit" variant="primary" size="sm" icon={Plus}>
+                  Add
+                </Button>
+              </form>
+
+              {duplicateMatch && (
+                <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg animate-[fadeIn_0.2s_ease-out]">
+                  <AlertTriangle size={14} />
+                  <span>Notice: Similar to "{duplicateMatch}"</span>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-                  <span>{item.tags?.[0] || item.category || 'Venue'}</span>
-                  <span>{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Brainstorm Suggestions Input (Custom mode) */}
-        {mode === 'CUSTOM' && (
-          <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                Suggest More Options
-              </span>
-            </div>
-
-            <form onSubmit={handleAddSuggestion} className="flex gap-2">
-              <input
-                type="text"
-                value={suggestion}
-                onChange={(e) => setSuggestion(e.target.value)}
-                placeholder="Suggest an option..."
-                className="flex-1 text-xs rounded-xl px-3 py-2 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
-              />
-              <Button type="submit" variant="primary" size="sm" icon={Plus}>
-                Add
-              </Button>
-            </form>
-
-            {duplicateMatch && (
-              <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg">
-                <AlertTriangle size={14} />
-                <span>Notice: Similar to "{duplicateMatch}"</span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
-              {groupPool.length === 0 ? (
-                <div className="p-4 rounded-xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-subtle)] text-center text-xs text-[var(--text-tertiary)]">
-                  No custom suggestions added yet. Type your favorite place above!
-                </div>
-              ) : (
-                groupPool.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)]"
-                  >
-                    <span>{item}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSuggestion(idx)}
-                      className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-1"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))
               )}
             </div>
-          </section>
-        )}
+          )}
+
+          {/* Live Synchronized 2-Column Grid */}
+          <div className="grid grid-cols-2 gap-2">
+            {filteredCandidates.length === 0 ? (
+              <div className="col-span-2 p-6 rounded-xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-subtle)] text-center flex flex-col items-center gap-2">
+                <Sparkles size={20} className="text-[var(--accent-bg)] animate-pulse" />
+                <span className="text-xs font-semibold text-[var(--text-primary)]">
+                  Candidate deck is waiting for options
+                </span>
+                <span className="text-[11px] text-[var(--text-tertiary)]">
+                  {mode === 'CUSTOM'
+                    ? 'Type your group choices above to populate the live voting cards!'
+                    : 'Adjust spending ceiling to display available venues.'}
+                </span>
+              </div>
+            ) : (
+              filteredCandidates.map((item, idx) => (
+                <div
+                  key={item.id || item.name || idx}
+                  className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between gap-1.5 shadow-sm animate-[modalSpring_0.35s_var(--spring-smooth)] relative group"
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1" title={item.name}>
+                      {item.name}
+                    </span>
+                    {mode === 'CUSTOM' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSuggestion(idx)}
+                        className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-0.5 rounded cursor-pointer shrink-0"
+                        title="Remove option"
+                        aria-label={`Remove ${item.name}`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
+                        {'$'.repeat(item.price_level || 2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+                    <span className="truncate">{item.tags?.[0] || item.category || 'Group Choice'}</span>
+                    <span className="shrink-0">{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
         {/* Action Dock */}
         <div className="pt-2 pb-4 flex flex-col gap-2">
