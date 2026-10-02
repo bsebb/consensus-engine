@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Crown,
   ArrowLeft,
+  LogOut,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -84,9 +85,9 @@ export default function RoomLobby() {
   const [lockedConstraint, setLockedConstraint] = useState(false);
   const [lockingBudget, setLockingBudget] = useState(false);
 
-  // Suggestions state (for custom mode)
+  // Suggestions state (for custom mode - clean start without hardcoded dummy options)
   const [suggestion, setSuggestion] = useState('');
-  const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft', 'Rooftop Lounge']);
+  const [groupPool, setGroupPool] = useState([]);
   const [copied, setCopied] = useState(false);
 
   // Track active PIN in localStorage for mobile navigation dock
@@ -96,6 +97,24 @@ export default function RoomLobby() {
     }
   }, [pin]);
 
+  const handleLeaveLobby = () => {
+    if (pin) {
+      emit('leave_lobby', {
+        pin,
+        participant_id: participantId,
+        user_name: currentUserName,
+      });
+      localStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem('consensus_active_pin');
+      addToast({
+        title: 'Left Lobby',
+        message: `Exited room #${pin}`,
+        type: 'info',
+      });
+    }
+    navigate('/');
+  };
+
   // Check for real-time duplicate warning as user types
   const duplicateMatch = suggestion.trim().length >= 3
     ? groupPool.find((item) => levenshteinDistance(item.toLowerCase(), suggestion.toLowerCase().trim()) <= 2)
@@ -103,6 +122,8 @@ export default function RoomLobby() {
 
   // Handle Socket.io synchronization
   useEffect(() => {
+    if (!pin) return;
+
     // 1. Join room
     emit('join_lobby', {
       pin,
@@ -332,6 +353,67 @@ export default function RoomLobby() {
 
   const sealedCount = participants.filter((p) => p.budgetSealed).length;
 
+  if (!pin) {
+    return (
+      <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
+        <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
+              aria-label="Back to Home"
+            >
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+
+            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+              Room Lobby
+            </h1>
+
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <main className="px-4 py-8 flex flex-col items-center justify-center flex-1 my-auto text-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-tertiary)] shadow-sm">
+            <Users size={32} />
+          </div>
+
+          <div className="flex flex-col gap-1.5 max-w-xs">
+            <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
+              No Active Lobby
+            </h2>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              You are not currently in a consensus room. Enter a 4-digit code to join, or start a new decision.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 w-full max-w-xs pt-2">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/')}
+              icon={ArrowRight}
+              className="w-full"
+            >
+              Enter Room PIN
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/host')}
+              className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold transition-colors cursor-pointer min-h-[40px]"
+            >
+              Host New Decision
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
       {/* PWA Mobile Header */}
@@ -339,12 +421,12 @@ export default function RoomLobby() {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
-            aria-label="Exit Lobby"
+            onClick={handleLeaveLobby}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--status-danger)] hover:bg-rose-500/10 transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg border border-transparent hover:border-rose-500/20 min-h-[36px]"
+            aria-label="Leave Lobby"
           >
-            <ArrowLeft size={16} />
-            <span>Leave</span>
+            <LogOut size={14} />
+            <span>Leave Lobby</span>
           </button>
 
           <div className="flex items-center gap-1.5 font-mono text-sm font-extrabold text-[var(--text-primary)]">
@@ -587,27 +669,33 @@ export default function RoomLobby() {
             )}
 
             <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
-              {groupPool.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)]"
-                >
-                  <span>{item}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSuggestion(idx)}
-                    className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-1"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+              {groupPool.length === 0 ? (
+                <div className="p-4 rounded-xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-subtle)] text-center text-xs text-[var(--text-tertiary)]">
+                  No custom suggestions added yet. Type your favorite place above!
                 </div>
-              ))}
+              ) : (
+                groupPool.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)]"
+                  >
+                    <span>{item}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSuggestion(idx)}
+                      className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-1"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </section>
         )}
 
         {/* Action Dock */}
-        <div className="pt-2 pb-4">
+        <div className="pt-2 pb-4 flex flex-col gap-2">
           {isHost ? (
             <Button
               type="button"
@@ -629,6 +717,16 @@ export default function RoomLobby() {
               </span>
             </div>
           )}
+
+          {/* Secondary Leave Lobby Action */}
+          <button
+            type="button"
+            onClick={handleLeaveLobby}
+            className="w-full text-xs font-semibold text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors text-center py-1.5 flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px]"
+          >
+            <LogOut size={13} />
+            <span>Leave Lobby #{pin}</span>
+          </button>
         </div>
       </main>
     </div>
