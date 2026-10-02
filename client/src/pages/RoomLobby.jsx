@@ -84,6 +84,7 @@ export default function RoomLobby() {
   const [budgetLimit, setBudgetLimit] = useState(250);
   const [lockedConstraint, setLockedConstraint] = useState(false);
   const [lockingBudget, setLockingBudget] = useState(false);
+  const [hasPendingBudgetChange, setHasPendingBudgetChange] = useState(false);
 
   // Suggestions state (for custom mode - clean start without hardcoded dummy options)
   const [suggestion, setSuggestion] = useState('');
@@ -232,6 +233,7 @@ export default function RoomLobby() {
 
     setLockingBudget(false);
     setLockedConstraint(true);
+    setHasPendingBudgetChange(false);
     setParticipants((prev) =>
       prev.map((p) =>
         p.name === currentUserName || p.id === participantId
@@ -243,6 +245,16 @@ export default function RoomLobby() {
       title: 'Budget Sealed in Vault',
       message: `Max ${budgetLimit} MDL applied anonymously`,
       type: 'success',
+    });
+  };
+
+  const handleUnlockBudget = () => {
+    setLockedConstraint(false);
+    setHasPendingBudgetChange(true);
+    addToast({
+      title: 'Budget Unlocked',
+      message: 'Slide to adjust your personal ceiling, then re-seal when ready.',
+      type: 'info',
     });
   };
 
@@ -565,10 +577,12 @@ export default function RoomLobby() {
             max={600}
             step={25}
             value={budgetLimit}
-            onChange={setBudgetLimit}
+            onChange={(val) => {
+              setBudgetLimit(val);
+              if (lockedConstraint) setHasPendingBudgetChange(true);
+            }}
             label="Personal Max per Person"
             valueDisplay={`${budgetLimit} MDL`}
-            className={lockedConstraint ? 'opacity-50 pointer-events-none' : ''}
           />
 
           {!lockedConstraint ? (
@@ -584,9 +598,34 @@ export default function RoomLobby() {
               Seal Budget Anonymously
             </Button>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
-              <Check size={14} className="shrink-0" />
-              <span>Ceiling locked at {budgetLimit} MDL. Filter active in voting engine.</span>
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Check size={14} className="shrink-0" />
+                  <span className="truncate">Ceiling locked at {budgetLimit} MDL</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUnlockBudget}
+                  className="text-[11px] font-bold text-[var(--accent-bg)] hover:underline cursor-pointer ml-2 shrink-0 py-1 px-1.5 rounded hover:bg-[var(--accent-bg)]/10"
+                >
+                  Unlock & Adjust
+                </button>
+              </div>
+
+              {hasPendingBudgetChange && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleLockBudget}
+                  loading={lockingBudget}
+                  icon={ShieldCheck}
+                  className="shadow-sm animate-[fadeIn_0.2s_var(--spring-smooth)]"
+                >
+                  Update Ceiling to {budgetLimit} MDL
+                </Button>
+              )}
             </div>
           )}
         </section>
