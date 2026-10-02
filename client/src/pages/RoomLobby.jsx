@@ -213,10 +213,14 @@ export default function RoomLobby() {
       });
 
       const options = data?.options || [];
+      if (isHost) {
+        sessionStorage.setItem(`consensus_host_${pin}`, 'true');
+      }
       navigate(`/deck/${pin}`, {
         state: {
           mode,
           topic,
+          isHost: Boolean(isHost),
           totalParticipants: groupSize,
           customCards: options.length > 0 ? options : undefined,
           budgetLimit: lockedConstraint ? budgetLimit : undefined,
@@ -445,10 +449,12 @@ export default function RoomLobby() {
       options: cardsToPass,
     });
 
+    sessionStorage.setItem(`consensus_host_${pin}`, 'true');
     navigate(`/deck/${pin}`, {
       state: {
         mode,
         topic,
+        isHost: true,
         totalParticipants: groupSize,
         customCards: cardsToPass,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,

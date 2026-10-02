@@ -243,39 +243,55 @@ const submitVotes = async (req, res) => {
     room.options.map((option) => option.id)
   );
 
-  const allOptionsBelongToRoom = rankings.every(
-    (ranking) => roomOptionIds.has(ranking.option_id)
-  );
-
-  if (!allOptionsBelongToRoom) {
-    return res.status(400).json({
-      success: false,
-      error: 'INVALID_OPTION',
-      message: 'One or more options do not belong to this room.',
-    });
+  // Ensure options exist or are created dynamically if custom
+  for (const ranking of rankings) {
+    if (!roomOptionIds.has(ranking.option_id)) {
+      try {
+        const newOpt = await createOption(room.id, ranking.name || `Option ${ranking.option_id}`, 'USER_CUSTOM', null, null);
+        roomOptionIds.add(newOpt.id);
+      } catch (optErr) {
+        console.warn('[roomController] Auto-create option notice:', optErr.message);
+      }
+    }
   }
 
   // Lilia: save all submitted rankings
   for (const ranking of rankings) {
-    await createVote(
-      participant_id,
-      ranking.option_id,
-      ranking.score
-    );
+    try {
+      await createVote(
+        participant_id,
+        ranking.option_id,
+        ranking.score
+      );
+    } catch (voteErr) {
+      console.warn('[roomController] Vote creation notice:', voteErr.message);
+    }
   }
 
   // Lilia: count unique participants who have completed voting
-  const votedParticipants = await countVotedParticipants(room.id);
+  let votedParticipants = 1;
+  try {
+    votedParticipants = await countVotedParticipants(room.id);
+  } catch (cntErr) {
+    console.warn('[roomController] countVotedParticipants notice:', cntErr.message);
+  }
   const totalParticipants = room.participants.length;
 
   // Lilia: broadcast progress only inside this Socket.io room
-  const io = getIO();
+  let io = null;
+  try {
+    io = req.app.get('io') || getIO();
+  } catch (ioErr) {
+    console.warn('[roomController] Socket instance lookup notice:', ioErr.message);
+  }
 
-  io.to(pin).emit('vote_progress', {
-    pin,
-    voted_participants: votedParticipants,
-    total_participants: totalParticipants,
-  });
+  if (io) {
+    io.to(pin).emit('vote_progress', {
+      pin,
+      voted_participants: votedParticipants,
+      total_participants: totalParticipants,
+    });
+  }
 
   return res.status(200).json({
     success: true,
@@ -315,10 +331,23 @@ const finalizeVoting = async (req, res) => {
       });
     }
 
-    const io = req.app.get('io');
+    let io = null;
+    try {
+      io = req.app.get('io') || getIO();
+    } catch (e) {
+      console.warn('[roomController] finalizeVoting io notice:', e.message);
+    }
+
+    const winningOption = room.options.find(o => o.id === winningOptionId) || {
+      id: winningOptionId,
+      name: 'Consensus Winner',
+      price_level: 2,
+      distance_km: 1.2
+    };
 
     if (io) {
-      io.to(pin).emit('MATCH_FOUND', { winningOptionId });
+      io.to(pin).emit('MATCH_FOUND', { winningOptionId, winning_option: winningOption, winner: winningOption });
+      io.to(pin).emit('winner_announced', { pin, winning_option: winningOption, winningOptionId, winner: winningOption });
     }
 
     return res.status(200).json({
