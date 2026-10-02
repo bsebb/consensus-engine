@@ -96,24 +96,24 @@ const createNewRoom = async (req, res) => {
 };
 
 const getRoom = async (req, res) => {
-  const { pin } = req.params;
-  const room = await getRoomByPin(pin);
+  try {
+    const { pin } = req.params;
+    const room = await getRoomByPin(pin);
 
-  if (!room) {
+    return res.status(200).json({
+      room_id: room.id,
+      pin: room.pin,
+      status: room.status,
+      participants: room.participants,
+      options: room.options,
+    });
+  } catch (error) {
     return res.status(404).json({
       success: false,
       error: 'ROOM_NOT_FOUND',
       message: 'No active room found with this PIN.',
     });
   }
-
-  return res.status(200).json({
-    room_id: room.id,
-    pin: room.pin,
-    status: room.status,
-    participants: room.participants,
-    options: room.options,
-  });
 };
 
 const updateConfig = async (req, res) => {

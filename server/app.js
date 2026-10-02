@@ -62,9 +62,12 @@ const io = new Server(httpServer, {
 });
 //Lilia: make the Socket.io instance available to other server modules
 setIO(io);
+// In-memory active lobby roster tracking: pin -> Map(participant_id -> participantRecord)
+const activeLobbies = new Map();
+
 //Lilia: handle Socket.io room joining for real-time lobby updates
 io.on('connection', (socket) => {
-  //Lilia: handle lobby join - join the socket room and emit participant_joined
+  //Lilia: handle lobby join - join the socket room and emit participant_joined with full roster
   socket.on('join_lobby', async (data) => {
     try {
       const { pin, participant_id, user_name } = data;
@@ -82,16 +85,89 @@ io.on('connection', (socket) => {
 
       socket.join(pin);
 
+      const { getRoomByPin, createParticipantWithId } = require('./db/helpers');
+
+      let room = null;
+      try {
+        room = await getRoomByPin(pin);
+        if (room) {
+          // Ensure participant is persisted in PostgreSQL
+          await createParticipantWithId(room.id, participant_id).catch(() => {});
+        }
+      } catch (dbErr) {
+        console.warn('[Socket] DB lookup notice:', dbErr.message);
+      }
+
+      if (!activeLobbies.has(pin)) {
+        activeLobbies.set(pin, new Map());
+      }
+      const lobby = activeLobbies.get(pin);
+
+      const isHost = (room && room.hostId === participant_id) || lobby.size === 0;
+
+      // Preserve budgetSealed state if reconnecting
+      const existing = lobby.get(participant_id);
+      const participantRecord = {
+        id: participant_id,
+        name: user_name || 'Guest',
+        isHost,
+        budgetSealed: existing ? Boolean(existing.budgetSealed) : false,
+        budgetLimit: existing ? existing.budgetLimit : null,
+      };
+      lobby.set(participant_id, participantRecord);
+
+      const participantsList = Array.from(lobby.values());
+      const hostId = room ? room.hostId : (participantsList.find((p) => p.isHost)?.id || null);
+
+      // Broadcast full hydrated roster to everyone in the room
       io.to(pin).emit('participant_joined', {
         pin,
         participant_id,
         user_name: user_name || 'Guest',
+        host_id: hostId,
+        participants: participantsList,
       });
 
-      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin}`);
+      // Also send directly to the joining socket to guarantee instant state sync
+      socket.emit('lobby_state', {
+        pin,
+        host_id: hostId,
+        participants: participantsList,
+      });
+
+      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin} (Lobby count: ${lobby.size})`);
     } catch (error) {
       console.error('[Socket] join_lobby error:', error.message);
       socket.emit('room_error', { message: 'Failed to join room.' });
+    }
+  });
+
+  // Handle real-time budget constraint updates
+  socket.on('update_budget', (data) => {
+    try {
+      const { pin, participant_id, budgetSealed, budgetLimit } = data;
+      if (!pin || !participant_id) return;
+
+      const lobby = activeLobbies.get(pin);
+      if (lobby && lobby.has(participant_id)) {
+        const p = lobby.get(participant_id);
+        p.budgetSealed = Boolean(budgetSealed);
+        if (budgetLimit !== undefined) p.budgetLimit = budgetLimit;
+
+        const participantsList = Array.from(lobby.values());
+
+        io.to(pin).emit('budget_updated', {
+          pin,
+          participant_id,
+          budgetSealed: p.budgetSealed,
+          budgetLimit: p.budgetLimit,
+          participants: participantsList,
+        });
+
+        console.log(`[Socket] Budget updated for ${p.name} in room ${pin}: sealed=${p.budgetSealed}`);
+      }
+    } catch (err) {
+      console.error('[Socket] update_budget error:', err.message);
     }
   });
 
@@ -168,13 +244,21 @@ io.on('connection', (socket) => {
     if (pin) {
       socket.leave(pin);
       socket.data.pin = null;
-      const totalParticipants = io.sockets.adapter.rooms.get(pin)?.size || 0;
+
+      const lobby = activeLobbies.get(pin);
+      if (lobby) {
+        lobby.delete(participantId);
+        if (lobby.size === 0) activeLobbies.delete(pin);
+      }
+
+      const remainingParticipants = lobby ? Array.from(lobby.values()) : [];
 
       io.to(pin).emit('participant_left', {
         pin,
         participant_id: participantId,
         user_name: userName,
-        total_participants: totalParticipants,
+        total_participants: remainingParticipants.length,
+        participants: remainingParticipants,
       });
 
       console.log(`[Socket] ${userName} left room ${pin} via leave_lobby`);
@@ -191,15 +275,21 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const totalParticipants =
-      io.sockets.adapter.rooms.get(pin)?.size || 0;
+    const lobby = activeLobbies.get(pin);
+    if (lobby) {
+      lobby.delete(participantId);
+      if (lobby.size === 0) activeLobbies.delete(pin);
+    }
 
-    //Lilia: send the updated participant count to everyone still in the room
+    const remainingParticipants = lobby ? Array.from(lobby.values()) : [];
+
+    //Lilia: send the updated participant count and list to everyone still in the room
     io.to(pin).emit('participant_left', {
       pin,
       participant_id: participantId,
       user_name: userName,
-      total_participants: totalParticipants,
+      total_participants: remainingParticipants.length,
+      participants: remainingParticipants,
     });
 
     console.log(`[Socket] ${userName} left room ${pin}`);
