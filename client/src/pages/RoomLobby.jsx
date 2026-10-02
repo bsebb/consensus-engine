@@ -72,11 +72,11 @@ export default function RoomLobby() {
   const { addToast } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const isHost = location.state?.isHost ?? false;
+  const isHost = location.state?.isHost ?? (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true');
   const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
-  const groupSize = location.state?.groupSize || 4;
-  const mode = location.state?.mode || 'DISCOVERY';
-  const topic = location.state?.topic || 'Where should we go?';
+  const [expectedGroupSize, setExpectedGroupSize] = useState(location.state?.groupSize || 4);
+  const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
+  const [topic, setTopic] = useState(location.state?.topic || 'Where should we go?');
 
   // Live participant state with budgetSealed tracking
   const [participants, setParticipants] = useState(() => [
@@ -133,6 +133,9 @@ export default function RoomLobby() {
         pin,
         participant_id: participantId,
         user_name: currentUserName,
+        mode: location.state?.mode,
+        topic: location.state?.topic,
+        group_size: location.state?.groupSize,
       });
     };
 
@@ -142,6 +145,12 @@ export default function RoomLobby() {
 
     // 2. Listen for peers joining and initial roster state
     const handleParticipantJoined = (data) => {
+      if (data?.mode) setMode(data.mode);
+      if (data?.topic) setTopic(data.topic);
+      if (data?.group_size) setExpectedGroupSize(data.group_size);
+      if (Array.isArray(data?.suggestions)) {
+        setGroupPool(data.suggestions);
+      }
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
           data.participants.map((p) => ({
@@ -159,7 +168,21 @@ export default function RoomLobby() {
       }
     };
 
-    // 3. Listen for peer budget constraint updates
+    // 3. Listen for real-time custom option suggestion updates
+    const handleSuggestionsUpdated = (data) => {
+      if (Array.isArray(data?.suggestions)) {
+        setGroupPool(data.suggestions);
+      }
+      if (data?.added && data.user_name && data.user_name !== currentUserName) {
+        addToast({
+          title: 'Option Added',
+          message: `${data.user_name} suggested "${data.added}"`,
+          type: 'info',
+        });
+      }
+    };
+
+    // 4. Listen for peer budget constraint updates
     const handleBudgetUpdated = (data) => {
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
@@ -181,7 +204,7 @@ export default function RoomLobby() {
       }
     };
 
-    // 4. Listen for peers leaving the room
+    // 5. Listen for peers leaving the room
     const handleParticipantLeft = (data) => {
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
@@ -204,7 +227,7 @@ export default function RoomLobby() {
       }
     };
 
-    // 5. Listen for host voting trigger
+    // 6. Listen for host voting trigger
     const handleVotingStarted = (data) => {
       addToast({
         title: 'Voting Started',
@@ -221,7 +244,7 @@ export default function RoomLobby() {
           mode,
           topic,
           isHost: Boolean(isHost),
-          totalParticipants: groupSize,
+          totalParticipants: expectedGroupSize,
           customCards: options.length > 0 ? options : undefined,
           budgetLimit: lockedConstraint ? budgetLimit : undefined,
         },
@@ -239,6 +262,7 @@ export default function RoomLobby() {
 
     on('participant_joined', handleParticipantJoined);
     on('lobby_state', handleParticipantJoined);
+    on('suggestions_updated', handleSuggestionsUpdated);
     on('budget_updated', handleBudgetUpdated);
     on('participant_left', handleParticipantLeft);
     on('voting_started', handleVotingStarted);
@@ -248,12 +272,13 @@ export default function RoomLobby() {
       off('connect', sendJoin);
       off('participant_joined', handleParticipantJoined);
       off('lobby_state', handleParticipantJoined);
+      off('suggestions_updated', handleSuggestionsUpdated);
       off('budget_updated', handleBudgetUpdated);
       off('participant_left', handleParticipantLeft);
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
+  }, [pin, participantId, currentUserName, isHost, mode, topic, expectedGroupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
 
   const handleCopyPin = async () => {
     try {
@@ -369,7 +394,14 @@ export default function RoomLobby() {
       return;
     }
 
-    setGroupPool((prev) => [...prev, clean]);
+    emit('add_suggestion', {
+      pin,
+      suggestion: clean,
+      participant_id: participantId,
+      user_name: currentUserName,
+    });
+
+    setGroupPool((prev) => (prev.some((s) => s.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean]));
     setSuggestion('');
     addToast({
       title: 'Suggestion Added',
@@ -379,6 +411,10 @@ export default function RoomLobby() {
   };
 
   const handleRemoveSuggestion = (idx) => {
+    const target = groupPool[idx];
+    if (target) {
+      emit('remove_suggestion', { pin, suggestion: target });
+    }
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
@@ -423,6 +459,14 @@ export default function RoomLobby() {
 
     if (mode === 'CUSTOM') {
       cardsToPass = deduplicateSuggestions(groupPool);
+      if (cardsToPass.length < 2) {
+        addToast({
+          title: 'Add More Options',
+          message: 'Please add at least 2 custom options so participants have choices to vote on.',
+          type: 'warning',
+        });
+        return;
+      }
     } else {
       let pool = restaurantsMock || [];
       const category = location.state?.category;
@@ -455,7 +499,7 @@ export default function RoomLobby() {
         mode,
         topic,
         isHost: true,
-        totalParticipants: groupSize,
+        totalParticipants: expectedGroupSize,
         customCards: cardsToPass,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
       },

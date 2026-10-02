@@ -256,9 +256,18 @@ io.on('connection', (socket) => {
       }
 
       if (!activeLobbies.has(pin)) {
-        activeLobbies.set(pin, new Map());
+        const map = new Map();
+        map.suggestions = [];
+        map.mode = data?.mode || 'DISCOVERY';
+        map.topic = data?.topic || 'Where should we go?';
+        map.groupSize = data?.group_size || 4;
+        activeLobbies.set(pin, map);
       }
       const lobby = activeLobbies.get(pin);
+      if (data?.mode) lobby.mode = data.mode;
+      if (data?.topic) lobby.topic = data.topic;
+      if (data?.group_size) lobby.groupSize = data.group_size;
+      if (!lobby.suggestions) lobby.suggestions = [];
 
       const isHost = (room && room.hostId === participant_id) || lobby.size === 0;
 
@@ -283,6 +292,10 @@ io.on('connection', (socket) => {
         user_name: user_name || 'Guest',
         host_id: hostId,
         participants: participantsList,
+        mode: lobby.mode || 'DISCOVERY',
+        topic: lobby.topic || 'Where should we go?',
+        group_size: lobby.groupSize || 4,
+        suggestions: lobby.suggestions || [],
       });
 
       // Also send directly to the joining socket to guarantee instant state sync
@@ -290,12 +303,65 @@ io.on('connection', (socket) => {
         pin,
         host_id: hostId,
         participants: participantsList,
+        mode: lobby.mode || 'DISCOVERY',
+        topic: lobby.topic || 'Where should we go?',
+        group_size: lobby.groupSize || 4,
+        suggestions: lobby.suggestions || [],
       });
 
-      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin} (Lobby count: ${lobby.size})`);
+      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin} (Lobby count: ${lobby.size}, mode: ${lobby.mode})`);
     } catch (error) {
       console.error('[Socket] join_lobby error:', error.message);
       socket.emit('room_error', { message: 'Failed to join room.' });
+    }
+  });
+
+  // Handle participants adding suggestions in custom mode
+  socket.on('add_suggestion', (data) => {
+    try {
+      const { pin, suggestion, user_name } = data;
+      if (!pin || !suggestion) return;
+      const clean = String(suggestion).trim();
+      if (!clean) return;
+
+      const lobby = activeLobbies.get(pin);
+      if (lobby) {
+        if (!lobby.suggestions) lobby.suggestions = [];
+        if (!lobby.suggestions.some((s) => s.toLowerCase() === clean.toLowerCase())) {
+          lobby.suggestions.push(clean);
+          console.log(`[Socket] Suggestion "${clean}" added to room ${pin} by ${user_name || 'Participant'}`);
+          io.to(pin).emit('suggestions_updated', {
+            pin,
+            suggestions: lobby.suggestions,
+            added: clean,
+            user_name: user_name || 'Participant',
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[Socket] add_suggestion error:', err.message);
+    }
+  });
+
+  // Handle removing a suggestion
+  socket.on('remove_suggestion', (data) => {
+    try {
+      const { pin, suggestion } = data;
+      if (!pin || !suggestion) return;
+      const clean = String(suggestion).trim();
+
+      const lobby = activeLobbies.get(pin);
+      if (lobby && lobby.suggestions) {
+        lobby.suggestions = lobby.suggestions.filter((s) => s.toLowerCase() !== clean.toLowerCase());
+        console.log(`[Socket] Suggestion "${clean}" removed from room ${pin}`);
+        io.to(pin).emit('suggestions_updated', {
+          pin,
+          suggestions: lobby.suggestions,
+          removed: clean,
+        });
+      }
+    } catch (err) {
+      console.error('[Socket] remove_suggestion error:', err.message);
     }
   });
 
