@@ -132,26 +132,71 @@ export default function RoomLobby() {
       user_name: currentUserName,
     });
 
-    // 2. Listen for peers joining
+    // 2. Listen for peers joining and initial roster state
     const handleParticipantJoined = (data) => {
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
           data.participants.map((p) => ({
             id: p.id,
             name: p.name || p.userName || 'Peer',
-            isHost: p.id === data.host_id,
+            isHost: Boolean(p.isHost),
             budgetSealed: Boolean(p.budgetSealed),
           }))
         );
       } else if (data?.user_name) {
         setParticipants((prev) => {
-          if (prev.some((p) => p.name === data.user_name)) return prev;
-          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: true }];
+          if (prev.some((p) => p.id === data.participant_id || p.name === data.user_name)) return prev;
+          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: false }];
         });
       }
     };
 
-    // 3. Listen for host voting trigger
+    // 3. Listen for peer budget constraint updates
+    const handleBudgetUpdated = (data) => {
+      if (data?.participants && Array.isArray(data.participants)) {
+        setParticipants(
+          data.participants.map((p) => ({
+            id: p.id,
+            name: p.name || p.userName || 'Peer',
+            isHost: Boolean(p.isHost),
+            budgetSealed: Boolean(p.budgetSealed),
+          }))
+        );
+      } else if (data?.participant_id) {
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.id === data.participant_id
+              ? { ...p, budgetSealed: Boolean(data.budgetSealed) }
+              : p
+          )
+        );
+      }
+    };
+
+    // 4. Listen for peers leaving the room
+    const handleParticipantLeft = (data) => {
+      if (data?.participants && Array.isArray(data.participants)) {
+        setParticipants(
+          data.participants.map((p) => ({
+            id: p.id,
+            name: p.name || p.userName || 'Peer',
+            isHost: Boolean(p.isHost),
+            budgetSealed: Boolean(p.budgetSealed),
+          }))
+        );
+      } else if (data?.participant_id) {
+        setParticipants((prev) => prev.filter((p) => p.id !== data.participant_id));
+      }
+      if (data?.user_name) {
+        addToast({
+          title: 'Participant Left',
+          message: `${data.user_name} left the room.`,
+          type: 'info',
+        });
+      }
+    };
+
+    // 5. Listen for host voting trigger
     const handleVotingStarted = (data) => {
       addToast({
         title: 'Voting Started',
@@ -172,10 +217,16 @@ export default function RoomLobby() {
     };
 
     on('participant_joined', handleParticipantJoined);
+    on('lobby_state', handleParticipantJoined);
+    on('budget_updated', handleBudgetUpdated);
+    on('participant_left', handleParticipantLeft);
     on('voting_started', handleVotingStarted);
 
     return () => {
       off('participant_joined', handleParticipantJoined);
+      off('lobby_state', handleParticipantJoined);
+      off('budget_updated', handleBudgetUpdated);
+      off('participant_left', handleParticipantLeft);
       off('voting_started', handleVotingStarted);
     };
   }, [pin, participantId, currentUserName, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
@@ -218,18 +269,27 @@ export default function RoomLobby() {
 
   const handleLockBudget = async () => {
     setLockingBudget(true);
+    const max_price_level = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
     try {
       await fetch(`/api/v1/rooms/${pin}/constraints`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participant_id: participantId,
+          max_price_level,
           max_budget: budgetLimit,
         }),
       });
     } catch (err) {
       console.warn('[RoomLobby] Backend constraint offline, saved locally:', err);
     }
+
+    emit('update_budget', {
+      pin,
+      participant_id: participantId,
+      budgetSealed: true,
+      budgetLimit,
+    });
 
     setLockingBudget(false);
     setLockedConstraint(true);
@@ -251,6 +311,19 @@ export default function RoomLobby() {
   const handleUnlockBudget = () => {
     setLockedConstraint(false);
     setHasPendingBudgetChange(true);
+    emit('update_budget', {
+      pin,
+      participant_id: participantId,
+      budgetSealed: false,
+      budgetLimit,
+    });
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.name === currentUserName || p.id === participantId
+          ? { ...p, budgetSealed: false }
+          : p
+      )
+    );
     addToast({
       title: 'Budget Unlocked',
       message: 'Slide to adjust your personal ceiling, then re-seal when ready.',
