@@ -159,6 +159,28 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle explicit participant leaving lobby
+  socket.on('leave_lobby', (data) => {
+    const pin = data?.pin || socket.data.pin;
+    const participantId = data?.participant_id || socket.data.participantId;
+    const userName = data?.user_name || socket.data.userName || 'Guest';
+
+    if (pin) {
+      socket.leave(pin);
+      socket.data.pin = null;
+      const totalParticipants = io.sockets.adapter.rooms.get(pin)?.size || 0;
+
+      io.to(pin).emit('participant_left', {
+        pin,
+        participant_id: participantId,
+        user_name: userName,
+        total_participants: totalParticipants,
+      });
+
+      console.log(`[Socket] ${userName} left room ${pin} via leave_lobby`);
+    }
+  });
+
   //Lilia: notify the room when a participant disconnects
   socket.on('disconnect', () => {
     const pin = socket.data.pin;
