@@ -30,11 +30,16 @@ async function createParticipant(roomId, budgetCap) {
         throw new Error("Failed to create participant");
     }
 }
-// Lilia: create a participant with the UUID provided by the Socket.io client
+// Lilia: create or update a participant with the UUID provided by the Socket.io client
 async function createParticipantWithId(roomId, participantId, budgetCap = null) {
     try {
-        const participant = await prisma.participant.create({
-            data: {
+        const participant = await prisma.participant.upsert({
+            where: { id: participantId },
+            update: {
+                roomId,
+                ...(budgetCap !== null ? { budgetCap } : {}),
+            },
+            create: {
                 id: participantId,
                 roomId,
                 budgetCap,
@@ -43,6 +48,9 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null) 
 
         return participant;
     } catch (error) {
+        if (error.code === 'P2002') {
+            return await prisma.participant.findUnique({ where: { id: participantId } }).catch(() => null);
+        }
         console.error(error);
         throw new Error("Failed to create participant with ID");
     }
@@ -214,49 +222,79 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
                 where: { id: option_id }
             });
 
-            if (!option || !option.google_place_id) {
-                throw new Error("Option not found or missing google_place_id for analytics.");
+            if (!option) {
+                throw new Error("Option not found for analytics.");
             }
 
-            // -- Recording the individual user feedback
-            const feedback = await tx.feedback.create({
-                data: {
-                    participant_id,
-                    option_id,
-                    satisfaction_score,
-                    price_accuracy_score
+            const placeId = option.googlePlaceId || option.id;
+
+            // Ensure participant exists in database to satisfy foreign key constraint
+            let participant = await tx.participant.findUnique({
+                where: { id: participant_id }
+            });
+            if (!participant) {
+                participant = await tx.participant.create({
+                    data: {
+                        id: participant_id,
+                        roomId: option.roomId
+                    }
+                });
+            }
+
+            // Recording individual user feedback (findFirst + update or create)
+            let feedback = await tx.feedback.findFirst({
+                where: {
+                    participantId: participant_id,
+                    optionId: option_id
                 }
             });
 
+            if (feedback) {
+                feedback = await tx.feedback.update({
+                    where: { id: feedback.id },
+                    data: {
+                        satisfactionScore: satisfaction_score,
+                        priceAccuracyScore: price_accuracy_score
+                    }
+                });
+            } else {
+                feedback = await tx.feedback.create({
+                    data: {
+                        participantId: participant_id,
+                        optionId: option_id,
+                        satisfactionScore: satisfaction_score,
+                        priceAccuracyScore: price_accuracy_score
+                    }
+                });
+            }
+
             const existingAnalytics = await tx.venueAnalytics.findUnique({
-                where: { google_place_id: option.google_place_id }
+                where: { googlePlaceId: placeId }
             });
 
             let analytics;
 
             if (!existingAnalytics) {
-                // Initializing analytics on first review
                 analytics = await tx.venueAnalytics.create({
                     data: {
-                        google_place_id: option.google_place_id,
+                        googlePlaceId: placeId,
                         name: option.name,
-                        satisfaction_avg: satisfaction_score,
-                        true_price_avg: price_accuracy_score,
-                        total_reviews: 1
+                        satisfactionAvg: satisfaction_score,
+                        truePriceAvg: price_accuracy_score,
+                        totalReviews: 1
                     }
                 });
             } else {
-                // -- Recalculating continuous averages based on existing total
-                const newCount = existingAnalytics.total_reviews + 1;
-                const newSatAvg = ((existingAnalytics.satisfaction_avg * existingAnalytics.total_reviews) + satisfaction_score) / newCount;
-                const newPriceAvg = ((existingAnalytics.true_price_avg * existingAnalytics.total_reviews) + price_accuracy_score) / newCount;
+                const newCount = existingAnalytics.totalReviews + 1;
+                const newSatAvg = ((existingAnalytics.satisfactionAvg * existingAnalytics.totalReviews) + satisfaction_score) / newCount;
+                const newPriceAvg = ((existingAnalytics.truePriceAvg * existingAnalytics.totalReviews) + price_accuracy_score) / newCount;
 
                 analytics = await tx.venueAnalytics.update({
                     where: { id: existingAnalytics.id },
                     data: {
-                        satisfaction_avg: newSatAvg,
-                        true_price_avg: newPriceAvg,
-                        total_reviews: newCount
+                        satisfactionAvg: newSatAvg,
+                        truePriceAvg: newPriceAvg,
+                        totalReviews: newCount
                     }
                 });
             }

@@ -49,6 +49,10 @@ export default function SwipeDeck() {
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
   const totalParticipants = location.state?.totalParticipants || 4;
+  const isHost = Boolean(
+    location.state?.isHost ||
+    (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
+  );
 
   // Track active PIN
   useEffect(() => {
@@ -57,8 +61,21 @@ export default function SwipeDeck() {
     }
   }, [pin]);
 
+  // Ensure socket is registered in the room on mount and reconnection
+  useEffect(() => {
+    if (!pin) return;
+    const registerSocket = () => {
+      emit('join_room', { pin, participant_id: participantId, is_host: isHost });
+    };
+    registerSocket();
+    on('connect', registerSocket);
+    return () => {
+      off('connect', registerSocket);
+    };
+  }, [pin, participantId, isHost, emit, on, off]);
+
   // Initialize deck options
-  const [cards] = useState(() => {
+  const [cards, setCards] = useState(() => {
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
       return location.state.customCards.map((item, idx) => {
         if (typeof item === 'string') {
@@ -95,6 +112,20 @@ export default function SwipeDeck() {
     return restaurantsMock || [];
   });
 
+  // Rehydrate cards from REST if loaded directly or after page refresh without location state
+  useEffect(() => {
+    if (!location.state?.customCards && pin) {
+      fetch(`/api/v1/rooms/${pin}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && Array.isArray(data.options) && data.options.length > 0) {
+            setCards(data.options);
+          }
+        })
+        .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));
+    }
+  }, [pin, location.state]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [myVotes, setMyVotes] = useState([]);
   const [exitDirection, setExitDirection] = useState(null);
@@ -106,10 +137,13 @@ export default function SwipeDeck() {
         return true;
       }
     }
-    return false;
+    return Boolean(location.state?.resolved);
   });
   const [serverWinner, setServerWinner] = useState(null);
+  const [serverPairwise, setServerPairwise] = useState(null);
+  const [serverMatchScore, setServerMatchScore] = useState(null);
   const [votesReceived, setVotesReceived] = useState(1);
+  const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [condorcetOpen, setCondorcetOpen] = useState(true);
@@ -138,15 +172,19 @@ export default function SwipeDeck() {
       message: `You rated this decision ${rating} stars`,
       type: 'success',
     });
-    fetch(`/api/v1/rooms/${pin}/feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        participant_id: participantId,
-        satisfaction_rating: rating,
-        accuracy_rating: rating,
-      }),
-    }).catch(() => {});
+    const winnerId = serverWinner?.id || cards[0]?.id;
+    if (winnerId) {
+      fetch(`/api/v1/rooms/${pin}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: participantId,
+          option_id: winnerId,
+          satisfaction_score: rating,
+          price_accuracy_score: rating,
+        }),
+      }).catch((err) => console.warn('[SwipeDeck] Inline rating feedback offline:', err));
+    }
   };
 
   // Hardware Pointer Gesture Engine
@@ -265,29 +303,92 @@ export default function SwipeDeck() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, cards.length, showWinner, handleVote]);
 
-  // Submit votes and resolve consensus
+  const hasSubmittedRef = useRef(false);
+
+  // Global room resolution and real-time progress listeners (active throughout swiping)
   useEffect(() => {
-    if (currentIndex >= cards.length && !showWinner) {
+    if (!pin) return;
+
+    const handleVoteProgress = (data) => {
+      if (data?.voted_participants || data?.votes_received) {
+        setVotesReceived(data.voted_participants || data.votes_received);
+      }
+      if (data?.total_participants && typeof data.total_participants === 'number') {
+        setQuorumTotal(data.total_participants);
+      }
+    };
+
+    const handleWinner = (data) => {
+      console.log('[SwipeDeck] Received winner from server:', data);
+      const won = data?.winning_option || data?.winner;
+      if (won) {
+        setServerWinner(won);
+      } else if (data?.winningOptionId) {
+        const found = cards.find((c) => c.id === data.winningOptionId);
+        setServerWinner(found || { name: 'Consensus Winner', id: data.winningOptionId });
+      }
+      if (data?.matchScore || data?.match_score) {
+        setServerMatchScore(data.matchScore || data.match_score);
+      }
+      if (data?.pairwise && Array.isArray(data.pairwise)) {
+        setServerPairwise(data.pairwise);
+      }
+      setShowWinner(true);
+    };
+
+    const handleStateRestore = (data) => {
+      console.log('[SwipeDeck] State restore received:', data);
+      if (Array.isArray(data?.options) && data.options.length > 0 && !location.state?.customCards) {
+        setCards(data.options);
+      }
+      if (data?.voted_participants || data?.votes_received) {
+        setVotesReceived(data.voted_participants || data.votes_received);
+      }
+      if (data?.total_participants) {
+        setQuorumTotal(data.total_participants);
+      }
+    };
+
+    on('vote_progress', handleVoteProgress);
+    on('vote_status_update', handleVoteProgress);
+    on('MATCH_FOUND', handleWinner);
+    on('winner_announced', handleWinner);
+    on('state_restore', handleStateRestore);
+
+    return () => {
+      off('vote_progress', handleVoteProgress);
+      off('vote_status_update', handleVoteProgress);
+      off('MATCH_FOUND', handleWinner);
+      off('winner_announced', handleWinner);
+      off('state_restore', handleStateRestore);
+    };
+  }, [pin, on, off, cards, location.state]);
+
+  // Submit votes once all cards are swiped
+  useEffect(() => {
+    if (currentIndex >= cards.length && !showWinner && !hasSubmittedRef.current && myVotes.length > 0) {
+      hasSubmittedRef.current = true;
+
+      // 1. Submit ballot via real-time WebSocket
+      emit('submit_ballot', {
+        pin,
+        participant_id: participantId,
+        rankings: myVotes,
+      });
+
       emit('notify_votes_submitted', { pin, participant_id: participantId });
 
-      if (myVotes.length > 0) {
-        fetch(`/api/v1/rooms/${pin}/votes`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            participant_id: participantId,
-            rankings: myVotes,
-          }),
-        })
-          .then(async (res) => {
-            if (res.ok) {
-              fetch(`/api/v1/rooms/${pin}/finalize`, { method: 'POST' })
-                .catch(() => {});
-            }
-          })
-          .catch((err) => console.warn('[SwipeDeck] REST vote submit offline:', err));
-      }
+      // 2. Fallback REST submission
+      fetch(`/api/v1/rooms/${pin}/votes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: participantId,
+          rankings: myVotes,
+        }),
+      }).catch((err) => console.warn('[SwipeDeck] REST vote submit offline:', err));
 
+      // Offline mock fallback if not connected
       if (!isConnected) {
         let step = 1;
         const interval = setInterval(() => {
@@ -297,50 +398,43 @@ export default function SwipeDeck() {
             clearInterval(interval);
             setTimeout(() => setShowWinner(true), 400);
           }
-        }, 300);
+        }, 500);
 
         return () => clearInterval(interval);
       }
-
-      const handleVoteProgress = (data) => {
-        if (data?.voted_participants || data?.votes_received) {
-          setVotesReceived(data.voted_participants || data.votes_received);
-        }
-      };
-
-      const handleWinner = (data) => {
-        if (data?.winning_option) {
-          setServerWinner(data.winning_option);
-        } else if (data?.winningOptionId) {
-          const found = cards.find((c) => c.id === data.winningOptionId);
-          setServerWinner(found || { name: 'Consensus Winner', id: data.winningOptionId });
-        }
-        setShowWinner(true);
-      };
-
-      on('vote_progress', handleVoteProgress);
-      on('vote_status_update', handleVoteProgress);
-      on('MATCH_FOUND', handleWinner);
-      on('winner_announced', handleWinner);
-
-      const fallback = setTimeout(() => {
-        setShowWinner(true);
-      }, 3500);
-
-      return () => {
-        clearTimeout(fallback);
-        off('vote_progress', handleVoteProgress);
-        off('vote_status_update', handleVoteProgress);
-        off('MATCH_FOUND', handleWinner);
-        off('winner_announced', handleWinner);
-      };
     }
-  }, [currentIndex, cards, showWinner, pin, participantId, isConnected, totalParticipants, myVotes, emit, on, off]);
+  }, [currentIndex, cards.length, showWinner, pin, participantId, isConnected, totalParticipants, myVotes, emit]);
+
+  const handleHostForceReveal = () => {
+    emit('host_force_reveal', { pin, host_id: participantId });
+    if (!isConnected) {
+      setShowWinner(true);
+    }
+  };
 
   // Client-side Condorcet Veto elimination calculation
   const consensusResult = useMemo(() => {
     if (serverWinner) {
-      return { winner: serverWinner, vetoCount: 0, matchScore: 96 };
+      return {
+        winner: serverWinner,
+        vetoCount: 0,
+        matchScore: serverMatchScore || 96,
+      };
+    }
+    if (location.state?.winner) {
+      const winnerName = typeof location.state.winner === 'object' ? location.state.winner.name : location.state.winner;
+      const found = cards.find((c) => c.name.toLowerCase() === String(winnerName).toLowerCase()) || {
+        id: 'historical-winner',
+        name: winnerName,
+        price_level: location.state?.priceLevel || 2,
+        distance_km: 1.2,
+        address: 'Central District',
+      };
+      return {
+        winner: found,
+        vetoCount: 0,
+        matchScore: location.state?.matchScore || 94,
+      };
     }
     if (!cards || cards.length === 0) {
       return { winner: DEFAULT_WINNER, vetoCount: 0, matchScore: 100 };
@@ -362,10 +456,13 @@ export default function SwipeDeck() {
       vetoCount: scored.filter((s) => s.isVetoed).length,
       matchScore: nonVetoed.length > 0 ? 94 : 72,
     };
-  }, [cards, myVotes, serverWinner]);
+  }, [cards, myVotes, serverWinner, serverMatchScore, location.state]);
 
   // Dynamic Pairwise Condorcet Breakdown for Victory Screen
   const pairwiseBreakdown = useMemo(() => {
+    if (serverPairwise && Array.isArray(serverPairwise) && serverPairwise.length > 0) {
+      return serverPairwise;
+    }
     const winner = consensusResult.winner;
     if (!winner || !cards || cards.length === 0) return [];
 
@@ -380,17 +477,37 @@ export default function SwipeDeck() {
         margin: `Beat ${rival.name} (${votesFor}-${votesAgainst})`,
       };
     });
-  }, [consensusResult.winner, cards, totalParticipants]);
+  }, [serverPairwise, consensusResult.winner, cards, totalParticipants]);
 
   // Save completed session to local history
   useEffect(() => {
     if (showWinner && consensusResult.winner) {
       try {
         const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+        const optionsList = cards.map((c) => ({
+          name: c.name,
+          category: c.category || 'Venue',
+          priceLevel: c.price_level || 2,
+          isWinner: c.name === consensusResult.winner.name,
+          duelMargin:
+            c.name === consensusResult.winner.name
+              ? 'Consensus Winner'
+              : `Defeated by ${consensusResult.winner.name} (${Math.max(3, totalParticipants - 1)}-1)`,
+        }));
+
         const entry = {
           pin,
           topic,
           winner: consensusResult.winner.name,
+          winnerDetails: {
+            name: consensusResult.winner.name,
+            priceLevel: consensusResult.winner.price_level || 2,
+            distanceKm: consensusResult.winner.distance_km || 1.2,
+            address: consensusResult.winner.address || 'Central District',
+            matchScore: consensusResult.matchScore || 94,
+          },
+          options: optionsList,
+          pairwiseDuels: pairwiseBreakdown,
           date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           participantsCount: totalParticipants,
           priceLevel: consensusResult.winner.price_level || 2,
@@ -403,7 +520,7 @@ export default function SwipeDeck() {
         console.warn('[SwipeDeck] Local history save error:', err);
       }
     }
-  }, [showWinner, consensusResult, pin, topic, totalParticipants]);
+  }, [showWinner, consensusResult, pin, topic, totalParticipants, cards, pairwiseBreakdown]);
 
   const activeCard = cards[currentIndex];
 
@@ -670,24 +787,35 @@ export default function SwipeDeck() {
             <div className="w-full flex flex-col gap-2">
               <div className="flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
                 <span>Quorum Status</span>
-                <span className="font-mono tabular-nums">{votesReceived} of {totalParticipants}</span>
+                <span className="font-mono tabular-nums">{votesReceived} of {quorumTotal}</span>
               </div>
               <div className="w-full h-2 rounded-full bg-[var(--bg-inset)] overflow-hidden">
                 <div
                   className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
-                  style={{ width: `${(votesReceived / totalParticipants) * 100}%` }}
+                  style={{ width: `${Math.min(100, (votesReceived / Math.max(1, quorumTotal)) * 100)}%` }}
                 />
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowWinner(true)}
-              className="text-xs mt-2"
-            >
-              Skip Waiting (Reveal Now)
-            </Button>
+            {isHost ? (
+              <div className="flex flex-col items-center gap-1.5 w-full mt-2">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={handleHostForceReveal}
+                  className="w-full text-xs shadow-md"
+                >
+                  Skip Waiting (Reveal for Everyone)
+                </Button>
+                <span className="text-[10px] text-[var(--text-tertiary)]">
+                  Host control: tallies submitted votes and reveals for all devices
+                </span>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] mt-2 w-full text-center">
+                Waiting for everyone to submit. Results will reveal together!
+              </div>
+            )}
           </div>
         </main>
       ) : (
@@ -761,7 +889,7 @@ export default function SwipeDeck() {
 
               <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--status-warning)]">
                 <Star size={12} className="fill-[var(--status-warning)]" />
-                <span>{cardRating} ★</span>
+                <span>{cardRating}</span>
                 <span className="text-[10px] text-[var(--text-tertiary)] font-normal">({cardReviewCount}+ reviews)</span>
               </div>
             </div>

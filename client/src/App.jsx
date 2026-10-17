@@ -26,6 +26,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<JoinRoom />} />
                 <Route path="/host" element={<HostSettings />} />
+                <Route path="/lobby" element={<RoomLobby />} />
                 <Route path="/lobby/:pin" element={<RoomLobby />} />
                 <Route path="/deck/:pin" element={<SwipeDeck />} />
                 <Route path="/history" element={<History />} />

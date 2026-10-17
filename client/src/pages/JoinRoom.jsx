@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Sparkles,
   ArrowRight,
@@ -13,6 +13,7 @@ import {
   Minus,
   Check,
   User,
+  Settings,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -20,8 +21,10 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import SettingsModal from '../components/ui/SettingsModal';
 
 export default function JoinRoom() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('join'); // 'join' | 'create'
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [name, setName] = useState(() => localStorage.getItem('consensus_user_name') || '');
@@ -34,8 +37,17 @@ export default function JoinRoom() {
 
   const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isConnected, participantId, emit } = useSocket();
   const { addToast } = useToast();
+
+  // Auto-populate PIN from URL query param if present (e.g. ?pin=1234)
+  useEffect(() => {
+    const pinParam = searchParams.get('pin');
+    if (pinParam && /^\d{4}$/.test(pinParam)) {
+      setPinDigits(pinParam.split(''));
+    }
+  }, [searchParams]);
 
   const pin = pinDigits.join('');
 
@@ -113,38 +125,38 @@ export default function JoinRoom() {
             isHost: false,
             userName: cleanName,
             roomData,
+            mode: roomData?.mode,
+            topic: roomData?.topic,
           },
+        });
+        setLoading(false);
+        return;
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        addToast({
+          title: 'Room Not Found',
+          message: errData.error || `Room #${cleanPin} does not exist or has expired.`,
+          type: 'error',
         });
         setLoading(false);
         return;
       }
     } catch (err) {
-      console.warn('[JoinRoom] Server offline, using simulated guest session:', err);
+      console.warn('[JoinRoom] Server connection error joining room:', err);
+      addToast({
+        title: 'Connection Error',
+        message: 'Could not connect to the room server. Please check your internet connection.',
+        type: 'error',
+      });
+      setLoading(false);
+      return;
     }
-
-    addToast({
-      title: 'Joined Local Room',
-      message: `Simulating room #${cleanPin} (Server offline)`,
-      type: 'info',
-    });
-
-    navigate(`/lobby/${cleanPin}`, {
-      state: {
-        isHost: false,
-        userName: cleanName,
-      },
-    });
-
-    setLoading(false);
   };
 
   const handleQuickHost = async () => {
     const cleanName = name.trim() || 'Host';
     localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
-
-    let generatedPin = '4921';
-    let realRoom = null;
 
     try {
       const response = await fetch('/api/v1/rooms', {
@@ -159,27 +171,42 @@ export default function JoinRoom() {
       });
 
       if (response.ok) {
-        realRoom = await response.json();
-        generatedPin = realRoom.pin;
+        const realRoom = await response.json();
+        const generatedPin = realRoom.pin;
+        sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
+
+        setLoading(false);
+        navigate(`/lobby/${generatedPin}`, {
+          state: {
+            mode: 'DISCOVERY',
+            isHost: true,
+            userName: cleanName,
+            groupSize,
+            category: quickCategory,
+            topic: `Where should we go for ${quickCategory}?`,
+            radiusKm: 5,
+            roomData: realRoom,
+          },
+        });
+        return;
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        addToast({
+          title: 'Creation Failed',
+          message: errData.error || 'Failed to initialize session room.',
+          type: 'error',
+        });
       }
     } catch (err) {
-      console.warn('[JoinRoom] Server offline, using local host PIN:', err);
+      console.warn('[JoinRoom] Server connection error creating room:', err);
+      addToast({
+        title: 'Connection Error',
+        message: 'Could not reach server to create room. Please verify your connection.',
+        type: 'error',
+      });
     }
 
     setLoading(false);
-
-    navigate(`/lobby/${generatedPin}`, {
-      state: {
-        mode: 'DISCOVERY',
-        isHost: true,
-        userName: cleanName,
-        groupSize,
-        category: quickCategory,
-        topic: `Where should we go for ${quickCategory}?`,
-        radiusKm: 5,
-        roomData: realRoom,
-      },
-    });
   };
 
   const quickCategories = [
@@ -211,6 +238,15 @@ export default function JoinRoom() {
             pulse={isConnected}
             size="sm"
           />
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            aria-label="Open Settings"
+            title="Preferences"
+          >
+            <Settings size={17} />
+          </button>
           <ThemeToggle />
         </div>
       </header>
@@ -416,20 +452,22 @@ export default function JoinRoom() {
                     type="button"
                     onClick={() => setGroupSize(Math.max(2, groupSize - 1))}
                     disabled={groupSize <= 2}
-                    className="w-7 h-7 rounded-md bg-white dark:bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                    aria-label="Decrease group size"
+                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-md bg-white dark:bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
                   >
-                    <Minus size={13} />
+                    <Minus size={15} />
                   </button>
-                  <span className="font-mono text-sm font-bold w-4 text-center text-[var(--text-primary)]">
+                  <span className="font-mono text-sm font-bold w-6 text-center text-[var(--text-primary)]">
                     {groupSize}
                   </span>
                   <button
                     type="button"
                     onClick={() => setGroupSize(Math.min(12, groupSize + 1))}
                     disabled={groupSize >= 12}
-                    className="w-7 h-7 rounded-md bg-white dark:bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] disabled:opacity-30 cursor-pointer"
+                    aria-label="Increase group size"
+                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-md bg-white dark:bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
                   >
-                    <Plus size={13} />
+                    <Plus size={15} />
                   </button>
                 </div>
               </div>
@@ -487,6 +525,12 @@ export default function JoinRoom() {
           Powered by Schulze Graph Consensus
         </p>
       </footer>
+
+      {/* Global Settings Modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }

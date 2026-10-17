@@ -15,6 +15,8 @@ import {
   AlertTriangle,
   Crown,
   ArrowLeft,
+  LogOut,
+  Settings,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -22,7 +24,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
-import MilledTray from '../components/ui/MilledTray';
+import SettingsModal from '../components/ui/SettingsModal';
 import restaurantsMock from '../mocks/restaurants.json';
 
 // Client-side Levenshtein distance for fuzzy duplicate detection
@@ -67,12 +69,13 @@ export default function RoomLobby() {
   const navigate = useNavigate();
   const { isConnected, participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const isHost = location.state?.isHost ?? false;
+  const isHost = location.state?.isHost ?? (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true');
   const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
-  const groupSize = location.state?.groupSize || 4;
-  const mode = location.state?.mode || 'DISCOVERY';
-  const topic = location.state?.topic || 'Where should we go?';
+  const [groupSize, setGroupSize] = useState(location.state?.groupSize || 4);
+  const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
+  const [topic, setTopic] = useState(location.state?.topic || 'Where should we go?');
 
   // Live participant state with budgetSealed tracking
   const [participants, setParticipants] = useState(() => [
@@ -83,10 +86,11 @@ export default function RoomLobby() {
   const [budgetLimit, setBudgetLimit] = useState(250);
   const [lockedConstraint, setLockedConstraint] = useState(false);
   const [lockingBudget, setLockingBudget] = useState(false);
+  const [hasPendingBudgetChange, setHasPendingBudgetChange] = useState(false);
 
-  // Suggestions state (for custom mode)
+  // Suggestions state (for custom mode - clean start without hardcoded dummy options)
   const [suggestion, setSuggestion] = useState('');
-  const [groupPool, setGroupPool] = useState(['Art Cafe', 'Old Town Pub', 'Burger Craft', 'Rooftop Lounge']);
+  const [groupPool, setGroupPool] = useState([]);
   const [copied, setCopied] = useState(false);
 
   // Track active PIN in localStorage for mobile navigation dock
@@ -96,6 +100,24 @@ export default function RoomLobby() {
     }
   }, [pin]);
 
+  const handleLeaveLobby = () => {
+    if (pin) {
+      emit('leave_lobby', {
+        pin,
+        participant_id: participantId,
+        user_name: currentUserName,
+      });
+      localStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem('consensus_active_pin');
+      addToast({
+        title: 'Left Lobby',
+        message: `Exited room #${pin}`,
+        type: 'info',
+      });
+    }
+    navigate('/');
+  };
+
   // Check for real-time duplicate warning as user types
   const duplicateMatch = suggestion.trim().length >= 3
     ? groupPool.find((item) => levenshteinDistance(item.toLowerCase(), suggestion.toLowerCase().trim()) <= 2)
@@ -103,33 +125,108 @@ export default function RoomLobby() {
 
   // Handle Socket.io synchronization
   useEffect(() => {
-    // 1. Join room
-    emit('join_lobby', {
-      pin,
-      participant_id: participantId,
-      user_name: currentUserName,
-    });
+    if (!pin) return;
 
-    // 2. Listen for peers joining
+    const sendJoin = () => {
+      emit('join_lobby', {
+        pin,
+        participant_id: participantId,
+        user_name: currentUserName,
+        mode: location.state?.mode,
+        topic: location.state?.topic,
+        group_size: location.state?.groupSize,
+      });
+    };
+
+    // 1. Join room immediately and whenever socket connects
+    sendJoin();
+    on('connect', sendJoin);
+
+    // 2. Listen for peers joining and initial roster state
     const handleParticipantJoined = (data) => {
+      if (data?.mode) setMode(data.mode);
+      if (data?.topic) setTopic(data.topic);
+      if (data?.group_size) setGroupSize(data.group_size);
+      if (Array.isArray(data?.suggestions)) {
+        setGroupPool(data.suggestions);
+      }
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
           data.participants.map((p) => ({
             id: p.id,
             name: p.name || p.userName || 'Peer',
-            isHost: p.id === data.host_id,
+            isHost: Boolean(p.isHost),
             budgetSealed: Boolean(p.budgetSealed),
           }))
         );
       } else if (data?.user_name) {
         setParticipants((prev) => {
-          if (prev.some((p) => p.name === data.user_name)) return prev;
-          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: true }];
+          if (prev.some((p) => p.id === data.participant_id || p.name === data.user_name)) return prev;
+          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: false }];
         });
       }
     };
 
-    // 3. Listen for host voting trigger
+    // 3. Listen for real-time custom option suggestion updates
+    const handleSuggestionsUpdated = (data) => {
+      if (Array.isArray(data?.suggestions)) {
+        setGroupPool(data.suggestions);
+      }
+      if (data?.added && data.user_name && data.user_name !== currentUserName) {
+        addToast({
+          title: 'Option Added',
+          message: `${data.user_name} suggested "${data.added}"`,
+          type: 'info',
+        });
+      }
+    };
+
+    // 4. Listen for peer budget constraint updates
+    const handleBudgetUpdated = (data) => {
+      if (data?.participants && Array.isArray(data.participants)) {
+        setParticipants(
+          data.participants.map((p) => ({
+            id: p.id,
+            name: p.name || p.userName || 'Peer',
+            isHost: Boolean(p.isHost),
+            budgetSealed: Boolean(p.budgetSealed),
+          }))
+        );
+      } else if (data?.participant_id) {
+        setParticipants((prev) =>
+          prev.map((p) =>
+            p.id === data.participant_id
+              ? { ...p, budgetSealed: Boolean(data.budgetSealed) }
+              : p
+          )
+        );
+      }
+    };
+
+    // 5. Listen for peers leaving the room
+    const handleParticipantLeft = (data) => {
+      if (data?.participants && Array.isArray(data.participants)) {
+        setParticipants(
+          data.participants.map((p) => ({
+            id: p.id,
+            name: p.name || p.userName || 'Peer',
+            isHost: Boolean(p.isHost),
+            budgetSealed: Boolean(p.budgetSealed),
+          }))
+        );
+      } else if (data?.participant_id) {
+        setParticipants((prev) => prev.filter((p) => p.id !== data.participant_id));
+      }
+      if (data?.user_name) {
+        addToast({
+          title: 'Participant Left',
+          message: `${data.user_name} left the room.`,
+          type: 'info',
+        });
+      }
+    };
+
+    // 6. Listen for host voting trigger
     const handleVotingStarted = (data) => {
       addToast({
         title: 'Voting Started',
@@ -138,10 +235,16 @@ export default function RoomLobby() {
       });
 
       const options = data?.options || [];
+      const sessionTopic = data?.topic || topic;
+      const sessionMode = data?.mode || mode;
+      if (isHost) {
+        sessionStorage.setItem(`consensus_host_${pin}`, 'true');
+      }
       navigate(`/deck/${pin}`, {
         state: {
-          mode,
-          topic,
+          mode: sessionMode,
+          topic: sessionTopic,
+          isHost: Boolean(isHost),
           totalParticipants: groupSize,
           customCards: options.length > 0 ? options : undefined,
           budgetLimit: lockedConstraint ? budgetLimit : undefined,
@@ -149,14 +252,34 @@ export default function RoomLobby() {
       });
     };
 
+    const handleRoomError = (data) => {
+      console.warn('[RoomLobby] Room notice from server:', data?.message);
+      addToast({
+        title: 'Room Notice',
+        message: data?.message || 'Notice from server',
+        type: 'warning',
+      });
+    };
+
     on('participant_joined', handleParticipantJoined);
+    on('lobby_state', handleParticipantJoined);
+    on('suggestions_updated', handleSuggestionsUpdated);
+    on('budget_updated', handleBudgetUpdated);
+    on('participant_left', handleParticipantLeft);
     on('voting_started', handleVotingStarted);
+    on('room_error', handleRoomError);
 
     return () => {
+      off('connect', sendJoin);
       off('participant_joined', handleParticipantJoined);
+      off('lobby_state', handleParticipantJoined);
+      off('suggestions_updated', handleSuggestionsUpdated);
+      off('budget_updated', handleBudgetUpdated);
+      off('participant_left', handleParticipantLeft);
       off('voting_started', handleVotingStarted);
+      off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
+  }, [pin, participantId, currentUserName, isHost, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
 
   const handleCopyPin = async () => {
     try {
@@ -196,12 +319,14 @@ export default function RoomLobby() {
 
   const handleLockBudget = async () => {
     setLockingBudget(true);
+    const max_price_level = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
     try {
       await fetch(`/api/v1/rooms/${pin}/constraints`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participant_id: participantId,
+          max_price_level,
           max_budget: budgetLimit,
         }),
       });
@@ -209,8 +334,16 @@ export default function RoomLobby() {
       console.warn('[RoomLobby] Backend constraint offline, saved locally:', err);
     }
 
+    emit('update_budget', {
+      pin,
+      participant_id: participantId,
+      budgetSealed: true,
+      budgetLimit,
+    });
+
     setLockingBudget(false);
     setLockedConstraint(true);
+    setHasPendingBudgetChange(false);
     setParticipants((prev) =>
       prev.map((p) =>
         p.name === currentUserName || p.id === participantId
@@ -222,6 +355,29 @@ export default function RoomLobby() {
       title: 'Budget Sealed in Vault',
       message: `Max ${budgetLimit} MDL applied anonymously`,
       type: 'success',
+    });
+  };
+
+  const handleUnlockBudget = () => {
+    setLockedConstraint(false);
+    setHasPendingBudgetChange(true);
+    emit('update_budget', {
+      pin,
+      participant_id: participantId,
+      budgetSealed: false,
+      budgetLimit,
+    });
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.name === currentUserName || p.id === participantId
+          ? { ...p, budgetSealed: false }
+          : p
+      )
+    );
+    addToast({
+      title: 'Budget Unlocked',
+      message: 'Slide to adjust your personal ceiling, then re-seal when ready.',
+      type: 'info',
     });
   };
 
@@ -239,7 +395,14 @@ export default function RoomLobby() {
       return;
     }
 
-    setGroupPool((prev) => [...prev, clean]);
+    emit('add_suggestion', {
+      pin,
+      suggestion: clean,
+      participant_id: participantId,
+      user_name: currentUserName,
+    });
+
+    setGroupPool((prev) => (prev.some((s) => s.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean]));
     setSuggestion('');
     addToast({
       title: 'Suggestion Added',
@@ -249,6 +412,10 @@ export default function RoomLobby() {
   };
 
   const handleRemoveSuggestion = (idx) => {
+    const target = groupPool[idx];
+    if (target) {
+      emit('remove_suggestion', { pin, suggestion: target });
+    }
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
@@ -293,6 +460,14 @@ export default function RoomLobby() {
 
     if (mode === 'CUSTOM') {
       cardsToPass = deduplicateSuggestions(groupPool);
+      if (cardsToPass.length < 2) {
+        addToast({
+          title: 'Add More Options',
+          message: 'Please add at least 2 custom options so participants have choices to vote on.',
+          type: 'warning',
+        });
+        return;
+      }
     } else {
       let pool = restaurantsMock || [];
       const category = location.state?.category;
@@ -319,10 +494,12 @@ export default function RoomLobby() {
       options: cardsToPass,
     });
 
+    sessionStorage.setItem(`consensus_host_${pin}`, 'true');
     navigate(`/deck/${pin}`, {
       state: {
         mode,
         topic,
+        isHost: true,
         totalParticipants: groupSize,
         customCards: cardsToPass,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
@@ -332,6 +509,78 @@ export default function RoomLobby() {
 
   const sealedCount = participants.filter((p) => p.budgetSealed).length;
 
+  if (!pin) {
+    return (
+      <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
+        <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
+              aria-label="Back to Home"
+            >
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+
+            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+              Room Lobby
+            </h1>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                aria-label="Open Settings"
+                title="Preferences"
+              >
+                <Settings size={16} />
+              </button>
+              <ThemeToggle />
+            </div>
+          </div>
+        </header>
+
+        <main className="px-4 py-8 flex flex-col items-center justify-center flex-1 my-auto text-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-tertiary)] shadow-sm">
+            <Users size={32} />
+          </div>
+
+          <div className="flex flex-col gap-1.5 max-w-xs">
+            <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
+              No Active Lobby
+            </h2>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              You are not currently in a consensus room. Enter a 4-digit code to join, or start a new decision.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2.5 w-full max-w-xs pt-2">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => navigate('/')}
+              icon={ArrowRight}
+              className="w-full"
+            >
+              Enter Room PIN
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/host')}
+              className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold transition-colors cursor-pointer min-h-[40px]"
+            >
+              Host New Decision
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
       {/* PWA Mobile Header */}
@@ -339,12 +588,12 @@ export default function RoomLobby() {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
-            aria-label="Exit Lobby"
+            onClick={handleLeaveLobby}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--status-danger)] hover:bg-rose-500/10 transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg border border-transparent hover:border-rose-500/20 min-h-[36px]"
+            aria-label="Leave Lobby"
           >
-            <ArrowLeft size={16} />
-            <span>Leave</span>
+            <LogOut size={14} />
+            <span>Leave Lobby</span>
           </button>
 
           <div className="flex items-center gap-1.5 font-mono text-sm font-extrabold text-[var(--text-primary)]">
@@ -359,6 +608,15 @@ export default function RoomLobby() {
               pulse={isConnected}
               size="sm"
             />
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              aria-label="Open Settings"
+              title="Preferences"
+            >
+              <Settings size={16} />
+            </button>
             <ThemeToggle />
           </div>
         </div>
@@ -483,10 +741,12 @@ export default function RoomLobby() {
             max={600}
             step={25}
             value={budgetLimit}
-            onChange={setBudgetLimit}
+            onChange={(val) => {
+              setBudgetLimit(val);
+              if (lockedConstraint) setHasPendingBudgetChange(true);
+            }}
             label="Personal Max per Person"
             valueDisplay={`${budgetLimit} MDL`}
-            className={lockedConstraint ? 'opacity-50 pointer-events-none' : ''}
           />
 
           {!lockedConstraint ? (
@@ -502,29 +762,55 @@ export default function RoomLobby() {
               Seal Budget Anonymously
             </Button>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
-              <Check size={14} className="shrink-0" />
-              <span>Ceiling locked at {budgetLimit} MDL. Filter active in voting engine.</span>
+            <div className="flex flex-col gap-2 pt-1">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Check size={14} className="shrink-0" />
+                  <span className="truncate">Ceiling locked at {budgetLimit} MDL</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUnlockBudget}
+                  className="text-[11px] font-bold text-[var(--accent-bg)] hover:underline cursor-pointer ml-2 shrink-0 py-1 px-1.5 rounded hover:bg-[var(--accent-bg)]/10"
+                >
+                  Unlock & Adjust
+                </button>
+              </div>
+
+              {hasPendingBudgetChange && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleLockBudget}
+                  loading={lockingBudget}
+                  icon={ShieldCheck}
+                  className="shadow-sm animate-[fadeIn_0.2s_var(--spring-smooth)]"
+                >
+                  Update Ceiling to {budgetLimit} MDL
+                </Button>
+              )}
             </div>
           )}
         </section>
 
-        {/* Symmetrical Candidate Pool Preview (INV-12 Grid Modulo Symmetry) */}
-        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
+        {/* Live Synchronized Candidate Pool Deck */}
+        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-[var(--accent-bg)]" />
               <span className="text-xs font-bold text-[var(--text-primary)]">
-                Candidate Pool Preview ({filteredCandidates.length})
+                Candidate Pool Deck ({filteredCandidates.length})
               </span>
             </div>
-            <span className="text-[11px] font-mono font-semibold text-[var(--text-tertiary)]">
-              Balanced 2x2 Deck
-            </span>
+            <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Synced</span>
+            </div>
           </div>
 
           {/* Confidential Step Zero Pruning Proof */}
-          {lockedConstraint && prunedCount > 0 && (
+          {lockedConstraint && prunedCount > 0 && mode !== 'CUSTOM' && (
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck size={14} className="text-amber-500 shrink-0" />
@@ -534,80 +820,85 @@ export default function RoomLobby() {
             </div>
           )}
 
+          {/* Brainstorm Input inside custom mode deck */}
+          {mode === 'CUSTOM' && (
+            <div className="flex flex-col gap-2 pt-1 pb-1">
+              <form onSubmit={handleAddSuggestion} className="flex gap-2">
+                <input
+                  type="text"
+                  id="lobby-custom-suggestion"
+                  aria-label="New candidate suggestion"
+                  value={suggestion}
+                  onChange={(e) => setSuggestion(e.target.value)}
+                  placeholder="Suggest a choice (e.g. Bowling, Tacos, Arcade)..."
+                  className="flex-1 text-xs rounded-xl px-3 py-2 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+                />
+                <Button type="submit" variant="primary" size="sm" icon={Plus}>
+                  Add
+                </Button>
+              </form>
+
+              {duplicateMatch && (
+                <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg animate-[fadeIn_0.2s_ease-out]">
+                  <AlertTriangle size={14} />
+                  <span>Notice: Similar to "{duplicateMatch}"</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Live Synchronized 2-Column Grid */}
           <div className="grid grid-cols-2 gap-2">
-            {filteredCandidates.slice(0, 4).map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between gap-1.5 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-1">
-                  <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1">
-                    {item.name}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
-                    {'$'.repeat(item.price_level || 2)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-                  <span>{item.tags?.[0] || item.category || 'Venue'}</span>
-                  <span>{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
-                </div>
+            {filteredCandidates.length === 0 ? (
+              <div className="col-span-2 p-6 rounded-xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-subtle)] text-center flex flex-col items-center gap-2">
+                <Sparkles size={20} className="text-[var(--accent-bg)] animate-pulse" />
+                <span className="text-xs font-semibold text-[var(--text-primary)]">
+                  Candidate deck is waiting for options
+                </span>
+                <span className="text-[11px] text-[var(--text-tertiary)]">
+                  {mode === 'CUSTOM'
+                    ? 'Type your group choices above to populate the live voting cards!'
+                    : 'Adjust spending ceiling to display available venues.'}
+                </span>
               </div>
-            ))}
+            ) : (
+              filteredCandidates.map((item, idx) => (
+                <div
+                  key={item.id || item.name || idx}
+                  className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between gap-1.5 shadow-sm animate-[modalSpring_0.35s_var(--spring-smooth)] relative group"
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1 break-words" title={item.name}>
+                      {item.name}
+                    </span>
+                    {mode === 'CUSTOM' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSuggestion(idx)}
+                        className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors p-2 rounded-lg cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center -mr-1 -mt-1"
+                        title="Remove option"
+                        aria-label={`Remove ${item.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
+                        {'$'.repeat(item.price_level || 2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
+                    <span className="truncate">{item.tags?.[0] || item.category || 'Group Choice'}</span>
+                    <span className="shrink-0">{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
-        {/* Brainstorm Suggestions Input (Custom mode) */}
-        {mode === 'CUSTOM' && (
-          <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                Suggest More Options
-              </span>
-            </div>
-
-            <form onSubmit={handleAddSuggestion} className="flex gap-2">
-              <input
-                type="text"
-                value={suggestion}
-                onChange={(e) => setSuggestion(e.target.value)}
-                placeholder="Suggest an option..."
-                className="flex-1 text-xs rounded-xl px-3 py-2 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
-              />
-              <Button type="submit" variant="primary" size="sm" icon={Plus}>
-                Add
-              </Button>
-            </form>
-
-            {duplicateMatch && (
-              <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg">
-                <AlertTriangle size={14} />
-                <span>Notice: Similar to "{duplicateMatch}"</span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
-              {groupPool.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)]"
-                >
-                  <span>{item}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSuggestion(idx)}
-                    className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-1"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* Action Dock */}
-        <div className="pt-2 pb-4">
+        <div className="pt-2 pb-4 flex flex-col gap-2">
           {isHost ? (
             <Button
               type="button"
@@ -629,8 +920,24 @@ export default function RoomLobby() {
               </span>
             </div>
           )}
+
+          {/* Secondary Leave Lobby Action */}
+          <button
+            type="button"
+            onClick={handleLeaveLobby}
+            className="w-full text-xs font-semibold text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors text-center py-1.5 flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px]"
+          >
+            <LogOut size={13} />
+            <span>Leave Lobby #{pin}</span>
+          </button>
         </div>
       </main>
+
+      {/* Global Settings Modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </div>
   );
 }

@@ -57,9 +57,9 @@ export default function MobileNav({ isHidden = false }) {
     {
       id: 'lobby',
       label: 'Lobby',
-      path: currentPin ? `/lobby/${currentPin}` : '/host',
+      path: currentPin ? `/lobby/${currentPin}` : '/lobby',
       icon: Users,
-      isActive: location.pathname.startsWith('/lobby/'),
+      isActive: location.pathname.startsWith('/lobby'),
       badge: currentPin ? currentPin : null,
     },
     {
