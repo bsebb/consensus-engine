@@ -13,7 +13,7 @@
     
     --text-primary: #121316;
     --text-secondary: #5f636e;
-    --text-tertiary: #8b909a;
+    --text-tertiary: #525866;
     
     --accent-bg: #6366f1;
     --accent-bg-hover: color-mix(in srgb, var(--accent-bg) 88%, black);
@@ -22,8 +22,8 @@
     --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 22%, transparent);
     --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 12%, transparent);
 
-    --status-success: #10b981;
-    --status-warning: #f59e0b;
+    --status-success: #047857;
+    --status-warning: #b45309;
     --status-danger: #ef4444;
     --status-info: #6366f1;
 
@@ -175,6 +175,12 @@
 .dark .bg-mesh-light { opacity: 0; }
 .dark .bg-mesh-dark { opacity: 1; }
 
+/* Instant Theme Switching Transition Lock */
+.theme-switching,
+.theme-switching * {
+  transition: none !important;
+}
+
 /* Mobile PWA Shell */
 .pwa-shell {
   width: 100%;
@@ -184,7 +190,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  background-color: var(--bg-surface);
+  background-color: transparent;
 }
 
 @media (min-width: 641px) {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
@@ -17,30 +17,31 @@ const getSocketUrl = () => {
 const SERVER_URL = getSocketUrl();
 
 export function SocketProvider({ children }) {
+  const [socket, setSocket] = useState(null);
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
 
   // Persistent participant ID per browser session
-const [participantId] = useState(() => {
-  let id = sessionStorage.getItem('consensus_participant_id');
+  const [participantId] = useState(() => {
+    let id = sessionStorage.getItem('consensus_participant_id');
 
-  // UUID compliant generator with fallback for non-secure HTTP contexts on LAN/mobile
-  if (!id) {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      id = crypto.randomUUID();
-    } else {
-      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        const v = c === 'x' ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      });
+    // UUID compliant generator with fallback for non-secure HTTP contexts on LAN/mobile
+    if (!id) {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        id = crypto.randomUUID();
+      } else {
+        id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          const v = c === 'x' ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+      }
+      sessionStorage.setItem('consensus_participant_id', id);
     }
-    sessionStorage.setItem('consensus_participant_id', id);
-  }
 
-  return id;
-});
+    return id;
+  });
 
   useEffect(() => {
     // Initialize socket connection
@@ -49,7 +50,7 @@ const [participantId] = useState(() => {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 8000,
-      autoConnect: true
+      autoConnect: true,
     });
 
     socketInstance.on('connect', () => {
@@ -70,15 +71,12 @@ const [participantId] = useState(() => {
     });
 
     socketRef.current = socketInstance;
+    setSocket(socketInstance);
 
     return () => {
-      if (socketInstance.connected) {
-        socketInstance.disconnect();
-      } else {
-        socketInstance.once('connect', () => {
-          socketInstance.disconnect();
-        });
-      }
+      socketInstance.disconnect();
+      socketRef.current = null;
+      setSocket(null);
     };
   }, []);
 
@@ -102,18 +100,18 @@ const [participantId] = useState(() => {
     }
   }, []);
 
+  const contextValue = useMemo(() => ({
+    socket,
+    isConnected,
+    connectionError,
+    participantId,
+    emit,
+    on,
+    off,
+  }), [socket, isConnected, connectionError, participantId, emit, on, off]);
+
   return (
-    <SocketContext.Provider
-      value={{
-        socket: socketRef.current,
-        isConnected,
-        connectionError,
-        participantId,
-        emit,
-        on,
-        off
-      }}
-    >
+    <SocketContext.Provider value={contextValue}>
       {children}
     </SocketContext.Provider>
   );

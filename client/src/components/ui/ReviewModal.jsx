@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, X, CheckCircle2, MessageSquare, ThumbsUp } from 'lucide-react';
+import { Star, X, CheckCircle2, ThumbsUp } from 'lucide-react';
 import Button from './Button';
 
 export default function ReviewModal({
@@ -51,7 +51,7 @@ export default function ReviewModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackPayload),
       });
-    } catch (err) {
+    } catch {
       console.info('[ReviewModal] Backend feedback endpoint offline, saved locally');
     }
 

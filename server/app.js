@@ -68,6 +68,8 @@ app.set('io', io);
 const activeLobbies = new Map();
 // In-memory active voting session tracking: pin -> session
 const activeVotingSessions = new Map();
+// Disconnect grace tracking: `${pin}:${participant_id}` -> timeoutId
+const disconnectTimeouts = new Map();
 
 const { calculateSchulzeWinner } = require('./src/utils/schulze');
 
@@ -203,7 +205,15 @@ io.on('connection', (socket) => {
       socket.data.pin = pin;
       if (participant_id) socket.data.participantId = participant_id;
 
+      // Cancel any disconnect eviction timer if reconnecting to deck
+      const dcKey = `${pin}:${participant_id}`;
+      if (disconnectTimeouts.has(dcKey)) {
+        clearTimeout(disconnectTimeouts.get(dcKey));
+        disconnectTimeouts.delete(dcKey);
+      }
+
       const session = activeVotingSessions.get(pin);
+      const lobby = activeLobbies.get(pin);
       if (session && session.isResolved && session.winner) {
         socket.emit('winner_announced', {
           pin,
@@ -215,6 +225,17 @@ io.on('connection', (socket) => {
           total_voted: session.submissions.size,
         });
       } else if (session) {
+        // Emit full state restore so direct navigation or reloads have the exact room options
+        socket.emit('state_restore', {
+          pin,
+          phase: 'VOTING',
+          options: session.options || [],
+          topic: session.topic || lobby?.topic || 'Where should we go?',
+          mode: session.mode || lobby?.mode || 'DISCOVERY',
+          voted_participants: session.submissions.size,
+          total_participants: Math.max(session.expectedCount, session.submissions.size),
+          already_voted: Boolean(participant_id && session.submissions.has(participant_id)),
+        });
         socket.emit('vote_progress', {
           pin,
           voted_participants: session.submissions.size,
@@ -224,7 +245,8 @@ io.on('connection', (socket) => {
       }
     }
   });
-  //Lilia: handle lobby join - join the socket room and emit participant_joined with full roster
+
+  // Handle lobby join - join the socket room and emit participant_joined with full roster
   socket.on('join_lobby', async (data) => {
     try {
       const { pin, participant_id, user_name } = data;
@@ -241,6 +263,13 @@ io.on('connection', (socket) => {
       socket.data.userName = user_name || 'Guest';
 
       socket.join(pin);
+
+      // Cancel any pending disconnect eviction timer for this participant
+      const dcKey = `${pin}:${participant_id}`;
+      if (disconnectTimeouts.has(dcKey)) {
+        clearTimeout(disconnectTimeouts.get(dcKey));
+        disconnectTimeouts.delete(dcKey);
+      }
 
       const { getRoomByPin, createParticipantWithId } = require('./db/helpers');
 
@@ -277,6 +306,7 @@ io.on('connection', (socket) => {
         id: participant_id,
         name: user_name || 'Guest',
         isHost,
+        isOnline: true,
         budgetSealed: existing ? Boolean(existing.budgetSealed) : false,
         budgetLimit: existing ? existing.budgetLimit : null,
       };
@@ -309,7 +339,33 @@ io.on('connection', (socket) => {
         suggestions: lobby.suggestions || [],
       });
 
-      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin} (Lobby count: ${lobby.size}, mode: ${lobby.mode})`);
+      // REJOIN RECOVERY: If a voting session is already in progress, immediately dispatch voting_started
+      // so a user who refreshed, switched tabs, or reconnected is NEVER left out!
+      const activeSession = activeVotingSessions.get(pin);
+      if (activeSession) {
+        if (activeSession.isResolved && activeSession.winner) {
+          socket.emit('winner_announced', {
+            pin,
+            winning_option: activeSession.winner,
+            winningOptionId: activeSession.winner.id,
+            winner: activeSession.winner,
+            matchScore: activeSession.matchScore || 96,
+            pairwise: activeSession.pairwise || [],
+            total_voted: activeSession.submissions.size,
+          });
+        } else {
+          // Dynamically adjust expected quorum so rejoining user is included
+          activeSession.expectedCount = Math.max(activeSession.expectedCount, lobby.size);
+          socket.emit('voting_started', {
+            pin,
+            options: activeSession.options,
+            topic: activeSession.topic || lobby.topic || 'Where should we go?',
+            mode: activeSession.mode || lobby.mode || 'DISCOVERY',
+          });
+        }
+      }
+
+      console.log(`[Socket] ${user_name || 'Guest'} joined room ${pin} (Lobby count: ${lobby.size}, mode: ${lobby.mode}, activeSession: ${Boolean(activeSession)})`);
     } catch (error) {
       console.error('[Socket] join_lobby error:', error.message);
       socket.emit('room_error', { message: 'Failed to join room.' });
@@ -457,6 +513,8 @@ io.on('connection', (socket) => {
         };
       });
 
+      const topic = lobby?.topic || data?.topic || 'Where should we go?';
+      const mode = lobby?.mode || data?.mode || 'DISCOVERY';
       const expectedCount = lobby && lobby.size > 0 ? lobby.size : 1;
       activeVotingSessions.set(pin, {
         pin,
@@ -466,12 +524,16 @@ io.on('connection', (socket) => {
         isResolved: false,
         winner: null,
         hostId: host_id,
+        topic,
+        mode,
       });
 
       // Broadcast database-backed options to everyone in this Socket.io room
       io.to(pin).emit('voting_started', {
         pin,
         options: roomOptions,
+        topic,
+        mode,
       });
 
       console.log(
@@ -534,15 +596,28 @@ io.on('connection', (socket) => {
   });
 
   // Host override: force resolution early with current submissions
-  socket.on('host_force_reveal', async (data) => {
+  const handleForceResolve = async (data) => {
     try {
       const pin = data?.pin || socket.data.pin;
-      console.log(`[Socket] Host force reveal in room ${pin}`);
+      const callerId = data?.host_id || socket.data.participantId;
+      const lobby = activeLobbies.get(pin);
+      const session = activeVotingSessions.get(pin);
+      const hostId = session?.hostId || (lobby && Array.from(lobby.values()).find(p => p.isHost)?.id);
+
+      if (hostId && callerId && hostId !== callerId) {
+        console.warn(`[Socket] Unauthorized force reveal attempt by ${callerId} in room ${pin}`);
+        socket.emit('room_error', { message: 'Only the room host can force consensus reveal.' });
+        return;
+      }
+      console.log(`[Socket] Authorized Host force reveal in room ${pin}`);
       await resolveAndBroadcastWinner(pin);
     } catch (err) {
       console.error('[Socket] host_force_reveal error:', err.message);
     }
-  });
+  };
+
+  socket.on('host_force_reveal', handleForceResolve);
+  socket.on('host_force_resolve', handleForceResolve);
 
   // Handle explicit participant leaving lobby
   socket.on('leave_lobby', (data) => {
@@ -554,10 +629,16 @@ io.on('connection', (socket) => {
       socket.leave(pin);
       socket.data.pin = null;
 
+      const dcKey = `${pin}:${participantId}`;
+      if (disconnectTimeouts.has(dcKey)) {
+        clearTimeout(disconnectTimeouts.get(dcKey));
+        disconnectTimeouts.delete(dcKey);
+      }
+
       const lobby = activeLobbies.get(pin);
       if (lobby) {
         lobby.delete(participantId);
-        if (lobby.size === 0) activeLobbies.delete(pin);
+        if (lobby.size === 0 && !activeVotingSessions.has(pin)) activeLobbies.delete(pin);
       }
 
       const remainingParticipants = lobby ? Array.from(lobby.values()) : [];
@@ -574,34 +655,51 @@ io.on('connection', (socket) => {
     }
   });
 
-  //Lilia: notify the room when a participant disconnects
+  // Notify the room when a participant disconnects with a 30s grace period for rejoining
   socket.on('disconnect', () => {
     const pin = socket.data.pin;
     const participantId = socket.data.participantId;
     const userName = socket.data.userName || 'Guest';
 
-    if (!pin) {
+    if (!pin || !participantId) {
       return;
     }
 
     const lobby = activeLobbies.get(pin);
     if (lobby) {
-      lobby.delete(participantId);
-      if (lobby.size === 0) activeLobbies.delete(pin);
+      const p = lobby.get(participantId);
+      if (p) p.isOnline = false;
+
+      const dcKey = `${pin}:${participantId}`;
+      if (disconnectTimeouts.has(dcKey)) {
+        clearTimeout(disconnectTimeouts.get(dcKey));
+      }
+
+      const timeout = setTimeout(() => {
+        disconnectTimeouts.delete(dcKey);
+        const currentLobby = activeLobbies.get(pin);
+        if (currentLobby) {
+          currentLobby.delete(participantId);
+          if (currentLobby.size === 0 && !activeVotingSessions.has(pin)) {
+            activeLobbies.delete(pin);
+          }
+
+          const remainingParticipants = Array.from(currentLobby.values());
+          io.to(pin).emit('participant_left', {
+            pin,
+            participant_id: participantId,
+            user_name: userName,
+            total_participants: remainingParticipants.length,
+            participants: remainingParticipants,
+          });
+          console.log(`[Socket] Evicted participant ${userName} from room ${pin} after grace timeout`);
+        }
+      }, 30000);
+
+      disconnectTimeouts.set(dcKey, timeout);
     }
 
-    const remainingParticipants = lobby ? Array.from(lobby.values()) : [];
-
-    //Lilia: send the updated participant count and list to everyone still in the room
-    io.to(pin).emit('participant_left', {
-      pin,
-      participant_id: participantId,
-      user_name: userName,
-      total_participants: remainingParticipants.length,
-      participants: remainingParticipants,
-    });
-
-    console.log(`[Socket] ${userName} left room ${pin}`);
+    console.log(`[Socket] ${userName} temporarily disconnected from room ${pin} (30s grace active)`);
   });
 });
 

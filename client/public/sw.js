@@ -1,4 +1,4 @@
-const CACHE_NAME = 'consensus-pwa-v1';
+const CACHE_NAME = 'consensus-pwa-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -43,6 +43,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Cache-First for immutable hashed assets (/assets/.*) for snappiest load times
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        }).catch(() => Response.error());
+      })
+    );
+    return;
+  }
+
   // Network-First with Cache Fallback for smooth offline & fresh updates
   event.respondWith(
     fetch(event.request)
@@ -59,8 +78,10 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(event.request);
         if (cached) return cached;
         if (event.request.mode === 'navigate') {
-          return caches.match('/');
+          const fallback = await caches.match('/');
+          if (fallback) return fallback;
         }
+        return Response.error();
       })
   );
 });

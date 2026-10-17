@@ -15,7 +15,6 @@ import {
   Plus,
   Flame,
   ChevronDown,
-  Check,
   Settings,
   Layers,
 } from 'lucide-react';
@@ -126,8 +125,7 @@ export default function HostSettings() {
     if (e) e.preventDefault();
     setLoading(true);
 
-    let generatedPin = String(Math.floor(1000 + Math.random() * 9000));
-    let realRoom = null;
+    const userName = localStorage.getItem('consensus_user_name') || 'Host';
 
     try {
       const response = await fetch('/api/v1/rooms', {
@@ -142,39 +140,51 @@ export default function HostSettings() {
       });
 
       if (response.ok) {
-        realRoom = await response.json();
-        generatedPin = realRoom.pin;
+        const realRoom = await response.json();
+        const generatedPin = realRoom.pin;
+        sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
+        localStorage.setItem('consensus_active_pin', generatedPin);
+
         addToast({
-          title: 'Room Created Online',
-          message: `PIN #${generatedPin} registered with server`,
+          title: 'Room Created',
+          message: `Session #${generatedPin} is ready for guests`,
           type: 'success',
+        });
+
+        setLoading(false);
+        navigate(`/lobby/${generatedPin}`, {
+          state: {
+            mode,
+            isHost: true,
+            userName,
+            groupSize,
+            topic: mode === 'CUSTOM' ? topic : category,
+            category,
+            radiusKm,
+            priceTier,
+            suggestionLimit,
+            roomData: realRoom,
+          },
+        });
+        return;
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        addToast({
+          title: 'Creation Failed',
+          message: errData.error || 'Server rejected room creation.',
+          type: 'error',
         });
       }
     } catch (err) {
-      console.warn('[HostSettings] Server offline, using simulated host session:', err);
+      console.warn('[HostSettings] Server error creating room:', err);
       addToast({
-        title: 'Local Session Created',
-        message: `Offline room PIN #${generatedPin} ready`,
-        type: 'info',
+        title: 'Connection Error',
+        message: 'Could not connect to the room server. Please verify your connection.',
+        type: 'error',
       });
     }
 
-    localStorage.setItem('consensus_active_pin', generatedPin);
     setLoading(false);
-
-    navigate(`/lobby/${generatedPin}`, {
-      state: {
-        mode,
-        isHost: true,
-        groupSize,
-        topic: mode === 'CUSTOM' ? topic : category,
-        category,
-        radiusKm,
-        priceTier,
-        suggestionLimit,
-        roomData: realRoom,
-      },
-    });
   };
 
   const progressPercent = calculateProgress();
@@ -503,19 +513,21 @@ export default function HostSettings() {
                     <button
                       type="button"
                       onClick={() => setSuggestionLimit((prev) => Math.max(1, prev - 1))}
-                      className="w-7 h-7 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+                      aria-label="Decrease suggestion limit"
+                      className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
                     >
-                      <Minus size={13} />
+                      <Minus size={14} />
                     </button>
-                    <span className="font-mono text-xs font-bold text-[var(--text-primary)] w-5 text-center">
+                    <span className="font-mono text-xs font-bold text-[var(--text-primary)] w-6 text-center tabular-nums">
                       {suggestionLimit}
                     </span>
                     <button
                       type="button"
                       onClick={() => setSuggestionLimit((prev) => Math.min(6, prev + 1))}
-                      className="w-7 h-7 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+                      aria-label="Increase suggestion limit"
+                      className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
                     >
-                      <Plus size={13} />
+                      <Plus size={14} />
                     </button>
                   </div>
                 </div>
@@ -581,21 +593,21 @@ export default function HostSettings() {
                   <button
                     type="button"
                     onClick={() => setGroupSize((prev) => Math.max(2, prev - 1))}
-                    className="w-8 h-8 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
                     aria-label="Decrease group size"
                   >
-                    <Minus size={14} />
+                    <Minus size={15} />
                   </button>
-                  <span className="font-mono text-sm font-extrabold text-[var(--text-primary)] w-6 text-center tabular-nums">
+                  <span className="font-mono text-sm font-extrabold text-[var(--text-primary)] w-7 text-center tabular-nums">
                     {groupSize}
                   </span>
                   <button
                     type="button"
                     onClick={() => setGroupSize((prev) => Math.min(16, prev + 1))}
-                    className="w-8 h-8 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-colors cursor-pointer"
+                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
                     aria-label="Increase group size"
                   >
-                    <Plus size={14} />
+                    <Plus size={15} />
                   </button>
                 </div>
               </div>

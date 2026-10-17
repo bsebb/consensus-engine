@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Clock,
   Trophy,
-  Users,
   Calendar,
   Sparkles,
   Trash2,
@@ -12,7 +11,6 @@ import {
   ChevronUp,
   Navigation,
   ExternalLink,
-  ShieldCheck,
   CheckCircle2,
   XCircle,
   Flame,
@@ -22,7 +20,6 @@ import {
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
-import MilledTray from '../components/ui/MilledTray';
 import SettingsModal from '../components/ui/SettingsModal';
 
 export default function History() {
@@ -295,9 +292,11 @@ export default function History() {
                   className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col shadow-sm transition-all duration-200 overflow-hidden"
                 >
                   {/* Card Main Summary Header */}
-                  <div
+                  <button
+                    type="button"
                     onClick={() => toggleExpand(s.pin)}
-                    className="p-4 flex flex-col gap-3 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+                    aria-expanded={isExpanded}
+                    className="w-full text-left p-4 flex flex-col gap-3 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-bg)]"
                   >
                     {/* Header Row: PIN, Resolved Badge, Date */}
                     <div className="flex items-center justify-between">
@@ -357,7 +356,7 @@ export default function History() {
                         <span>{isExpanded ? 'Hide Details' : 'Arena Breakdown'}</span>
                       </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Expanded Arena Consensus Breakdown Tray */}
                   {isExpanded && (

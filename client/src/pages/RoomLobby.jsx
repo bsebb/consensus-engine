@@ -24,7 +24,6 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
-import MilledTray from '../components/ui/MilledTray';
 import SettingsModal from '../components/ui/SettingsModal';
 import restaurantsMock from '../mocks/restaurants.json';
 
@@ -236,13 +235,15 @@ export default function RoomLobby() {
       });
 
       const options = data?.options || [];
+      const sessionTopic = data?.topic || topic;
+      const sessionMode = data?.mode || mode;
       if (isHost) {
         sessionStorage.setItem(`consensus_host_${pin}`, 'true');
       }
       navigate(`/deck/${pin}`, {
         state: {
-          mode,
-          topic,
+          mode: sessionMode,
+          topic: sessionTopic,
           isHost: Boolean(isHost),
           totalParticipants: groupSize,
           customCards: options.length > 0 ? options : undefined,
@@ -499,7 +500,7 @@ export default function RoomLobby() {
         mode,
         topic,
         isHost: true,
-        totalParticipants: expectedGroupSize,
+        totalParticipants: groupSize,
         customCards: cardsToPass,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
       },
@@ -825,6 +826,8 @@ export default function RoomLobby() {
               <form onSubmit={handleAddSuggestion} className="flex gap-2">
                 <input
                   type="text"
+                  id="lobby-custom-suggestion"
+                  aria-label="New candidate suggestion"
                   value={suggestion}
                   onChange={(e) => setSuggestion(e.target.value)}
                   placeholder="Suggest a choice (e.g. Bowling, Tacos, Arcade)..."
@@ -865,18 +868,18 @@ export default function RoomLobby() {
                   className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between gap-1.5 shadow-sm animate-[modalSpring_0.35s_var(--spring-smooth)] relative group"
                 >
                   <div className="flex items-start justify-between gap-1">
-                    <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1" title={item.name}>
+                    <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1 break-words" title={item.name}>
                       {item.name}
                     </span>
                     {mode === 'CUSTOM' ? (
                       <button
                         type="button"
                         onClick={() => handleRemoveSuggestion(idx)}
-                        className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors p-0.5 rounded cursor-pointer shrink-0"
+                        className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors p-2 rounded-lg cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center -mr-1 -mt-1"
                         title="Remove option"
                         aria-label={`Remove ${item.name}`}
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} />
                       </button>
                     ) : (
                       <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
