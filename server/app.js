@@ -12,6 +12,35 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Root status landing page for browser visits
+app.get('/', (req, res) => {
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Consensus Engine Backend</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #090d16; color: #f8fafc; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+          .card { background: #131b2e; border: 1px solid #1e293b; padding: 2.5rem; border-radius: 1.5rem; text-align: center; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+          .badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.1); color: #34d399; padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; margin-bottom: 1.25rem; border: 1px solid rgba(16, 185, 129, 0.2); }
+          .pulse { width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; }
+          h1 { margin: 0 0 0.5rem; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.025em; }
+          p { margin: 0; color: #94a3b8; font-size: 0.875rem; line-height: 1.5; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="badge"><span class="pulse"></span> ONLINE</div>
+          <h1>Consensus Engine API</h1>
+          <p>Real-time multiplayer WebSockets and REST services are active and ready.</p>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 // Lightweight health check endpoint for Render health monitoring and keep-alive pingers
 app.get(['/health', '/api/v1/health'], (req, res) => {
   res.status(200).json({
