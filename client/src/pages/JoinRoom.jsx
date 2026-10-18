@@ -25,6 +25,7 @@ import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
+import HexagonLoadingOverlay from '../components/lobby/HexagonLoadingOverlay';
 import { apiUrl } from '../utils/api';
 import {
   detectUserGps,
@@ -499,6 +500,13 @@ export default function JoinRoom() {
           saveUserLocation(loc);
           setGpsState(loc);
         }}
+      />
+
+      <HexagonLoadingOverlay
+        isOpen={loading}
+        category={selectedCategory}
+        locationLabel={gpsState?.label || 'Current Location'}
+        isCustom={isCustomMode}
       />
     </div>
   );

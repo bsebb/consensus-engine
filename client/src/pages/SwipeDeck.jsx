@@ -14,16 +14,12 @@ import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
 import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
+import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 
 const DEFAULT_WINNER = {
-  id: 'winner_default',
-  name: 'Consensus Spot',
-  category: 'Local Favorites',
-  address: 'Local Venue',
-  distance_km: null,
-  price_level: 2,
-  tags: ['Group Favorite', 'Cozy Atmosphere'],
+  id: 'winner_default', name: 'Consensus Spot', category: 'Local Favorites',
+  address: 'Local Venue', distance_km: null, price_level: 2, tags: ['Group Favorite'],
 };
 
 export default function SwipeDeck() {
@@ -228,6 +224,7 @@ export default function SwipeDeck() {
     setExitDirection(dir);
     setIsDragging(false);
     setActiveTab('swipe');
+    triggerHaptic(score === 1 ? 'like' : score === -100 ? 'veto' : 'pass');
 
     setTimeout(() => {
       const current = cards[currentIndex];
@@ -374,6 +371,7 @@ export default function SwipeDeck() {
 
   useEffect(() => {
     if (showWinner && consensusResult.winner) {
+      triggerHaptic('match');
       try {
         const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
         const optionsList = cards.map((c) => ({
@@ -418,10 +416,7 @@ export default function SwipeDeck() {
   const cardRating = activeRating.rating;
   const cardReviewCount = activeRating.reviewCount;
   const cardPriceDesc = activeCard
-    ? activeCard.price_level === 1 ? '$ • ~110 MDL'
-    : activeCard.price_level === 2 ? '$$ • ~180 MDL'
-    : activeCard.price_level === 3 ? '$$$ • ~350 MDL'
-    : '$$$$ • ~600 MDL'
+    ? (activeCard.price_level === 1 ? '$ • ~110 MDL' : activeCard.price_level === 3 ? '$$$ • ~350 MDL' : activeCard.price_level === 4 ? '$$$$ • ~600 MDL' : '$$ • ~180 MDL')
     : '$$ • ~180 MDL';
   const cardWalkDesc = activeCard ? formatTravelSummary(activeCard) : 'Local Spot';
 

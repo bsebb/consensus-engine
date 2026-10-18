@@ -18,6 +18,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useSocket } from '../../context/SocketContext';
 import { useToast } from './Toast';
 import SpringToggle from './SpringToggle';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function SettingsModal({ isOpen, onClose }) {
   const { theme, setTheme } = useTheme();
@@ -64,9 +65,7 @@ export default function SettingsModal({ isOpen, onClose }) {
   const handleToggleHaptics = (val) => {
     setHaptics(val);
     localStorage.setItem('consensus_haptics_enabled', String(val));
-    if (val && navigator.vibrate) {
-      navigator.vibrate(20);
-    }
+    if (val) triggerHaptic('tap');
     addToast({
       title: 'Haptics Updated',
       message: val ? 'Tactile feedback enabled' : 'Tactile feedback muted',

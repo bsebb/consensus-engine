@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info, Sparkles } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info, Layers } from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 
 export default function SwipeCard({
@@ -23,7 +23,7 @@ export default function SwipeCard({
 }) {
   const isCustomCard = Boolean(mode === 'CUSTOM' || activeCard?.isCustom);
 
-  const { primaryPhoto, photos, isRealPhoto, fallbackPhoto } = useVenuePhotos(
+  const { primaryPhoto, photos, fallbackPhoto } = useVenuePhotos(
     isCustomCard ? '' : activeCard?.name,
     isCustomCard ? '' : activeCard?.address,
     isCustomCard ? '' : activeCard?.category,
@@ -71,54 +71,51 @@ export default function SwipeCard({
         {dragOffset.x > 30 && (
           <div
             style={{ opacity: Math.min(1, dragOffset.x / 70) }}
-            className="absolute top-6 right-6 px-4 py-2 rounded-2xl border-2 border-emerald-500 bg-emerald-500/20 text-emerald-400 font-black text-sm uppercase tracking-wider -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
+            className="absolute top-6 right-6 px-3.5 py-1.5 rounded-xl border-2 border-emerald-400 bg-emerald-950/60 text-emerald-300 font-black text-xs uppercase tracking-widest -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
           >
-            <ThumbsUp size={18} strokeWidth={2.5} />
+            <ThumbsUp size={16} strokeWidth={2.5} />
             <span>Like</span>
           </div>
         )}
         {dragOffset.x < -30 && (
           <div
             style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 70) }}
-            className="absolute top-6 left-6 px-4 py-2 rounded-2xl border-2 border-rose-500 bg-rose-500/20 text-rose-400 font-black text-sm uppercase tracking-wider rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
+            className="absolute top-6 left-6 px-3.5 py-1.5 rounded-xl border-2 border-rose-400 bg-rose-950/60 text-rose-300 font-black text-xs uppercase tracking-widest rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
           >
-            <ThumbsDown size={18} strokeWidth={2.5} />
+            <ThumbsDown size={16} strokeWidth={2.5} />
             <span>Pass</span>
           </div>
         )}
         {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
           <div
             style={{ opacity: Math.min(1, dragOffset.y / 70) }}
-            className="absolute inset-x-8 top-8 py-2.5 rounded-2xl border-2 border-amber-400 bg-rose-600/90 text-white font-black text-sm uppercase tracking-wider backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none"
+            className="absolute inset-x-10 top-7 py-2 rounded-xl border-2 border-amber-400 bg-amber-950/80 text-amber-300 font-black text-xs uppercase tracking-widest backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none"
           >
-            <Flame size={18} strokeWidth={2.5} />
-            <span>{isCustomCard ? 'Veto Option' : 'Veto Spot'}</span>
+            <Flame size={16} strokeWidth={2.5} />
+            <span>Veto</span>
           </div>
         )}
 
         {isCustomCard ? (
-          /* Clean Custom Poll Ballot Card (Zero Fake Photos, Ratings, Prices, or Distances) */
+          /* Human-Centric Clean Custom Poll Card */
           <div className="flex-1 flex flex-col justify-between p-6 text-center bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-inset)]">
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] text-xs font-bold truncate max-w-[70%]">
-                <Sparkles size={12} />
+                <Layers size={12} />
                 <span className="truncate">{topic || 'Custom Poll'}</span>
               </span>
               <span className="px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] tabular-nums">
-                #{cardIndex} of {totalCards}
+                {cardIndex} of {totalCards}
               </span>
             </div>
 
-            <div className="my-auto py-8 px-2 flex flex-col items-center gap-4">
-              <div className="w-16 h-16 rounded-3xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-2xl font-black tabular-nums shadow-xs">
+            <div className="my-auto py-8 px-2 flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-black tabular-nums shadow-xs">
                 #{cardIndex}
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words">
                 {activeCard?.name}
               </h2>
-              <p className="text-xs text-[var(--text-secondary)] max-w-[250px] leading-relaxed">
-                Swipe right to support this option, swipe left to pass, or pull down to veto.
-              </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border-subtle)] text-[11px] font-bold">
@@ -152,9 +149,9 @@ export default function SwipeCard({
                   }
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/15" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15" />
 
-              {/* Multi-photo Story Bars at Top */}
+              {/* Multi-photo Story Indicator Bars */}
               {validPhotos.length > 1 && (
                 <div className="absolute top-2.5 inset-x-4 flex items-center gap-1.5 z-20">
                   {validPhotos.slice(0, 4).map((url, idx) => (
@@ -175,16 +172,16 @@ export default function SwipeCard({
                 </div>
               )}
 
-              {/* Top Floating Pills: Category & Verified Rating */}
+              {/* Top Floating Badges: Category & Verified Rating */}
               <div className={`absolute ${validPhotos.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10`}>
-                <span className="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-semibold text-white border border-white/10">
-                  {isRealPhoto ? `${vibeSubtitle} • Live Photo` : vibeSubtitle}
+                <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10">
+                  {vibeSubtitle || activeCard.category || 'Local Venue'}
                 </span>
 
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
                   <Star size={13} className="fill-amber-300 text-amber-300" />
                   <span>{cardRating}</span>
-                  <span className="text-[11px] text-white/75 font-normal">({cardReviewCount})</span>
+                  <span className="text-[11px] text-white/70 font-normal">({cardReviewCount})</span>
                 </div>
               </div>
 
@@ -211,7 +208,7 @@ export default function SwipeCard({
                     className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-colors cursor-pointer"
                   >
                     <Info size={13} />
-                    <span>Details & Map</span>
+                    <span>Details</span>
                   </button>
                 )}
               </div>
@@ -238,7 +235,7 @@ export default function SwipeCard({
               >
                 <Route size={16} className="text-[var(--accent-bg)] shrink-0" />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Road Route & Time</span>
+                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Road Route</span>
                   <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">{cardWalkDesc}</span>
                 </div>
               </button>
@@ -249,5 +246,3 @@ export default function SwipeCard({
     </main>
   );
 }
-
-

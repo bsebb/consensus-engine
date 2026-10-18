@@ -27,8 +27,10 @@ import SettingsModal from '../components/ui/SettingsModal';
 import HostCategoryPicker from '../components/host/HostCategoryPicker';
 import HostConstraints from '../components/host/HostConstraints';
 import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
+import HexagonLoadingOverlay from '../components/lobby/HexagonLoadingOverlay';
 import { apiUrl } from '../utils/api';
 import { getSavedExactGps, saveUserLocation, detectUserGps } from '../utils/location';
+import { triggerHaptic } from '../utils/haptics';
 
 export default function HostSettings() {
   const navigate = useNavigate();
@@ -75,13 +77,7 @@ export default function HostSettings() {
         label: saved.label || 'Saved Location',
       };
     }
-    return {
-      latitude: null,
-      longitude: null,
-      accuracy: null,
-      status: 'idle',
-      label: 'Downtown Chișinău (Default)',
-    };
+    return { latitude: null, longitude: null, accuracy: null, status: 'idle', label: 'Downtown Chișinău (Default)' };
   });
 
   const detectLocation = async () => {
@@ -137,22 +133,12 @@ export default function HostSettings() {
   const advanceToStage = (targetStage) => {
     const autoAdvanceEnabled = localStorage.getItem('consensus_auto_advance') !== 'false';
     if (!autoAdvanceEnabled) return;
-
-    setOpenStages({
-      1: targetStage === 1,
-      2: targetStage === 2,
-      3: targetStage === 3,
-      4: targetStage === 4,
-    });
+    setOpenStages({ 1: targetStage === 1, 2: targetStage === 2, 3: targetStage === 3, 4: targetStage === 4 });
   };
 
   const handleSelectCategory = (catLabel) => {
     setCategory(catLabel);
-    // Haptic feedback if enabled
-    if (localStorage.getItem('consensus_haptics_enabled') !== 'false' && navigator.vibrate) {
-      navigator.vibrate(15);
-    }
-    // Auto-advance to Stage 3 after subtle tactile delay
+    triggerHaptic('tap');
     setTimeout(() => {
       advanceToStage(3);
     }, 220);
@@ -574,6 +560,13 @@ export default function HostSettings() {
             label: loc.label,
           });
         }}
+      />
+
+      <HexagonLoadingOverlay
+        isOpen={loading}
+        category={category}
+        locationLabel={userLocation?.label || 'Current Location'}
+        isCustom={mode === 'CUSTOM'}
       />
     </div>
   );
