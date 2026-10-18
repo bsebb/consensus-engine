@@ -1,11 +1,13 @@
-const CACHE_NAME = 'consensus-pwa-v21';
+const CACHE_NAME = 'noyoupick-pwa-v22';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
+  '/favicon.ico',
+  '/favicon.svg',
+  '/apple-touch-icon.png',
   '/pwa-192x192.png',
   '/pwa-512x512.png',
-  '/favicon.svg',
 ];
 
 self.addEventListener('install', (event) => {
