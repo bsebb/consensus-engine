@@ -3,6 +3,14 @@ const { CATEGORIZED_FALLBACKS, resolveRegionalFallback, formatPriceLabel } = req
 const { filterReportedVenues } = require('./reportedVenues');
 
 // In-memory cache for API queries to avoid repeated external requests
+const MAX_CACHE_ENTRIES = 500;
+function setBoundedCache(map, key, value, maxEntries = MAX_CACHE_ENTRIES) {
+  if (map.size >= maxEntries) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey) map.delete(oldestKey);
+  }
+  map.set(key, value);
+}
 const queryCache = new Map();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -252,7 +260,7 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
   }
 
   if (allPlaces.length > 0) {
-    osmTownCache.set(townKey, { places: allPlaces, timestamp: Date.now() });
+    setBoundedCache(osmTownCache, townKey, { places: allPlaces, timestamp: Date.now() });
   }
   return allPlaces;
 }
@@ -508,7 +516,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
         .sort((a, b) => b.composite_score - a.composite_score)
         .slice(0, TARGET_PLACES);
 
-      queryCache.set(cacheKey, { data: sortedResults, timestamp: Date.now() });
+      setBoundedCache(queryCache, cacheKey, { data: sortedResults, timestamp: Date.now() });
       return sortedResults;
     }
   } catch (error) {

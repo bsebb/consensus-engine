@@ -8,13 +8,35 @@ const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteServ
 const { resolveGooglePhotoMedia } = require('./src/utils/googlePlaces');
 const { reportClosedVenue } = require('./src/utils/reportedVenues');
 const roomRoutes = require('./routes/roomRoutes');
-//Lilia: access the shared Socket.io instance from other server modules
 const { setIO } = require('./src/utils/socket');
+const { verifyHostToken } = require('./src/utils/hostAuth');
+const { createRateLimiter } = require('./src/utils/rateLimiter');
 const cors = require('cors');
 
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https:\/\/([a-zA-Z0-9-]+\.)*noyoupick\.org$/,
+  /^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/,
+];
+if (process.env.CLIENT_URL) {
+  try {
+    const u = new URL(process.env.CLIENT_URL);
+    ALLOWED_ORIGIN_PATTERNS.push(new RegExp(`^${u.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+  } catch {}
+}
+
+const checkOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  const isAllowed = ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+  if (isAllowed) return callback(null, true);
+  return callback(null, false);
+};
+
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: checkOrigin, credentials: true }));
+app.use(express.json({ limit: '16kb' }));
+
+const sensitiveLimiter = createRateLimiter({ windowMs: 60000, max: 40 });
 
 // Root status landing page for browser visits
 app.get('/', (req, res) => {
@@ -47,13 +69,10 @@ app.get('/', (req, res) => {
 
 // Lightweight health check endpoint for Render health monitoring and keep-alive pingers
 app.get(['/health', '/api/v1/health'], (req, res) => {
-  const hasKey = Boolean(process.env.FOURSQUARE_API_KEY && process.env.FOURSQUARE_API_KEY.trim());
   res.status(200).json({
     status: 'ok',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
-    foursquare_configured: hasKey,
-    foursquare_prefix: hasKey ? `${process.env.FOURSQUARE_API_KEY.trim().slice(0, 4)}***` : null,
   });
 });
 
@@ -75,7 +94,7 @@ app.get('/api/v1/venue-photos', async (req, res) => {
 });
 
 // Ephemeral Crowd-Sourced Self-Healing: report closed/outdated venue
-app.post('/api/v1/venues/report-closed', (req, res) => {
+app.post('/api/v1/venues/report-closed', sensitiveLimiter, (req, res) => {
   try {
     const { name, address, lat, lng, reason } = req.body || {};
     if (!name || typeof name !== 'string') {
@@ -93,7 +112,7 @@ app.post('/api/v1/venues/report-closed', (req, res) => {
 });
 
 // Google Places photo proxy with 7-day browser caching
-app.get('/api/v1/places/photo', async (req, res) => {
+app.get('/api/v1/places/photo', sensitiveLimiter, async (req, res) => {
   try {
     const photoRef = req.query.ref;
     if (!photoRef) {
@@ -143,98 +162,30 @@ app.get('/api/v1/options/autocomplete', async (req, res) => {
   }
 });
 
-app.get('/api/v1/test-foursquare', async (req, res) => {
-  try {
-    const rawKey = process.env.FOURSQUARE_API_KEY;
-    if (!rawKey || !rawKey.trim()) {
-      return res.json({
-        success: true,
-        live_api: false,
-        reason: 'FOURSQUARE_API_KEY environment variable is not set in Render Dashboard Environment tab.',
-      });
-    }
-
-    const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '');
-    const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
-    const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
-
-    const testHeaders = {
-      accept: 'application/json',
-      Authorization: bearerAuth,
-      'X-Places-Api-Version': '2025-06-17',
-    };
-
-    let testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
-      headers: testHeaders,
-    });
-
-    let usedFormat = 'Bearer';
-    if (testRes.status === 401) {
-      testHeaders.Authorization = rawAuth;
-      testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
-        headers: testHeaders,
-      });
-      usedFormat = 'Raw';
-    }
-
-    const status = testRes.status;
-    const bodyText = await testRes.text();
-    let parsed;
-    try {
-      parsed = JSON.parse(bodyText);
-    } catch {
-      parsed = bodyText;
-    }
-
-    if (!testRes.ok) {
-      return res.json({
-        success: false,
-        live_api: false,
-        foursquare_http_status: status,
-        foursquare_response: parsed,
-        auth_format_tested: usedFormat,
-        key_prefix: `${cleanKey.slice(0, 4)}***`,
-      });
-    }
-
-    return res.json({
-      success: true,
-      live_api: true,
-      count: parsed.results ? parsed.results.length : 0,
-      results: parsed.results || [],
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-
-
 app.use((err, req, res, next) => {
-  console.error(`[Error]: ${err.message}`);
-
   const statusCode = err.statusCode || 500;
+  const isProd = process.env.NODE_ENV === 'production';
+  console.error(`[Error]: ${err.message}`);
 
   return res.status(statusCode).json({
     success: false,
-    error: err.name || 'SERVER_ERROR',
-    message: err.message || 'An unexpected error occurred.',
+    error: isProd ? 'SERVER_ERROR' : (err.name || 'SERVER_ERROR'),
+    message: isProd ? 'An unexpected error occurred. Please try again later.' : (err.message || 'An error occurred.'),
   });
 });
 
-//Lilia: create an HTTP server so Express and Socket.io use the same port
+// Create an HTTP server so Express and Socket.io use the same port
 const httpServer = http.createServer(app);
 
-//Lilia: initialize Socket.io on the existing HTTP server
+// Initialize Socket.io on HTTP server with restricted origins and 16KB max frame size
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: checkOrigin,
+    methods: ['GET', 'POST'],
+    credentials: true,
   },
+  maxHttpBufferSize: 16 * 1024,
 });
-//Lilia: make the Socket.io instance available to other server modules
 setIO(io);
 app.set('io', io);
 
@@ -366,6 +317,14 @@ async function resolveAndBroadcastWinner(pin) {
     winning_option: winningOption,
     winner: winningOption,
   });
+
+  // Evict resolved session and lobby after 30 minutes to prevent server memory leaks
+  const evictionTimer = setTimeout(() => {
+    activeVotingSessions.delete(pin);
+    activeLobbies.delete(pin);
+    console.log(`[Socket] Evicted resolved session and lobby for room ${pin}`);
+  }, 30 * 60 * 1000);
+  if (evictionTimer.unref) evictionTimer.unref();
 }
 
 //Lilia: handle Socket.io room joining for real-time lobby updates
@@ -423,11 +382,11 @@ io.on('connection', (socket) => {
   // Handle lobby join - join the socket room and emit participant_joined with full roster
   socket.on('join_lobby', async (data) => {
     try {
-      const { pin, participant_id, user_name } = data;
+      const { pin, participant_id, user_name, host_token } = data || {};
 
-      if (!pin || !participant_id) {
+      if (!pin || !participant_id || !/^\d{4}$/.test(String(pin))) {
         socket.emit('room_error', {
-          message: 'pin and participant_id are required.',
+          message: 'Valid 4-digit pin and participant_id are required.',
         });
         return;
       }
@@ -458,6 +417,14 @@ io.on('connection', (socket) => {
         console.warn('[Socket] DB lookup notice:', dbErr.message);
       }
 
+      // Check if room exists before allocating in-memory lobby structures
+      if (!room && !activeLobbies.has(pin) && !activeVotingSessions.has(pin)) {
+        socket.emit('room_error', {
+          message: 'Room not found. Please verify your PIN.',
+        });
+        return;
+      }
+
       if (!activeLobbies.has(pin)) {
         const map = new Map();
         map.suggestions = [];
@@ -478,7 +445,13 @@ io.on('connection', (socket) => {
       if (data?.group_size) lobby.groupSize = data.group_size;
       if (!lobby.suggestions) lobby.suggestions = [];
 
-      const isHost = (room && room.hostId === participant_id) || lobby.size === 0;
+      // Cryptographically verify host privilege via token, DB record, or creator status
+      const hasVerifiedHostToken = Boolean(host_token && verifyHostToken(pin, participant_id, host_token));
+      const isDbHost = Boolean(room && room.hostId === participant_id);
+      const isHost = hasVerifiedHostToken || isDbHost || lobby.size === 0;
+
+      socket.data.isHost = isHost;
+      socket.data.hostToken = host_token || null;
 
       // Preserve budgetSealed state if reconnecting
       const existing = lobby.get(participant_id);
@@ -555,14 +528,15 @@ io.on('connection', (socket) => {
   // Handle participants adding suggestions in custom mode
   socket.on('add_suggestion', (data) => {
     try {
-      const { pin, suggestion, user_name } = data;
+      const { pin, suggestion, user_name } = data || {};
       if (!pin || !suggestion) return;
-      const clean = String(suggestion).trim();
+      const clean = String(suggestion).trim().slice(0, 120);
       if (!clean) return;
 
       const lobby = activeLobbies.get(pin);
       if (lobby) {
         if (!lobby.suggestions) lobby.suggestions = [];
+        if (lobby.suggestions.length >= 50) return;
         if (!lobby.suggestions.some((s) => s.toLowerCase() === clean.toLowerCase())) {
           lobby.suggestions.push(clean);
           console.log(`[Socket] Suggestion "${clean}" added to room ${pin} by ${user_name || 'Participant'}`);
@@ -630,10 +604,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  //Lilia: start the voting phase and prepare room options
+  // Start the voting phase and prepare room options
   socket.on('host_start_voting', async (data) => {
     try {
-      const { pin, host_id, options } = data;
+      const { pin, host_id, host_token, options } = data || {};
 
       if (!pin || !Array.isArray(options)) {
         socket.emit('room_error', {
@@ -642,10 +616,7 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const {
-        getRoomByPin,
-        createOption,
-      } = require('./db/helpers');
+      const { getRoomByPin } = require('./db/helpers');
 
       let room = null;
       try {
@@ -655,27 +626,28 @@ io.on('connection', (socket) => {
       }
 
       const lobby = activeLobbies.get(pin);
-      const participantRecord = (host_id && lobby?.get(host_id)) || (socket.data.participantId && lobby?.get(socket.data.participantId));
+      const callerId = host_id || socket.data.participantId;
+      const tokenToCheck = host_token || socket.data.hostToken;
+      const hasVerifiedToken = Boolean(tokenToCheck && verifyHostToken(pin, callerId, tokenToCheck));
+      const isDbHost = Boolean(room && room.hostId === callerId);
+      const isSocketHost = Boolean(socket.data.isHost);
 
-      const isAuthorized =
-        (room && host_id && room.hostId === host_id) ||
-        (participantRecord && participantRecord.isHost) ||
-        !lobby ||
-        lobby.size <= 1;
+      const isAuthorized = hasVerifiedToken || isDbHost || isSocketHost || !lobby || lobby.size <= 1;
 
       if (!isAuthorized) {
-        console.warn(`[Socket] Unauthorized host_start_voting in room ${pin} by host_id: ${host_id}`);
+        console.warn(`[Socket] Unauthorized host_start_voting in room ${pin} by ${callerId}`);
         socket.emit('room_error', {
           message: 'Only the room host can start voting.',
         });
         return;
       }
 
-      let roomOptions = options.map((opt, idx) => {
+      const cappedOptions = options.slice(0, 30);
+      let roomOptions = cappedOptions.map((opt, idx) => {
         if (typeof opt === 'string') {
           return {
             id: `opt-${idx}`,
-            name: opt,
+            name: opt.slice(0, 100),
             price_level: 2,
             distance_km: 1.2,
             category: 'Group Suggestion',
@@ -684,14 +656,14 @@ io.on('connection', (socket) => {
           };
         }
         return {
-          id: String(opt.id || `opt-${idx}`),
-          name: opt.name || `Option ${idx + 1}`,
-          price_level: typeof opt.price_level === 'number' ? opt.price_level : 2,
-          distance_km: typeof opt.distance_km === 'number' ? opt.distance_km : 1.2,
-          category: opt.category || 'Local Venue',
-          tags: Array.isArray(opt.tags) ? opt.tags : ['Top Pick'],
-          address: opt.address || 'Central District',
-          photo_url: opt.photo_url || null,
+          id: String(opt.id || `opt-${idx}`).slice(0, 64),
+          name: String(opt.name || `Option ${idx + 1}`).slice(0, 100),
+          price_level: typeof opt.price_level === 'number' ? Math.max(1, Math.min(4, opt.price_level)) : 2,
+          distance_km: typeof opt.distance_km === 'number' ? Number(opt.distance_km.toFixed(1)) : 1.2,
+          category: String(opt.category || 'Local Venue').slice(0, 60),
+          tags: Array.isArray(opt.tags) ? opt.tags.slice(0, 5).map((t) => String(t).slice(0, 30)) : ['Top Pick'],
+          address: String(opt.address || 'Central District').slice(0, 120),
+          photo_url: typeof opt.photo_url === 'string' && opt.photo_url.startsWith('http') ? opt.photo_url : null,
         };
       });
 
@@ -705,7 +677,7 @@ io.on('connection', (socket) => {
         expectedCount,
         isResolved: false,
         winner: null,
-        hostId: host_id,
+        hostId: callerId,
         topic,
         mode,
       });
@@ -728,11 +700,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  const ALLOWED_BALLOT_SCORES = new Set([1, -1, -100]);
+
   // Handle ballot submission from clients in swiping phase
   socket.on('submit_ballot', async (data) => {
     try {
-      const { pin, participant_id, rankings } = data;
+      const { pin, participant_id, rankings } = data || {};
       if (!pin || !participant_id || !Array.isArray(rankings)) return;
+
+      // Verify caller matches participantId stored on socket
+      if (socket.data.participantId && socket.data.participantId !== participant_id) {
+        console.warn(`[Socket] Mismatched participant_id in submit_ballot: caller=${socket.data.participantId}, claimed=${participant_id}`);
+        return;
+      }
 
       let session = activeVotingSessions.get(pin);
       if (!session) {
@@ -747,10 +727,16 @@ io.on('connection', (socket) => {
         activeVotingSessions.set(pin, session);
       }
 
-      const votes = rankings.map((r) => ({
-        option_id: String(r.option_id),
-        score: Number(r.score),
-      }));
+      // Filter and sanitize rankings strictly to allowed Condorcet weights
+      const votes = rankings
+        .slice(0, 50)
+        .filter((r) => r && typeof r.option_id === 'string' && ALLOWED_BALLOT_SCORES.has(Number(r.score)))
+        .map((r) => ({
+          option_id: String(r.option_id).slice(0, 64),
+          score: Number(r.score),
+        }));
+
+      if (votes.length === 0) return;
 
       session.submissions.set(participant_id, {
         participant_id,
@@ -783,11 +769,16 @@ io.on('connection', (socket) => {
     try {
       const pin = data?.pin || socket.data.pin;
       const callerId = data?.host_id || socket.data.participantId;
+      const tokenToCheck = data?.host_token || socket.data.hostToken;
       const lobby = activeLobbies.get(pin);
       const session = activeVotingSessions.get(pin);
       const hostId = session?.hostId || (lobby && Array.from(lobby.values()).find(p => p.isHost)?.id);
 
-      if (hostId && callerId && hostId !== callerId) {
+      const hasVerifiedToken = Boolean(tokenToCheck && verifyHostToken(pin, callerId, tokenToCheck));
+      const isSocketHost = Boolean(socket.data.isHost);
+      const isAuthorized = hasVerifiedToken || isSocketHost || (hostId && callerId && hostId === callerId);
+
+      if (!isAuthorized) {
         console.warn(`[Socket] Unauthorized force reveal attempt by ${callerId} in room ${pin}`);
         socket.emit('room_error', { message: 'Only the room host can force consensus reveal.' });
         return;

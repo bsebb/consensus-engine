@@ -61,7 +61,7 @@ export default function JoinRoom() {
     const saved = getSavedExactGps();
     return saved
       ? { ...saved, status: 'exact', isExact: true }
-      : { status: 'detecting', lat: null, lng: null, accuracy: null, isExact: false, label: 'Detecting your area...' };
+      : { status: 'idle', lat: 47.0245, lng: 28.8322, accuracy: null, isExact: false, label: 'Chișinău, Moldova' };
   });
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
@@ -81,7 +81,7 @@ export default function JoinRoom() {
 
   const pin = pinDigits.join('');
 
-  // Load recent session from history, wake up backend, and acquire real user coordinates
+  // Load recent session from history, wake up backend, and restore saved coordinates if present
   useEffect(() => {
     try {
       const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
@@ -94,13 +94,16 @@ export default function JoinRoom() {
 
     fetch(apiUrl('/api/v1/health')).catch(() => {});
 
-    let mounted = true;
-    detectUserGps().then((res) => {
-      if (mounted) setGpsState(res);
-    });
-    return () => {
-      mounted = false;
-    };
+    const saved = getSavedExactGps();
+    if (saved && saved.source === 'gps') {
+      let mounted = true;
+      detectUserGps().then((res) => {
+        if (mounted && res && res.isExact) setGpsState(res);
+      });
+      return () => {
+        mounted = false;
+      };
+    }
   }, []);
 
   const handleUseMyGps = async () => {
@@ -217,6 +220,9 @@ export default function JoinRoom() {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
+        if (realRoom.host_token) {
+          sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);
+        }
         localStorage.setItem('consensus_active_pin', generatedPin);
         setLoading(false);
         navigate(`/lobby/${generatedPin}`, {

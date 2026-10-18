@@ -182,6 +182,9 @@ export default function HostSettings() {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
+        if (realRoom.host_token) {
+          sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);
+        }
         localStorage.setItem('consensus_active_pin', generatedPin);
 
         addToast({

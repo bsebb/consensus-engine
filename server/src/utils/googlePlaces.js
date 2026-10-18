@@ -27,6 +27,16 @@ try {
   // Silent fail on cache init
 }
 
+const MAX_CACHE_ENTRIES = 500;
+
+function setBoundedCache(map, key, value, maxEntries = MAX_CACHE_ENTRIES) {
+  if (map.size >= maxEntries) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey) map.delete(oldestKey);
+  }
+  map.set(key, value);
+}
+
 function persistCacheToDisk() {
   try {
     const obj = {};
@@ -188,14 +198,18 @@ async function fetchGooglePlaces({
 
   const enriched = await enrichVenuesWithRoadDistances(latNum, lngNum, mapped, isExactGps);
 
-  memoryCache.set(cacheKey, { timestamp: Date.now(), data: enriched });
+  setBoundedCache(memoryCache, cacheKey, { timestamp: Date.now(), data: enriched });
   persistCacheToDisk();
 
   return enriched;
 }
 
+const GOOGLE_PHOTO_REF_REGEX = /^places\/[A-Za-z0-9_-]{1,128}\/photos\/[A-Za-z0-9_-]{1,512}$/;
+const ALLOWED_GOOGLE_CDN_HOSTS = /^(lh[3-6]\.googleusercontent\.com|places\.googleapis\.com)$/i;
+
 /**
  * Resolves a Google Places (New) photo media reference to an authenticated CDN URL.
+ * Strictly verifies photoRef syntax and allowed CDN hostnames to prevent SSRF and open redirects.
  */
 async function resolveGooglePhotoMedia(photoRef) {
   const apiKey = (
@@ -204,16 +218,27 @@ async function resolveGooglePhotoMedia(photoRef) {
     GOOGLE_API_KEY
   ).trim().replace(/^["']|["']$/g, '');
 
-  if (!apiKey || !photoRef || !photoRef.startsWith('places/')) return null;
+  if (!apiKey || !photoRef || !GOOGLE_PHOTO_REF_REGEX.test(photoRef)) return null;
 
-  const endpoint = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=800&skipHttpRedirect=true&key=${apiKey}`;
-  const response = await fetch(endpoint, {
-    signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
-  });
+  try {
+    const endpoint = `https://places.googleapis.com/v1/${photoRef}/media?maxWidthPx=800&skipHttpRedirect=true&key=${apiKey}`;
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    });
 
-  if (!response.ok) return null;
-  const data = await response.json();
-  return data.photoUri || null;
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data?.photoUri || typeof data.photoUri !== 'string') return null;
+
+    const parsed = new URL(data.photoUri);
+    if (parsed.protocol !== 'https:' || !ALLOWED_GOOGLE_CDN_HOSTS.test(parsed.hostname)) {
+      return null;
+    }
+
+    return data.photoUri;
+  } catch {
+    return null;
+  }
 }
 
 module.exports = {

@@ -65,6 +65,41 @@ function loadPersistentCache() {
   } catch {}
 }
 
+const MAX_CACHE_ENTRIES = 500;
+function setBoundedCache(map, key, value, maxEntries = MAX_CACHE_ENTRIES) {
+  if (map.size >= maxEntries) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey) map.delete(oldestKey);
+  }
+  map.set(key, value);
+}
+
+function isSafeExternalUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host.endsWith('.local') ||
+      host.endsWith('.internal') ||
+      host === '169.254.169.254' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host === '::1' ||
+      /^10\./.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) ||
+      /^169\.254\./.test(host)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 let saveTimeout = null;
 function queueSavePersistentCache() {
   if (saveTimeout) clearTimeout(saveTimeout);
@@ -76,6 +111,7 @@ function queueSavePersistentCache() {
       fs.writeFileSync(CACHE_FILE, JSON.stringify(obj, null, 2), 'utf8');
     } catch {}
   }, 1000);
+  if (saveTimeout.unref) saveTimeout.unref();
 }
 
 loadPersistentCache();
@@ -109,13 +145,14 @@ async function fetchOnlineVenuePhoto(name, locality = '', address = '') {
 
     for (const item of results.slice(0, 5)) {
       const url = item.image;
-      if (!url || !url.startsWith('http')) continue;
+      if (!url || typeof url !== 'string' || !isSafeExternalUrl(url)) continue;
       if (url.includes('lookaside.fbsbx') || url.includes('favicon') || url.includes('icon')) continue;
 
       try {
         const probe = await fetch(url, {
           method: 'GET',
           headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
+          redirect: 'error',
           signal: AbortSignal.timeout ? AbortSignal.timeout(2200) : undefined,
         });
         const ct = probe.headers.get('content-type') || '';
@@ -153,7 +190,7 @@ async function resolveVenuePhoto(name = '', locality = '', address = '', categor
   // 2. Dynamic online search
   const onlinePhoto = await fetchOnlineVenuePhoto(cleanName, locality, address);
   if (onlinePhoto) {
-    memoryCache.set(cKey, onlinePhoto);
+    setBoundedCache(memoryCache, cKey, onlinePhoto);
     queueSavePersistentCache();
     return onlinePhoto;
   }

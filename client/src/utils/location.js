@@ -193,7 +193,18 @@ export async function detectUserGps({ forceRefresh = false } = {}) {
     let pos;
     try {
       pos = await getBrowserPos(true, 5000);
-    } catch {
+    } catch (err) {
+      if (err?.code === 1) {
+        return {
+          status: 'denied',
+          lat: null,
+          lng: null,
+          accuracy: null,
+          isExact: false,
+          label: 'Location access denied',
+          source: 'none',
+        };
+      }
       pos = await getBrowserPos(false, 4500);
     }
 
@@ -213,43 +224,14 @@ export async function detectUserGps({ forceRefresh = false } = {}) {
 
     saveUserLocation(payload);
     return payload;
-  } catch {
-    // Fallback to IP geolocation if browser permission was denied/blocked
-    try {
-      const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json', {
-        signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
-      });
-      if (ipRes.ok) {
-        const ipData = await ipRes.json();
-        const lat = parseFloat(ipData.latitude);
-        const lng = parseFloat(ipData.longitude);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          const label = ipData.city
-            ? `${ipData.city}${ipData.region && ipData.region !== ipData.city ? `, ${ipData.region}` : ''}`
-            : (await reverseGeocode(lat, lng)) || 'Approximate Area';
-          const payload = {
-            status: 'ip',
-            lat,
-            lng,
-            accuracy: 5000,
-            isExact: true,
-            label,
-            source: 'ip',
-            ts: Date.now(),
-          };
-          saveUserLocation(payload);
-          return payload;
-        }
-      }
-    } catch {}
-
+  } catch (err) {
     return {
-      status: 'unavailable',
+      status: err?.code === 1 ? 'denied' : 'unavailable',
       lat: null,
       lng: null,
       accuracy: null,
       isExact: false,
-      label: 'Location not set',
+      label: err?.code === 1 ? 'Location access denied' : 'Location unavailable',
       source: 'none',
     };
   }

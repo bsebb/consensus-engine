@@ -317,23 +317,14 @@ export default function SwipeDeck() {
     isHost,
     cards,
     myVotes,
-    currentIndex,
-    showWinner,
-    locationState: location.state,
-    setCards,
-    setVotesReceived,
-    setQuorumTotal,
-    setServerWinner,
-    setServerMatchScore,
-    setServerPairwise,
-    setShowWinner,
-    emit,
-    on,
-    off,
+    currentIndex, showWinner, locationState: location.state,
+    setCards, setVotesReceived, setQuorumTotal, setServerWinner,
+    setServerMatchScore, setServerPairwise, setShowWinner, emit, on, off,
   });
 
   const handleHostForceReveal = () => {
-    emit('host_force_reveal', { pin, host_id: participantId });
+    const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
+    emit('host_force_reveal', { pin, host_id: participantId, host_token: hostToken || undefined });
     if (!isConnected) setShowWinner(true);
   };
 

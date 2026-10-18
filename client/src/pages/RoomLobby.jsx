@@ -22,26 +22,7 @@ import { calculateDistanceKm, detectUserGps, getSavedExactGps, fetchRoadRouteMet
 import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 import { deduplicateVenues } from '../utils/venueImages';
-
-function levenshteinDistance(a, b) {
-  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
+import { levenshteinDistance } from '../utils/levenshtein';
 
 export default function RoomLobby() {
   const { pin } = useParams();
@@ -229,28 +210,18 @@ export default function RoomLobby() {
     if (navigator.share) {
       try {
         triggerHaptic('tap');
-        await navigator.share({
-          title: `Join Room #${pin}`,
-          text: `Vote on "${topic}" with me!`,
-          url: inviteUrl,
-        });
-      } catch {
-        handleCopyPin();
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(inviteUrl);
-        triggerHaptic('tap');
-        setCopied(true);
-        addToast({
-          title: 'Invite Link Copied',
-          message: 'Paste the link in your group chat!',
-          type: 'success',
-        });
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        handleCopyPin();
-      }
+        await navigator.share({ title: `Join Room #${pin}`, text: `Vote on "${topic}" with me!`, url: inviteUrl });
+        return;
+      } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      triggerHaptic('tap');
+      setCopied(true);
+      addToast({ title: 'Invite Link Copied', message: 'Paste the link in your group chat!', type: 'success' });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      handleCopyPin();
     }
   };
 
@@ -347,19 +318,10 @@ export default function RoomLobby() {
         }
 
         return {
-          id: opt.id,
-          name: opt.name,
-          category: catLabel,
-          price_level: opt.priceLevel || 2,
-          distance_km: dist,
-          drive_minutes: route?.driveMinutes ?? null,
-          walk_minutes: route?.walkMinutes ?? null,
-          lat: venueLat,
-          lng: venueLng,
-          tags: [catLabel],
-          address: addr,
-          photo_url: photoUrl,
-          isCustom: false,
+          id: opt.id, name: opt.name, category: catLabel,
+          price_level: opt.priceLevel || 2, distance_km: dist,
+          drive_minutes: route?.driveMinutes ?? null, walk_minutes: route?.walkMinutes ?? null,
+          lat: venueLat, lng: venueLng, tags: [catLabel], address: addr, photo_url: photoUrl, isCustom: false,
         };
       });
     } else {
@@ -383,10 +345,8 @@ export default function RoomLobby() {
           ? calculateDistanceKm(userGps.lat, userGps.lng, r.lat, r.lng)
           : null;
         return {
-          ...r,
-          distance_km: dist,
-          drive_minutes: route?.driveMinutes ?? null,
-          walk_minutes: route?.walkMinutes ?? null,
+          ...r, distance_km: dist,
+          drive_minutes: route?.driveMinutes ?? null, walk_minutes: route?.walkMinutes ?? null,
         };
       });
     }
@@ -494,9 +454,12 @@ export default function RoomLobby() {
 
     const activeParticipantCount = Math.max(1, participants.length);
 
+    const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
+
     emit('host_start_voting', {
       pin,
       host_id: participantId,
+      host_token: hostToken || undefined,
       options: cardsToPass,
       topic,
       mode,
@@ -622,17 +585,8 @@ export default function RoomLobby() {
         </div>
       </div>
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
-
-      <QrCodeModal
-        isOpen={qrModalOpen}
-        onClose={() => setQrModalOpen(false)}
-        pin={pin}
-        topic={topic}
-      />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <QrCodeModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} pin={pin} topic={topic} />
     </div>
   );
 }

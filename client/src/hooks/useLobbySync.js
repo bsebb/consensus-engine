@@ -25,10 +25,12 @@ export function useLobbySync({
     if (!pin) return;
 
     const sendJoin = () => {
+      const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
       emit('join_lobby', {
         pin,
         participant_id: participantId,
         user_name: currentUserName,
+        host_token: hostToken || undefined,
         mode: locationState?.mode,
         topic: locationState?.topic,
         group_size: locationState?.groupSize,

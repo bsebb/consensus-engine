@@ -17,12 +17,11 @@ const {
 
 // Lilia: access Socket.io for live vote progress updates
 const { getIO } = require('../utils/socket');
+const { generatePin, issueHostToken, verifyHostToken } = require('../utils/hostAuth');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 const { fetchGooglePlaces } = require('../utils/googlePlaces');
 const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
 const { reportClosedVenue, filterReportedVenues } = require('../utils/reportedVenues');
-
-const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 // Helper to execute Schulze worker thread off the main event loop
 const runSchulzeWorker = (submissions) => {
@@ -158,6 +157,7 @@ const createNewRoom = async (req, res) => {
     return res.status(201).json({
       room_id: room.id,
       pin: room.pin,
+      host_token: issueHostToken(room.pin, host_id),
       status: room.status,
       theme: roomTheme,
       topic: theme || 'Places Nearby',
@@ -169,6 +169,7 @@ const createNewRoom = async (req, res) => {
   return res.status(201).json({
     room_id: room.id,
     pin: room.pin,
+    host_token: issueHostToken(room.pin, host_id),
     status: room.status,
     theme: roomTheme,
     topic: theme || 'What should we do?',
@@ -209,9 +210,24 @@ const getRoom = async (req, res) => {
 
 const updateConfig = async (req, res) => {
   const { id } = req.params;
-  const updateData = req.body;
+  const { host_id, host_token, pin, theme, radius, status } = req.body || {};
 
-  const updatedRoom = await updateRoomConfig(id, updateData);
+  if (!verifyHostToken(pin, host_id, host_token)) {
+    return res.status(403).json({
+      success: false,
+      error: 'FORBIDDEN',
+      message: 'Valid host authorization is required to update room configuration.',
+    });
+  }
+
+  const safeUpdateData = {};
+  if (typeof theme === 'string') safeUpdateData.theme = theme.slice(0, 100);
+  if (typeof radius === 'number') safeUpdateData.radius = Math.max(500, Math.min(50000, Math.round(radius)));
+  if (['CONFIGURING', 'SUGGESTING', 'VOTING', 'RESOLVED'].includes(status)) {
+    safeUpdateData.status = status;
+  }
+
+  const updatedRoom = await updateRoomConfig(id, safeUpdateData);
 
   return res.status(200).json({
     success: true,
@@ -287,12 +303,13 @@ const submitVotes = async (req, res) => {
   if (
     !participant_id ||
     !Array.isArray(rankings) ||
-    rankings.length === 0
+    rankings.length === 0 ||
+    rankings.length > 50
   ) {
     return res.status(400).json({
       success: false,
       error: 'INVALID_VOTES',
-      message: 'participant_id and a non-empty rankings array are required.',
+      message: 'participant_id and a valid rankings array (1-50 items) are required.',
     });
   }
 
