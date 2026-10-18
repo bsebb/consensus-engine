@@ -19,6 +19,8 @@ import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 import { deduplicateVenues } from '../utils/venueImages';
 import { levenshteinDistance } from '../utils/levenshtein';
+import { filterOutReportedVenues } from '../utils/reportedVenuesClient';
+import { parseGooglePlaceMetadata } from '../utils/roomOptionsParser';
 
 export default function RoomLobby() {
   const { pin } = useParams();
@@ -51,7 +53,12 @@ export default function RoomLobby() {
 
   // Custom Suggestions State
   const [suggestion, setSuggestion] = useState('');
-  const [groupPool, setGroupPool] = useState([]);
+  const [groupPool, setGroupPool] = useState(() => {
+    if (Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0) {
+      return location.state.initialCustomOptions;
+    }
+    return [];
+  });
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
 
@@ -269,39 +276,20 @@ export default function RoomLobby() {
     let baseList = [];
     if (realOptions && realOptions.length > 0) {
       baseList = realOptions.map((opt) => {
-        let dist = null;
-        let addr = 'Local Venue';
-        let catLabel = location.state?.category || 'Local Favorite';
-        let venueLat = null;
-        let venueLng = null;
-
-        let photoUrl = null;
-        if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
-          const parts = opt.googlePlaceId.split('|');
-          const parsedDist = parseFloat(parts[1]);
-          if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
-          if (parts[2]) addr = parts[2];
-          if (parts[3]) catLabel = parts[3];
-          if (parts[4] && parts[4].includes(',')) {
-            const [latStr, lngStr] = parts[4].split(',');
-            const pLat = parseFloat(latStr);
-            const pLng = parseFloat(lngStr);
-            if (!isNaN(pLat) && !isNaN(pLng)) {
-              venueLat = pLat;
-              venueLng = pLng;
-            }
-          }
-          if (parts[5] && parts[5].startsWith('http')) {
-            photoUrl = parts[5];
-          }
-        }
+        const meta = parseGooglePlaceMetadata(opt.googlePlaceId);
+        const catLabel = meta.catLabel || location.state?.category || 'Local Favorite';
+        const venueLat = meta.lat;
+        const venueLng = meta.lng;
+        const addr = meta.addr || 'Local Venue';
+        const photoUrl = meta.photoUrl;
 
         const route = roadRoutes[opt.id];
+        let dist = meta.dist;
         if (route && route.roadDistanceKm != null) {
           dist = route.roadDistanceKm;
         } else if (userGps && venueLat != null && venueLng != null) {
           dist = calculateDistanceKm(userGps.lat, userGps.lng, venueLat, venueLng);
-        } else if (!userGps) {
+        } else if (!userGps && dist == null) {
           dist = null;
         }
 
@@ -339,7 +327,7 @@ export default function RoomLobby() {
       });
     }
 
-    return deduplicateVenues([...customItems, ...baseList]);
+    return filterOutReportedVenues(deduplicateVenues([...customItems, ...baseList]));
   }, [mode, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
 
   // Query OSRM street network for real road distance & travel time from user's exact coordinates
@@ -444,6 +432,30 @@ export default function RoomLobby() {
       type: 'info',
     });
   };
+
+  const handleReportClosedVenue = (venue) => {
+    if (!venue?.name) return;
+    setRealOptions((prev) => prev.filter((opt) => opt.name !== venue.name));
+    setGroupPool((prev) => prev.filter((name) => name !== venue.name));
+    addToast({
+      title: t('closedReportedTitle'),
+      message: t('closedReportedDesc'),
+      type: 'info',
+    });
+  };
+
+  useEffect(() => {
+    if (isHost && Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0) {
+      location.state.initialCustomOptions.forEach((opt) => {
+        emit('add_suggestion', {
+          pin,
+          suggestion: opt,
+          participant_id: participantId,
+          user_name: currentUserName,
+        });
+      });
+    }
+  }, []);
 
   const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
   const filteredCandidates = useMemo(() => {
@@ -585,6 +597,7 @@ export default function RoomLobby() {
           handleRemoveSuggestion={handleRemoveSuggestion}
           duplicateMatch={duplicateMatch}
           onShuffle={handleShuffleCandidates}
+          onReportClosed={handleReportClosedVenue}
         />
       </main>
 

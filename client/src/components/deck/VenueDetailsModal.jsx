@@ -15,8 +15,9 @@ import {
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import { useLanguage } from '../../context/LanguageContext';
 import CleanStreetMiniMap from './CleanStreetMiniMap';
+import { markVenueClosedClient } from '../../utils/reportedVenuesClient';
 
-export default function VenueDetailsModal({ venue, isOpen, onClose, inline = false }) {
+export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClosed, inline = false }) {
   const { lang, t } = useLanguage();
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
@@ -49,18 +50,12 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
     if (!venue?.name || isReporting) return;
     setIsReporting(true);
     try {
-      await fetch('/api/v1/venues/report-closed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: venue.name,
-          address: venue.address,
-          lat: venue.lat,
-          lng: venue.lng,
-          reason: 'permanently_closed',
-        }),
-      });
+      markVenueClosedClient(venue);
       setReported(true);
+      onReportClosed?.(venue);
+      setTimeout(() => {
+        handleClose();
+      }, 700);
     } catch {
       setReported(true);
     } finally {

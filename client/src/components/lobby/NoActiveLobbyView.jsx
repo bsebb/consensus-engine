@@ -6,7 +6,7 @@ import ThemeToggle from '../ThemeToggle';
 export default function NoActiveLobbyView({ navigate, setSettingsOpen }) {
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 py-3">
         <div className="flex items-center justify-between">
           <button
             type="button"

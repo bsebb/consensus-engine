@@ -32,6 +32,7 @@ import {
 } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
 import BrandLogo from '../components/ui/BrandLogo';
+import CustomPollBuilder from '../components/home/CustomPollBuilder';
 
 export default function JoinRoom() {
   const { lang, t } = useLanguage();
@@ -57,6 +58,7 @@ export default function JoinRoom() {
   // Quick setup & universal location states
   const [selectedCategory, setSelectedCategory] = useState('Restaurants');
   const [customTopic, setCustomTopic] = useState('');
+  const [customOptions, setCustomOptions] = useState([]);
   const [gpsState, setGpsState] = useState(() => {
     const saved = getSavedExactGps();
     return saved
@@ -181,6 +183,15 @@ export default function JoinRoom() {
   };
 
   const handleStartRoom = async () => {
+    if (isCustomMode && (!customTopic.trim() || customTopic.trim().length < 2)) {
+      addToast({
+        title: t('customQuestionRequired'),
+        message: t('customQuestionRequired'),
+        type: 'warning',
+      });
+      return;
+    }
+
     const cleanName = name.trim() || 'Host';
     localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
@@ -227,7 +238,16 @@ export default function JoinRoom() {
         localStorage.setItem('consensus_active_pin', generatedPin);
         setLoading(false);
         navigate(`/lobby/${generatedPin}`, {
-          state: { mode: roomMode, isHost: true, userName: cleanName, category: selectedCategory, topic: topicTitle, radiusKm: 5, roomData: realRoom },
+          state: {
+            mode: roomMode,
+            isHost: true,
+            userName: cleanName,
+            category: selectedCategory,
+            topic: topicTitle,
+            radiusKm: 5,
+            roomData: realRoom,
+            initialCustomOptions: isCustomMode && customOptions.length > 0 ? customOptions : undefined,
+          },
         });
         return;
       } else {
@@ -392,21 +412,14 @@ export default function JoinRoom() {
                 </div>
               </div>
 
-              {/* Universal Hex Grid Location Bar or Custom Topic Input */}
+              {/* Universal Hex Grid Location Bar or Custom Poll Builder */}
               {selectedCategory === 'Custom' ? (
-                <div className="flex flex-col gap-1.5 animate-[modalSpring_0.25s_var(--spring-smooth)]">
-                  <label htmlFor="customTopicInput" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
-                    {t('customQuestionLabel')}
-                  </label>
-                  <input
-                    id="customTopicInput"
-                    type="text"
-                    value={customTopic}
-                    onChange={(e) => setCustomTopic(e.target.value)}
-                    placeholder={t('customPlaceholder')}
-                    className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
-                  />
-                </div>
+                <CustomPollBuilder
+                  topic={customTopic}
+                  setTopic={setCustomTopic}
+                  customOptions={customOptions}
+                  setCustomOptions={setCustomOptions}
+                />
               ) : (
                 <div
                   onClick={() => setIsLocationModalOpen(true)}
@@ -436,10 +449,10 @@ export default function JoinRoom() {
                 variant="primary"
                 size="md"
                 onClick={handleStartRoom}
-                disabled={loading}
+                disabled={loading || (isCustomMode && (!customTopic.trim() || customTopic.trim().length < 2))}
                 loading={loading}
                 icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
+                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1 disabled:opacity-50 disabled:shadow-none"
               >
                 {t('createRoomBtn')}
               </Button>

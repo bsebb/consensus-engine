@@ -19,6 +19,8 @@ import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTra
 import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from '../utils/customOptionService';
+import { filterOutReportedVenues } from '../utils/reportedVenuesClient';
+import { parseGooglePlaceMetadata } from '../utils/roomOptionsParser';
 
 const DEFAULT_WINNER = {
   id: 'winner_default', name: 'Consensus Spot', category: 'Local Favorites',
@@ -80,7 +82,7 @@ export default function SwipeDeck() {
           isCustom: isCustomItem,
         };
       });
-      return deduplicateVenues(initialCards);
+      return filterOutReportedVenues(deduplicateVenues(initialCards));
     }
 
     if (mode === 'CUSTOM') {
@@ -98,11 +100,11 @@ export default function SwipeDeck() {
       }));
     }
 
-    return (restaurantsMock || []).map((r) => ({
+    return filterOutReportedVenues((restaurantsMock || []).map((r) => ({
       ...r,
       distance_km: savedGps && r.lat != null && r.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng) : null,
       isCustom: false,
-    }));
+    })));
   });
 
   useEffect(() => {
@@ -113,45 +115,26 @@ export default function SwipeDeck() {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
             const savedGps = getSavedExactGps();
             const rehydrated = data.options.map((opt) => {
-              let dist = null;
-              let addr = 'Local Venue';
-              let catLabel = location.state?.category || 'Local Favorite';
-              let vLat = null;
-              let vLng = null;
-              let photoUrl = null;
-              if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
-                const parts = opt.googlePlaceId.split('|');
-                const parsedDist = parseFloat(parts[1]);
-                if (!isNaN(parsedDist) && parsedDist > 0 && savedGps) dist = parsedDist;
-                if (parts[2]) addr = parts[2];
-                if (parts[3]) catLabel = parts[3];
-                if (parts[4] && parts[4].includes(',')) {
-                  const [latS, lngS] = parts[4].split(',');
-                  const pLat = parseFloat(latS);
-                  const pLng = parseFloat(lngS);
-                  if (!isNaN(pLat) && !isNaN(pLng)) { vLat = pLat; vLng = pLng; }
-                }
-                if (parts[5] && parts[5].startsWith('http')) {
-                  photoUrl = parts[5];
-                }
+              const meta = parseGooglePlaceMetadata(opt.googlePlaceId);
+              let dist = meta.dist;
+              if (savedGps && meta.lat != null && meta.lng != null && dist == null) {
+                dist = calculateDistanceKm(savedGps.lat, savedGps.lng, meta.lat, meta.lng);
               }
-              if (savedGps && vLat != null && vLng != null && dist == null) {
-                dist = calculateDistanceKm(savedGps.lat, savedGps.lng, vLat, vLng);
-              }
+              const catLabel = meta.catLabel || location.state?.category || 'Local Favorite';
               return {
                 id: opt.id,
                 name: opt.name,
                 category: catLabel,
                 price_level: opt.priceLevel || 2,
                 distance_km: dist,
-                lat: vLat,
-                lng: vLng,
+                lat: meta.lat,
+                lng: meta.lng,
                 tags: [catLabel],
-                address: addr,
-                photo_url: photoUrl,
+                address: meta.addr || 'Local Venue',
+                photo_url: meta.photoUrl,
               };
             });
-            setCards(deduplicateVenues(rehydrated).slice(0, 8));
+            setCards(filterOutReportedVenues(deduplicateVenues(rehydrated)).slice(0, 8));
           }
         })
         .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));
@@ -233,6 +216,12 @@ export default function SwipeDeck() {
       }).catch((err) => console.warn('[SwipeDeck] Inline rating feedback offline:', err));
     }
   };
+
+  const handleReportClosedCard = useCallback((venue) => {
+    if (!venue?.name) return;
+    setCards((prev) => filterOutReportedVenues(prev.filter((c) => c.name !== venue.name)));
+    setActiveTab('swipe');
+  }, []);
 
   // Hardware Pointer Gesture Engine
   const pointerStart = useRef(null);
@@ -449,7 +438,7 @@ export default function SwipeDeck() {
       }`}
     >
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 safe-pt-header pb-2.5 relative">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-2.5 relative">
         <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
           <button
             type="button"
@@ -539,6 +528,7 @@ export default function SwipeDeck() {
             isOpen={true}
             inline={true}
             onClose={() => setActiveTab('swipe')}
+            onReportClosed={handleReportClosedCard}
           />
         </main>
       ) : (

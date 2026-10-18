@@ -204,6 +204,7 @@ export default function CandidatePoolDeck({
   handleRemoveSuggestion,
   duplicateMatch,
   onShuffle,
+  onReportClosed,
 }) {
   const { t } = useLanguage();
   const [showAddInput, setShowAddInput] = useState(mode === 'CUSTOM');
@@ -429,6 +430,10 @@ export default function CandidatePoolDeck({
         venue={selectedVenue}
         isOpen={Boolean(selectedVenue && !selectedVenue.isCustom && mode !== 'CUSTOM')}
         onClose={() => setSelectedVenue(null)}
+        onReportClosed={(v) => {
+          setSelectedVenue(null);
+          onReportClosed?.(v);
+        }}
       />
     </section>
   );

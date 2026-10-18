@@ -251,7 +251,7 @@ export default function HostSettings() {
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
       {/* Consumer Mobile Header with Progress Hairline */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 safe-pt-header pb-3 relative">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 relative">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"

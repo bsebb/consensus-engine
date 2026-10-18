@@ -5,9 +5,39 @@
  */
 
 let audioCtx = null;
+let silentAudioEl = null;
+
+function unlockIosAudioSession() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!silentAudioEl) {
+      silentAudioEl = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+      silentAudioEl.volume = 0.001;
+      silentAudioEl.setAttribute('playsinline', 'true');
+    }
+    silentAudioEl.play().catch(() => {});
+  } catch {}
+}
+
+function triggerIosTaptic() {
+  if (typeof document === 'undefined') return;
+  try {
+    let el = document.getElementById('ios-haptic-trigger');
+    if (!el) {
+      el = document.createElement('input');
+      el.id = 'ios-haptic-trigger';
+      el.type = 'checkbox';
+      el.setAttribute('aria-hidden', 'true');
+      el.style.cssText = 'position:fixed;opacity:0;pointer-events:none;left:-9999px;top:-9999px;width:1px;height:1px;';
+      document.body.appendChild(el);
+    }
+    el.checked = !el.checked;
+  } catch {}
+}
 
 export function initAudioContext() {
   if (typeof window === 'undefined') return null;
+  unlockIosAudioSession();
   try {
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -43,6 +73,7 @@ function getAudioContext() {
 if (typeof window !== 'undefined') {
   const unlock = () => {
     initAudioContext();
+    unlockIosAudioSession();
   };
   ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach((evt) => {
     window.addEventListener(evt, unlock, { passive: true });
@@ -260,6 +291,9 @@ export function triggerHaptic(type = 'tap') {
   lastHapticType = type;
 
   // Ensure AudioContext is active synchronously in the user gesture event loop
+  unlockIosAudioSession();
+  triggerIosTaptic();
+
   const ctx = getAudioContext();
   if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
