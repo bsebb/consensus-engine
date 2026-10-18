@@ -67,33 +67,41 @@ export default function LobbyRoster({
         </div>
       </div>
 
-      {/* Friends Roster */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-          <Users size={14} className="text-[var(--accent-bg)]" />
-          <span>{t('inRoomPrefix')} ({participants.length}):</span>
+      {/* Live Collaboration Friends Bar */}
+      <div className="flex items-center justify-between gap-3 pt-0.5">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 min-w-0">
+          <div className="flex items-center -space-x-1.5 shrink-0">
+            {participants.map((p, idx) => (
+              <div
+                key={p.id || idx}
+                className="relative w-7 h-7 rounded-full bg-[var(--accent-bg)] text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-[var(--bg-elevated)] shadow-2xs"
+                title={`${p.name || 'P'} ${p.isHost ? `(${t('hostBadge')})` : ''}`}
+              >
+                {(p.name || 'P').charAt(0).toUpperCase()}
+                {p.isHost && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-2xs">
+                    <Crown size={8} className="fill-black text-black" />
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1 min-w-0 truncate">
+            {participants.map((p, idx) => (
+              <span
+                key={p.id || idx}
+                className="text-xs font-semibold text-[var(--text-primary)] truncate"
+              >
+                {p.name}{idx < participants.length - 1 ? ',' : ''}
+              </span>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {participants.map((p, idx) => (
-            <div
-              key={p.id || idx}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
-            >
-              <div className="w-4 h-4 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center">
-                {(p.name || 'P').charAt(0).toUpperCase()}
-              </div>
-              <span className="text-xs font-medium text-[var(--text-primary)]">
-                {p.name}
-              </span>
-              {p.isHost && (
-                <Crown size={11} className="text-amber-500 fill-amber-500" title={t('hostBadge')} />
-              )}
-              {p.budgetSealed && (
-                <ShieldCheck size={12} className="text-emerald-500 shrink-0" title="Price filter set" />
-              )}
-            </div>
-          ))}
+        <div className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] font-semibold text-[var(--text-secondary)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="tabular-nums">{participants.length} {t('inRoomPrefix')}</span>
         </div>
       </div>
     </section>

@@ -113,6 +113,11 @@ export const TRANSLATIONS = {
     emptyFilterDesc: 'Tap a higher price tier above to see more places nearby.',
     ideaLibraryTitle: 'Idea Library • Tap to Add',
     selectedSuffix: 'selected',
+    budgetAll: 'All',
+    budgetDescAll: 'All price levels included • No budget limit',
+    budgetDesc1: 'Budget friendly spots • Under 150 MDL / person',
+    budgetDesc2: 'Moderate & casual dining • Under 300 MDL / person',
+    budgetDesc3: 'Upscale & fine dining • Under 500 MDL / person',
 
     // Swipe Deck & Voting
     lobby: 'Lobby',
@@ -266,6 +271,11 @@ export const TRANSLATIONS = {
     emptyFilterDesc: 'Selectează un buget mai mare mai sus pentru a vedea mai multe locuri.',
     ideaLibraryTitle: 'Biblioteca de idei • Apasă pentru a adăuga',
     selectedSuffix: 'selectate',
+    budgetAll: 'Toate',
+    budgetDescAll: 'Toate locurile incluse • Fără limită de buget',
+    budgetDesc1: 'Locuri accesibile • Sub 150 MDL / persoană',
+    budgetDesc2: 'Buget moderat & casual • Sub 300 MDL / persoană',
+    budgetDesc3: 'Restaurante upscale & gourmet • Sub 500 MDL / persoană',
 
     // Swipe Deck & Voting
     lobby: 'Cameră',
@@ -419,6 +429,11 @@ export const TRANSLATIONS = {
     emptyFilterDesc: 'Выберите бюджет выше, чтобы увидеть больше мест поблизости.',
     ideaLibraryTitle: 'Библиотека идей • Нажмите, чтобы добавить',
     selectedSuffix: 'выбрано',
+    budgetAll: 'Все',
+    budgetDescAll: 'Все места включены • Без ограничений по бюджету',
+    budgetDesc1: 'Доступные заведения • До 150 MDL / чел.',
+    budgetDesc2: 'Средний чек • До 300 MDL / чел.',
+    budgetDesc3: 'Премиум и изысканные места • До 500 MDL / чел.',
 
     // Swipe Deck & Voting
     lobby: 'Лобби',

@@ -472,7 +472,7 @@ export default function RoomLobby() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none">
+    <div className="flex-1 flex flex-col min-h-[100dvh] pb-36 sm:pb-40 select-none">
       {/* Solid Opaque Header */}
       <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
@@ -560,7 +560,7 @@ export default function RoomLobby() {
       </main>
 
       {/* Fixed Bottom Start Action Bar */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/85 backdrop-blur-xl border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.15)]">
         <div className="max-w-md mx-auto">
           {isHost ? (
             <Button

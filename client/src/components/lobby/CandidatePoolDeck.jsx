@@ -14,56 +14,52 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   if (photo && !imgError) {
     const isLogo = isLogoImage(photo);
     return (
-      <div className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group text-left">
-        <div className={`relative h-32 sm:h-36 w-full ${isLogo ? 'bg-zinc-900' : 'bg-[var(--bg-elevated)]'} overflow-hidden`}>
+      <div className="rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group text-left">
+        <div className={`relative aspect-[4/3] w-full ${isLogo ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'} overflow-hidden`}>
           <img
             src={photo}
             alt={item.name}
-            className={isLogo ? 'w-full h-full object-contain p-4 pb-8' : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'}
+            className={isLogo ? 'w-full h-full object-contain p-4 pb-6' : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'}
             loading="lazy"
             onError={() => setImgError(true)}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
           {/* Index pill */}
-          <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 shadow-2xs z-10 tabular-nums">
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 shadow-2xs z-10 tabular-nums">
             <span>#{idx + 1}</span>
           </div>
 
-          {/* Remove option button */}
+          {/* Remove button */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               handleRemoveSuggestion(item.customIndex ?? idx);
             }}
-            className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-black/65 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10"
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10"
             title="Remove option"
             aria-label={`Remove ${item.name}`}
           >
             <Trash2 size={12} />
           </button>
-
-          {/* Title overlay at base of image */}
-          <div className="absolute bottom-2 inset-x-2.5 flex items-center justify-between gap-1">
-            <span className="text-xs sm:text-sm font-bold text-white line-clamp-2 drop-shadow-xs" title={item.name}>
-              {item.name}
-            </span>
-          </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-2.5 flex items-center justify-between gap-2 text-left">
-          <span className="text-[11px] text-[var(--text-secondary)] font-semibold truncate leading-tight">
+        {/* Card Body */}
+        <div className="p-3 flex flex-col gap-1 flex-1 justify-between">
+          <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
+            {item.name}
+          </h4>
+          <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)] truncate">
             {topic || 'Custom Poll'}
-          </span>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl p-3 bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between min-h-[120px] shadow-2xs text-left">
+    <div className="rounded-2xl p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between min-h-[140px] shadow-2xs text-left">
       <div className="flex items-center justify-between gap-2">
         <div className="w-6 h-6 rounded-lg bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
           #{idx + 1}
@@ -71,7 +67,7 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
         <button
           type="button"
           onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
-          className="w-6 h-6 rounded-full bg-[var(--bg-elevated)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
+          className="w-6 h-6 rounded-full bg-[var(--bg-inset)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
           title="Remove option"
           aria-label={`Remove ${item.name}`}
         >
@@ -80,12 +76,12 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
       </div>
 
       <div className="py-2">
-        <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug" title={item.name}>
+        <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug" title={item.name}>
           {item.name}
-        </span>
+        </h4>
       </div>
 
-      <div className="text-[10px] text-[var(--text-tertiary)] font-medium">
+      <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)]">
         {topic || 'Custom Option'}
       </div>
     </div>
@@ -118,10 +114,10 @@ function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectD
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onSelectDetails(item);
       }}
-      className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98]"
+      className="rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98]"
     >
-      {/* Curated Venue Image */}
-      <div className="relative h-32 sm:h-36 w-full bg-[var(--bg-elevated)] overflow-hidden">
+      {/* Photo with Rating and Price Badge */}
+      <div className="relative aspect-[4/3] w-full bg-[var(--bg-inset)] overflow-hidden">
         <img
           src={primaryPhoto}
           alt={item.name}
@@ -132,42 +128,45 @@ function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectD
             e.currentTarget.src = fallbackPhoto;
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
-        {/* Verified Rating Pill */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs z-10 tabular-nums">
-          <Star size={11} className="fill-amber-300 text-amber-300" />
+        {/* Rating Pill */}
+        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs z-10 tabular-nums">
+          <Star size={10} className="fill-amber-300 text-amber-300" />
           <span>{venueRating.rating}</span>
-          <span className="text-[10px] text-white/75 font-normal">({venueRating.reviewCount})</span>
+          <span className="text-[10px] text-white/70 font-normal">({venueRating.reviewCount})</span>
         </div>
 
         {/* Price Tag */}
-        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
-          <span className="px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-white border border-white/10">
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+          <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 tabular-nums">
             {'$'.repeat(item.price_level || 2)}
-          </span>
-        </div>
-
-        {/* Title overlay at base of image */}
-        <div className="absolute bottom-2 inset-x-2.5 flex items-center justify-between gap-1">
-          <span className="text-xs sm:text-sm font-bold text-white line-clamp-1 drop-shadow-xs" title={item.name}>
-            {item.name}
-          </span>
-          <span className="px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-xs text-[10px] font-semibold text-white shrink-0 flex items-center gap-0.5">
-            <Info size={10} />
-            <span>{t('details')}</span>
           </span>
         </div>
       </div>
 
-      {/* Metadata Footer with Road Distance & Travel Time */}
-      <div className="p-2.5 flex flex-col gap-0.5 text-left">
-        <span className="text-[11px] text-[var(--text-secondary)] font-semibold truncate leading-tight">
-          {vibeSubtitle}
-        </span>
-        <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] truncate">
-          <MapPin size={11} className="shrink-0 text-[var(--accent-bg)]" />
-          <span className="truncate">{travelText}</span>
+      {/* Card Body with Full Title & Travel Summary */}
+      <div className="p-3 flex flex-col gap-1.5 flex-1 justify-between">
+        <div>
+          <h4
+            className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent-bg)] transition-colors min-h-[2.4em] flex items-center"
+            title={item.name}
+          >
+            {item.name}
+          </h4>
+          <p className="text-[11px] text-[var(--text-secondary)] font-medium truncate mt-0.5">
+            {vibeSubtitle}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] pt-1.5 border-t border-[var(--border-subtle)]">
+          <div className="flex items-center gap-1 truncate font-medium">
+            <MapPin size={11} className="shrink-0 text-[var(--accent-bg)]" />
+            <span className="truncate">{travelText}</span>
+          </div>
+          <span className="text-[10px] text-[var(--accent-bg)] font-bold shrink-0 ml-1">
+            {t('details')}
+          </span>
         </div>
       </div>
     </div>

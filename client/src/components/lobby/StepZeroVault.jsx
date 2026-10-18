@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coins, Check } from 'lucide-react';
+import { ShieldCheck, Check } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -19,10 +19,10 @@ export default function StepZeroVault({
     : 3;
 
   const tiers = [
-    { label: t('anyPrice'), sub: t('allSpots'), limit: 600, isFiltered: false },
-    { label: '$', sub: '< 150 MDL', limit: 150, isFiltered: true },
-    { label: '$$', sub: '< 300 MDL', limit: 300, isFiltered: true },
-    { label: '$$$', sub: '< 500 MDL', limit: 450, isFiltered: true },
+    { id: 'all', label: t('budgetAll') || 'Toate', limit: 600, isFiltered: false, desc: t('budgetDescAll') },
+    { id: '1', label: '$', limit: 150, isFiltered: true, desc: t('budgetDesc1') },
+    { id: '2', label: '$$', limit: 300, isFiltered: true, desc: t('budgetDesc2') },
+    { id: '3', label: '$$$', limit: 450, isFiltered: true, desc: t('budgetDesc3') },
   ];
 
   const handleTierClick = (limit, isFiltered) => {
@@ -30,50 +30,53 @@ export default function StepZeroVault({
     onSelectTier?.(limit, isFiltered);
   };
 
+  const activeTier = tiers[activeTierIndex] || tiers[0];
+
   return (
-    <section className="p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
-      <div className="flex items-center justify-between px-0.5">
+    <section className="p-3.5 sm:p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <Coins size={15} className="text-amber-500" />
+          <ShieldCheck size={14} className="text-[var(--accent-bg)] shrink-0" />
           <h3 className="text-xs font-bold text-[var(--text-primary)]">
             {t('priceFilter')}
           </h3>
-          <span className="text-[11px] text-[var(--text-tertiary)]">
+          <span className="text-[10px] font-medium text-[var(--text-tertiary)] bg-[var(--bg-inset)] px-2 py-0.5 rounded-full border border-[var(--border-subtle)]">
             {t('anonymousHint')}
           </span>
         </div>
 
         {lockedConstraint && (
           <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-            <Check size={12} className="text-emerald-500" />
-            <span>{t('maxBudgetLabel')} {budgetLimit} MDL</span>
+            <Check size={11} className="text-emerald-500" />
+            <span className="tabular-nums">{t('maxBudgetLabel')} {budgetLimit} MDL</span>
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      {/* Modern iOS Sliding Segmented Track */}
+      <div className="p-1 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] grid grid-cols-4 gap-1">
         {tiers.map((tier, idx) => {
           const isActive = activeTierIndex === idx;
           return (
             <button
-              key={tier.label + idx}
+              key={tier.id}
               type="button"
               onClick={() => handleTierClick(tier.limit, tier.isFiltered)}
-              className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-2xl border text-center transition-all cursor-pointer min-h-[48px] active:scale-[0.96] ${
+              className={`py-2 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center min-h-[38px] active:scale-[0.96] ${
                 isActive
-                  ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-2xs'
-                  : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  ? 'bg-[var(--accent-bg)] text-white shadow-2xs'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
-              <span className={`text-xs font-bold leading-tight ${isActive ? 'text-[var(--accent-bg)]' : 'text-[var(--text-primary)]'}`}>
-                {tier.label}
-              </span>
-              <span className="text-[10px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">
-                {tier.sub}
-              </span>
+              <span className="tabular-nums">{tier.label}</span>
             </button>
           );
         })}
+      </div>
+
+      {/* Human Explanatory Subtitle */}
+      <div className="px-1 text-[11px] text-[var(--text-tertiary)] flex items-center justify-between">
+        <span className="truncate">{activeTier.desc}</span>
       </div>
     </section>
   );
