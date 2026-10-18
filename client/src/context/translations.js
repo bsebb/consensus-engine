@@ -33,27 +33,27 @@ export const TRANSLATIONS = {
 
     // Categories
     catRestaurants: 'Restaurants',
-    catRestaurantsDesc: 'Dinner & lunch spots',
+    catRestaurantsDesc: 'Lunch & dinner',
     catRestaurantsTopic: 'Where are we eating?',
 
     catCafes: 'Coffee & Cafes',
-    catCafesDesc: 'Espresso, brunch & tea',
+    catCafesDesc: 'Coffee & brunch',
     catCafesTopic: 'Where are we grabbing coffee?',
 
     catBars: 'Bars & Pubs',
-    catBarsDesc: 'Craft beer, wine & drinks',
+    catBarsDesc: 'Drinks & craft',
     catBarsTopic: 'Where are we getting drinks?',
 
     catCinema: 'Cinema',
-    catCinemaDesc: 'Movie theaters & shows',
+    catCinemaDesc: 'Movies & shows',
     catCinemaTopic: 'Which cinema are we going to?',
 
     catDesserts: 'Desserts',
-    catDessertsDesc: 'Gelato, pastries & sweets',
+    catDessertsDesc: 'Gelato & sweets',
     catDessertsTopic: 'Where to for dessert?',
 
     catCustom: 'Custom Poll',
-    catCustomDesc: 'Add your own options',
+    catCustomDesc: 'Your own ideas',
     catCustomTopic: 'What should we do?',
 
     customQuestionLabel: 'Question or Topic',
@@ -253,27 +253,27 @@ export const TRANSLATIONS = {
 
     // Categories
     catRestaurants: 'Restaurante',
-    catRestaurantsDesc: 'Locuri de prânz și cină',
+    catRestaurantsDesc: 'Prânz & cină',
     catRestaurantsTopic: 'Unde mâncăm azi?',
 
     catCafes: 'Cafenele',
-    catCafesDesc: 'Cafea bună, brunch & ceai',
+    catCafesDesc: 'Cafea & ceai',
     catCafesTopic: 'Unde bem o cafea?',
 
-    catBars: 'Baruri & Pub-uri',
-    catBarsDesc: 'Bere artizanală, vin & cocktailuri',
+    catBars: 'Baruri',
+    catBarsDesc: 'Bere & cocktail',
     catBarsTopic: 'Unde ieșim la un drink?',
 
     catCinema: 'Cinema',
-    catCinemaDesc: 'Săli de film & premiere',
+    catCinemaDesc: 'Filme & cinema',
     catCinemaTopic: 'La ce film mergem?',
 
     catDesserts: 'Deserturi',
-    catDessertsDesc: 'Gelato, prăjituri & dulciuri',
+    catDessertsDesc: 'Gelato & dulciuri',
     catDessertsTopic: 'Unde mâncăm un desert?',
 
     catCustom: 'Sondaj liber',
-    catCustomDesc: 'Adaugă propriile variante',
+    catCustomDesc: 'Opțiuni proprii',
     catCustomTopic: 'Ce facem împreună?',
 
     customQuestionLabel: 'Întrebare sau subiect',
@@ -473,27 +473,27 @@ export const TRANSLATIONS = {
 
     // Categories
     catRestaurants: 'Рестораны',
-    catRestaurantsDesc: 'Обеды, ужины и террасы',
+    catRestaurantsDesc: 'Обеды и ужины',
     catRestaurantsTopic: 'Куда пойдём поесть?',
 
     catCafes: 'Кофейни',
-    catCafesDesc: 'Эспрессо, бранчи и выпечка',
+    catCafesDesc: 'Кофе и бранчи',
     catCafesTopic: 'Где попьём кофе?',
 
-    catBars: 'Бары и пабы',
-    catBarsDesc: 'Крафт, вино и коктейли',
+    catBars: 'Бары',
+    catBarsDesc: 'Крафт и напитки',
     catBarsTopic: 'Куда пойдём выпить?',
 
-    catCinema: 'Кинотеатры',
-    catCinemaDesc: 'Фильмы и сеансы',
+    catCinema: 'Кино',
+    catCinemaDesc: 'Фильмы и залы',
     catCinemaTopic: 'В какой кинотеатр пойдём?',
 
     catDesserts: 'Десерты',
-    catDessertsDesc: 'Джелато, торты и сладости',
+    catDessertsDesc: 'Джелато и торты',
     catDessertsTopic: 'Куда за десертом?',
 
     catCustom: 'Свой опрос',
-    catCustomDesc: 'Любые свои варианты',
+    catCustomDesc: 'Свои варианты',
     catCustomTopic: 'Чем займёмся?',
 
     customQuestionLabel: 'Вопрос или тема',

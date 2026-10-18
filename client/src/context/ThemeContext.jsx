@@ -60,50 +60,25 @@ export function ThemeProvider({ children }) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const willBeDark = newTheme === 'dark' || (newTheme === 'system' && mediaQuery.matches);
 
-    const updateDOM = () => {
-      root.classList.add('theme-switching');
-      setTheme(newTheme);
-      setIsDark(willBeDark);
-      if (willBeDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-      localStorage.setItem('app-theme', newTheme);
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) {
-        meta.setAttribute('content', willBeDark ? '#111113' : '#f7f5f0');
-      }
-    };
+    // Synchronized 280ms theme transition across all surfaces, text, and borders
+    root.classList.add('theme-transitioning');
 
-    const hasActiveModal = typeof document !== 'undefined' && Boolean(
-      document.querySelector('[role="dialog"]') ||
-      document.querySelector('.modal-backdrop-ios')
-    );
-
-    if (!hasActiveModal && typeof document !== 'undefined' && document.startViewTransition) {
-      const transition = document.startViewTransition(() => {
-        flushSync(updateDOM);
-      });
-      const cleanup = () => {
-        root.classList.remove('theme-switching');
-      };
-      if (transition && transition.finished) {
-        transition.finished.finally(cleanup);
-      } else {
-        setTimeout(cleanup, 260);
-      }
-      return;
+    setTheme(newTheme);
+    setIsDark(willBeDark);
+    if (willBeDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('app-theme', newTheme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content', willBeDark ? '#111113' : '#f7f5f0');
     }
 
-    flushSync(() => {
-      updateDOM();
-    });
-    // Force synchronous reflow so all styles paint in one single unified frame
-    void root.offsetHeight;
     setTimeout(() => {
-      root.classList.remove('theme-switching');
-    }, 120);
+      root.classList.remove('theme-transitioning');
+    }, 320);
   };
 
   const toggleTheme = () => {

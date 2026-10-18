@@ -357,14 +357,14 @@ export default function JoinRoom() {
                           setSelectedCategory(cat.id);
                           triggerHaptic('tap');
                         }}
-                        className={`relative flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer h-[60px] min-h-[60px] overflow-hidden ${
+                        className={`relative flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer min-h-[64px] ${
                           isSelected
                             ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs ring-1 ring-[var(--accent-bg)]/20'
                             : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
                         }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                             isSelected
                               ? 'bg-[var(--accent-bg)] text-white shadow-xs scale-105'
                               : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
@@ -372,11 +372,11 @@ export default function JoinRoom() {
                         >
                           <Icon size={16} />
                         </div>
-                        <div className="min-w-0 flex-1 pr-1.5">
-                          <div className="text-xs font-bold text-[var(--text-primary)] leading-tight truncate">
+                        <div className="min-w-0 flex-1 pr-1">
+                          <div className="text-[13px] font-bold text-[var(--text-primary)] leading-tight whitespace-nowrap">
                             {cat.title}
                           </div>
-                          <div className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                          <div className="text-[11px] text-[var(--text-tertiary)] leading-tight mt-0.5 whitespace-nowrap">
                             {cat.desc}
                           </div>
                         </div>

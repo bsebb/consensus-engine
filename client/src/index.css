@@ -231,38 +231,18 @@
   backface-visibility: hidden;
 }
 
-/* Smooth, Flash-Free Native View Transitions for Theme Switching */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-old(root) {
-  z-index: 1;
-}
-
-::view-transition-new(root) {
-  z-index: 2;
-  animation: viewTransitionFadeIn 0.22s var(--spring-smooth);
-}
-
-@keyframes viewTransitionFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Universal Theme Transition Lock: Prevents Staggered / Delayed Element Updates */
-html.theme-switching,
-html.theme-switching *,
-html.theme-switching *::before,
-html.theme-switching *::after {
-  transition: none !important;
-  animation-duration: 0s !important;
+/* Universal Synchronized Theme Crossfade: 100% Uniform, Smooth, Pleasant */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 0.28s cubic-bezier(0.2, 0, 0, 1),
+    color 0.28s cubic-bezier(0.2, 0, 0, 1),
+    border-color 0.28s cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 0.28s cubic-bezier(0.2, 0, 0, 1),
+    fill 0.28s cubic-bezier(0.2, 0, 0, 1),
+    stroke 0.28s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
 /* Mobile PWA Shell */
@@ -409,58 +389,6 @@ button:active:not(:disabled),
 .btn-snap:active:not(:disabled) {
   transform: scale(0.98);
   transition: transform 0.05s ease-out;
-}
-
-/* Continuous Sliding Segmented Control Pill */
-.seg-track {
-  position: relative;
-  display: flex;
-  background-color: var(--bg-inset);
-  padding: 3px;
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle);
-  user-select: none;
-}
-.seg-thumb {
-  position: absolute;
-  top: 0;
-  left: 0;
-  border-radius: 9px;
-  border: none;
-  background: var(--bg-surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
-  transition: transform 0.26s var(--spring-smooth), width 0.26s var(--spring-smooth), height 0.26s var(--spring-smooth);
-  pointer-events: none;
-  z-index: 10;
-}
-.dark .seg-thumb {
-  background: var(--bg-elevated);
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-}
-.seg-button {
-  position: relative;
-  z-index: 20;
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  border-radius: 9px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.15s ease;
-  min-height: 38px;
-}
-
-.seg-button.active {
-  color: var(--text-primary);
-  font-weight: 600;
 }
 
 /* GPU Accordion Drawer */

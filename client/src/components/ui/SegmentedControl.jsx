@@ -71,9 +71,9 @@ export default function SegmentedControl({
       {/* 60fps GPU Sliding Indicator Thumb (Strict Concentric & Borderless) */}
       <div
         aria-hidden="true"
-        className={`seg-thumb absolute pointer-events-none z-10 ${
+        className={`absolute pointer-events-none z-10 ${
           isAccent
-            ? 'bg-[var(--accent-bg)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)]'
+            ? 'shadow-[0_2px_8px_var(--accent-glow)]'
             : 'bg-white dark:bg-[var(--bg-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.06)]'
         } ${!isMounted || activeIndex < 0 ? 'opacity-0' : 'opacity-100'}`}
         style={{
@@ -83,6 +83,7 @@ export default function SegmentedControl({
           width: `calc((100% - (${cfg.padding} * 2)) / ${count})`,
           borderRadius: cfg.innerRadius,
           transform: `translate3d(calc(${safeIndex} * 100%), 0, 0)`,
+          backgroundColor: isAccent ? 'var(--accent-bg)' : undefined,
           transition: isMounted && activeIndex >= 0
             ? 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease'
             : 'none',
