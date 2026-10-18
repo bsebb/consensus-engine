@@ -12,6 +12,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Lightweight health check endpoint for Render health monitoring and keep-alive pingers
+app.get(['/health', '/api/v1/health'], (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use('/api/v1/rooms', roomRoutes);
 
 app.get('/api/v1/test-foursquare', async (req, res) => {

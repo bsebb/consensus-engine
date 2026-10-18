@@ -62,6 +62,9 @@ export default function JoinRoom() {
     } catch (err) {
       console.warn('[JoinRoom] Local history check:', err);
     }
+
+    // Silent background wake-up ping for sleeping cloud containers
+    fetch(apiUrl('/health')).catch(() => {});
   }, []);
 
   const handleDigitChange = (index, value) => {
