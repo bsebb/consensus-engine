@@ -67,7 +67,8 @@ const createNewRoom = async (req, res) => {
   }
 
   const pin = generatePin();
-  const room = await createRoom(host_id, pin);
+  const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
+  const room = await createRoom(host_id, pin, roomTheme, radius);
 
   // Sprint 2 Logic: Fetch Foursquare data and save to DB
   if (mode === 'DISCOVERY') {
@@ -111,6 +112,8 @@ const createNewRoom = async (req, res) => {
       room_id: room.id,
       pin: room.pin,
       status: room.status,
+      theme: roomTheme,
+      mode: 'DISCOVERY',
       options: createdOptions,
     });
   }
@@ -119,6 +122,8 @@ const createNewRoom = async (req, res) => {
     room_id: room.id,
     pin: room.pin,
     status: room.status,
+    theme: roomTheme,
+    mode: 'CUSTOM',
     options: [],
   });
 };
@@ -128,10 +133,13 @@ const getRoom = async (req, res) => {
     const { pin } = req.params;
     const room = await getRoomByPin(pin);
 
+    const isCustom = Boolean(room.theme && room.theme.startsWith('custom'));
     return res.status(200).json({
       room_id: room.id,
       pin: room.pin,
       status: room.status,
+      theme: room.theme,
+      mode: isCustom ? 'CUSTOM' : 'DISCOVERY',
       participants: room.participants,
       options: room.options,
     });

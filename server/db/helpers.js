@@ -2,12 +2,14 @@ const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-async function createRoom(hostId, pin) {
+async function createRoom(hostId, pin, theme = null, radius = null) {
     try {
         const room = await prisma.room.create({
             data: {
                 hostId,
                 pin,
+                theme: theme ? String(theme) : null,
+                radius: typeof radius === 'number' ? radius : null,
             },
         });
         return room;

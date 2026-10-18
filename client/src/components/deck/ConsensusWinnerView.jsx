@@ -20,6 +20,7 @@ import VenueDetailsModal from './VenueDetailsModal';
 import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { apiUrl } from '../../utils/api';
+import { useCustomOptionPhoto } from '../../utils/customOptionService';
 import { useToast } from '../ui/Toast';
 
 export default function ConsensusWinnerView({
@@ -47,6 +48,12 @@ export default function ConsensusWinnerView({
     isCustomWinner ? '' : winner?.category,
     isCustomWinner ? null : winner?.photo_url
   );
+  const { photo: customWinnerPhoto } = useCustomOptionPhoto(
+    isCustomWinner ? winner?.name : '',
+    topic,
+    winner?.photo_url
+  );
+  const [customImgErr, setCustomImgErr] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [satisfactionScore, setSatisfactionScore] = useState(userRating || 0);
   const [priceAccuracyScore, setPriceAccuracyScore] = useState(0);
@@ -101,22 +108,57 @@ export default function ConsensusWinnerView({
       {/* Winner Hero Card */}
       <div className="w-full rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner ? (
-          /* Clean Custom Poll Winner Banner (Zero Fake Photos, Ratings, Prices, or Distances) */
-          <div className="p-6 pb-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-2.5">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
-                Winning Poll Option
-              </span>
-              {topic && (
-                <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[180px]">
-                  {topic}
+          customWinnerPhoto && !customImgErr ? (
+            /* Visual Poster Card for Custom Option Winner */
+            <div className="relative h-56 w-full bg-[var(--bg-inset)]">
+              <img
+                src={customWinnerPhoto}
+                alt={winner?.name}
+                className="w-full h-full object-cover"
+                onError={() => setCustomImgErr(true)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20" />
+
+              {/* Floating Winner Badges */}
+              <div className="absolute top-4 inset-x-4 flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+                  Winning Group Pick
                 </span>
-              )}
+                {topic && (
+                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate max-w-[180px]">
+                    {topic}
+                  </span>
+                )}
+              </div>
+
+              {/* Title overlay */}
+              <div className="absolute bottom-4 inset-x-4 text-left">
+                <span className="text-xs font-semibold text-amber-300">
+                  Consensus Choice
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
+                  {winner?.name}
+                </h2>
+              </div>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight mt-1 break-words max-w-xs">
-              {winner?.name}
-            </h2>
-          </div>
+          ) : (
+            /* Clean Custom Poll Winner Banner (Zero Fake Photos, Ratings, Prices, or Distances) */
+            <div className="p-6 pb-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-2.5">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+                  Winning Poll Option
+                </span>
+                {topic && (
+                  <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[180px]">
+                    {topic}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight mt-1 break-words max-w-xs">
+                {winner?.name}
+              </h2>
+            </div>
+          )
         ) : (
           /* Discovery Venue Hero Image Header */
           <div className="relative h-56 w-full bg-[var(--bg-inset)]">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info, Layers } from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
+import { useCustomOptionPhoto } from '../../utils/customOptionService';
 
 export default function SwipeCard({
   mode,
@@ -22,6 +23,7 @@ export default function SwipeCard({
   onOpenDetails,
 }) {
   const isCustomCard = Boolean(mode === 'CUSTOM' || activeCard?.isCustom);
+  const { photo: customPhoto } = useCustomOptionPhoto(isCustomCard ? activeCard?.name : '', topic, activeCard?.photo_url);
 
   const { primaryPhoto, photos, fallbackPhoto } = useVenuePhotos(
     isCustomCard ? '' : activeCard?.name,
@@ -31,14 +33,18 @@ export default function SwipeCard({
   );
   const [photoIdx, setPhotoIdx] = useState(0);
   const [failedUrls, setFailedUrls] = useState({});
+  const [customImgError, setCustomImgError] = useState(false);
 
   useEffect(() => {
     setPhotoIdx(0);
     setFailedUrls({});
+    setCustomImgError(false);
   }, [activeCard?.id, activeCard?.name]);
 
   const validPhotos = (photos || []).filter((u) => !failedUrls[u]);
-  const displayPhoto = validPhotos[photoIdx] || validPhotos[0] || primaryPhoto || fallbackPhoto;
+  const displayPhoto = isCustomCard
+    ? (customPhoto || fallbackPhoto)
+    : (validPhotos[photoIdx] || validPhotos[0] || primaryPhoto || fallbackPhoto);
   const vibeSubtitle = getVenueVibe(activeCard?.name, activeCard?.category);
 
   return (
@@ -97,33 +103,77 @@ export default function SwipeCard({
         )}
 
         {isCustomCard ? (
-          /* Human-Centric Clean Custom Poll Card */
-          <div className="flex-1 flex flex-col justify-between p-6 text-center bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-inset)]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] text-xs font-bold truncate max-w-[70%]">
-                <Layers size={12} />
-                <span className="truncate">{topic || 'Custom Poll'}</span>
-              </span>
-              <span className="px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] tabular-nums">
-                {cardIndex} of {totalCards}
-              </span>
-            </div>
+          customPhoto && !customImgError ? (
+            /* Visual Poster Card for Custom Options with matched photos */
+            <>
+              <div className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden">
+                <img
+                  src={customPhoto}
+                  alt={activeCard?.name}
+                  className="w-full h-full object-cover"
+                  draggable="false"
+                  onError={() => setCustomImgError(true)}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
-            <div className="my-auto py-8 px-2 flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs">
-                #{cardIndex}
+                {/* Top Floating Badges */}
+                <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10 max-w-[70%] truncate">
+                    <Layers size={12} className="text-amber-400 shrink-0" />
+                    <span className="truncate">{topic || 'Custom Poll'}</span>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-bold text-white tabular-nums">
+                    {cardIndex} of {totalCards}
+                  </span>
+                </div>
+
+                {/* Bottom Photo Overlay: Option Name */}
+                <div className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
+                    Option #{cardIndex}
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-2">
+                    {activeCard?.name}
+                  </h2>
+                </div>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words">
-                {activeCard?.name}
-              </h2>
-            </div>
 
-            <div className="pt-3 border-t border-[var(--border-subtle)] text-xs font-medium text-[var(--text-tertiary)] flex items-center justify-center gap-4">
-              <span>Swipe right to approve</span>
-              <span>•</span>
-              <span>Swipe left to decline</span>
+              {/* Action Instruction Footer */}
+              <div className="px-4 py-3 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-center gap-4 text-xs font-medium text-[var(--text-tertiary)] shrink-0">
+                <span>Swipe right to approve</span>
+                <span>•</span>
+                <span>Swipe left to decline</span>
+              </div>
+            </>
+          ) : (
+            /* Human-Centric Clean Custom Poll Card (Ultra-niche without poster) */
+            <div className="flex-1 flex flex-col justify-between p-6 text-center bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-inset)]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] text-xs font-bold truncate max-w-[70%]">
+                  <Layers size={12} />
+                  <span className="truncate">{topic || 'Custom Poll'}</span>
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] tabular-nums">
+                  {cardIndex} of {totalCards}
+                </span>
+              </div>
+
+              <div className="my-auto py-8 px-2 flex flex-col items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs">
+                  #{cardIndex}
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words">
+                  {activeCard?.name}
+                </h2>
+              </div>
+
+              <div className="pt-3 border-t border-[var(--border-subtle)] text-xs font-medium text-[var(--text-tertiary)] flex items-center justify-center gap-4">
+                <span>Swipe right to approve</span>
+                <span>•</span>
+                <span>Swipe left to decline</span>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <>
             {/* Dominant Curated Venue Photography */}

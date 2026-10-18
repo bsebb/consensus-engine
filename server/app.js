@@ -70,6 +70,42 @@ app.get('/api/v1/venue-photos', async (req, res) => {
   }
 });
 
+// Steam Store Game Poster Search (public Steam API proxy with in-memory caching)
+const steamPosterCache = new Map();
+app.get('/api/v1/options/game-poster', async (req, res) => {
+  try {
+    const query = String(req.query.query || '').trim();
+    if (!query) {
+      return res.json({ success: true, poster_url: null });
+    }
+    const cacheKey = query.toLowerCase();
+    if (steamPosterCache.has(cacheKey)) {
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.json({ success: true, poster_url: steamPosterCache.get(cacheKey) });
+    }
+
+    const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=US`;
+    const steamRes = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
+    });
+    if (!steamRes.ok) {
+      return res.json({ success: true, poster_url: null });
+    }
+    const data = await steamRes.json();
+    if (Array.isArray(data.items) && data.items.length > 0) {
+      const best = data.items[0];
+      const posterUrl = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${best.id}/header.jpg`;
+      steamPosterCache.set(cacheKey, posterUrl);
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.json({ success: true, poster_url: posterUrl, app_id: best.id, name: best.name });
+    }
+    return res.json({ success: true, poster_url: null });
+  } catch {
+    return res.json({ success: false, poster_url: null });
+  }
+});
+
 app.get('/api/v1/test-foursquare', async (req, res) => {
   try {
     const rawKey = process.env.FOURSQUARE_API_KEY;

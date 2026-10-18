@@ -102,8 +102,15 @@ export default function RoomLobby() {
       fetch(apiUrl(`/api/v1/rooms/${pin}`))
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data && Array.isArray(data.options) && data.options.length > 0) {
-            setRealOptions(data.options);
+          if (data) {
+            if (data.mode) setMode(data.mode);
+            if (data.theme && data.theme.startsWith('custom:')) {
+              const customTopic = data.theme.replace(/^custom:/, '');
+              if (customTopic && customTopic !== 'poll') setTopic(customTopic);
+            }
+            if (Array.isArray(data.options) && data.options.length > 0) {
+              setRealOptions(data.options);
+            }
           }
         })
         .catch((err) => console.warn('[RoomLobby] Room options fetch notice:', err))
@@ -522,6 +529,7 @@ export default function RoomLobby() {
         {/* Curated Places / Custom Options on the Table */}
         <CandidatePoolDeck
           mode={mode}
+          topic={topic}
           isLoading={loadingOptions}
           candidates={filteredCandidates}
           lockedConstraint={lockedConstraint}

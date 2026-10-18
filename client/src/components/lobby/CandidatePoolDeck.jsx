@@ -1,41 +1,96 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star, Info, Check, Layers } from 'lucide-react';
 import Button from '../ui/Button';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
+import { inferLibraryTabFromTopic, useCustomOptionPhoto } from '../../utils/customOptionService';
 
-function CustomOptionCard({ item, idx, handleRemoveSuggestion }) {
-  return (
-    <div className="rounded-2xl p-3.5 bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex items-center justify-between gap-2.5 shadow-2xs text-left">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-7 h-7 rounded-xl bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
-          #{idx + 1}
+function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
+  const { photo } = useCustomOptionPhoto(item.name, topic, item.photo_url);
+  const [imgError, setImgError] = useState(false);
+
+  if (photo && !imgError) {
+    return (
+      <div className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group text-left">
+        <div className="relative h-32 sm:h-36 w-full bg-[var(--bg-elevated)] overflow-hidden">
+          <img
+            src={photo}
+            alt={item.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={() => setImgError(true)}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+          {/* Index pill */}
+          <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 shadow-2xs z-10 tabular-nums">
+            <span>#{idx + 1}</span>
+          </div>
+
+          {/* Remove option button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemoveSuggestion(item.customIndex ?? idx);
+            }}
+            className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-black/65 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10"
+            title="Remove option"
+            aria-label={`Remove ${item.name}`}
+          >
+            <Trash2 size={12} />
+          </button>
+
+          {/* Title overlay at base of image */}
+          <div className="absolute bottom-2 inset-x-2.5 flex items-center justify-between gap-1">
+            <span className="text-xs sm:text-sm font-bold text-white line-clamp-2 drop-shadow-xs" title={item.name}>
+              {item.name}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug" title={item.name}>
-            {item.name}
-          </span>
-          <span className="text-[10px] text-[var(--text-tertiary)] font-medium">
-            Custom Poll Option
+
+        {/* Footer */}
+        <div className="p-2.5 flex items-center justify-between gap-2 text-left">
+          <span className="text-[11px] text-[var(--text-secondary)] font-semibold truncate leading-tight">
+            {topic || 'Custom Poll'}
           </span>
         </div>
       </div>
+    );
+  }
 
-      <button
-        type="button"
-        onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
-        className="w-7 h-7 rounded-full bg-[var(--bg-elevated)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
-        title="Remove option"
-        aria-label={`Remove ${item.name}`}
-      >
-        <Trash2 size={13} />
-      </button>
+  return (
+    <div className="rounded-2xl p-3 bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between min-h-[120px] shadow-2xs text-left">
+      <div className="flex items-center justify-between gap-2">
+        <div className="w-6 h-6 rounded-lg bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
+          #{idx + 1}
+        </div>
+        <button
+          type="button"
+          onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
+          className="w-6 h-6 rounded-full bg-[var(--bg-elevated)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
+          title="Remove option"
+          aria-label={`Remove ${item.name}`}
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+
+      <div className="py-2">
+        <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug" title={item.name}>
+          {item.name}
+        </span>
+      </div>
+
+      <div className="text-[10px] text-[var(--text-tertiary)] font-medium">
+        {topic || 'Custom Option'}
+      </div>
     </div>
   );
 }
 
-function CandidatePoolCard({ item, idx, handleRemoveSuggestion, onSelectDetails }) {
+function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectDetails }) {
   const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
   const vibeSubtitle = getVenueVibe(item.name, item.category);
   const venueRating = getVenueRating(item.name, item.category);
@@ -46,6 +101,7 @@ function CandidatePoolCard({ item, idx, handleRemoveSuggestion, onSelectDetails 
       <CustomOptionCard
         item={item}
         idx={idx}
+        topic={topic}
         handleRemoveSuggestion={handleRemoveSuggestion}
       />
     );
@@ -117,6 +173,7 @@ function CandidatePoolCard({ item, idx, handleRemoveSuggestion, onSelectDetails 
 
 export default function CandidatePoolDeck({
   mode,
+  topic = '',
   candidates = [],
   isLoading = false,
   lockedConstraint,
@@ -131,7 +188,13 @@ export default function CandidatePoolDeck({
 }) {
   const [showAddInput, setShowAddInput] = useState(mode === 'CUSTOM');
   const [selectedVenue, setSelectedVenue] = useState(null);
-  const [activeLibraryTab, setActiveLibraryTab] = useState(CUSTOM_POLL_LIBRARY[0].id);
+  const [activeLibraryTab, setActiveLibraryTab] = useState(() => inferLibraryTabFromTopic(topic));
+
+  useEffect(() => {
+    if (topic) {
+      setActiveLibraryTab(inferLibraryTabFromTopic(topic));
+    }
+  }, [topic]);
 
   // Cap displayed deck at 8 options
   const displayedCandidates = candidates.slice(0, 8);
@@ -301,6 +364,7 @@ export default function CandidatePoolDeck({
               key={item.id || item.name || idx}
               item={item}
               idx={idx}
+              topic={topic}
               handleRemoveSuggestion={handleRemoveSuggestion}
               onSelectDetails={setSelectedVenue}
             />
