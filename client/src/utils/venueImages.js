@@ -443,45 +443,25 @@ export function useVenuePhotos(name = '', address = '', category = '', initialPh
   const fallback = useMemo(() => getVenueImage(name, category), [name, category]);
   const cKey = useMemo(() => getCanonicalVenueKey(name), [name]);
 
-  const [photo, setPhoto] = useState(() => {
-    if (initialPhoto && typeof initialPhoto === 'string' && initialPhoto.startsWith('http')) {
-      return initialPhoto;
-    }
-    if (cKey && typeof window !== 'undefined' && window.localStorage) {
+  const resolvePhotoForVenue = useCallback((key, init) => {
+    if (init && typeof init === 'string' && init.startsWith('http')) return init;
+    const staticPhoto = getVenueImage(name, category);
+    if (staticPhoto && staticPhoto !== fallback) return staticPhoto;
+    if (key && typeof window !== 'undefined' && window.localStorage) {
       try {
-        const cached = window.localStorage.getItem(`consensus_photo_${cKey}`);
-        if (cached && cached.startsWith('http')) {
-          return cached;
-        }
+        const cached = window.localStorage.getItem(`consensus_photo_${key}`);
+        if (cached && cached.startsWith('http')) return cached;
       } catch {}
     }
     return null;
-  });
+  }, [name, category, fallback]);
+
+  const [photo, setPhoto] = useState(() => resolvePhotoForVenue(cKey, initialPhoto));
 
   useEffect(() => {
-    if (photo && cKey && typeof window !== 'undefined' && window.localStorage) {
-      try {
-        window.localStorage.setItem(`consensus_photo_${cKey}`, photo);
-      } catch {}
-      return;
-    }
-
-    if (initialPhoto && typeof initialPhoto === 'string' && initialPhoto.startsWith('http')) {
-      setPhoto(initialPhoto);
-      if (cKey && typeof window !== 'undefined' && window.localStorage) {
-        try {
-          window.localStorage.setItem(`consensus_photo_${cKey}`, initialPhoto);
-        } catch {}
-      }
-      return;
-    }
-
-    const staticPhoto = getVenueImage(name, category);
-    if (staticPhoto && staticPhoto !== fallback) {
-      setPhoto(staticPhoto);
-      return;
-    }
-
+    const current = resolvePhotoForVenue(cKey, initialPhoto);
+    setPhoto(current);
+    if (current) return;
     if (!name || name.trim().length < 2) return;
 
     let isMounted = true;
@@ -508,11 +488,8 @@ export function useVenuePhotos(name = '', address = '', category = '', initialPh
     };
 
     fetchPhoto();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [name, address, category, initialPhoto, cKey, photo, fallback]);
+    return () => { isMounted = false; };
+  }, [cKey, initialPhoto, resolvePhotoForVenue, name, address, category]);
 
   const activePhoto = photo || fallback;
 

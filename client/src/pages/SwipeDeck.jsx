@@ -535,6 +535,7 @@ export default function SwipeDeck() {
       ) : activeTab === 'details' && mode !== 'CUSTOM' && !activeCard?.isCustom ? (
         <main className="px-4 py-2 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
           <VenueDetailsModal
+            key={activeCard?.id || activeCard?.name || 'swipedeck-venue-modal'}
             venue={activeCard}
             isOpen={true}
             inline={true}

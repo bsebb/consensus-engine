@@ -286,6 +286,7 @@ export default function CandidatePoolDeck({
 
       {/* Venue Details & Road Route Modal (Discovery Places Only) */}
       <VenueDetailsModal
+        key={selectedVenue?.id || selectedVenue?.name || 'lobby-venue-modal'}
         venue={selectedVenue}
         isOpen={Boolean(selectedVenue && !selectedVenue.isCustom && mode !== 'CUSTOM')}
         onClose={() => setSelectedVenue(null)}

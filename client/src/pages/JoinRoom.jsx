@@ -174,7 +174,6 @@ export default function JoinRoom() {
     localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
 
-    const isCustomMode = selectedCategory === 'Custom';
     const roomMode = isCustomMode ? 'CUSTOM' : 'DISCOVERY';
     const catConfig = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
     const topicTitle = isCustomMode ? (customTopic.trim() || 'What should we do?') : catConfig.topic;
@@ -226,6 +225,7 @@ export default function JoinRoom() {
     setLoading(false);
   };
 
+  const isCustomMode = selectedCategory === 'Custom';
   const activeCatObj = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
 
   return (
