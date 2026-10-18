@@ -1,4 +1,4 @@
-const CACHE_NAME = 'consensus-pwa-v15';
+const CACHE_NAME = 'consensus-pwa-v16';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -32,10 +32,16 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass non-GET requests, socket.io transports, and API routes
+  // Strictly ignore cross-origin requests (e.g. Render backend, external CDNs)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Bypass non-GET requests, API routes, health checks, and websocket transports
   if (
     event.request.method !== 'GET' ||
     url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/health') ||
     url.pathname.includes('socket.io') ||
     url.pathname.startsWith('/@') || // Vite HMR internals in dev
     url.protocol.startsWith('ws')
@@ -56,7 +62,7 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
           return networkResponse;
-        }).catch(() => Response.error());
+        });
       })
     );
     return;
@@ -81,7 +87,7 @@ self.addEventListener('fetch', (event) => {
           const fallback = await caches.match('/');
           if (fallback) return fallback;
         }
-        return Response.error();
+        return new Response('Network unavailable', { status: 503, statusText: 'Offline' });
       })
   );
 });

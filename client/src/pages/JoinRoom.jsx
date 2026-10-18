@@ -91,7 +91,7 @@ export default function JoinRoom() {
       console.warn('[JoinRoom] Local history check:', err);
     }
 
-    fetch(apiUrl('/health')).catch(() => {});
+    fetch(apiUrl('/api/v1/health')).catch(() => {});
 
     let mounted = true;
     detectUserGps().then((res) => {
