@@ -7,21 +7,22 @@ import {
   Moon,
   Sun,
   Laptop,
-  Wifi,
   Trash2,
   RotateCcw,
   Activity,
-  Layers,
+  Globe,
+  Palette,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useSocket } from '../../context/SocketContext';
 import { useToast } from './Toast';
 import SpringToggle from './SpringToggle';
 import { triggerHaptic } from '../../utils/haptics';
 
 export default function SettingsModal({ isOpen, onClose }) {
-  const { theme, setTheme } = useTheme();
-  const { isConnected, socket, participantId } = useSocket();
+  const { theme, setTheme, accent, setAccent, ACCENTS } = useTheme();
+  const { lang, setLang, t } = useLanguage();
   const { addToast } = useToast();
 
   const [userName, setUserName] = useState(() => {
@@ -31,18 +32,6 @@ export default function SettingsModal({ isOpen, onClose }) {
   const [haptics, setHaptics] = useState(() => {
     return localStorage.getItem('consensus_haptics_enabled') !== 'false';
   });
-
-  const [autoAdvance, setAutoAdvance] = useState(() => {
-    return localStorage.getItem('consensus_auto_advance') !== 'false';
-  });
-
-  const [defaultBudget, setDefaultBudget] = useState(() => {
-    return Number(localStorage.getItem('consensus_default_budget')) || 250;
-  });
-
-  const [pingMs, setPingMs] = useState(null);
-  const [testingPing, setTestingPing] = useState(false);
-  const [copiedId, setCopiedId] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -72,66 +61,11 @@ export default function SettingsModal({ isOpen, onClose }) {
     });
   };
 
-  const handleToggleAutoAdvance = (val) => {
-    setAutoAdvance(val);
-    localStorage.setItem('consensus_auto_advance', String(val));
-    addToast({
-      title: 'Accordion Auto-Advance',
-      message: val ? 'Drawers automatically expand on selection' : 'Manual drawer expansion only',
-      type: 'info',
-    });
-  };
-
-  const handleSelectBudget = (val) => {
-    setDefaultBudget(val);
-    localStorage.setItem('consensus_default_budget', String(val));
-    addToast({
-      title: 'Default Budget Saved',
-      message: `Set to ${val} MDL`,
-      type: 'success',
-    });
-  };
-
-  const handleTestPing = () => {
-    if (!isConnected || !socket) {
-      addToast({
-        title: 'Offline',
-        message: 'No live WebSocket connection available',
-        type: 'warning',
-      });
-      return;
-    }
-    setTestingPing(true);
-    const start = performance.now();
-    socket.emit('ping_check', {}, () => {
-      const elapsed = Math.round(performance.now() - start);
-      setPingMs(elapsed);
-      setTestingPing(false);
-    });
-    // Fallback timer if callback not acknowledged
-    setTimeout(() => {
-      setPingMs((prev) => (prev !== null ? prev : Math.floor(12 + Math.random() * 8)));
-      setTestingPing(false);
-    }, 300);
-  };
-
-  const handleCopySocketId = () => {
-    const sid = socket?.id || participantId || 'local-client';
-    navigator.clipboard?.writeText(sid);
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 1500);
-    addToast({
-      title: 'Socket ID Copied',
-      message: sid,
-      type: 'info',
-    });
-  };
-
   const handleClearHistory = () => {
     localStorage.removeItem('consensus_history');
     addToast({
       title: 'History Cleared',
-      message: 'All past consensus records removed',
+      message: t('clearHistoryMsg'),
       type: 'info',
     });
   };
@@ -157,7 +91,7 @@ export default function SettingsModal({ isOpen, onClose }) {
       aria-label="Application Settings"
     >
       <div
-        className="w-full max-w-md max-h-[85vh] overflow-y-auto glass-surface rounded-3xl p-5 border border-[var(--border-glass)] shadow-[0_24px_64px_rgba(0,0,0,0.4)] flex flex-col gap-5 animate-[modalSpring_0.25s_var(--spring-smooth)] select-none text-[var(--text-primary)]"
+        className="w-full max-w-md max-h-[85vh] overflow-y-auto glass-surface rounded-3xl p-5 border border-[var(--border-glass)] shadow-[0_24px_64px_rgba(0,0,0,0.4)] flex flex-col gap-4 animate-[modalSpring_0.25s_var(--spring-smooth)] select-none text-[var(--text-primary)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -167,8 +101,8 @@ export default function SettingsModal({ isOpen, onClose }) {
               <Sliders size={18} />
             </div>
             <div>
-              <h2 className="text-base font-extrabold tracking-tight">Preferences</h2>
-              <p className="text-[11px] text-[var(--text-secondary)]">Consensus engine configuration</p>
+              <h2 className="text-base font-extrabold tracking-tight">{t('prefTitle')}</h2>
+              <p className="text-[11px] text-[var(--text-secondary)]">{t('prefSubtitle')}</p>
             </div>
           </div>
 
@@ -182,11 +116,84 @@ export default function SettingsModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Section 1: User Profile */}
-        <section className="flex flex-col gap-2">
+        {/* Section 1: Language Picker */}
+        <section className="flex flex-col gap-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
-            <User size={12} />
-            <span>Voter Identity</span>
+            <Globe size={12} />
+            <span>{t('langTitle')}</span>
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'en', flag: '🇺🇸', label: 'English' },
+              { id: 'ro', flag: '🇲🇩', label: 'Română' },
+              { id: 'ru', flag: '🇷🇺', label: 'Русский' },
+            ].map((item) => {
+              const isSelected = lang === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setLang(item.id);
+                    triggerHaptic('tap');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-[0_2px_8px_var(--accent-glow)]'
+                      : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
+                  }`}
+                >
+                  <span>{item.flag}</span>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Section 2: Accent Theme Color */}
+        <section className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
+            <Palette size={12} />
+            <span>{t('colorTitle')}</span>
+          </span>
+          <div className="grid grid-cols-5 gap-2">
+            {ACCENTS.map((item) => {
+              const isSelected = accent === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setAccent(item.id);
+                    triggerHaptic('tap');
+                  }}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-[var(--bg-surface)] border-[var(--accent-bg)] shadow-[0_2px_10px_var(--accent-glow)]'
+                      : 'bg-[var(--bg-inset)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
+                  }`}
+                  title={item.name}
+                >
+                  <span
+                    className="w-5 h-5 rounded-full shadow-xs flex items-center justify-center text-white"
+                    style={{ backgroundColor: item.color }}
+                  >
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </span>
+                  <span className="text-[10px] font-semibold text-[var(--text-secondary)] truncate w-full text-center">
+                    {item.name.split(' ')[0]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Section 3: User Profile */}
+        <section className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-[var(--text-secondary)]">
+            {t('voterIdentity')}
           </span>
           <div className="flex items-center gap-2 bg-[var(--bg-inset)] p-1.5 rounded-2xl border border-[var(--border-subtle)]">
             <input
@@ -202,67 +209,28 @@ export default function SettingsModal({ isOpen, onClose }) {
           </div>
         </section>
 
-        {/* Section 2: Motion & Interaction */}
-        <section className="flex flex-col gap-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
-            <Activity size={12} />
-            <span>Ergonomics & Motion</span>
-          </span>
-          <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-3">
+        {/* Section 4: Motion & Interaction */}
+        <section className="flex flex-col gap-2">
+          <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2">
             <SpringToggle
-              label="Haptic & Audio Touch"
-              description="Tactile bounce when voting or locking constraints"
+              label={t('hapticsTitle')}
+              description={t('hapticsDesc')}
               checked={haptics}
               onChange={handleToggleHaptics}
             />
-            <div className="h-[1px] bg-[var(--border-subtle)]" />
-            <SpringToggle
-              label="Staged Accordion Auto-Advance"
-              description="Spring-open next drawer automatically on stage completion"
-              checked={autoAdvance}
-              onChange={handleToggleAutoAdvance}
-            />
           </div>
         </section>
 
-        {/* Section 3: Default Budget Ceiling */}
-        <section className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
-            <Layers size={12} />
-            <span>Default Budget Ceiling</span>
-          </span>
-          <div className="grid grid-cols-4 gap-2">
-            {[150, 250, 350, 500].map((tier) => {
-              const isSelected = defaultBudget === tier;
-              return (
-                <button
-                  key={tier}
-                  type="button"
-                  onClick={() => handleSelectBudget(tier)}
-                  className={`py-2 px-1 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-[0_2px_8px_var(--accent-glow)]'
-                      : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
-                  }`}
-                >
-                  {tier} MDL
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Section 4: Theme Appearance */}
-        <section className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
-            <Moon size={12} />
-            <span>Appearance Theme</span>
+        {/* Section 5: Theme Appearance */}
+        <section className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold text-[var(--text-secondary)]">
+            {t('themeTitle')}
           </span>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'dark', label: 'Dark', icon: Moon },
-              { id: 'light', label: 'Light', icon: Sun },
-              { id: 'system', label: 'System', icon: Laptop },
+              { id: 'dark', label: t('themeDark'), icon: Moon },
+              { id: 'light', label: t('themeLight'), icon: Sun },
+              { id: 'system', label: t('themeSystem'), icon: Laptop },
             ].map((item) => {
               const isCurrent = theme === item.id;
               const IconComp = item.icon;
@@ -285,56 +253,15 @@ export default function SettingsModal({ isOpen, onClose }) {
           </div>
         </section>
 
-        {/* Section 5: Realtime & Network Telemetry */}
-        <section className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
-              <Wifi size={12} />
-              <span>Connection & Status</span>
-            </span>
-            <button
-              type="button"
-              onClick={handleTestPing}
-              disabled={testingPing}
-              className="text-[10px] font-mono font-bold text-[var(--accent-bg)] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Activity size={10} />
-              <span>{testingPing ? 'Pinging...' : pingMs !== null ? `${pingMs} ms` : 'Test Ping'}</span>
-            </button>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2 font-mono text-[11px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-secondary)]">Socket Status:</span>
-              <span className={`font-bold flex items-center gap-1.5 ${isConnected ? 'text-[var(--status-success)]' : 'text-[var(--text-tertiary)]'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                {isConnected ? 'Connected' : 'Offline / Standalone'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-[var(--text-secondary)]">Socket ID:</span>
-              <button
-                type="button"
-                onClick={handleCopySocketId}
-                className="text-[10px] text-[var(--accent-bg)] hover:underline truncate max-w-[180px] cursor-pointer"
-                title="Copy Socket ID"
-              >
-                {copiedId ? 'Copied!' : (socket?.id || participantId || 'Local')}
-              </button>
-            </div>
-          </div>
-        </section>
-
         {/* Section 6: Data Reset Actions */}
-        <div className="pt-1 flex items-center gap-2">
+        <div className="pt-2 flex items-center gap-2 border-t border-[var(--border-subtle)]">
           <button
             type="button"
             onClick={handleClearHistory}
             className="flex-1 py-2 px-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-[11px] font-bold border border-rose-500/20 flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[36px]"
           >
             <Trash2 size={12} />
-            <span>Clear History</span>
+            <span>{t('clearHistoryBtn')}</span>
           </button>
           <button
             type="button"

@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Compass,
   ArrowRight,
   Clock,
   Utensils,
@@ -15,10 +14,9 @@ import {
   Settings,
   History,
   MapPin,
-  Navigation,
-  Search,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
@@ -35,18 +33,19 @@ import {
 import { triggerHaptic } from '../utils/haptics';
 import BrandLogo from '../components/ui/BrandLogo';
 
-const CATEGORIES = [
-  { id: 'Restaurants', title: 'Restaurants', desc: 'Dinner & lunch spots', icon: Utensils, topic: 'Where are we eating?' },
-  { id: 'Cafes', title: 'Coffee & Cafes', desc: 'Espresso, brunch & tea', icon: Coffee, topic: 'Where are we grabbing coffee?' },
-  { id: 'Bars & Pubs', title: 'Bars & Pubs', desc: 'Craft beer, wine & drinks', icon: Wine, topic: 'Where are we getting drinks?' },
-  { id: 'Cinema', title: 'Cinema', desc: 'Movie theaters & shows', icon: Film, topic: 'Which cinema are we going to?' },
-  { id: 'Desserts', title: 'Desserts', desc: 'Gelato, pastries & sweets', icon: IceCream, topic: 'Where to for dessert?' },
-  { id: 'Custom', title: 'Custom Poll', desc: 'Add your own options', icon: ListPlus, topic: 'What should we do?' },
-];
-
 export default function JoinRoom() {
+  const { lang, t } = useLanguage();
   const [searchParams] = useSearchParams();
   const hasUrlPin = Boolean(searchParams.get('pin') && /^\d{4}$/.test(searchParams.get('pin')));
+
+  const categories = useMemo(() => [
+    { id: 'Restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic') },
+    { id: 'Cafes', title: t('catCafes'), desc: t('catCafesDesc'), icon: Coffee, topic: t('catCafesTopic') },
+    { id: 'Bars & Pubs', title: t('catBars'), desc: t('catBarsDesc'), icon: Wine, topic: t('catBarsTopic') },
+    { id: 'Cinema', title: t('catCinema'), desc: t('catCinemaDesc'), icon: Film, topic: t('catCinemaTopic') },
+    { id: 'Desserts', title: t('catDesserts'), desc: t('catDessertsDesc'), icon: IceCream, topic: t('catDessertsTopic') },
+    { id: 'Custom', title: t('catCustom'), desc: t('catCustomDesc'), icon: ListPlus, topic: t('catCustomTopic') },
+  ], [t]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(hasUrlPin ? 'join' : 'create');
@@ -184,7 +183,7 @@ export default function JoinRoom() {
     setLoading(true);
 
     const roomMode = isCustomMode ? 'CUSTOM' : 'DISCOVERY';
-    const catConfig = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
+    const catConfig = categories.find((c) => c.id === selectedCategory) || categories[0];
     const topicTitle = isCustomMode ? (customTopic.trim() || 'What should we do?') : catConfig.topic;
 
     let lat = gpsState.lat;
@@ -235,12 +234,12 @@ export default function JoinRoom() {
   };
 
   const isCustomMode = selectedCategory === 'Custom';
-  const activeCatObj = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
+  const activeCatObj = categories.find((c) => c.id === selectedCategory) || categories[0];
 
   if (loading) {
     return (
       <LobbyLoadingView
-        topic={isCustomMode ? (customTopic.trim() || 'What should we do?') : activeCatObj.topic}
+        topic={isCustomMode ? (customTopic.trim() || t('catCustomTopic')) : activeCatObj.topic}
         category={selectedCategory}
         userName={name.trim() || 'Host'}
         locationLabel={gpsState?.label || 'Current Location'}
@@ -250,7 +249,7 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 pt-[max(env(safe-area-inset-top,0px),1.25rem)] pb-[max(env(safe-area-inset-bottom,0px),1.25rem)] min-h-[100dvh]">
+    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 safe-pt-page pb-safe min-h-[100dvh] overflow-y-auto">
       <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
@@ -258,11 +257,19 @@ export default function JoinRoom() {
           </div>
           <div className="flex flex-col">
             <span className="font-extrabold text-base tracking-tight text-[var(--text-primary)] leading-tight">NoYouPick</span>
-            <span className="text-[10px] font-medium text-[var(--text-tertiary)] -mt-0.5">End the debate</span>
+            <span className="text-[10px] font-medium text-[var(--text-tertiary)] -mt-0.5">{t('tagline')}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
+            title={t('langTitle')}
+          >
+            <span>{lang === 'ro' ? '🇲🇩 RO' : lang === 'ru' ? '🇷🇺 RU' : '🇺🇸 EN'}</span>
+          </button>
           <button
             type="button"
             onClick={() => navigate('/history')}
@@ -270,14 +277,14 @@ export default function JoinRoom() {
             title="Past Group Picks"
           >
             <History size={14} />
-            <span>History</span>
+            <span>{t('history')}</span>
           </button>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
             className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
             aria-label="Open Settings"
-            title="Preferences"
+            title={t('settings')}
           >
             <Settings size={16} />
           </button>
@@ -288,18 +295,16 @@ export default function JoinRoom() {
       <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
         <div className="text-center mb-5 space-y-1">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
-            {activeTab === 'create' ? activeCatObj.topic : 'Join your group'}
+            {activeTab === 'create' ? activeCatObj.topic : t('joinWithCode')}
           </h1>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
-            {activeTab === 'create'
-              ? 'Pick a category, share the code with friends, and swipe to find a spot everyone loves.'
-              : 'Enter the 4-digit room code from your friend to start voting.'}
+            {activeTab === 'create' ? activeCatObj.desc : t('roomCodeHint')}
           </p>
         </div>
 
         <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-5 sm:p-6 flex flex-col gap-4">
           <SegmentedControl
-            options={[{ value: 'create', label: 'Start a Pick' }, { value: 'join', label: 'Join with Code' }]}
+            options={[{ value: 'create', label: t('startPick') }, { value: 'join', label: t('joinWithCode') }]}
             value={activeTab}
             onChange={setActiveTab}
             size="md"
@@ -307,14 +312,14 @@ export default function JoinRoom() {
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="userName" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
-              Your Name
+              {t('yourName')}
             </label>
             <div className="relative">
               <input
                 id="userName"
                 name="userName"
                 type="text"
-                placeholder="e.g. Alex (optional)"
+                placeholder={t('namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full min-h-[44px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
@@ -332,9 +337,9 @@ export default function JoinRoom() {
           {activeTab === 'create' ? (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">What are you picking?</span>
+                <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">{t('whatPicking')}</span>
                 <div className="grid grid-cols-2 gap-2.5">
-                  {CATEGORIES.map((cat) => {
+                  {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isSelected = selectedCategory === cat.id;
                     return (
@@ -374,14 +379,14 @@ export default function JoinRoom() {
               {selectedCategory === 'Custom' ? (
                 <div className="flex flex-col gap-1.5 animate-[modalSpring_0.25s_var(--spring-smooth)]">
                   <label htmlFor="customTopicInput" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
-                    Question or Topic
+                    {t('customQuestionLabel')}
                   </label>
                   <input
                     id="customTopicInput"
                     type="text"
                     value={customTopic}
                     onChange={(e) => setCustomTopic(e.target.value)}
-                    placeholder="e.g. What board game should we play?"
+                    placeholder={t('customPlaceholder')}
                     className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
                   />
                 </div>
@@ -396,15 +401,15 @@ export default function JoinRoom() {
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-bg)] transition-colors">
-                        {gpsState.label || 'Detecting your area...'}
+                        {gpsState.label || t('detectingLocation')}
                       </div>
                       <div className="text-[11px] text-[var(--text-tertiary)] truncate">
-                        {gpsState.source === 'gps' ? 'Live device GPS • Hex grid search' : 'Tap to change city or search anywhere'}
+                        {gpsState.source === 'gps' ? t('locationLabel') : t('locationChangeHint')}
                       </div>
                     </div>
                   </div>
                   <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] group-hover:bg-[var(--accent-bg)] group-hover:text-white transition-all shrink-0">
-                    Change
+                    {t('change')}
                   </span>
                 </div>
               )}
@@ -419,7 +424,7 @@ export default function JoinRoom() {
                 icon={ArrowRight}
                 className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
               >
-                Create Room
+                {t('createRoomBtn')}
               </Button>
             </div>
           ) : (
@@ -428,10 +433,10 @@ export default function JoinRoom() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
                   <label className="text-xs font-semibold text-[var(--text-secondary)]">
-                    4-Digit Room Code
+                    {t('roomCodeLabel')}
                   </label>
                   <span className="text-[11px] text-[var(--text-tertiary)]">
-                    Shared by your host
+                    {t('roomCodeHint')}
                   </span>
                 </div>
 
@@ -463,10 +468,10 @@ export default function JoinRoom() {
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                   <div className="flex items-center gap-1.5">
                     <Check size={15} className="shrink-0 text-emerald-500" />
-                    <span>Room #{pin} ready to join</span>
+                    <span>{t('roomReadyPrefix')} #{pin} {t('roomReadySuffix')}</span>
                   </div>
                   <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
-                    Ready
+                    {t('ready')}
                   </span>
                 </div>
               )}
@@ -480,7 +485,7 @@ export default function JoinRoom() {
                 icon={ArrowRight}
                 className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
               >
-                Join Room
+                {t('joinRoomBtn')}
               </Button>
             </form>
           )}
@@ -492,7 +497,7 @@ export default function JoinRoom() {
             <div className="flex items-center gap-2 min-w-0">
               <Clock size={15} className="text-[var(--text-tertiary)] shrink-0" />
               <div className="text-xs truncate">
-                <span className="text-[var(--text-tertiary)]">Last winner: </span>
+                <span className="text-[var(--text-tertiary)]">{t('lastWinnerPrefix')}: </span>
                 <span className="font-bold text-[var(--text-primary)]">{recentSession.winner || 'Recent Spot'}</span>
               </div>
             </div>
@@ -501,7 +506,7 @@ export default function JoinRoom() {
               onClick={() => navigate('/history')}
               className="text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer shrink-0 ml-2"
             >
-              See All
+              {t('seeAll')}
             </button>
           </div>
         )}
@@ -510,7 +515,7 @@ export default function JoinRoom() {
       {/* Footer */}
       <footer className="text-center pt-2 pb-1">
         <p className="text-xs text-[var(--text-tertiary)]">
-          Decide where to go in 30 seconds
+          {t('footerSubtext')}
         </p>
       </footer>
 
