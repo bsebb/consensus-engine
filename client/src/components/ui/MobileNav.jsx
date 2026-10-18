@@ -111,7 +111,7 @@ export default function MobileNav({ isHidden = false }) {
               <div className="relative">
                 <Icon size={19} strokeWidth={active ? 2.5 : 2} />
                 {item.badge && !active && (
-                  <span className="absolute -top-1 -right-2 px-1 py-0.2 bg-[var(--accent-bg)] text-white text-[9px] font-mono font-bold rounded-full leading-tight">
+                  <span className="absolute -top-1 -right-2 px-1 py-0.2 bg-[var(--accent-bg)] text-white text-[10px] font-mono font-bold rounded-full leading-tight">
                     {item.badge}
                   </span>
                 )}

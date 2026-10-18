@@ -14,14 +14,12 @@ function formatPriceLabel(price) {
 }
 
 const FALLBACK_PLACES = [
-  { name: "Andys Pizza", fsq_id: "fallback_fsq_1", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)" },
-  { name: "Draft Pizza", fsq_id: "fallback_fsq_2", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)" },
-  { name: "Pizza Mania", fsq_id: "fallback_fsq_3", priceLevel: 1, priceLabel: "$ (Budget: ~50-120 MDL)" },
-  { name: "Mi Piace", fsq_id: "fallback_fsq_4", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)" },
-  { name: "Crème de la Crème", fsq_id: "fallback_fsq_5", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)" },
-  { name: "Propaganda Cafe", fsq_id: "fallback_fsq_6", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)" },
-  { name: "Kozlovna", fsq_id: "fallback_fsq_7", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)" },
-  { name: "La Taifas", fsq_id: "fallback_fsq_8", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)" }
+  { name: "Andy's Pizza", fsq_id: "fsq_andys_1", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0245, lng: 28.8322, address: "Strada Ștefan cel Mare 202, Centru" },
+  { name: "Draft Pizza", fsq_id: "fsq_draft_2", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0189, lng: 28.8415, address: "Strada 31 August 1989 78, Centru" },
+  { name: "Pizza Mania", fsq_id: "fsq_pizzamania_3", priceLevel: 1, priceLabel: "$ (Budget: ~50-120 MDL)", lat: 47.0261, lng: 28.8354, address: "Bulevardul Grigore Vieru 13, Rîșcani" },
+  { name: "Mi Piace", fsq_id: "fsq_mipiace_4", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 46.9922, lng: 28.8598, address: "Strada Trandafirilor 4, Botanica" },
+  { name: "Crème de la Crème", fsq_id: "fsq_creme_5", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0238, lng: 28.8340, address: "Strada Alexandru cel Bun 98A, Centru" },
+  { name: "Propaganda Cafe", fsq_id: "fsq_propaganda_6", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0210, lng: 28.8375, address: "Strada Alexei Șciusev 47, Centru" }
 ];
 
 // In-memory cache for API queries to avoid repeated external requests
@@ -44,6 +42,27 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+function resolveFallback(centerLat, centerLng) {
+  return FALLBACK_PLACES.slice(0, 6).map((p) => {
+    let distKm = null;
+    let distMeters = 999999;
+    if (centerLat != null && centerLng != null && p.lat && p.lng) {
+      distMeters = calculateHaversineDistance(centerLat, centerLng, p.lat, p.lng);
+      distKm = Number((distMeters / 1000).toFixed(1));
+    }
+    return {
+      name: p.name,
+      fsq_id: p.fsq_id,
+      fsq_place_id: p.fsq_id,
+      priceLevel: p.priceLevel,
+      priceLabel: p.priceLabel,
+      distance_km: distKm,
+      distance_meters: Math.round(distMeters),
+      address: p.address,
+    };
+  }).sort((a, b) => a.distance_meters - b.distance_meters);
+}
+
 /**
  * Executes a single Places API search request against FSQ OS Places.
  */
@@ -51,7 +70,7 @@ async function queryFoursquarePlaces({ theme, lat, lng, radius, cleanKey }) {
   const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
   const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
 
-  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&limit=20`;
+  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&limit=15&fields=fsq_place_id,name,location,categories,distance,geocodes,price`;
   if (lat && lng) {
     url += `&ll=${lat},${lng}&radius=${Math.min(radius, 100000)}`;
   } else {
@@ -115,13 +134,17 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     theme = 'restaurant';
   }
 
+  const centerLat = latitude != null ? Number(latitude) : (near && near.toLowerCase().includes('chisinau') ? 47.0105 : 47.0105);
+  const centerLng = longitude != null ? Number(longitude) : (near && near.toLowerCase().includes('chisinau') ? 28.8638 : 28.8638);
+  const maxRequestedRadius = Math.max(Number(radius) || 5000, 1000);
+
   const rawKey = process.env.FOURSQUARE_API_KEY;
   if (!rawKey || !rawKey.trim()) {
-    return FALLBACK_PLACES;
+    return resolveFallback(centerLat, centerLng);
   }
   const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '');
   if (!cleanKey) {
-    return FALLBACK_PLACES;
+    return resolveFallback(centerLat, centerLng);
   }
 
   // Quantize coordinates to ~200m grid for efficient in-memory caching
@@ -134,12 +157,8 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     return cached.data;
   }
 
-  const centerLat = latitude != null ? Number(latitude) : (near && near.toLowerCase().includes('chisinau') ? 47.0105 : 47.0105);
-  const centerLng = longitude != null ? Number(longitude) : (near && near.toLowerCase().includes('chisinau') ? 28.8638 : 28.8638);
-  const maxRequestedRadius = Math.max(Number(radius) || 5000, 1000);
-
   // Concentric spatial expansion rings: 1 km (neighborhood) -> 2.5 km -> maxRequestedRadius -> 10 km
-  const TARGET_PLACES = 12;
+  const TARGET_PLACES = 6;
   const rawRings = [
     1000,
     2500,
@@ -202,10 +221,10 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     }
 
     if (accumulatedVenues.size > 0) {
-      // Sort strictly by true distance ascending (closest venues first)
+      // Sort strictly by true distance ascending (closest venues first) and cap at 6
       const sortedResults = Array.from(accumulatedVenues.values())
         .sort((a, b) => a.distance_meters - b.distance_meters)
-        .slice(0, 15);
+        .slice(0, 6);
 
       queryCache.set(cacheKey, { data: sortedResults, timestamp: Date.now() });
       return sortedResults;
@@ -214,7 +233,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     console.warn("[Foursquare] API warning, using local venue pool:", error.message);
   }
 
-  return FALLBACK_PLACES;
+  return resolveFallback(centerLat, centerLng);
 };
 
 // Export both names to prevent undefined import errors

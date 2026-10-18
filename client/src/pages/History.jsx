@@ -393,12 +393,12 @@ export default function History() {
                                   <span className="font-bold truncate text-[13px] flex items-center gap-1.5">
                                     {opt.name}
                                     {opt.isWinner && (
-                                      <span className="text-[9px] uppercase font-mono font-extrabold px-1.5 py-0.2 rounded bg-[var(--accent-bg)] text-white">
+                                      <span className="text-[10px] uppercase font-mono font-extrabold px-1.5 py-0.2 rounded bg-[var(--accent-bg)] text-white">
                                         Champion
                                       </span>
                                     )}
                                     {opt.isVetoed && (
-                                      <span className="text-[9px] uppercase font-mono font-extrabold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-500 flex items-center gap-0.5">
+                                      <span className="text-[10px] uppercase font-mono font-extrabold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-500 flex items-center gap-0.5">
                                         <Flame size={10} />
                                         Vetoed
                                       </span>

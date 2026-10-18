@@ -1,42 +1,50 @@
 [
   {
-    "id": "1e2f3c4d",
-    "name": "Luigi's Pizza",
-    "price_level": 2,
-    "distance_km": 0.8,
-    "emoji": "🍕",
-    "tags": ["Italian", "Fast Food"]
-  },
-  {
-    "id": "5a6b7c8d",
-    "name": "Sakura Sushi",
+    "id": "osho_1",
+    "name": "Osho Bar & Kitchen",
     "price_level": 3,
-    "distance_km": 3.5,
-    "emoji": "🍣",
-    "tags": ["Japanese", "Seafood"]
-  },
-  {
-    "id": "9e0f1a2b",
-    "name": "The Burger Joint",
-    "price_level": 1,
     "distance_km": 1.2,
-    "emoji": "🍔",
-    "tags": ["American", "Fast Food"]
+    "address": "Strada Decebal 7/1, Botanica",
+    "tags": ["Steakhouse", "Grill"]
   },
   {
-    "id": "3c4d5e6f",
-    "name": "El Camino Tacos",
-    "price_level": 1,
-    "distance_km": 2.1,
-    "emoji": "🌮",
-    "tags": ["Mexican", "Street Food"]
+    "id": "mipiace_2",
+    "name": "Mi Piace",
+    "price_level": 3,
+    "distance_km": 1.8,
+    "address": "Strada Trandafirilor 4, Botanica",
+    "tags": ["Italian", "Wine & Dine"]
   },
   {
-    "id": "7g8h9i0j",
-    "name": "Vegan Vibe Cafe",
+    "id": "andys_3",
+    "name": "Andy's Pizza",
     "price_level": 2,
-    "distance_km": 0.5,
-    "emoji": "🥗",
-    "tags": ["Healthy", "Vegan"]
+    "distance_km": 0.6,
+    "address": "Strada Ștefan cel Mare 202, Centru",
+    "tags": ["Pizza", "Casual Dining"]
+  },
+  {
+    "id": "parkave_4",
+    "name": "Park Avenue",
+    "price_level": 2,
+    "distance_km": 2.1,
+    "address": "Parcul Valea Trandafirilor, Botanica",
+    "tags": ["Terrace", "European"]
+  },
+  {
+    "id": "creme_5",
+    "name": "Crème de la Crème",
+    "price_level": 2,
+    "distance_km": 0.9,
+    "address": "Strada Alexandru cel Bun 98A, Centru",
+    "tags": ["French Bistro", "Patisserie"]
+  },
+  {
+    "id": "propaganda_6",
+    "name": "Propaganda Cafe",
+    "price_level": 2,
+    "distance_km": 1.1,
+    "address": "Strada Alexei Șciusev 47, Centru",
+    "tags": ["Bistro", "Cozy Ambience"]
   }
 ]

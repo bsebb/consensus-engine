@@ -3,39 +3,39 @@
 
 @layer base {
   :root {
-    --bg-root: #f6f7fa;
+    --bg-root: #fafaf8;
     --bg-surface: #ffffff;
     --bg-elevated: #ffffff;
-    --bg-inset: #eef0f5;
+    --bg-inset: #f3f2ee;
     --border-main: rgba(0, 0, 0, 0.08);
-    --border-subtle: rgba(0, 0, 0, 0.05);
+    --border-subtle: rgba(0, 0, 0, 0.04);
     --border-glass: rgba(0, 0, 0, 0.09);
     
-    --text-primary: #121316;
-    --text-secondary: #5f636e;
-    --text-tertiary: #525866;
+    --text-primary: #18181b;
+    --text-secondary: #52525b;
+    --text-tertiary: #71717a;
     
-    --accent-bg: #6366f1;
-    --accent-bg-hover: color-mix(in srgb, var(--accent-bg) 88%, black);
-    --accent-glow: color-mix(in srgb, var(--accent-bg) 28%, transparent);
-    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 45%, transparent);
-    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 22%, transparent);
-    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 12%, transparent);
+    --accent-bg: #e11d48;
+    --accent-bg-hover: #be123c;
+    --accent-glow: rgba(225, 29, 72, 0.22);
+    --accent-glow-hover: rgba(225, 29, 72, 0.35);
+    --accent-glow-focus: rgba(225, 29, 72, 0.18);
+    --accent-glow-subtle: rgba(225, 29, 72, 0.08);
 
-    --status-success: #047857;
-    --status-warning: #b45309;
-    --status-danger: #ef4444;
-    --status-info: #6366f1;
+    --status-success: #059669;
+    --status-warning: #d97706;
+    --status-danger: #e11d48;
+    --status-info: #e11d48;
 
-    --glass-bg: rgba(255, 255, 255, 0.85);
-    --glass-shadow: rgba(0, 0, 0, 0.08);
-    --milled-bg: rgba(0, 0, 0, 0.03);
+    --glass-bg: rgba(255, 255, 255, 0.90);
+    --glass-shadow: rgba(0, 0, 0, 0.06);
+    --milled-bg: rgba(0, 0, 0, 0.02);
 
     --radius-xs: 4px;
     --radius-sm: 6px;
     --radius-md: 8px;
-    --radius-lg: 10px;
-    --radius-xl: 12px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
 
     --spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);
     --spring-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.2);
@@ -43,33 +43,33 @@
   }
 
   .dark {
-    --bg-root: #08090d;
-    --bg-surface: #11131c;
-    --bg-elevated: #181b26;
-    --bg-inset: #0c0d14;
-    --border-main: rgba(255, 255, 255, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.04);
-    --border-glass: rgba(255, 255, 255, 0.10);
+    --bg-root: #0c0d11;
+    --bg-surface: #14161d;
+    --bg-elevated: #1b1e27;
+    --bg-inset: #090a0d;
+    --border-main: rgba(255, 255, 255, 0.09);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-glass: rgba(255, 255, 255, 0.12);
 
-    --text-primary: #f4f5f8;
-    --text-secondary: #9da2af;
-    --text-tertiary: #626775;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
 
-    --accent-bg: #6366f1;
-    --accent-bg-hover: color-mix(in srgb, var(--accent-bg) 88%, white);
-    --accent-glow: color-mix(in srgb, var(--accent-bg) 35%, transparent);
-    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 55%, transparent);
-    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 26%, transparent);
-    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 16%, transparent);
+    --accent-bg: #f43f5e;
+    --accent-bg-hover: #fb7185;
+    --accent-glow: rgba(244, 63, 94, 0.28);
+    --accent-glow-hover: rgba(244, 63, 94, 0.45);
+    --accent-glow-focus: rgba(244, 63, 94, 0.20);
+    --accent-glow-subtle: rgba(244, 63, 94, 0.10);
 
     --status-success: #10b981;
     --status-warning: #f59e0b;
-    --status-danger: #ef4444;
-    --status-info: #6366f1;
+    --status-danger: #f43f5e;
+    --status-info: #f43f5e;
 
-    --glass-bg: rgba(17, 19, 28, 0.88);
-    --glass-shadow: rgba(0, 0, 0, 0.6);
-    --milled-bg: rgba(0, 0, 0, 0.4);
+    --glass-bg: rgba(20, 22, 29, 0.90);
+    --glass-shadow: rgba(0, 0, 0, 0.5);
+    --milled-bg: rgba(0, 0, 0, 0.3);
   }
 
   html {

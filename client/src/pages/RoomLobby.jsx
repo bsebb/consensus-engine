@@ -27,6 +27,11 @@ import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
 import QrCodeModal from '../components/ui/QrCodeModal';
+import StepZeroVault from '../components/lobby/StepZeroVault';
+import CandidatePoolDeck from '../components/lobby/CandidatePoolDeck';
+import LobbyRoster from '../components/lobby/LobbyRoster';
+import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
+import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
 import restaurantsMock from '../mocks/restaurants.json';
 
@@ -146,162 +151,25 @@ export default function RoomLobby() {
     : null;
 
   // Handle Socket.io synchronization
-  useEffect(() => {
-    if (!pin) return;
-
-    const sendJoin = () => {
-      emit('join_lobby', {
-        pin,
-        participant_id: participantId,
-        user_name: currentUserName,
-        mode: location.state?.mode,
-        topic: location.state?.topic,
-        group_size: location.state?.groupSize,
-      });
-    };
-
-    // 1. Join room immediately and whenever socket connects
-    sendJoin();
-    on('connect', sendJoin);
-
-    // 2. Listen for peers joining and initial roster state
-    const handleParticipantJoined = (data) => {
-      if (data?.mode) setMode(data.mode);
-      if (data?.topic) setTopic(data.topic);
-      if (data?.group_size) setGroupSize(data.group_size);
-      if (Array.isArray(data?.suggestions)) {
-        setGroupPool(data.suggestions);
-      }
-      if (data?.participants && Array.isArray(data.participants)) {
-        setParticipants(
-          data.participants.map((p) => ({
-            id: p.id,
-            name: p.name || p.userName || 'Peer',
-            isHost: Boolean(p.isHost),
-            budgetSealed: Boolean(p.budgetSealed),
-          }))
-        );
-      } else if (data?.user_name) {
-        setParticipants((prev) => {
-          if (prev.some((p) => p.id === data.participant_id || p.name === data.user_name)) return prev;
-          return [...prev, { id: data.participant_id, name: data.user_name, isHost: false, budgetSealed: false }];
-        });
-      }
-    };
-
-    // 3. Listen for real-time custom option suggestion updates
-    const handleSuggestionsUpdated = (data) => {
-      if (Array.isArray(data?.suggestions)) {
-        setGroupPool(data.suggestions);
-      }
-      if (data?.added && data.user_name && data.user_name !== currentUserName) {
-        addToast({
-          title: 'Option Added',
-          message: `${data.user_name} suggested "${data.added}"`,
-          type: 'info',
-        });
-      }
-    };
-
-    // 4. Listen for peer budget constraint updates
-    const handleBudgetUpdated = (data) => {
-      if (data?.participants && Array.isArray(data.participants)) {
-        setParticipants(
-          data.participants.map((p) => ({
-            id: p.id,
-            name: p.name || p.userName || 'Peer',
-            isHost: Boolean(p.isHost),
-            budgetSealed: Boolean(p.budgetSealed),
-          }))
-        );
-      } else if (data?.participant_id) {
-        setParticipants((prev) =>
-          prev.map((p) =>
-            p.id === data.participant_id
-              ? { ...p, budgetSealed: Boolean(data.budgetSealed) }
-              : p
-          )
-        );
-      }
-    };
-
-    // 5. Listen for peers leaving the room
-    const handleParticipantLeft = (data) => {
-      if (data?.participants && Array.isArray(data.participants)) {
-        setParticipants(
-          data.participants.map((p) => ({
-            id: p.id,
-            name: p.name || p.userName || 'Peer',
-            isHost: Boolean(p.isHost),
-            budgetSealed: Boolean(p.budgetSealed),
-          }))
-        );
-      } else if (data?.participant_id) {
-        setParticipants((prev) => prev.filter((p) => p.id !== data.participant_id));
-      }
-      if (data?.user_name) {
-        addToast({
-          title: 'Participant Left',
-          message: `${data.user_name} left the room.`,
-          type: 'info',
-        });
-      }
-    };
-
-    // 6. Listen for host voting trigger
-    const handleVotingStarted = (data) => {
-      addToast({
-        title: 'Voting Started',
-        message: 'Entering the Swipe Deck now...',
-        type: 'info',
-      });
-
-      const options = data?.options || [];
-      const sessionTopic = data?.topic || topic;
-      const sessionMode = data?.mode || mode;
-      if (isHost) {
-        sessionStorage.setItem(`consensus_host_${pin}`, 'true');
-      }
-      navigate(`/deck/${pin}`, {
-        state: {
-          mode: sessionMode,
-          topic: sessionTopic,
-          isHost: Boolean(isHost),
-          totalParticipants: groupSize,
-          customCards: options.length > 0 ? options : undefined,
-          budgetLimit: lockedConstraint ? budgetLimit : undefined,
-        },
-      });
-    };
-
-    const handleRoomError = (data) => {
-      console.warn('[RoomLobby] Room notice from server:', data?.message);
-      addToast({
-        title: 'Room Notice',
-        message: data?.message || 'Notice from server',
-        type: 'warning',
-      });
-    };
-
-    on('participant_joined', handleParticipantJoined);
-    on('lobby_state', handleParticipantJoined);
-    on('suggestions_updated', handleSuggestionsUpdated);
-    on('budget_updated', handleBudgetUpdated);
-    on('participant_left', handleParticipantLeft);
-    on('voting_started', handleVotingStarted);
-    on('room_error', handleRoomError);
-
-    return () => {
-      off('connect', sendJoin);
-      off('participant_joined', handleParticipantJoined);
-      off('lobby_state', handleParticipantJoined);
-      off('suggestions_updated', handleSuggestionsUpdated);
-      off('budget_updated', handleBudgetUpdated);
-      off('participant_left', handleParticipantLeft);
-      off('voting_started', handleVotingStarted);
-      off('room_error', handleRoomError);
-    };
-  }, [pin, participantId, currentUserName, isHost, mode, topic, groupSize, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast]);
+  useLobbySync({
+    pin,
+    participantId,
+    currentUserName,
+    isHost,
+    locationState: location.state,
+    lockedConstraint,
+    budgetLimit,
+    setMode,
+    setTopic,
+    setGroupSize,
+    setGroupPool,
+    setParticipants,
+    navigate,
+    emit,
+    on,
+    off,
+    addToast,
+  });
 
   const handleCopyPin = async () => {
     try {
@@ -455,13 +323,13 @@ export default function RoomLobby() {
     }
 
     if (realOptions && realOptions.length > 0) {
-      return realOptions.map((opt, idx) => {
+      return realOptions.map((opt) => {
         let dist = null;
-        let addr = 'Chișinău, Moldova';
+        let addr = 'Centru, Chișinău';
         if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
           const parts = opt.googlePlaceId.split('|');
           const parsedDist = parseFloat(parts[1]);
-          if (!isNaN(parsedDist)) dist = parsedDist;
+          if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
           if (parts[2]) addr = parts[2];
         }
         return {
@@ -469,7 +337,7 @@ export default function RoomLobby() {
           name: opt.name,
           category: location.state?.category || 'Discovery',
           price_level: opt.priceLevel || 2,
-          distance_km: dist !== null ? dist : Number((0.6 + ((idx * 0.4) % 3)).toFixed(1)),
+          distance_km: dist,
           tags: [location.state?.category || 'Top Pick'],
           address: addr,
         };
@@ -539,75 +407,7 @@ export default function RoomLobby() {
   const sealedCount = participants.filter((p) => p.budgetSealed).length;
 
   if (!pin) {
-    return (
-      <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
-        <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
-              aria-label="Back to Home"
-            >
-              <ArrowLeft size={16} />
-              <span>Back</span>
-            </button>
-
-            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-              Room Lobby
-            </h1>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                aria-label="Open Settings"
-                title="Preferences"
-              >
-                <Settings size={16} />
-              </button>
-              <ThemeToggle />
-            </div>
-          </div>
-        </header>
-
-        <main className="px-4 py-8 flex flex-col items-center justify-center flex-1 my-auto text-center gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-tertiary)] shadow-sm">
-            <Users size={32} />
-          </div>
-
-          <div className="flex flex-col gap-1.5 max-w-xs">
-            <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-              No Active Lobby
-            </h2>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              You are not currently in a consensus room. Enter a 4-digit code to join, or start a new decision.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2.5 w-full max-w-xs pt-2">
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => navigate('/')}
-              icon={ArrowRight}
-              className="w-full"
-            >
-              Enter Room PIN
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/host')}
-              className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-elevated)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-primary)] border border-[var(--border-subtle)] text-xs font-semibold transition-colors cursor-pointer min-h-[40px]"
-            >
-              Host New Decision
-            </button>
-          </div>
-        </main>
-      </div>
-    );
+    return <NoActiveLobbyView navigate={navigate} setSettingsOpen={setSettingsOpen} />;
   }
 
   return (
@@ -653,287 +453,44 @@ export default function RoomLobby() {
 
       {/* Main Content Area */}
       <main className="px-4 pt-4 flex flex-col gap-4 flex-1">
-        {/* Hero PIN & Share Banner */}
-        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-sm">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
-              Room Passkey
-            </span>
-            <span className="font-mono text-2xl font-black text-[var(--accent-bg)] tracking-widest mt-0.5">
-              {pin}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setQrModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--accent-bg)]/10 hover:bg-[var(--accent-bg)]/20 text-xs font-bold text-[var(--accent-bg)] border border-[var(--accent-bg)]/20 transition-colors cursor-pointer"
-              title="Show QR Code"
-            >
-              <QrCode size={14} />
-              <span>QR</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleCopyPin}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
-            >
-              {copied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleShareInvite}
-              className="p-2 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
-              title="Share Invite"
-            >
-              <Share2 size={16} />
-            </button>
-          </div>
-        </section>
-
-        {/* Active Target Banner */}
-        <div className="px-1 flex flex-col">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-            Consensus Target
-          </span>
-          <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">
-            {topic}
-          </h2>
-        </div>
-
-        {/* Live Roll-Call Roster with Budget Sealed Indicators */}
-        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-[var(--accent-bg)]" />
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                Participant Quorum
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold">
-              <span className="text-[var(--text-secondary)] tabular-nums">
-                {participants.length} / {groupSize} joined
-              </span>
-              <span className="text-[var(--text-tertiary)]">•</span>
-              <span className="text-emerald-500 font-bold tabular-nums flex items-center gap-0.5">
-                <ShieldCheck size={13} className="text-emerald-500" />
-                {sealedCount} of {participants.length} sealed
-              </span>
-            </div>
-          </div>
-
-          {/* Avatar chips with Step Zero shield indicators */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            {participants.map((p, idx) => (
-              <div
-                key={p.id || idx}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
-              >
-                <div className="w-5 h-5 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center">
-                  {(p.name || 'P').charAt(0).toUpperCase()}
-                </div>
-                <span className="text-xs font-medium text-[var(--text-primary)]">
-                  {p.name}
-                </span>
-                {p.isHost && (
-                  <Crown size={12} className="text-[var(--status-warning)] fill-[var(--status-warning)]" />
-                )}
-                {p.budgetSealed && (
-                  <ShieldCheck size={13} className="text-emerald-500 shrink-0" title="Budget Sealed Anonymously" />
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* Hero PIN, Target Banner & Roll-Call Roster */}
+        <LobbyRoster
+          pin={pin}
+          topic={topic}
+          participants={participants}
+          groupSize={groupSize}
+          sealedCount={sealedCount}
+          copied={copied}
+          handleCopyPin={handleCopyPin}
+          handleShareInvite={handleShareInvite}
+          setQrModalOpen={setQrModalOpen}
+        />
 
         {/* Step Zero: Anonymous Privacy Vault & Ceiling */}
-        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Coins size={16} className="text-[var(--status-warning)]" />
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                Step Zero Privacy Shield
-              </span>
-            </div>
-            {lockedConstraint ? (
-              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full shadow-[0_0_16px_rgba(16,185,129,0.35)] animate-[stampPop_0.3s_var(--spring-bounce)]">
-                <Lock size={12} className="text-emerald-400" />
-                <span>Vault Sealed</span>
-              </span>
-            ) : (
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-tertiary)]">
-                Anonymous Vault
-              </span>
-            )}
-          </div>
+        <StepZeroVault
+          lockedConstraint={lockedConstraint}
+          budgetLimit={budgetLimit}
+          setBudgetLimit={setBudgetLimit}
+          handleLockBudget={handleLockBudget}
+          handleUnlockBudget={handleUnlockBudget}
+          lockingBudget={lockingBudget}
+          hasPendingBudgetChange={hasPendingBudgetChange}
+          setHasPendingBudgetChange={setHasPendingBudgetChange}
+        />
 
-          {/* Clear Privacy Shield Explanation */}
-          <div className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
-            <strong className="text-[var(--text-primary)]">Anonymous Privacy Vault:</strong> Venues exceeding any peer ceiling are pruned before voting opens. No participant ever sees your personal spending boundary.
-          </div>
-
-          <RangeSlider
-            min={100}
-            max={600}
-            step={25}
-            value={budgetLimit}
-            onChange={(val) => {
-              setBudgetLimit(val);
-              if (lockedConstraint) setHasPendingBudgetChange(true);
-            }}
-            label="Personal Max per Person"
-            valueDisplay={`${budgetLimit} MDL`}
-          />
-
-          {!lockedConstraint ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={handleLockBudget}
-              loading={lockingBudget}
-              icon={ShieldCheck}
-              className="mt-1 shadow-sm"
-            >
-              Seal Budget Anonymously
-            </Button>
-          ) : (
-            <div className="flex flex-col gap-2 pt-1">
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Check size={14} className="shrink-0" />
-                  <span className="truncate">Ceiling locked at {budgetLimit} MDL</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleUnlockBudget}
-                  className="text-[11px] font-bold text-[var(--accent-bg)] hover:underline cursor-pointer ml-2 shrink-0 py-1 px-1.5 rounded hover:bg-[var(--accent-bg)]/10"
-                >
-                  Unlock & Adjust
-                </button>
-              </div>
-
-              {hasPendingBudgetChange && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={handleLockBudget}
-                  loading={lockingBudget}
-                  icon={ShieldCheck}
-                  className="shadow-sm animate-[fadeIn_0.2s_var(--spring-smooth)]"
-                >
-                  Update Ceiling to {budgetLimit} MDL
-                </Button>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Live Synchronized Candidate Pool Deck */}
-        <section className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-[var(--accent-bg)]" />
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                Candidate Pool Deck ({filteredCandidates.length})
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Live Synced</span>
-            </div>
-          </div>
-
-          {/* Confidential Step Zero Pruning Proof */}
-          {lockedConstraint && prunedCount > 0 && mode !== 'CUSTOM' && (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-amber-500 shrink-0" />
-                <span>Step Zero: {prunedCount} venue(s) exceeding {budgetLimit} MDL ceiling pruned</span>
-              </div>
-              <span className="font-mono text-[9px] uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">Confidential</span>
-            </div>
-          )}
-
-          {/* Brainstorm Input inside custom mode deck */}
-          {mode === 'CUSTOM' && (
-            <div className="flex flex-col gap-2 pt-1 pb-1">
-              <form onSubmit={handleAddSuggestion} className="flex gap-2">
-                <input
-                  type="text"
-                  id="lobby-custom-suggestion"
-                  aria-label="New candidate suggestion"
-                  value={suggestion}
-                  onChange={(e) => setSuggestion(e.target.value)}
-                  placeholder="Suggest a choice (e.g. Bowling, Tacos, Arcade)..."
-                  className="flex-1 text-xs rounded-xl px-3 py-2 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-                />
-                <Button type="submit" variant="primary" size="sm" icon={Plus}>
-                  Add
-                </Button>
-              </form>
-
-              {duplicateMatch && (
-                <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg animate-[fadeIn_0.2s_ease-out]">
-                  <AlertTriangle size={14} />
-                  <span>Notice: Similar to "{duplicateMatch}"</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Live Synchronized 2-Column Grid */}
-          <div className="grid grid-cols-2 gap-2">
-            {filteredCandidates.length === 0 ? (
-              <div className="col-span-2 p-6 rounded-xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-subtle)] text-center flex flex-col items-center gap-2">
-                <Sparkles size={20} className="text-[var(--accent-bg)] animate-pulse" />
-                <span className="text-xs font-semibold text-[var(--text-primary)]">
-                  Candidate deck is waiting for options
-                </span>
-                <span className="text-[11px] text-[var(--text-tertiary)]">
-                  {mode === 'CUSTOM'
-                    ? 'Type your group choices above to populate the live voting cards!'
-                    : 'Adjust spending ceiling to display available venues.'}
-                </span>
-              </div>
-            ) : (
-              filteredCandidates.map((item, idx) => (
-                <div
-                  key={item.id || item.name || idx}
-                  className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between gap-1.5 shadow-sm animate-[modalSpring_0.35s_var(--spring-smooth)] relative group"
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="text-xs font-bold text-[var(--text-primary)] line-clamp-1 break-words" title={item.name}>
-                      {item.name}
-                    </span>
-                    {mode === 'CUSTOM' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSuggestion(idx)}
-                        className="text-[var(--text-tertiary)] hover:text-[var(--status-danger)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors p-2 rounded-lg cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center -mr-1 -mt-1"
-                        title="Remove option"
-                        aria-label={`Remove ${item.name}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    ) : (
-                      <span className="text-[10px] font-mono font-bold text-[var(--accent-bg)] shrink-0">
-                        {'$'.repeat(item.price_level || 2)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)]">
-                    <span className="truncate">{item.tags?.[0] || item.category || 'Group Choice'}</span>
-                    <span className="shrink-0">{item.distance_km ? `${item.distance_km} km` : '~1.0 km'}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+        {/* Curated Candidate Pool Deck */}
+        <CandidatePoolDeck
+          mode={mode}
+          candidates={filteredCandidates}
+          lockedConstraint={lockedConstraint}
+          prunedCount={prunedCount}
+          budgetLimit={budgetLimit}
+          suggestion={suggestion}
+          setSuggestion={setSuggestion}
+          handleAddSuggestion={handleAddSuggestion}
+          handleRemoveSuggestion={handleRemoveSuggestion}
+          duplicateMatch={duplicateMatch}
+        />
 
         {/* Action Dock */}
         <div className="pt-2 pb-4 flex flex-col gap-2">

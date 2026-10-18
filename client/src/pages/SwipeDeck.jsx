@@ -27,6 +27,11 @@ import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import MilledTray from '../components/ui/MilledTray';
 import ReviewModal from '../components/ui/ReviewModal';
+import ConsensusWinnerView from '../components/deck/ConsensusWinnerView';
+import SwipeCard from '../components/deck/SwipeCard';
+import SwipeControls from '../components/deck/SwipeControls';
+import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
+import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import restaurantsMock from '../mocks/restaurants.json';
 
@@ -61,19 +66,6 @@ export default function SwipeDeck() {
       localStorage.setItem('consensus_active_pin', pin);
     }
   }, [pin]);
-
-  // Ensure socket is registered in the room on mount and reconnection
-  useEffect(() => {
-    if (!pin) return;
-    const registerSocket = () => {
-      emit('join_room', { pin, participant_id: participantId, is_host: isHost });
-    };
-    registerSocket();
-    on('connect', registerSocket);
-    return () => {
-      off('connect', registerSocket);
-    };
-  }, [pin, participantId, isHost, emit, on, off]);
 
   // Initialize deck options
   const [cards, setCards] = useState(() => {
@@ -120,13 +112,13 @@ export default function SwipeDeck() {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
-            setCards(data.options.map((opt, idx) => {
+            setCards(data.options.slice(0, 6).map((opt) => {
               let dist = null;
-              let addr = 'Chișinău, Moldova';
+              let addr = 'Centru, Chișinău';
               if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
                 const parts = opt.googlePlaceId.split('|');
                 const parsedDist = parseFloat(parts[1]);
-                if (!isNaN(parsedDist)) dist = parsedDist;
+                if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
                 if (parts[2]) addr = parts[2];
               }
               return {
@@ -134,7 +126,7 @@ export default function SwipeDeck() {
                 name: opt.name,
                 category: location.state?.category || 'Discovery',
                 price_level: opt.priceLevel || 2,
-                distance_km: dist !== null ? dist : Number((0.6 + ((idx * 0.4) % 3)).toFixed(1)),
+                distance_km: dist,
                 tags: [location.state?.category || 'Top Pick'],
                 address: addr,
               };
@@ -322,107 +314,27 @@ export default function SwipeDeck() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, cards.length, showWinner, handleVote]);
 
-  const hasSubmittedRef = useRef(false);
-
-  // Global room resolution and real-time progress listeners (active throughout swiping)
-  useEffect(() => {
-    if (!pin) return;
-
-    const handleVoteProgress = (data) => {
-      if (data?.voted_participants || data?.votes_received) {
-        setVotesReceived(data.voted_participants || data.votes_received);
-      }
-      if (data?.total_participants && typeof data.total_participants === 'number') {
-        setQuorumTotal(data.total_participants);
-      }
-    };
-
-    const handleWinner = (data) => {
-      console.log('[SwipeDeck] Received winner from server:', data);
-      const won = data?.winning_option || data?.winner;
-      if (won) {
-        setServerWinner(won);
-      } else if (data?.winningOptionId) {
-        const found = cards.find((c) => c.id === data.winningOptionId);
-        setServerWinner(found || { name: 'Consensus Winner', id: data.winningOptionId });
-      }
-      if (data?.matchScore || data?.match_score) {
-        setServerMatchScore(data.matchScore || data.match_score);
-      }
-      if (data?.pairwise && Array.isArray(data.pairwise)) {
-        setServerPairwise(data.pairwise);
-      }
-      setShowWinner(true);
-    };
-
-    const handleStateRestore = (data) => {
-      console.log('[SwipeDeck] State restore received:', data);
-      if (Array.isArray(data?.options) && data.options.length > 0 && !location.state?.customCards) {
-        setCards(data.options);
-      }
-      if (data?.voted_participants || data?.votes_received) {
-        setVotesReceived(data.voted_participants || data.votes_received);
-      }
-      if (data?.total_participants) {
-        setQuorumTotal(data.total_participants);
-      }
-    };
-
-    on('vote_progress', handleVoteProgress);
-    on('vote_status_update', handleVoteProgress);
-    on('MATCH_FOUND', handleWinner);
-    on('winner_announced', handleWinner);
-    on('state_restore', handleStateRestore);
-
-    return () => {
-      off('vote_progress', handleVoteProgress);
-      off('vote_status_update', handleVoteProgress);
-      off('MATCH_FOUND', handleWinner);
-      off('winner_announced', handleWinner);
-      off('state_restore', handleStateRestore);
-    };
-  }, [pin, on, off, cards, location.state]);
-
-  // Submit votes once all cards are swiped
-  useEffect(() => {
-    if (currentIndex >= cards.length && !showWinner && !hasSubmittedRef.current && myVotes.length > 0) {
-      hasSubmittedRef.current = true;
-
-      // 1. Submit ballot via real-time WebSocket
-      emit('submit_ballot', {
-        pin,
-        participant_id: participantId,
-        rankings: myVotes,
-      });
-
-      emit('notify_votes_submitted', { pin, participant_id: participantId });
-
-      // 2. Fallback REST submission
-      fetch(apiUrl(`/api/v1/rooms/${pin}/votes`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          participant_id: participantId,
-          rankings: myVotes,
-        }),
-      }).catch((err) => console.warn('[SwipeDeck] REST vote submit offline:', err));
-
-      // Offline mock fallback if not connected
-      if (!isConnected) {
-        let step = 1;
-        const interval = setInterval(() => {
-          step += 1;
-          setVotesReceived(Math.min(step, totalParticipants));
-          if (step >= totalParticipants) {
-            clearInterval(interval);
-            setTimeout(() => setShowWinner(true), 400);
-          }
-        }, 500);
-
-        return () => clearInterval(interval);
-      }
-    }
-  }, [currentIndex, cards.length, showWinner, pin, participantId, isConnected, totalParticipants, myVotes, emit]);
+  // Handle real-time sync, winner resolution, and automatic ballot submission
+  useSwipeDeckSync({
+    pin,
+    participantId,
+    isHost,
+    cards,
+    myVotes,
+    currentIndex,
+    showWinner,
+    locationState: location.state,
+    setCards,
+    setVotesReceived,
+    setQuorumTotal,
+    setServerWinner,
+    setServerMatchScore,
+    setServerPairwise,
+    setShowWinner,
+    emit,
+    on,
+    off,
+  });
 
   const handleHostForceReveal = () => {
     emit('host_force_reveal', { pin, host_id: participantId });
@@ -560,8 +472,10 @@ export default function SwipeDeck() {
       : '$$$$ • ~600 MDL'
     : '$$ • ~180 MDL';
   const cardWalkDesc = activeCard
-    ? `${activeCard.distance_km || 0.8} km • ~${Math.max(5, Math.round((activeCard.distance_km || 0.8) * 12))} min walk`
-    : '0.8 km • ~10 min walk';
+    ? activeCard.distance_km != null
+      ? `${activeCard.distance_km} km • ~${Math.max(5, Math.round(activeCard.distance_km * 12))} min walk`
+      : (activeCard.address || 'Centru, Chișinău')
+    : 'Centru, Chișinău';
 
   // Direct turn-by-turn Google Maps link
   const mapsDirUrl = consensusResult.winner
@@ -625,382 +539,47 @@ export default function SwipeDeck() {
 
       {/* WINNER REVEAL SCREEN */}
       {showWinner ? (
-        <main className="px-4 py-6 pb-12 flex flex-col items-center gap-5 flex-1 my-auto animate-[modalSpring_0.4s_var(--spring-smooth)]">
-          <div className="w-full rounded-2xl bg-[var(--bg-elevated)] p-6 shadow-xl border border-[var(--border-main)] flex flex-col items-center text-center gap-4">
-            {/* Trophy Emblem */}
-            <div className="w-20 h-20 rounded-2xl bg-[rgba(245,158,11,0.15)] text-[var(--status-warning)] flex items-center justify-center shadow-lg animate-bounce">
-              <Trophy size={40} />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <StatusBadge status="success" label="Consensus Achieved" pulse size="sm" className="mx-auto" />
-              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight mt-1">
-                {consensusResult.winner.name}
-              </h2>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Pairwise Condorcet & Schulze Consensus Result
-              </p>
-            </div>
-
-            {/* Metrics Row */}
-            <div className="grid grid-cols-3 gap-2 w-full">
-              <MilledTray className="flex flex-col items-center justify-center p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Match</span>
-                <span className="text-sm font-extrabold text-[var(--status-success)] font-mono">
-                  {consensusResult.matchScore}%
-                </span>
-              </MilledTray>
-
-              <MilledTray className="flex flex-col items-center justify-center p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Price</span>
-                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
-                  {'$'.repeat(consensusResult.winner.price_level || 2)}
-                </span>
-              </MilledTray>
-
-              <MilledTray className="flex flex-col items-center justify-center p-2.5">
-                <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Distance</span>
-                <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
-                  {consensusResult.winner.distance_km || 1.2} km
-                </span>
-              </MilledTray>
-            </div>
-
-            {/* Turn-by-Turn Google Maps Action */}
-            <a
-              href={mapsDirUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 px-4 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center gap-2 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors shadow-sm cursor-pointer"
-            >
-              <Navigation size={15} className="text-[var(--accent-bg)]" />
-              <span>Turn-by-Turn Navigation (Google Maps)</span>
-              <ExternalLink size={13} className="text-[var(--text-tertiary)]" />
-            </a>
-
-            {/* Expandable Why Did This Win? (Pairwise Condorcet Graph) Drawer */}
-            <div className="w-full rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] overflow-hidden text-left">
-              <button
-                type="button"
-                onClick={() => setCondorcetOpen(!condorcetOpen)}
-                className="w-full p-3.5 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                aria-expanded={condorcetOpen}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center">
-                    <Sparkles size={15} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">
-                      Why Did This Win? (Pairwise Condorcet Graph)
-                    </span>
-                    <span className="text-[10px] text-[var(--text-tertiary)]">
-                      Head-to-head margins & quorum audit
-                    </span>
-                  </div>
-                </div>
-                {condorcetOpen ? (
-                  <ChevronUp size={16} className="text-[var(--text-tertiary)]" />
-                ) : (
-                  <ChevronDown size={16} className="text-[var(--text-tertiary)]" />
-                )}
-              </button>
-
-              {condorcetOpen && (
-                <div className="p-3.5 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-2.5">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--status-success)] pt-2.5">
-                    <CheckCircle2 size={14} className="shrink-0" />
-                    <span>0 Vetoes Received (Unanimous Quorum)</span>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                      Head-to-Head Margins:
-                    </span>
-                    {pairwiseBreakdown.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
-                      >
-                        <span className="font-semibold text-[var(--text-primary)]">
-                          Beat {item.opponent}
-                        </span>
-                        <span className="font-mono font-bold text-[var(--accent-bg)] px-2 py-0.5 rounded bg-[var(--accent-bg)]/10">
-                          {item.score}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed border-t border-[var(--border-subtle)] pt-2">
-                    Schulze Path Matrix: Defeated every candidate in direct head-to-head ballots with zero veto overrides.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Inline Quick Star Rating */}
-            <div className="w-full flex flex-col items-center gap-2 py-3 border-y border-[var(--border-subtle)]">
-              <span className="text-xs font-semibold text-[var(--text-secondary)]">
-                {userRating > 0 ? `Your Rating: ${userRating} / 5 Stars` : 'Rate This Consensus Decision'}
-              </span>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => handleInlineRate(star)}
-                    className="p-1 rounded-xl hover:scale-115 active:scale-95 transition-transform cursor-pointer"
-                    aria-label={`Rate ${star} stars`}
-                  >
-                    <Star
-                      size={22}
-                      className={star <= userRating ? 'fill-[var(--status-warning)] text-[var(--status-warning)]' : 'text-[var(--text-tertiary)]'}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-2.5 w-full pt-1">
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setIsReviewOpen(true)}
-                icon={MessageSquarePlus}
-                className="w-full shadow-md"
-              >
-                Detailed Feedback
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => navigate('/history')}
-                icon={Clock}
-                className="w-full"
-              >
-                View Decision Ledger
-              </Button>
-            </div>
-          </div>
-        </main>
+        <ConsensusWinnerView
+          winner={consensusResult.winner}
+          matchScore={consensusResult.matchScore}
+          mapsDirUrl={mapsDirUrl}
+          condorcetOpen={condorcetOpen}
+          setCondorcetOpen={setCondorcetOpen}
+          pairwiseBreakdown={pairwiseBreakdown}
+          userRating={userRating}
+          handleInlineRate={handleInlineRate}
+          setIsReviewOpen={setIsReviewOpen}
+          navigate={navigate}
+        />
       ) : currentIndex >= cards.length ? (
         /* WAITING FOR BALLOTS */
-        <main className="px-4 py-8 flex flex-col items-center justify-center text-center flex-1 my-auto animate-[modalSpring_0.35s_var(--spring-smooth)]">
-          <div className="w-full rounded-2xl bg-[var(--bg-elevated)] p-8 border border-[var(--border-main)] flex flex-col items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shadow-[0_8px_24px_var(--accent-glow)] animate-pulse">
-              <Sparkles size={32} />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <h3 className="text-lg font-bold text-[var(--text-primary)]">
-                Tallying Group Ballots
-              </h3>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Waiting for peers to complete swiping...
-              </p>
-            </div>
-
-            <div className="w-full flex flex-col gap-2">
-              <div className="flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
-                <span>Quorum Status</span>
-                <span className="font-mono tabular-nums">{votesReceived} of {quorumTotal}</span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-[var(--bg-inset)] overflow-hidden">
-                <div
-                  className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
-                  style={{ width: `${Math.min(100, (votesReceived / Math.max(1, quorumTotal)) * 100)}%` }}
-                />
-              </div>
-            </div>
-
-            {isHost ? (
-              <div className="flex flex-col items-center gap-1.5 w-full mt-2">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={handleHostForceReveal}
-                  className="w-full text-xs shadow-md"
-                >
-                  Skip Waiting (Reveal for Everyone)
-                </Button>
-                <span className="text-[10px] text-[var(--text-tertiary)]">
-                  Host control: tallies submitted votes and reveals for all devices
-                </span>
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] mt-2 w-full text-center">
-                Waiting for everyone to submit. Results will reveal together!
-              </div>
-            )}
-          </div>
-        </main>
+        <WaitingForBallotsView
+          isHost={isHost}
+          votesReceived={votesReceived}
+          quorumTotal={quorumTotal}
+          handleHostForceReveal={handleHostForceReveal}
+        />
       ) : (
         /* ACTIVE SWIPE CARD */
-        <main className="px-4 py-4 flex flex-col justify-center flex-1">
-          <div
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerCancel}
-            style={{
-              transform: exitDirection === 'right'
-                ? 'translate3d(120%, 0, 0) rotate(15deg)'
-                : exitDirection === 'left'
-                ? 'translate3d(-120%, 0, 0) rotate(-15deg)'
-                : exitDirection === 'down'
-                ? 'translate3d(0, 120%, 0) scale(0.9)'
-                : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.08}deg)`,
-              transition: exitDirection
-                ? 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s'
-                : isDragging
-                ? 'none'
-                : 'transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1)',
-              opacity: exitDirection ? 0 : 1,
-              touchAction: 'none',
-              willChange: isDragging ? 'transform' : 'auto',
-            }}
-            className="w-full rounded-2xl bg-[var(--bg-elevated)] p-5 shadow-[0_16px_48px_rgba(0,0,0,0.16)] border border-[var(--border-main)] flex flex-col gap-3 select-none relative overflow-hidden cursor-grab active:cursor-grabbing"
-          >
-            {/* Dynamic On-Drag Optical Stamps */}
-            {dragOffset.x > 30 && (
-              <div
-                style={{ opacity: Math.min(1, dragOffset.x / 75) }}
-                className="absolute top-5 right-5 px-3.5 py-1.5 rounded-xl border-[3px] border-emerald-500 bg-emerald-500/15 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-widest -rotate-12 shadow-[0_0_24px_rgba(16,185,129,0.35)] backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none animate-[stampPop_0.15s_ease-out]"
-              >
-                <ThumbsUp size={15} strokeWidth={2.5} />
-                <span>APPROVE</span>
-              </div>
-            )}
-            {dragOffset.x < -30 && (
-              <div
-                style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 75) }}
-                className="absolute top-5 left-5 px-3.5 py-1.5 rounded-xl border-[3px] border-rose-500 bg-rose-500/15 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 font-black text-xs uppercase tracking-widest rotate-12 shadow-[0_0_24px_rgba(244,63,94,0.35)] backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none animate-[stampPop_0.15s_ease-out]"
-              >
-                <ThumbsDown size={15} strokeWidth={2.5} />
-                <span>PASS</span>
-              </div>
-            )}
-            {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
-              <div
-                style={{ opacity: Math.min(1, dragOffset.y / 70) }}
-                className="absolute inset-x-6 top-6 py-2 rounded-2xl border-[3px] border-amber-400 bg-gradient-to-r from-red-600 to-rose-600 text-amber-200 font-black text-xs uppercase tracking-widest shadow-[0_0_32px_rgba(239,68,68,0.7)] backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none animate-pulse"
-              >
-                <Flame size={18} strokeWidth={2.5} />
-                <span>VETO</span>
-              </div>
-            )}
-
-            {/* Themed Hero Badge Row: Rating stars & Cuisine */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <StatusBadge
-                  status="neutral"
-                  label={activeCard.tags?.[0] || activeCard.category || 'Spot'}
-                  size="sm"
-                />
-                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-                  {activeCard.category || 'Spot'}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--status-warning)]">
-                <Star size={12} className="fill-[var(--status-warning)]" />
-                <span>{cardRating}</span>
-                <span className="text-[10px] text-[var(--text-tertiary)] font-normal">({cardReviewCount}+ reviews)</span>
-              </div>
-            </div>
-
-            {/* Venue Headline */}
-            <div className="flex flex-col gap-1 py-1">
-              <h3 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">
-                {activeCard.name}
-              </h3>
-              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                <MapPin size={13} className="shrink-0 text-[var(--accent-bg)]" />
-                <span>{activeCard.address || 'Central District'}</span>
-              </div>
-            </div>
-
-            {/* Calibrated Specs Strip: Price tier + Distance & Walk */}
-            <div className="grid grid-cols-2 gap-2">
-              <MilledTray className="flex items-center gap-2 px-3 py-2">
-                <Coins size={14} className="text-[var(--text-tertiary)] shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-[9px] uppercase font-bold text-[var(--text-tertiary)] tracking-wider">Price Tier</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{cardPriceDesc}</span>
-                </div>
-              </MilledTray>
-
-              <MilledTray className="flex items-center gap-2 px-3 py-2">
-                <Navigation size={14} className="text-[var(--accent-bg)] shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-[9px] uppercase font-bold text-[var(--text-tertiary)] tracking-wider">Distance</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] font-mono">{cardWalkDesc}</span>
-                </div>
-              </MilledTray>
-            </div>
-
-            {/* Tags Tray */}
-            {activeCard.tags && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {activeCard.tags.map((tag, i) => (
-                  <span
-                    key={i}
-                    className="px-2.5 py-1 rounded-lg bg-[var(--bg-inset)] text-[11px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Gesture Helper Hint */}
-            <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-semibold text-[var(--text-tertiary)]">
-              <span className="flex items-center gap-1"><ThumbsDown size={11} /> Pass</span>
-              <span className="text-[var(--status-danger)] font-bold flex items-center gap-1"><Flame size={11} /> Veto</span>
-              <span className="flex items-center gap-1">Approve <ThumbsUp size={11} /></span>
-            </div>
-          </div>
-        </main>
+        <SwipeCard
+          activeCard={activeCard}
+          dragOffset={dragOffset}
+          exitDirection={exitDirection}
+          isDragging={isDragging}
+          handlePointerDown={handlePointerDown}
+          handlePointerMove={handlePointerMove}
+          handlePointerUp={handlePointerUp}
+          handlePointerCancel={handlePointerCancel}
+          cardRating={cardRating}
+          cardReviewCount={cardReviewCount}
+          cardPriceDesc={cardPriceDesc}
+          cardWalkDesc={cardWalkDesc}
+        />
       )}
 
       {/* Floating Tactical Control Dock (Comfortably positioned at bottom-6) */}
       {!showWinner && currentIndex < cards.length && (
-        <div className="fixed bottom-6 inset-x-0 mx-auto w-max z-30 glass-surface py-2 px-6 rounded-full flex items-center gap-6 shadow-[0_12px_40px_rgba(0,0,0,0.3)] border border-[var(--border-glass)] select-none">
-          {/* Left: Pass (48px circle, X icon) */}
-          <button
-            type="button"
-            onClick={() => handleVote(-1)}
-            aria-label="Pass option"
-            className="w-12 h-12 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
-          >
-            <X size={22} strokeWidth={2.5} />
-          </button>
-
-          {/* Center: VETO (58px glowing amber/red circle, Flame icon, VETO text, active spring bounce) */}
-          <button
-            type="button"
-            onClick={() => handleVote(-100)}
-            aria-label="VETO option"
-            className="w-[58px] h-[58px] rounded-full bg-gradient-to-tr from-red-600 via-rose-500 to-amber-500 text-white shadow-[0_0_24px_rgba(239,68,68,0.55)] hover:shadow-[0_0_32px_rgba(239,68,68,0.75)] hover:scale-105 active:scale-95 transition-all duration-200 flex flex-col items-center justify-center gap-0.5 cursor-pointer"
-          >
-            <Flame size={20} strokeWidth={2.5} />
-            <span className="font-black text-[9px] uppercase tracking-wider leading-none">VETO</span>
-          </button>
-
-          {/* Right: Approve (48px circle, Check icon) */}
-          <button
-            type="button"
-            onClick={() => handleVote(1)}
-            aria-label="Approve option"
-            className="w-12 h-12 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10 flex items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer"
-          >
-            <Check size={22} strokeWidth={2.5} />
-          </button>
-        </div>
+        <SwipeControls handleVote={handleVote} />
       )}
 
       {/* Review Modal Portal */}
