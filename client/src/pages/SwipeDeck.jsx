@@ -12,7 +12,7 @@ import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
 import VenueDetailsModal from '../components/deck/VenueDetailsModal';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
-import { getVenueRating } from '../utils/venueImages';
+import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
 import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
 
@@ -48,27 +48,12 @@ export default function SwipeDeck() {
   const [cards, setCards] = useState(() => {
     const savedGps = getSavedExactGps();
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
-      return location.state.customCards.map((item, idx) => {
+      const initialCards = location.state.customCards.map((item, idx) => {
         if (typeof item === 'string') {
-          return {
-            id: `custom-${idx}`,
-            name: item,
-            category: 'Custom Poll Option',
-            tags: ['Custom'],
-            distance_km: null,
-            price_level: 2,
-            address: '',
-            isCustom: true,
-          };
+          return { id: `custom-${idx}`, name: item, category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true };
         }
         const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
-        const liveDist = isCustomItem
-          ? null
-          : typeof item.distance_km === 'number'
-          ? item.distance_km
-          : savedGps && item.lat != null && item.lng != null
-          ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
-          : null;
+        const liveDist = isCustomItem ? null : typeof item.distance_km === 'number' ? item.distance_km : savedGps && item.lat != null && item.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng) : null;
         return {
           id: item.id || `option-${idx}`,
           name: item.name || `Option ${idx + 1}`,
@@ -84,6 +69,7 @@ export default function SwipeDeck() {
           isCustom: isCustomItem,
         };
       });
+      return deduplicateVenues(initialCards);
     }
 
     if (mode === 'CUSTOM') {
@@ -108,7 +94,7 @@ export default function SwipeDeck() {
         .then((data) => {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
             const savedGps = getSavedExactGps();
-            setCards(data.options.slice(0, 8).map((opt) => {
+            const rehydrated = data.options.map((opt) => {
               let dist = null;
               let addr = 'Local Venue';
               let catLabel = location.state?.category || 'Local Favorite';
@@ -141,7 +127,8 @@ export default function SwipeDeck() {
                 tags: [catLabel],
                 address: addr,
               };
-            }));
+            });
+            setCards(deduplicateVenues(rehydrated).slice(0, 8));
           }
         })
         .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));

@@ -1,5 +1,67 @@
 import { useMemo } from 'react';
 
+export function getCanonicalVenueKey(name = '') {
+  let clean = String(name || '').toLowerCase().trim();
+  clean = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  clean = clean.replace(/['’"`\-_.,/\\()&!]/g, '');
+  clean = clean.replace(/\b(restaurant|restaurante|pizzeria|pizza|cafe|café|bar|pub|bistro|grill|terrace|terasa|lounge|club|la)\b/gi, '');
+  return clean.replace(/\s+/g, '').trim();
+}
+
+function calculateCoordDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function deduplicateVenues(venues = []) {
+  if (!Array.isArray(venues)) return [];
+  const result = [];
+  for (const v of venues) {
+    if (!v || !v.name) continue;
+    if (v.isCustom) {
+      const normName = v.name.trim().toLowerCase();
+      if (!result.some((r) => r.isCustom && r.name.trim().toLowerCase() === normName)) {
+        result.push(v);
+      }
+      continue;
+    }
+
+    const cKey = getCanonicalVenueKey(v.name);
+    const dupIdx = result.findIndex((r) => {
+      if (r.isCustom) return false;
+      const rKey = getCanonicalVenueKey(r.name);
+      if (cKey && rKey && cKey === rKey) return true;
+      if (cKey.length >= 4 && rKey.length >= 4 && (cKey.includes(rKey) || rKey.includes(cKey))) {
+        if (v.lat != null && v.lng != null && r.lat != null && r.lng != null) {
+          return calculateCoordDistanceMeters(v.lat, v.lng, r.lat, r.lng) <= 350;
+        }
+        return true;
+      }
+      if (v.lat != null && v.lng != null && r.lat != null && r.lng != null) {
+        return calculateCoordDistanceMeters(v.lat, v.lng, r.lat, r.lng) <= 150;
+      }
+      return false;
+    });
+
+    if (dupIdx === -1) {
+      result.push(v);
+    } else {
+      const existing = result[dupIdx];
+      if ((!existing.distance_km && v.distance_km) || (existing.name.length < v.name.length && !v.name.includes('...'))) {
+        result[dupIdx] = { ...v, ...existing, name: existing.name.includes('...') ? v.name : existing.name };
+      }
+    }
+  }
+  return result;
+}
+
 // Curated Quick-Add Idea Library for Custom Polls (zero fake venue data)
 export const CUSTOM_POLL_LIBRARY = [
   {
@@ -100,10 +162,14 @@ const VENUE_RATINGS_MAP = {
   "taproom": { rating: "4.6", reviewCount: "780", rawReviews: 780 },
   "barbar": { rating: "4.5", reviewCount: "910", rawReviews: 910 },
   "alindor": { rating: "4.5", reviewCount: "410", rawReviews: 410 },
+  "alin d'or": { rating: "4.5", reviewCount: "410", rawReviews: 410 },
   "struguraș": { rating: "4.4", reviewCount: "320", rawReviews: 320 },
   "struguras": { rating: "4.4", reviewCount: "320", rawReviews: 320 },
   "lacul verde": { rating: "4.6", reviewCount: "540", rawReviews: 540 },
   "hanul": { rating: "4.5", reviewCount: "480", rawReviews: 480 },
+  "hanul pescar": { rating: "4.5", reviewCount: "480", rawReviews: 480 },
+  "délice": { rating: "4.6", reviewCount: "280", rawReviews: 280 },
+  "delice": { rating: "4.6", reviewCount: "280", rawReviews: 280 },
   "davidan": { rating: "4.4", reviewCount: "290", rawReviews: 290 },
   "boozer": { rating: "4.5", reviewCount: "260", rawReviews: 260 },
   "dolce vita": { rating: "4.5", reviewCount: "640", rawReviews: 640 },
@@ -113,61 +179,63 @@ const VENUE_RATINGS_MAP = {
 // Curated high-resolution culinary & interior photography (distinct per venue & cuisine)
 const VENUE_IMAGE_MAP = {
   // Known Moldovan & Regional Hotspots
-  "osho": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
+  "osho": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "park avenue": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "mi piace": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  "andy's": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=85",
-  "andys": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=85",
-  "la plăcinte": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=85",
-  "la placinte": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=85",
+  "andy's": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
+  "andys": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
+  "la plăcinte": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
+  "la placinte": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "draft": "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
-  "pizza mania": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=85",
-  "pegas": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=900&q=85",
+  "pizza mania": "https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&w=900&q=85",
+  "pegas": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "sakura": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=900&q=85",
-  "jack's": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85",
-  "jacks": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85",
+  "jack's": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
+  "jacks": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
   "sensi": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=85",
-  "metaxa": "https://images.unsplash.com/photo-1544124499-58912cbddaad?auto=format&fit=crop&w=900&q=85",
+  "metaxa": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "jeraffe": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
   "asti": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=85",
-  "vatra veche": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=85",
-  "crème de la crème": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=85",
-  "creme de la creme": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=85",
-  "délice": "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=85",
-  "delice": "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=85",
+  "vatra veche": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
+  "crème de la crème": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  "creme de la creme": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  "délice": "https://img.restaurantguru.com/w550/h367/r3f3-interior-Delice-2021-08.jpg",
+  "delice": "https://img.restaurantguru.com/w550/h367/r3f3-interior-Delice-2021-08.jpg",
   "propaganda": "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=900&q=85",
   "kozlovna": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
-  "la taifas": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=85",
+  "la taifas": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "tucano": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85",
-  "smokehouse": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=900&q=85",
-  "oliva": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=900&q=85",
+  "smokehouse": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  "oliva": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
   "gastrobar": "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=900&q=85",
   "rozmarin": "https://images.unsplash.com/photo-1525610553991-2bede1a236e2?auto=format&fit=crop&w=900&q=85",
   "fuior": "https://images.unsplash.com/photo-1505253758473-96b3d5ebcd96?auto=format&fit=crop&w=900&q=85",
   "entourage": "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=85",
   "invino": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=85",
   "caravan": "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=900&q=85",
-  "london": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
-  "mister burger": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85",
-  "mcdonald": "https://images.unsplash.com/photo-1586816001966-79b736744398?auto=format&fit=crop&w=900&q=85",
-  "kfc": "https://images.unsplash.com/photo-1513639776629-7b61b0ac49cb?auto=format&fit=crop&w=900&q=85",
-  // Strășeni, Orhei, Bălți & Regional Venues (Distinct Photos)
-  "alindor": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  "struguraș": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=85",
-  "struguras": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=85",
-  "lacul verde": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
-  "hanul": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
+  "london": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
+  "mister burger": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
+  "mcdonald": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
+  "kfc": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
+  // Strășeni, Orhei, Bălți & Regional Verified Venues
+  "alindor": "https://img.restaurantguru.com/w550/h367/re5f-Alindor-Pizza-exterior.jpg",
+  "alin d'or": "https://img.restaurantguru.com/w550/h367/re5f-Alindor-Pizza-exterior.jpg",
+  "struguraș": "https://www.struguras.md/imagini/foto/full/77728_sala_ospatarie_1.jpg",
+  "struguras": "https://www.struguras.md/imagini/foto/full/77728_sala_ospatarie_1.jpg",
+  "lacul verde": "https://honeypot0.s3.amazonaws.com/1701624490479-gallery-VGHT7346.webp",
+  "hanul": "https://www.visualbrand.ro/wp-content/uploads/2026/01/hanul-pescarilor1.jpg",
+  "hanul pescar": "https://www.visualbrand.ro/wp-content/uploads/2026/01/hanul-pescarilor1.jpg",
   "davidan": "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=85",
   "boozer": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
   "comercio": "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=900&q=85",
   "drive": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85",
-  "dolce vita": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=85",
+  "dolce vita": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
   "vartely": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=85",
   "mon'ro": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
-  "objora": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=85",
+  "objora": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "maestro": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=900&q=85",
-  "covrigo": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=85",
-  "cuptorul": "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=85",
+  "covrigo": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  "cuptorul": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
   // Cinemas
   "cineplex loteanu": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
   "cineplex malldova": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
@@ -181,13 +249,13 @@ const VENUE_IMAGE_MAP = {
 };
 
 const CATEGORY_IMAGE_MAP = {
-  pizza: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=85",
-  burgers: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85",
-  burger: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85",
+  pizza: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
+  burgers: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
+  burger: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
   sushi: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=900&q=85",
   asian: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=85",
   italian: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  pasta: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=900&q=85",
+  pasta: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
   cafes: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=85",
   coffee: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85",
   tea: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=900&q=85",
@@ -196,21 +264,21 @@ const CATEGORY_IMAGE_MAP = {
   pub: "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
   cinema: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
   movies: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
-  desserts: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=85",
-  bakery: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=85",
+  desserts: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  bakery: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
   activities: "https://images.unsplash.com/photo-1511882150382-421056c89033?auto=format&fit=crop&w=900&q=85",
   restaurants: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
-  dining: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
+  dining: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
 };
 
 // Pool of distinct culinary & restaurant interior photos so unmapped local restaurants never all share the exact same image
 const DISTINCT_RESTAURANT_POOL = [
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
   "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&w=900&q=85",
 ];
 
 /**
@@ -218,8 +286,14 @@ const DISTINCT_RESTAURANT_POOL = [
  */
 export function getVenueImage(name = '', category = '') {
   const normName = String(name || '').toLowerCase().trim();
+  const cName = getCanonicalVenueKey(name);
+
   for (const [key, url] of Object.entries(VENUE_IMAGE_MAP)) {
-    if (normName.includes(key)) {
+    const cKey = getCanonicalVenueKey(key);
+    if (
+      normName.includes(key) ||
+      (cKey && cName && (cName === cKey || cName.includes(cKey) || cKey.includes(cName)))
+    ) {
       return url;
     }
   }
@@ -243,8 +317,14 @@ export function getVenueImage(name = '', category = '') {
  */
 export function getVenueRating(name = '', category = '') {
   const normName = String(name || '').toLowerCase().trim();
+  const cName = getCanonicalVenueKey(name);
+
   for (const [key, data] of Object.entries(VENUE_RATINGS_MAP)) {
-    if (normName.includes(key)) {
+    const cKey = getCanonicalVenueKey(key);
+    if (
+      normName.includes(key) ||
+      (cKey && cName && (cName === cKey || cName.includes(cKey) || cKey.includes(cName)))
+    ) {
       return data;
     }
   }
@@ -271,8 +351,16 @@ export function getVenueRating(name = '', category = '') {
  */
 export function getVenueVibe(name = '', category = '') {
   const normName = String(name || '').toLowerCase();
+  const cName = getCanonicalVenueKey(name);
   const normCat = String(category || '').toLowerCase();
   const norm = `${normName} ${normCat}`;
+
+  if (cName.includes('alindor')) return 'Local Restaurant & Pizzeria';
+  if (cName.includes('strugur')) return 'Traditional Moldovan Restaurant';
+  if (cName.includes('laculverde')) return 'Lakeside Restaurant & Terrace';
+  if (cName.includes('hanul')) return 'Lakeside Grill & Tavern';
+  if (cName.includes('delice')) return 'French Patisserie & Café';
+  if (cName.includes('davidan')) return 'Local Restaurant & Sushi';
 
   if (normName.includes('auto cinema')) return 'Drive-In Movie Theater';
   if (normName.includes('malldova')) return 'Multiplex Cinema & IMAX';
@@ -283,10 +371,9 @@ export function getVenueVibe(name = '', category = '') {
   if (normName.includes('mi piace') || normName.includes('dolce vita')) return 'Italian Trattoria & Pizza';
   if (normName.includes('andy')) return 'Casual Dining & Pizzeria';
   if (normName.includes('pizza mania')) return 'Wood-Fired Thin Crust Pizza';
-  if (normName.includes('la taifas') || normName.includes('vatra') || normName.includes('strugur') || normName.includes('hanul') || normName.includes('plăcinte') || normName.includes('placinte')) return 'Traditional Moldovan Cuisine';
-  if (normName.includes('lacul verde') || normName.includes('alindor') || normName.includes('davidan')) return 'Local Restaurant & Terrace';
+  if (normName.includes('la taifas') || normName.includes('vatra') || normName.includes('plăcinte') || normName.includes('placinte')) return 'Traditional Moldovan Cuisine';
   if (normName.includes('pegas')) return '24/7 Grill & Terrace';
-  if (normName.includes('crème') || normName.includes('creme') || normName.includes('delice') || normName.includes('délice')) return 'French Patisserie & Café';
+  if (normName.includes('crème') || normName.includes('creme')) return 'French Patisserie & Café';
   if (normName.includes('kozlovna') || normName.includes('boozer')) return 'Pub & Grill';
   if (normName.includes('propaganda')) return 'Vintage Café & Bistro';
   if (normName.includes('rozmarin')) return 'Artisanal Brunch & Roastery';

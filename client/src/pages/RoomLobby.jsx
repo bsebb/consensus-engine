@@ -19,6 +19,7 @@ import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
 import { calculateDistanceKm, detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
+import { deduplicateVenues } from '../utils/venueImages';
 
 function levenshteinDistance(a, b) {
   const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
@@ -318,7 +319,7 @@ export default function RoomLobby() {
       });
     }
 
-    return [...customItems, ...baseList];
+    return deduplicateVenues([...customItems, ...baseList]);
   }, [mode, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
 
   // Query OSRM street network for real road distance & travel time from user's exact coordinates

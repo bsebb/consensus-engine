@@ -1,16 +1,6 @@
 function formatPriceLabel(price) {
-  switch (price) {
-    case 1:
-      return "$ (Budget: ~80-150 MDL)";
-    case 2:
-      return "$$ (Moderate: ~150-300 MDL)";
-    case 3:
-      return "$$$ (Upscale: ~300-500 MDL)";
-    case 4:
-      return "$$$$ (Fine Dining: 500+ MDL)";
-    default:
-      return "$$ (Moderate: ~150-300 MDL)";
-  }
+  const map = { 1: "$ (Budget: ~80-150 MDL)", 2: "$$ (Moderate: ~150-300 MDL)", 3: "$$$ (Upscale: ~300-500 MDL)", 4: "$$$$ (Fine Dining: 500+ MDL)" };
+  return map[price] || "$$ (Moderate: ~150-300 MDL)";
 }
 
 // Last-resort offline fallback pool (only used if both Foursquare and OpenStreetMap are unreachable)
@@ -20,32 +10,24 @@ const CATEGORIZED_FALLBACKS = {
     { name: "Cineplex Loteanu", fsq_id: "fsq_cineplex_loteanu", category: "Movie Theater", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0252, lng: 28.8315, address: "Bd. Ștefan cel Mare 103" },
     { name: "Odeon Cinema", fsq_id: "fsq_odeon_cinema", category: "Indie & Cultural Cinema", priceLevel: 1, priceLabel: "$ (~80-120 MDL / ticket)", lat: 47.0215, lng: 28.8350, address: "Str. Mihai Eminescu 55" },
     { name: "Patria Multiplex", fsq_id: "fsq_patria_riscani", category: "Cinema & Entertainment", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0410, lng: 28.8620, address: "Str. Kiev 16/1" },
-    { name: "Auto Cinema", fsq_id: "fsq_auto_cinema", category: "Drive-In Movie Theater", priceLevel: 2, priceLabel: "$$ (~150 MDL / car)", lat: 47.0450, lng: 28.8050, address: "Calea Ieșilor" },
-    { name: "Centrul Cultural Odeon", fsq_id: "fsq_centrul_odeon", category: "Film Screenings", priceLevel: 1, priceLabel: "$ (~90-130 MDL / ticket)", lat: 47.0195, lng: 28.8380, address: "Str. Vlaicu Pârcălab 45" }
   ],
   cafes: [
     { name: "Tucano Coffee", fsq_id: "fsq_tucano_1", category: "Specialty Coffee Shop", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.0225, lng: 28.8340, address: "Str. Aleksandr Pușkin 15" },
     { name: "Crème de la Crème", fsq_id: "fsq_creme_3", category: "French Patisserie & Café", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0238, lng: 28.8340, address: "Str. Alexandru cel Bun 98A" },
     { name: "Rozmarin Cafe", fsq_id: "fsq_rozmarin_5", category: "Brunch & Roastery", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0240, lng: 28.8320, address: "Bd. Ștefan cel Mare 202" },
     { name: "Sensi Bar & Cafe", fsq_id: "fsq_sensi_2", category: "Espresso & Lounge", priceLevel: 2, priceLabel: "$$ (~80-150 MDL)", lat: 47.0265, lng: 28.8310, address: "Str. Alexandru cel Bun 111" },
-    { name: "Propaganda Cafe", fsq_id: "fsq_propaganda_4", category: "Vintage Cozy Café", priceLevel: 2, priceLabel: "$$ (~80-160 MDL)", lat: 47.0210, lng: 28.8375, address: "Str. Alexei Șciusev 47" },
-    { name: "Coffeemolka", fsq_id: "fsq_coffeemolka_6", category: "Artisanal Coffee House", priceLevel: 1, priceLabel: "$ (~50-100 MDL)", lat: 47.0220, lng: 28.8360, address: "Str. Mihai Eminescu 72" }
   ],
   bars: [
     { name: "Smokehouse: BBQ & Beer", fsq_id: "fsq_smokehouse_bar_2", category: "Craft Beer & Smokehouse", priceLevel: 2, priceLabel: "$$ (~140-250 MDL)", lat: 47.0245, lng: 28.8315, address: "Bd. Ștefan cel Mare 128" },
     { name: "Kozlovna Ceska Pivnice", fsq_id: "fsq_kozlovna_bar_1", category: "Czech Beer Hall", priceLevel: 2, priceLabel: "$$ (~120-220 MDL)", lat: 47.0218, lng: 28.8360, address: "Str. Pușkin 24" },
     { name: "Taproom 27 Craft Beer", fsq_id: "fsq_taproom_bar_5", category: "Craft Taproom", priceLevel: 2, priceLabel: "$$ (~110-200 MDL)", lat: 47.0205, lng: 28.8390, address: "Str. Vasile Alecsandri 117" },
     { name: "Invino Enoteca", fsq_id: "fsq_invino_bar_4", category: "Wine Bar", priceLevel: 3, priceLabel: "$$$ (~200-400 MDL)", lat: 47.0230, lng: 28.8330, address: "Str. Bănulescu-Bodoni 41" },
-    { name: "Draft Arena", fsq_id: "fsq_draft_bar_3", category: "Pub & Gastropub", priceLevel: 2, priceLabel: "$$ (~120-220 MDL)", lat: 47.0189, lng: 28.8415, address: "Str. 31 August 1989 78" },
-    { name: "Barbar Bar", fsq_id: "fsq_barbar_bar_6", category: "Cocktails & Nightlife", priceLevel: 2, priceLabel: "$$ (~130-240 MDL)", lat: 47.0215, lng: 28.8370, address: "Str. Mihai Eminescu 56" }
   ],
   desserts: [
     { name: "Crème de la Crème", fsq_id: "fsq_creme_dessert", category: "French Patisserie", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0238, lng: 28.8340, address: "Str. Alexandru cel Bun 98A" },
     { name: "Delice d'Ange", fsq_id: "fsq_delice_dange", category: "Artisanal Cakes & Pastries", priceLevel: 2, priceLabel: "$$ (~80-160 MDL)", lat: 47.0202, lng: 28.8342, address: "Str. 31 August 1989 117" },
     { name: "Granier Bakery", fsq_id: "fsq_granier", category: "Bakery & Sweet Treats", priceLevel: 1, priceLabel: "$ (~40-90 MDL)", lat: 47.0232, lng: 28.8335, address: "Bd. Ștefan cel Mare 132" },
     { name: "Dulcinella Boutique", fsq_id: "fsq_dulcinella", category: "Confectionery & Desserts", priceLevel: 1, priceLabel: "$ (~50-110 MDL)", lat: 47.0195, lng: 28.8410, address: "Str. Tighina 49" },
-    { name: "Morpho Gelato", fsq_id: "fsq_morpho_gelato", category: "Italian Gelateria", priceLevel: 2, priceLabel: "$$ (~70-130 MDL)", lat: 47.0228, lng: 28.8355, address: "Str. Vlaicu Pârcălab 63" },
-    { name: "Tucano Cheesecake Bar", fsq_id: "fsq_tucano_dessert", category: "Cheesecakes & Coffee", priceLevel: 2, priceLabel: "$$ (~75-140 MDL)", lat: 47.0225, lng: 28.8340, address: "Str. Aleksandr Pușkin 15" }
   ],
   restaurants: [
     { name: "Osho Bar & Kitchen", fsq_id: "56599eec498e89a644fa47ec", category: "Modern European & Steakhouse", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 47.0061, lng: 28.8602, address: "Bd. Decebal 7/1" },
@@ -53,8 +35,8 @@ const CATEGORIZED_FALLBACKS = {
     { name: "La Taifas", fsq_id: "fsq_taifas_9", category: "Traditional Moldovan", priceLevel: 2, priceLabel: "$$ (~150-300 MDL)", lat: 47.0235, lng: 28.8335, address: "Str. București 67" },
     { name: "Pegas Restaurant", fsq_id: "fsq_pegas_10", category: "Grill & Terrace", priceLevel: 3, priceLabel: "$$$ (~250-450 MDL)", lat: 47.0315, lng: 28.8510, address: "Str. Albișoara 20/1" },
     { name: "Andy's Pizza", fsq_id: "fsq_andys_1", category: "Casual Dining & Pizza", priceLevel: 2, priceLabel: "$$ (~120-250 MDL)", lat: 47.0245, lng: 28.8322, address: "Bd. Ștefan cel Mare 202" },
-    { name: "Pizza Mania", fsq_id: "fsq_pizzamania_3", category: "Wood-Fired Pizzeria", priceLevel: 1, priceLabel: "$ (~90-170 MDL)", lat: 47.0261, lng: 28.8354, address: "Bd. Grigore Vieru 13" }
-  ]
+    { name: "Pizza Mania", fsq_id: "fsq_pizzamania_3", category: "Wood-Fired Pizzeria", priceLevel: 1, priceLabel: "$ (~90-170 MDL)", lat: 47.0261, lng: 28.8354, address: "Bd. Grigore Vieru 13" },
+  ],
 };
 
 // In-memory cache for API queries to avoid repeated external requests
@@ -75,6 +57,14 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c;
+}
+
+function getCanonicalVenueKey(name = '') {
+  let clean = String(name || '').toLowerCase().trim();
+  clean = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  clean = clean.replace(/['’"`\-_.,/\\()&!]/g, '');
+  clean = clean.replace(/\b(restaurant|restaurante|pizzeria|pizza|cafe|café|bar|pub|bistro|grill|terrace|terasa|lounge|club|la)\b/gi, '');
+  return clean.replace(/\s+/g, '').trim();
 }
 
 function generateHexRingCenters(centerLat, centerLng, ringIndex, hexRadiusMeters = 1000) {
@@ -156,45 +146,30 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
   if (categoryKey === 'cafes') {
     return /\b(cafe|café|coffee|espresso|bakery|pastry|patisserie|tea house|teahouse|bistro|dessert|cappuccino|latte|roastery|tucano|crème|creme|rozmarin|sensi|propaganda|coffeemolka|delice|délice)\b/i.test(combined);
   }
-
   if (categoryKey === 'bars') {
     return /\b(bar|pub|beer|wine bar|brewery|taproom|cocktail|lounge|nightlife|tavern|pivnice|gastropub|kozlovna|draft|smokehouse|invino|pivko)\b/i.test(combined);
   }
-
   if (categoryKey === 'desserts') {
     return /\b(dessert|bakery|pastry|patisserie|ice cream|icecream|gelato|cake|sweet|confectionery|cafe|café|crème|creme|delice|délice|dulcinella|sandra|granier|covrigo|cuptorul)\b/i.test(combined);
   }
-
   return /\b(restaurant|pizza|pizzeria|steak|grill|sushi|burger|bistro|kitchen|trattoria|tavern|gastropub|bbq|diner|cafe|café|bar|pub|european|italian|romanian|moldovan|asian|fast food|plăcinte|placinte|kfc|mcdonald|mcdonald's|hanul)\b/i.test(combined);
 }
 
 function inferPriceLevel(place, categoryKey) {
-  if (place.price && place.price >= 1 && place.price <= 4) {
-    return place.price;
-  }
+  if (place.price && place.price >= 1 && place.price <= 4) return place.price;
   const nameLower = String(place.name || '').toLowerCase();
   const catNames = (place.categories || []).map((c) => (c.name || '').toLowerCase()).join(' ');
-  if (nameLower.includes('osho') || nameLower.includes('mi piace') || nameLower.includes('pegas') || nameLower.includes('invino') || nameLower.includes('chateau') || nameLower.includes('nobil') || catNames.includes('steakhouse') || catNames.includes('fine dining') || catNames.includes('modern european')) {
-    return 3;
-  }
-  if (nameLower.includes('mania') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('odeon') || nameLower.includes('coffeemolka') || nameLower.includes('granier') || catNames.includes('fast food') || catNames.includes('bakery') || catNames.includes('ice cream')) {
-    return 1;
-  }
-  if (categoryKey === 'cinema') return 2;
+  if (nameLower.includes('osho') || nameLower.includes('mi piace') || nameLower.includes('pegas') || nameLower.includes('invino') || nameLower.includes('chateau') || nameLower.includes('nobil') || catNames.includes('steakhouse') || catNames.includes('fine dining') || catNames.includes('modern european')) return 3;
+  if (nameLower.includes('mania') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('odeon') || nameLower.includes('coffeemolka') || nameLower.includes('granier') || catNames.includes('fast food') || catNames.includes('bakery') || catNames.includes('ice cream')) return 1;
   return 2;
 }
 
 function resolveFallback(theme = '', centerLat = 47.0225, centerLng = 28.8340, isExactGps = false) {
   const key = getCategoryKey(theme);
   const places = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;
-
   return places.map((p) => {
-    let distMeters = 1500;
-    if (centerLat != null && centerLng != null && p.lat && p.lng) {
-      distMeters = calculateHaversineDistance(centerLat, centerLng, p.lat, p.lng);
-    }
+    const distMeters = (centerLat != null && centerLng != null && p.lat && p.lng) ? calculateHaversineDistance(centerLat, centerLng, p.lat, p.lng) : 1500;
     const distKm = isExactGps ? Math.max(0.1, Number((distMeters / 1000).toFixed(1))) : null;
-
     return {
       name: p.name,
       fsq_id: p.fsq_id,
@@ -208,9 +183,7 @@ function resolveFallback(theme = '', centerLat = 47.0225, centerLng = 28.8340, i
       lat: p.lat,
       lng: p.lng,
     };
-  })
-  .sort((a, b) => a.distance_meters - b.distance_meters)
-  .slice(0, 6);
+  }).sort((a, b) => a.distance_meters - b.distance_meters).slice(0, 6);
 }
 
 /**
@@ -354,43 +327,19 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
  * Never jumps to highway stops (7km+) or neighboring villages (11km+) when in-town venues exist.
  */
 const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
-  let theme = "restaurant";
-  let radius = 5000;
-  let latitude = null;
-  let longitude = null;
-  let isExactGps = false;
-
-  if (typeof param1 === 'object' && param1 !== null) {
-    theme = param1.theme || "restaurant";
-    radius = param1.radius || 5000;
-    latitude = param1.latitude ?? null;
-    longitude = param1.longitude ?? null;
-    isExactGps = Boolean(param1.is_exact_gps);
-  } else {
-    theme = param1;
-    radius = param2;
-  }
-
-  if (typeof theme !== 'string') {
-    theme = 'restaurant';
-  }
+  const isObj = typeof param1 === 'object' && param1 !== null;
+  const theme = (isObj ? param1.theme : param1) || 'restaurant';
+  const radius = (isObj ? param1.radius : param2) || 5000;
+  const latitude = isObj ? param1.latitude : null;
+  const longitude = isObj ? param1.longitude : null;
+  let isExactGps = isObj ? Boolean(param1.is_exact_gps) : false;
 
   const DEFAULT_LAT = 47.0225;
   const DEFAULT_LNG = 28.8340;
-
-  const hasValidCoords =
-    latitude != null &&
-    longitude != null &&
-    !isNaN(Number(latitude)) &&
-    !isNaN(Number(longitude)) &&
-    Math.abs(Number(latitude)) <= 90 &&
-    Math.abs(Number(longitude)) <= 180;
-
+  const hasValidCoords = latitude != null && longitude != null && !isNaN(Number(latitude)) && !isNaN(Number(longitude)) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180;
   const centerLat = hasValidCoords ? Number(latitude) : DEFAULT_LAT;
   const centerLng = hasValidCoords ? Number(longitude) : DEFAULT_LNG;
-  if (!hasValidCoords) {
-    isExactGps = false;
-  }
+  if (!hasValidCoords) isExactGps = false;
 
   const categoryKey = getCategoryKey(theme);
   const queryTerm = getSearchQueryForTheme(theme);
@@ -416,8 +365,10 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       if (!isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality)) continue;
 
       const id = place.fsq_place_id || place.fsq_id || place.id || `venue_${Math.random()}`;
-      const normNameKey = String(place.name || '').toLowerCase().trim();
+      const name = String(place.name || '').trim();
+      const normNameKey = name.toLowerCase();
       if (!normNameKey) continue;
+      const cKey = getCanonicalVenueKey(name);
 
       const placeLat = place.latitude ?? place.geocodes?.main?.latitude ?? null;
       const placeLng = place.longitude ?? place.geocodes?.main?.longitude ?? null;
@@ -434,11 +385,33 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       // Strictly enforce ring boundary so out-of-town highway stops (7km - 11km) are rejected
       if (distMeters > maxRadiusMeters * 1.1) continue;
 
-      // CLOSEST-BRANCH RULE: If a chain (e.g., McDonald's, Andy's Pizza) is already in the map,
-      // only overwrite it if this branch is physically closer to the user's coordinates!
-      const existing = accumulatedVenues.get(normNameKey);
-      if (existing && existing.distance_meters <= distMeters) {
-        continue;
+      // Cross-source deduplication (OSM vs FSQ) & closest-branch chain rule
+      let existingMatchKey = null;
+      for (const [key, ex] of accumulatedVenues.entries()) {
+        const exCKey = getCanonicalVenueKey(ex.name);
+        const hasCoords = placeLat != null && placeLng != null && ex.lat != null && ex.lng != null;
+        const coordDist = hasCoords ? calculateHaversineDistance(placeLat, placeLng, ex.lat, ex.lng) : null;
+
+        const isSameBuilding = coordDist != null && coordDist <= 250;
+        const keyMatch = (cKey && exCKey && cKey === exCKey) ||
+          (cKey.length >= 4 && exCKey.length >= 4 && (cKey.includes(exCKey) || exCKey.includes(cKey)));
+
+        if ((isSameBuilding && (keyMatch || coordDist <= 80)) || keyMatch) {
+          existingMatchKey = key;
+          break;
+        }
+      }
+
+      if (existingMatchKey) {
+        const existing = accumulatedVenues.get(existingMatchKey);
+        if (existing.distance_meters <= distMeters) {
+          if (!existing.address && place.location?.address) {
+            existing.address = place.location.address;
+          }
+          continue;
+        } else {
+          accumulatedVenues.delete(existingMatchKey);
+        }
       }
 
       const distKm = isExactGps ? Math.max(0.1, Number((distMeters / 1000).toFixed(1))) : null;
@@ -457,7 +430,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       );
       const priceLevel = inferPriceLevel(place, categoryKey);
 
-      accumulatedVenues.set(normNameKey, {
+      accumulatedVenues.set(cKey || normNameKey, {
         name: place.name,
         fsq_id: id,
         fsq_place_id: id,
@@ -599,6 +572,7 @@ module.exports = {
   enrichVenuesWithRoadDistances,
   formatPriceLabel,
   generateHexRingCenters,
+  getCanonicalVenueKey,
   CATEGORIZED_FALLBACKS,
   FALLBACK_PLACES: CATEGORIZED_FALLBACKS.restaurants,
 };
