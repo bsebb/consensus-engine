@@ -455,15 +455,25 @@ export default function RoomLobby() {
     }
 
     if (realOptions && realOptions.length > 0) {
-      return realOptions.map((opt, idx) => ({
-        id: opt.id,
-        name: opt.name,
-        category: location.state?.category || 'Discovery',
-        price_level: opt.priceLevel || 2,
-        distance_km: Number((0.6 + ((idx * 0.4) % 3)).toFixed(1)),
-        tags: [location.state?.category || 'Top Pick'],
-        address: 'Chișinău, Moldova',
-      }));
+      return realOptions.map((opt, idx) => {
+        let dist = null;
+        let addr = 'Chișinău, Moldova';
+        if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
+          const parts = opt.googlePlaceId.split('|');
+          const parsedDist = parseFloat(parts[1]);
+          if (!isNaN(parsedDist)) dist = parsedDist;
+          if (parts[2]) addr = parts[2];
+        }
+        return {
+          id: opt.id,
+          name: opt.name,
+          category: location.state?.category || 'Discovery',
+          price_level: opt.priceLevel || 2,
+          distance_km: dist !== null ? dist : Number((0.6 + ((idx * 0.4) % 3)).toFixed(1)),
+          tags: [location.state?.category || 'Top Pick'],
+          address: addr,
+        };
+      });
     }
 
     let pool = restaurantsMock || [];

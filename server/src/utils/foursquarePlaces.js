@@ -28,12 +28,71 @@ const FALLBACK_PLACES = [
 const queryCache = new Map();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// Haversine distance in meters between two lat/lng coordinates
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Earth radius in meters
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
 /**
- * Searches for places via Foursquare API v3 with caching and instant local fallback.
- * Supports both object params and positional arguments.
+ * Executes a single Places API search request against FSQ OS Places.
+ */
+async function queryFoursquarePlaces({ theme, lat, lng, radius, cleanKey }) {
+  const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
+  const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
+
+  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&limit=20`;
+  if (lat && lng) {
+    url += `&ll=${lat},${lng}&radius=${Math.min(radius, 100000)}`;
+  } else {
+    url += `&near=Chisinau`;
+  }
+
+  const headers = {
+    accept: 'application/json',
+    Authorization: bearerAuth,
+    'X-Places-Api-Version': '2025-06-17',
+  };
+
+  let response = await fetch(url, {
+    method: 'GET',
+    headers,
+    signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+  });
+
+  if (response.status === 401) {
+    headers.Authorization = rawAuth;
+    response = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    });
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    throw new Error(`Status ${response.status}: ${errorBody}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data.results) ? data.results : [];
+}
+
+/**
+ * Searches for places via FSQ OS Places using an adaptive expanding spatial grid (Uber-style).
+ * Starts at a 1km neighborhood radius and expands outward until at least TARGET_COUNT places are found.
  */
 const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param3 = "Chisinau") => {
-  // Normalize params whether called as ({ theme, radius, near, latitude, longitude }) or (theme, radius, near)
   let theme = "restaurant";
   let radius = 5000;
   let near = "Chisinau";
@@ -52,12 +111,10 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     near = param3;
   }
 
-  // Ensure theme is a clean string
   if (typeof theme !== 'string') {
     theme = 'restaurant';
   }
 
-  // Fast path: if no API key is configured, return fallback data immediately (0ms delay)
   const rawKey = process.env.FOURSQUARE_API_KEY;
   if (!rawKey || !rawKey.trim()) {
     return FALLBACK_PLACES;
@@ -67,77 +124,91 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     return FALLBACK_PLACES;
   }
 
-  // Check in-memory cache
-  const cacheKey = `${theme.toLowerCase()}_${radius}_${latitude || near}_${longitude || ''}`;
+  // Quantize coordinates to ~200m grid for efficient in-memory caching
+  const cacheLat = latitude ? Number(latitude).toFixed(3) : 'default';
+  const cacheLng = longitude ? Number(longitude).toFixed(3) : 'default';
+  const cacheKey = `${theme.toLowerCase()}_${radius}_${cacheLat}_${cacheLng}`;
+
   const cached = queryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.data;
   }
 
-  // Foursquare Places API (FSQ OS Places) modern endpoint
-  const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ')
-    ? cleanKey
-    : `Bearer ${cleanKey}`;
-  const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
+  const centerLat = latitude != null ? Number(latitude) : (near && near.toLowerCase().includes('chisinau') ? 47.0105 : 47.0105);
+  const centerLng = longitude != null ? Number(longitude) : (near && near.toLowerCase().includes('chisinau') ? 28.8638 : 28.8638);
+  const maxRequestedRadius = Math.max(Number(radius) || 5000, 1000);
+
+  // Concentric spatial expansion rings: 1 km (neighborhood) -> 2.5 km -> maxRequestedRadius -> 10 km
+  const TARGET_PLACES = 12;
+  const rawRings = [
+    1000,
+    2500,
+    maxRequestedRadius,
+    Math.max(maxRequestedRadius, 8000),
+  ];
+  const uniqueRings = [...new Set(rawRings)].sort((a, b) => a - b);
+
+  const accumulatedVenues = new Map();
 
   try {
-    let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&limit=12`;
-
-    // Foursquare API requirement: 'radius' must be paired with 'll' coordinates, never directly with 'near'
-    const lat = latitude || (near && near.toLowerCase().includes('chisinau') ? 47.0105 : null);
-    const lng = longitude || (near && near.toLowerCase().includes('chisinau') ? 28.8638 : null);
-
-    if (lat && lng) {
-      url += `&ll=${lat},${lng}&radius=${radius || 5000}`;
-    } else if (near) {
-      url += `&near=${encodeURIComponent(near)}`;
-    } else {
-      url += `&ll=47.0105,28.8638&radius=5000`;
-    }
-
-    const headers = {
-      accept: 'application/json',
-      Authorization: bearerAuth,
-      'X-Places-Api-Version': '2025-06-17',
-    };
-
-    let response = await fetch(url, {
-      method: 'GET',
-      headers,
-      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
-    });
-
-    // If 401 with Bearer header, retry with raw key format
-    if (response.status === 401) {
-      headers.Authorization = rawAuth;
-      response = await fetch(url, {
-        method: 'GET',
-        headers,
-        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    for (const ringRadius of uniqueRings) {
+      const placesInRing = await queryFoursquarePlaces({
+        theme,
+        lat: centerLat,
+        lng: centerLng,
+        radius: ringRadius,
+        cleanKey,
+      }).catch((err) => {
+        console.warn(`[Spatial Search] Query warning at ${ringRadius}m ring:`, err.message);
+        return [];
       });
-    }
 
-    if (!response.ok) {
-      const errorBody = await response.text().catch(() => '');
-      throw new Error(`Status ${response.status}: ${errorBody}`);
-    }
-
-    const data = await response.json();
-
-    if (data.results && data.results.length > 0) {
-      const results = data.results.map((place) => {
+      for (const place of placesInRing) {
         const id = place.fsq_place_id || place.fsq_id || place.id;
-        return {
-          name: place.name,
-          fsq_id: id,
-          fsq_place_id: id,
-          priceLevel: place.price || null,
-          priceLabel: formatPriceLabel(place.price),
-        };
-      });
+        const normKey = id || place.name.toLowerCase().trim();
 
-      queryCache.set(cacheKey, { data: results, timestamp: Date.now() });
-      return results;
+        if (!accumulatedVenues.has(normKey)) {
+          let distMeters = place.distance;
+          if (distMeters == null && place.geocodes?.main) {
+            distMeters = calculateHaversineDistance(
+              centerLat,
+              centerLng,
+              place.geocodes.main.latitude,
+              place.geocodes.main.longitude
+            );
+          }
+          if (distMeters == null) distMeters = ringRadius;
+
+          const distKm = Number((distMeters / 1000).toFixed(1));
+          const address = place.location?.formatted_address || place.location?.address || 'Chișinău, Moldova';
+
+          accumulatedVenues.set(normKey, {
+            name: place.name,
+            fsq_id: id,
+            fsq_place_id: id,
+            priceLevel: place.price || null,
+            priceLabel: formatPriceLabel(place.price),
+            distance_km: distKm,
+            distance_meters: Math.round(distMeters),
+            address,
+          });
+        }
+      }
+
+      // Early exit if we found sufficient venues in the local spatial hexagon
+      if (accumulatedVenues.size >= TARGET_PLACES) {
+        break;
+      }
+    }
+
+    if (accumulatedVenues.size > 0) {
+      // Sort strictly by true distance ascending (closest venues first)
+      const sortedResults = Array.from(accumulatedVenues.values())
+        .sort((a, b) => a.distance_meters - b.distance_meters)
+        .slice(0, 15);
+
+      queryCache.set(cacheKey, { data: sortedResults, timestamp: Date.now() });
+      return sortedResults;
     }
   } catch (error) {
     console.warn("[Foursquare] API warning, using local venue pool:", error.message);

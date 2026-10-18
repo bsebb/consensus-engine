@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -17,6 +17,8 @@ import {
   ChevronDown,
   Settings,
   Layers,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -59,6 +61,50 @@ export default function HostSettings() {
   // Group Configuration
   const [groupSize, setGroupSize] = useState(4);
   const [loading, setLoading] = useState(false);
+
+  // Geolocation State for Hyper-local Hexagonal Spatial Search
+  const [userLocation, setUserLocation] = useState({
+    latitude: null,
+    longitude: null,
+    accuracy: null,
+    status: 'idle', // 'idle' | 'detecting' | 'granted' | 'denied'
+    label: 'Downtown Chișinău (Default)',
+  });
+
+  const detectLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setUserLocation((prev) => ({ ...prev, status: 'denied', label: 'Downtown Chișinău (Default)' }));
+      return;
+    }
+    setUserLocation((prev) => ({ ...prev, status: 'detecting' }));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setUserLocation({
+          latitude,
+          longitude,
+          accuracy: Math.round(accuracy),
+          status: 'granted',
+          label: `GPS Location (±${Math.round(accuracy)}m)`,
+        });
+      },
+      (err) => {
+        console.warn('[Location] GPS notice:', err.message);
+        setUserLocation({
+          latitude: null,
+          longitude: null,
+          accuracy: null,
+          status: 'denied',
+          label: 'Downtown Chișinău (Default)',
+        });
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  };
+
+  useEffect(() => {
+    detectLocation();
+  }, []);
 
   const categories = [
     { label: 'Restaurants', icon: Utensils, desc: 'Dining & Bistros' },
@@ -137,6 +183,8 @@ export default function HostSettings() {
           mode,
           theme: mode === 'DISCOVERY' ? category.toLowerCase() : undefined,
           radius: radiusKm * 1000,
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
         }),
       });
 
@@ -165,6 +213,7 @@ export default function HostSettings() {
             priceTier,
             suggestionLimit,
             roomData: realRoom,
+            userLocation,
           },
         });
         return;
@@ -501,6 +550,41 @@ export default function HostSettings() {
                         );
                       })}
                     </div>
+                  </div>
+
+                  {/* Location & Hexagonal Grid Indicator */}
+                  <div className="flex flex-col gap-2 p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] mt-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={14} className="text-[var(--accent-bg)]" />
+                        <span className="text-[11px] font-bold text-[var(--text-primary)]">Search Origin</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={detectLocation}
+                        disabled={userLocation.status === 'detecting'}
+                        className="flex items-center gap-1 py-1 px-2 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] border border-[var(--border-subtle)] text-[10px] font-bold cursor-pointer transition-colors"
+                      >
+                        <Navigation size={10} className={userLocation.status === 'detecting' ? 'animate-spin' : ''} />
+                        <span>{userLocation.status === 'detecting' ? 'Locating...' : 'Use Current GPS'}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-[var(--text-secondary)] font-mono truncate max-w-[210px]">
+                        {userLocation.status === 'granted'
+                          ? `📍 Lat ${userLocation.latitude.toFixed(4)}, Lng ${userLocation.longitude.toFixed(4)}`
+                          : userLocation.label}
+                      </span>
+                      <span className="font-bold text-[var(--accent-bg)] flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Adaptive Grid
+                      </span>
+                    </div>
+
+                    <p className="text-[9px] text-[var(--text-tertiary)] leading-tight">
+                      Uber-style hexagonal search begins in your 1 km neighborhood and auto-expands until enough quality venues are found.
+                    </p>
                   </div>
                 </>
               ) : (

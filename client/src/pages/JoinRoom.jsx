@@ -162,6 +162,23 @@ export default function JoinRoom() {
     localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
 
+    let lat = null;
+    let lng = null;
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 3000,
+            maximumAge: 60000,
+          });
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      } catch {}
+    }
+
     try {
       const response = await fetch(apiUrl('/api/v1/rooms'), {
         method: 'POST',
@@ -171,6 +188,8 @@ export default function JoinRoom() {
           mode: 'DISCOVERY',
           theme: quickCategory.toLowerCase(),
           radius: 5000,
+          latitude: lat,
+          longitude: lng,
         }),
       });
 

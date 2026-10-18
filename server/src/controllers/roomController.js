@@ -80,13 +80,20 @@ const createNewRoom = async (req, res) => {
     });
 
     if (places && places.length > 0) {
-      const optionsData = places.map((place) => ({
-        roomId: room.id,
-        name: place.name,
-        source: "GOOGLE_API",
-        googlePlaceId: place.fsq_place_id || place.fsq_id || null,
-        priceLevel: place.priceLevel ?? null,
-      }));
+      const optionsData = places.map((place) => {
+        const placeId = place.fsq_place_id || place.fsq_id || '';
+        const distKm = place.distance_km != null ? place.distance_km : '';
+        const addr = (place.address || '').replace(/\|/g, ' ');
+        const compositeId = placeId ? `${placeId}|${distKm}|${addr}` : null;
+
+        return {
+          roomId: room.id,
+          name: place.name,
+          source: "GOOGLE_API",
+          googlePlaceId: compositeId,
+          priceLevel: place.priceLevel ?? null,
+        };
+      });
       await createOptionsBulk(optionsData);
     }
   }
