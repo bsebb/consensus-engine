@@ -13,7 +13,7 @@ function formatPriceLabel(price) {
   }
 }
 
-// Authentic categorized pools for Chișinău (used to top up or fallback if offline)
+// Authentic categorized pools for Chișinău with verified coordinates
 const CATEGORIZED_FALLBACKS = {
   cinema: [
     { name: "Cineplex MallDova", fsq_id: "fsq_cineplex_malldova", category: "Multiplex Cinema", priceLevel: 2, priceLabel: "$$ (~140-200 MDL / ticket)", lat: 46.9972, lng: 28.8510, address: "Str. Arborilor 21 (Shopping MallDova)" },
@@ -95,17 +95,12 @@ function getSearchQueryForTheme(theme = '') {
   return 'restaurant';
 }
 
-/**
- * Filters out non-venue noise (supermarkets, monuments, playgrounds, wedding halls, parks)
- * and ensures returned Foursquare results match the user's chosen category.
- */
 function isRelevantFoursquarePlace(place, categoryKey) {
   const nameLower = String(place.name || '').toLowerCase();
   const cats = Array.isArray(place.categories) ? place.categories : [];
   const catNames = cats.map((c) => `${c.name || ''} ${c.short_name || ''} ${c.icon?.prefix || ''}`).join(' ').toLowerCase();
   const combined = `${nameLower} ${catNames}`;
 
-  // Always exclude non-social / non-venue POIs
   const bannedKeywords = [
     'supermarket', 'hypermarket', 'grocery', 'playground', 'loc de joacă',
     'monument', 'memorial', 'cernobâl', 'fountain', 'havuz', 'bridge', 'podul',
@@ -137,7 +132,6 @@ function isRelevantFoursquarePlace(place, categoryKey) {
     return dessertKeywords.some((kw) => combined.includes(kw));
   }
 
-  // Default: restaurants / dining
   const diningKeywords = ['restaurant', 'food/', 'pizza', 'pizzeria', 'steak', 'grill', 'sushi', 'burger', 'bistro', 'kitchen', 'trattoria', 'tavern', 'gastropub', 'bbq', 'diner', 'cafe', 'café', 'bar', 'pub', 'european', 'italian', 'romanian', 'moldovan', 'asian'];
   return diningKeywords.some((kw) => combined.includes(kw));
 }
@@ -158,17 +152,17 @@ function inferPriceLevel(place, categoryKey) {
   return 2;
 }
 
-function resolveFallback(theme = '', centerLat = 47.0185, centerLng = 28.8360) {
+function resolveFallback(theme = '', centerLat = 47.0225, centerLng = 28.8340, isExactGps = false) {
   const key = getCategoryKey(theme);
   const places = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;
 
   return places.map((p) => {
-    let distKm = 1.2;
-    let distMeters = 1200;
+    let distMeters = 1500;
     if (centerLat != null && centerLng != null && p.lat && p.lng) {
       distMeters = calculateHaversineDistance(centerLat, centerLng, p.lat, p.lng);
-      distKm = Number((distMeters / 1000).toFixed(1));
     }
+    const distKm = isExactGps ? Math.max(0.1, Number((distMeters / 1000).toFixed(1))) : null;
+
     return {
       name: p.name,
       fsq_id: p.fsq_id,
@@ -179,17 +173,14 @@ function resolveFallback(theme = '', centerLat = 47.0185, centerLng = 28.8360) {
       distance_km: distKm,
       distance_meters: Math.round(distMeters),
       address: p.address,
+      lat: p.lat,
+      lng: p.lng,
     };
   })
   .sort((a, b) => a.distance_meters - b.distance_meters)
   .slice(0, 6);
 }
 
-/**
- * Executes a Places API search request against FSQ OS Places (2025-06-17).
- * Note: Does NOT request premium credit fields (`price`, `rating`, `photos`) or legacy `geocodes`
- * so the Free/Developer API key succeeds with HTTP 200 every time.
- */
 async function queryFoursquarePlaces({ queryTerm, lat, lng, radius, cleanKey }) {
   const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
   const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
@@ -235,20 +226,23 @@ async function queryFoursquarePlaces({ queryTerm, lat, lng, radius, cleanKey }) 
 }
 
 /**
- * Searches for places via FSQ OS Places using an adaptive expanding spatial grid (Uber-style).
- * Starts at a 1.2km neighborhood radius and expands outward until at least TARGET_PLACES are found.
+ * Searches for places via FSQ OS Places using an adaptive expanding spatial grid.
+ * Preserves each venue's exact (lat, lng) so client devices with real GPS can compute live distances,
+ * and avoids baking fake distances when the host is using a sector preset rather than street-level GPS.
  */
-const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param3 = "Chisinau") => {
+const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   let theme = "restaurant";
   let radius = 5000;
   let latitude = null;
   let longitude = null;
+  let isExactGps = false;
 
   if (typeof param1 === 'object' && param1 !== null) {
     theme = param1.theme || "restaurant";
     radius = param1.radius || 5000;
     latitude = param1.latitude ?? null;
     longitude = param1.longitude ?? null;
+    isExactGps = Boolean(param1.is_exact_gps);
   } else {
     theme = param1;
     radius = param2;
@@ -258,19 +252,19 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     theme = 'restaurant';
   }
 
-  // Default city center: Central Chișinău (Ștefan cel Mare / Centru)
-  const CHISINAU_LAT = 47.0185;
-  const CHISINAU_LNG = 28.8360;
+  const DEFAULT_LAT = 47.0225;
+  const DEFAULT_LNG = 28.8340;
 
-  let centerLat = latitude != null ? Number(latitude) : CHISINAU_LAT;
-  let centerLng = longitude != null ? Number(longitude) : CHISINAU_LNG;
+  let centerLat = latitude != null ? Number(latitude) : DEFAULT_LAT;
+  let centerLng = longitude != null ? Number(longitude) : DEFAULT_LNG;
 
-  // If browser IP geolocation resolved to a rural node > 12km outside Chișinău,
-  // snap search center to Chișinău so local rings find real city spots with accurate distances.
-  const distFromCityCenter = calculateHaversineDistance(centerLat, centerLng, CHISINAU_LAT, CHISINAU_LNG);
-  if (isNaN(distFromCityCenter) || distFromCityCenter > 12000) {
-    centerLat = CHISINAU_LAT;
-    centerLng = CHISINAU_LNG;
+  // If coordinates are missing or correspond to the 22.7km Moldovan ISP IP centroid outlier,
+  // use default Chișinău search center and mark isExactGps = false so we never report fake distances.
+  const distFromCityCenter = calculateHaversineDistance(centerLat, centerLng, DEFAULT_LAT, DEFAULT_LNG);
+  if (isNaN(distFromCityCenter) || distFromCityCenter > 14000) {
+    centerLat = DEFAULT_LAT;
+    centerLng = DEFAULT_LNG;
+    isExactGps = false;
   }
 
   const maxRequestedRadius = Math.max(Number(radius) || 5000, 1500);
@@ -279,28 +273,27 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
 
   const rawKey = process.env.FOURSQUARE_API_KEY;
   if (!rawKey || !rawKey.trim()) {
-    return resolveFallback(theme, centerLat, centerLng);
+    return resolveFallback(theme, centerLat, centerLng, isExactGps);
   }
   const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '');
   if (!cleanKey) {
-    return resolveFallback(theme, centerLat, centerLng);
+    return resolveFallback(theme, centerLat, centerLng, isExactGps);
   }
 
-  // Quantize coordinates to ~200m grid for efficient in-memory caching
   const cacheLat = centerLat.toFixed(3);
   const cacheLng = centerLng.toFixed(3);
-  const cacheKey = `v2_${categoryKey}_${maxRequestedRadius}_${cacheLat}_${cacheLng}`;
+  const cacheKey = `v3_${categoryKey}_${maxRequestedRadius}_${cacheLat}_${cacheLng}_${isExactGps}`;
 
   const cached = queryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.data;
   }
 
-  // Concentric spatial expansion rings: 1.2 km (neighborhood) -> 3 km -> maxRequestedRadius -> 10 km
+  // Concentric spatial expansion rings: 1.2 km (neighborhood) -> 2.8 km -> maxRequestedRadius -> 10 km
   const TARGET_PLACES = 6;
   const rawRings = [
     1200,
-    3000,
+    2800,
     maxRequestedRadius,
     Math.max(maxRequestedRadius, 10000),
   ];
@@ -321,8 +314,6 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
         return [];
       });
 
-      // For broad restaurant discovery, if `query=restaurant` returned few items in a tight ring,
-      // also run an open spatial query at this ring and filter by food categories
       if (placesInRing.length < 4 && categoryKey === 'restaurants') {
         const broadPlaces = await queryFoursquarePlaces({
           queryTerm: '',
@@ -342,17 +333,26 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
         if (!normNameKey) continue;
 
         if (!accumulatedVenues.has(normNameKey)) {
-          let distMeters = place.distance;
-          const placeLat = place.latitude ?? place.geocodes?.main?.latitude;
-          const placeLng = place.longitude ?? place.geocodes?.main?.longitude;
+          const placeLat = place.latitude ?? place.geocodes?.main?.latitude ?? null;
+          const placeLng = place.longitude ?? place.geocodes?.main?.longitude ?? null;
 
-          if (distMeters == null && placeLat != null && placeLng != null) {
+          let distMeters = null;
+          if (placeLat != null && placeLng != null) {
             distMeters = calculateHaversineDistance(centerLat, centerLng, placeLat, placeLng);
+          } else if (place.distance != null) {
+            distMeters = place.distance;
+          } else {
+            distMeters = ringRadius;
           }
-          if (distMeters == null) distMeters = ringRadius * 0.6;
 
-          const distKm = Number((distMeters / 1000).toFixed(1));
-          const address = place.location?.address || place.location?.formatted_address || 'Chișinău';
+          // Only report a numeric distance_km from the server if the host provided exact street-level GPS;
+          // otherwise let each client compute distance from their own GPS to (placeLat, placeLng)
+          const distKm = isExactGps ? Math.max(0.1, Number((distMeters / 1000).toFixed(1))) : null;
+
+          const locality = place.location?.neighborhood?.[0] || place.location?.locality || 'Chișinău';
+          const rawAddr = place.location?.address || place.location?.formatted_address || locality;
+          const address = rawAddr.includes(locality) ? rawAddr : `${rawAddr}, ${locality}`;
+
           const fsqCategoryName = place.categories?.[0]?.name || place.categories?.[0]?.short_name || (
             categoryKey === 'cinema' ? 'Movie Theater' :
             categoryKey === 'cafes' ? 'Coffee & Café' :
@@ -371,20 +371,19 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
             distance_km: distKm,
             distance_meters: Math.round(distMeters),
             address,
+            lat: placeLat,
+            lng: placeLng,
           });
         }
       }
 
-      // Early exit if we found sufficient venues in the local spatial hexagon
       if (accumulatedVenues.size >= TARGET_PLACES) {
         break;
       }
     }
 
-    // If a specialized category (like Cinema in a smaller city) has < 6 Foursquare entries,
-    // top up the remaining slots with verified local venues from that category so the deck has 6 choices.
     if (accumulatedVenues.size > 0 && accumulatedVenues.size < TARGET_PLACES) {
-      const topUpPool = resolveFallback(theme, centerLat, centerLng);
+      const topUpPool = resolveFallback(theme, centerLat, centerLng, isExactGps);
       for (const item of topUpPool) {
         const normKey = item.name.toLowerCase().trim();
         if (!accumulatedVenues.has(normKey)) {
@@ -406,10 +405,9 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     console.warn("[Foursquare] API warning, using local venue pool:", error.message);
   }
 
-  return resolveFallback(theme, centerLat, centerLng);
+  return resolveFallback(theme, centerLat, centerLng, isExactGps);
 };
 
-// Export both names to prevent undefined import errors
 module.exports = {
   fetchFoursquarePlaces,
   searchRestaurants: fetchFoursquarePlaces,

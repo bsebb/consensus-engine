@@ -17,6 +17,7 @@ import LobbyRoster from '../components/lobby/LobbyRoster';
 import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
+import { calculateDistanceKm, detectUserGps, getSavedExactGps } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
 
 function levenshteinDistance(a, b) {
@@ -71,6 +72,19 @@ export default function RoomLobby() {
   const [realOptions, setRealOptions] = useState(() => {
     return location.state?.roomData?.options || [];
   });
+  const [userGps, setUserGps] = useState(() => getSavedExactGps());
+
+  useEffect(() => {
+    let mounted = true;
+    detectUserGps().then((res) => {
+      if (mounted && res.isExact && res.lat != null && res.lng != null) {
+        setUserGps({ lat: res.lat, lng: res.lng });
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (pin) {
@@ -230,19 +244,42 @@ export default function RoomLobby() {
         let dist = null;
         let addr = 'Centru, Chișinău';
         let catLabel = location.state?.category || 'Local Favorite';
+        let venueLat = null;
+        let venueLng = null;
+
         if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
           const parts = opt.googlePlaceId.split('|');
           const parsedDist = parseFloat(parts[1]);
           if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
           if (parts[2]) addr = parts[2];
           if (parts[3]) catLabel = parts[3];
+          if (parts[4] && parts[4].includes(',')) {
+            const [latStr, lngStr] = parts[4].split(',');
+            const pLat = parseFloat(latStr);
+            const pLng = parseFloat(lngStr);
+            if (!isNaN(pLat) && !isNaN(pLng)) {
+              venueLat = pLat;
+              venueLng = pLng;
+            }
+          }
         }
+
+        // Compute true distance from this device's exact GPS when available;
+        // if this device does not have exact street-level GPS, do not display a baked fallback distance
+        if (userGps && venueLat != null && venueLng != null) {
+          dist = calculateDistanceKm(userGps.lat, userGps.lng, venueLat, venueLng);
+        } else if (!userGps) {
+          dist = null;
+        }
+
         return {
           id: opt.id,
           name: opt.name,
           category: catLabel,
           price_level: opt.priceLevel || 2,
           distance_km: dist,
+          lat: venueLat,
+          lng: venueLng,
           tags: [catLabel],
           address: addr,
           isCustom: false,
@@ -261,11 +298,17 @@ export default function RoomLobby() {
         );
         if (matched.length > 0) pool = matched;
       }
-      baseList = pool;
+      baseList = pool.map((r) => ({
+        ...r,
+        distance_km:
+          userGps && r.lat != null && r.lng != null
+            ? calculateDistanceKm(userGps.lat, userGps.lng, r.lat, r.lng)
+            : null,
+      }));
     }
 
     return [...customItems, ...baseList];
-  }, [mode, groupPool, realOptions, location.state?.category]);
+  }, [mode, groupPool, realOptions, location.state?.category, userGps]);
 
   // Duplicate check across both custom and discovery options
   const duplicateMatch = useMemo(() => {

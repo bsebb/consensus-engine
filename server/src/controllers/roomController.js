@@ -47,14 +47,15 @@ const runSchulzeWorker = (submissions) => {
 };
 
 const createNewRoom = async (req, res) => {
-  // Sprint 2: Added mode, theme, radius, latitude, and longitude
+  // Sprint 2: Added mode, theme, radius, latitude, longitude, and is_exact_gps
   const {
     host_id,
     mode = 'DISCOVERY',
     theme = 'restaurant',
     radius = 5000,
     latitude,
-    longitude
+    longitude,
+    is_exact_gps = false,
   } = req.body;
 
   if (!host_id) {
@@ -76,7 +77,8 @@ const createNewRoom = async (req, res) => {
       theme,
       latitude,
       longitude,
-      radius
+      radius,
+      is_exact_gps,
     });
 
     let createdOptions = [];
@@ -86,7 +88,8 @@ const createNewRoom = async (req, res) => {
         const distKm = place.distance_km != null ? place.distance_km : '';
         const addr = (place.address || '').replace(/\|/g, ' ');
         const catLabel = (place.category || '').replace(/\|/g, ' ');
-        const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}`;
+        const coordPair = place.lat != null && place.lng != null ? `${place.lat},${place.lng}` : '';
+        const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}`;
 
         return {
           roomId: room.id,
@@ -373,7 +376,7 @@ const finalizeVoting = async (req, res) => {
       id: winningOptionId,
       name: 'Consensus Winner',
       price_level: 2,
-      distance_km: 1.2
+      distance_km: null
     };
 
     if (io) {

@@ -14,6 +14,8 @@ import {
   User,
   Settings,
   History,
+  MapPin,
+  Navigation,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -22,6 +24,7 @@ import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import { apiUrl } from '../utils/api';
+import { CHISINAU_SECTORS, detectUserGps, getSavedExactGps } from '../utils/location';
 
 const CATEGORIES = [
   { id: 'Restaurants', title: 'Restaurants', desc: 'Dinner & lunch spots', icon: Utensils, topic: 'Where are we eating?' },
@@ -46,6 +49,17 @@ export default function JoinRoom() {
   // Quick setup states
   const [selectedCategory, setSelectedCategory] = useState('Restaurants');
   const [customTopic, setCustomTopic] = useState('');
+  const [selectedSector, setSelectedSector] = useState(() => {
+    const saved = getSavedExactGps();
+    if (saved) return 'gps';
+    return localStorage.getItem('consensus_manual_sector') || 'centru';
+  });
+  const [gpsState, setGpsState] = useState(() => {
+    const saved = getSavedExactGps();
+    return saved
+      ? { status: 'exact', lat: saved.lat, lng: saved.lng, accuracy: saved.accuracy, isExact: true }
+      : { status: 'detecting', lat: null, lng: null, accuracy: null, isExact: false };
+  });
 
   const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
@@ -63,7 +77,7 @@ export default function JoinRoom() {
 
   const pin = pinDigits.join('');
 
-  // Load recent session from history & wake up backend
+  // Load recent session from history, wake up backend, and acquire true GPS early
   useEffect(() => {
     try {
       const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
@@ -75,7 +89,44 @@ export default function JoinRoom() {
     }
 
     fetch(apiUrl('/health')).catch(() => {});
+
+    let mounted = true;
+    detectUserGps().then((res) => {
+      if (!mounted) return;
+      setGpsState(res);
+      if (res.isExact) {
+        setSelectedSector('gps');
+      }
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  const handleSelectSector = async (sectorId) => {
+    if (sectorId === 'gps') {
+      setSelectedSector('gps');
+      if (!gpsState.isExact) {
+        setGpsState((prev) => ({ ...prev, status: 'detecting' }));
+        const res = await detectUserGps();
+        setGpsState(res);
+        if (!res.isExact) {
+          const fallbackSector = localStorage.getItem('consensus_manual_sector') || 'centru';
+          setSelectedSector(fallbackSector);
+          addToast({
+            title: 'Exact GPS Unavailable on This Device',
+            message: 'Browser returned a coarse ISP location. Pick your neighborhood below for accurate results.',
+            type: 'info',
+          });
+        }
+      }
+      return;
+    }
+    setSelectedSector(sectorId);
+    try {
+      localStorage.setItem('consensus_manual_sector', sectorId);
+    } catch {}
+  };
 
   const handleDigitChange = (index, value) => {
     const digit = value.replace(/\D/g, '').slice(-1);
@@ -174,19 +225,19 @@ export default function JoinRoom() {
 
     let lat = null;
     let lng = null;
+    let isExactGps = false;
 
-    if (!isCustomMode && typeof navigator !== 'undefined' && navigator.geolocation) {
-      try {
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 2500,
-            maximumAge: 120000,
-          });
-        });
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-      } catch {}
+    if (!isCustomMode) {
+      if (selectedSector === 'gps' && gpsState.isExact && gpsState.lat != null) {
+        lat = gpsState.lat;
+        lng = gpsState.lng;
+        isExactGps = true;
+      } else {
+        const sectorObj = CHISINAU_SECTORS.find((s) => s.id === selectedSector) || CHISINAU_SECTORS[1];
+        lat = sectorObj.lat ?? 47.0225;
+        lng = sectorObj.lng ?? 28.8340;
+        isExactGps = false;
+      }
     }
 
     try {
@@ -197,9 +248,10 @@ export default function JoinRoom() {
           host_id: participantId,
           mode: roomMode,
           theme: isCustomMode ? 'custom' : selectedCategory.toLowerCase(),
-          radius: 5000,
+          radius: selectedSector === 'gps' ? 3500 : 3000,
           latitude: lat,
           longitude: lng,
+          is_exact_gps: isExactGps,
         }),
       });
 
@@ -217,7 +269,7 @@ export default function JoinRoom() {
             userName: cleanName,
             category: selectedCategory,
             topic: topicTitle,
-            radiusKm: 5,
+            radiusKm: 3.5,
             roomData: realRoom,
           },
         });
@@ -380,8 +432,8 @@ export default function JoinRoom() {
                 </div>
               </div>
 
-              {/* Optional Custom Question Input when Custom Poll is selected */}
-              {selectedCategory === 'Custom' && (
+              {/* Area / Neighborhood Selector or Custom Topic Input */}
+              {selectedCategory === 'Custom' ? (
                 <div className="flex flex-col gap-1.5 animate-[modalSpring_0.25s_var(--spring-smooth)]">
                   <label
                     htmlFor="customTopicInput"
@@ -397,6 +449,41 @@ export default function JoinRoom() {
                     placeholder="e.g. What board game should we play?"
                     className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
                   />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1">
+                      <MapPin size={12} className="text-[var(--accent-bg)]" />
+                      <span>Area</span>
+                    </span>
+                    <span className="text-[11px] text-[var(--text-tertiary)]">
+                      {gpsState.isExact && selectedSector === 'gps'
+                        ? 'Exact GPS active'
+                        : 'Pick your neighborhood'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CHISINAU_SECTORS.map((sec) => {
+                      const active = selectedSector === sec.id;
+                      const isGpsBtn = sec.id === 'gps';
+                      return (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => handleSelectSector(sec.id)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
+                            active
+                              ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-2xs'
+                              : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
+                          }`}
+                        >
+                          {isGpsBtn && <Navigation size={11} />}
+                          <span>{sec.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

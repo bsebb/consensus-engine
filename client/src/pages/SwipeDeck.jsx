@@ -14,14 +14,15 @@ import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import { getVenueRating } from '../utils/venueImages';
+import { calculateDistanceKm, getSavedExactGps } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
 
 const DEFAULT_WINNER = {
   id: 'winner_default',
   name: 'Consensus Spot',
   category: 'Local Favorites',
-  address: 'Center District',
-  distance_km: 1.2,
+  address: 'Centru, Chișinău',
+  distance_km: null,
   price_level: 2,
   tags: ['Group Favorite', 'Cozy Atmosphere'],
 };
@@ -48,8 +49,9 @@ export default function SwipeDeck() {
     }
   }, [pin]);
 
-  // Initialize deck options
+  // Initialize deck options with true client-side GPS distance when available
   const [cards, setCards] = useState(() => {
+    const savedGps = getSavedExactGps();
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
       return location.state.customCards.map((item, idx) => {
         if (typeof item === 'string') {
@@ -63,12 +65,20 @@ export default function SwipeDeck() {
             address: 'Added by group',
           };
         }
+        const liveDist =
+          savedGps && item.lat != null && item.lng != null
+            ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
+            : savedGps && typeof item.distance_km === 'number'
+            ? item.distance_km
+            : null;
         return {
           id: item.id || `option-${idx}`,
           name: item.name || `Option ${idx + 1}`,
           category: item.category || 'Local Favorite',
           tags: item.tags || ['Top Pick'],
-          distance_km: typeof item.distance_km === 'number' ? item.distance_km : null,
+          distance_km: liveDist,
+          lat: item.lat ?? null,
+          lng: item.lng ?? null,
           price_level: typeof item.price_level === 'number' ? item.price_level : 2,
           address: item.address || 'Centru, Chișinău',
         };
@@ -77,13 +87,19 @@ export default function SwipeDeck() {
 
     if (mode === 'CUSTOM') {
       return [
-        { id: 'c1', name: 'Downtown Bowling Lounge', category: 'Activities', tags: ['Fun', 'Social'], distance_km: 2.1, price_level: 2, address: 'Main Street 44' },
-        { id: 'c2', name: 'Cozy Board Game Cafe', category: 'Coffee & Games', tags: ['Chill', 'Drinks'], distance_km: 1.4, price_level: 1, address: 'Park Avenue 12' },
-        { id: 'c3', name: 'Rooftop Lounge', category: 'Nightlife', tags: ['Scenic', 'Vibes'], distance_km: 3.0, price_level: 3, address: 'Skyline Plaza' },
+        { id: 'c1', name: 'Downtown Bowling Lounge', category: 'Activities', tags: ['Fun', 'Social'], distance_km: null, price_level: 2, address: 'Main Street 44' },
+        { id: 'c2', name: 'Cozy Board Game Cafe', category: 'Coffee & Games', tags: ['Chill', 'Drinks'], distance_km: null, price_level: 1, address: 'Park Avenue 12' },
+        { id: 'c3', name: 'Rooftop Lounge', category: 'Nightlife', tags: ['Scenic', 'Vibes'], distance_km: null, price_level: 3, address: 'Skyline Plaza' },
       ];
     }
 
-    return restaurantsMock || [];
+    return (restaurantsMock || []).map((r) => ({
+      ...r,
+      distance_km:
+        savedGps && r.lat != null && r.lng != null
+          ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng)
+          : null,
+    }));
   });
 
   // Rehydrate cards from REST if loaded directly or after page refresh without location state
@@ -93,16 +109,31 @@ export default function SwipeDeck() {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
+            const savedGps = getSavedExactGps();
             setCards(data.options.slice(0, 8).map((opt) => {
               let dist = null;
               let addr = 'Centru, Chișinău';
               let catLabel = location.state?.category || 'Local Favorite';
+              let vLat = null;
+              let vLng = null;
               if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
                 const parts = opt.googlePlaceId.split('|');
                 const parsedDist = parseFloat(parts[1]);
-                if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
+                if (!isNaN(parsedDist) && parsedDist > 0 && savedGps) dist = parsedDist;
                 if (parts[2]) addr = parts[2];
                 if (parts[3]) catLabel = parts[3];
+                if (parts[4] && parts[4].includes(',')) {
+                  const [latS, lngS] = parts[4].split(',');
+                  const pLat = parseFloat(latS);
+                  const pLng = parseFloat(lngS);
+                  if (!isNaN(pLat) && !isNaN(pLng)) {
+                    vLat = pLat;
+                    vLng = pLng;
+                  }
+                }
+              }
+              if (savedGps && vLat != null && vLng != null) {
+                dist = calculateDistanceKm(savedGps.lat, savedGps.lng, vLat, vLng);
               }
               return {
                 id: opt.id,
@@ -110,6 +141,8 @@ export default function SwipeDeck() {
                 category: catLabel,
                 price_level: opt.priceLevel || 2,
                 distance_km: dist,
+                lat: vLat,
+                lng: vLng,
                 tags: [catLabel],
                 address: addr,
               };
@@ -340,8 +373,9 @@ export default function SwipeDeck() {
   // Client-side Condorcet Veto elimination calculation
   const consensusResult = useMemo(() => {
     if (serverWinner) {
+      const matchedCard = cards.find((c) => c.id === serverWinner.id || c.name === serverWinner.name);
       return {
-        winner: serverWinner,
+        winner: matchedCard ? { ...serverWinner, ...matchedCard } : serverWinner,
         vetoCount: 0,
         matchScore: serverMatchScore || 96,
       };
@@ -352,14 +386,10 @@ export default function SwipeDeck() {
         id: 'historical-winner',
         name: winnerName,
         price_level: location.state?.priceLevel || 2,
-        distance_km: 1.2,
-        address: 'Central District',
+        distance_km: null,
+        address: 'Chișinău',
       };
-      return {
-        winner: found,
-        vetoCount: 0,
-        matchScore: location.state?.matchScore || 94,
-      };
+      return { winner: found, vetoCount: 0, matchScore: location.state?.matchScore || 94 };
     }
     if (!cards || cards.length === 0) {
       return { winner: DEFAULT_WINNER, vetoCount: 0, matchScore: 100 };
@@ -367,14 +397,11 @@ export default function SwipeDeck() {
 
     const scored = cards.map((card) => {
       const myVote = myVotes.find((v) => v.option_id === card.id);
-      const isVetoed = myVote?.score === -100;
-      const score = myVote ? myVote.score : 0;
-      return { card, isVetoed, score };
+      return { card, isVetoed: myVote?.score === -100, score: myVote ? myVote.score : 0 };
     });
 
     const nonVetoed = scored.filter((s) => !s.isVetoed);
-    const pool = nonVetoed.length > 0 ? nonVetoed : scored;
-    pool.sort((a, b) => b.score - a.score);
+    const pool = (nonVetoed.length > 0 ? nonVetoed : scored).sort((a, b) => b.score - a.score);
 
     return {
       winner: pool[0]?.card || cards[0],
@@ -385,22 +412,15 @@ export default function SwipeDeck() {
 
   // Dynamic Pairwise Condorcet Breakdown for Victory Screen
   const pairwiseBreakdown = useMemo(() => {
-    if (serverPairwise && Array.isArray(serverPairwise) && serverPairwise.length > 0) {
-      return serverPairwise;
-    }
+    if (serverPairwise && Array.isArray(serverPairwise) && serverPairwise.length > 0) return serverPairwise;
     const winner = consensusResult.winner;
     if (!winner || !cards || cards.length === 0) return [];
 
-    const rivals = cards.filter((c) => c.id !== winner.id);
-    return rivals.map((rival, idx) => {
-      const seed = (winner.name.length + rival.name.length + idx);
+    return cards.filter((c) => c.id !== winner.id).map((rival, idx) => {
+      const seed = winner.name.length + rival.name.length + idx;
       const votesFor = Math.max(3, totalParticipants - (seed % 2));
       const votesAgainst = Math.max(0, totalParticipants - votesFor);
-      return {
-        opponent: rival.name,
-        score: `${votesFor}-${votesAgainst}`,
-        margin: `Beat ${rival.name} (${votesFor}-${votesAgainst})`,
-      };
+      return { opponent: rival.name, score: `${votesFor}-${votesAgainst}`, margin: `Beat ${rival.name} (${votesFor}-${votesAgainst})` };
     });
   }, [serverPairwise, consensusResult.winner, cards, totalParticipants]);
 
@@ -414,10 +434,9 @@ export default function SwipeDeck() {
           category: c.category || 'Venue',
           priceLevel: c.price_level || 2,
           isWinner: c.name === consensusResult.winner.name,
-          duelMargin:
-            c.name === consensusResult.winner.name
-              ? 'Consensus Winner'
-              : `Defeated by ${consensusResult.winner.name} (${Math.max(3, totalParticipants - 1)}-1)`,
+          duelMargin: c.name === consensusResult.winner.name
+            ? 'Consensus Winner'
+            : `Defeated by ${consensusResult.winner.name} (${Math.max(3, totalParticipants - 1)}-1)`,
         }));
 
         const entry = {
@@ -427,8 +446,8 @@ export default function SwipeDeck() {
           winnerDetails: {
             name: consensusResult.winner.name,
             priceLevel: consensusResult.winner.price_level || 2,
-            distanceKm: consensusResult.winner.distance_km || 1.2,
-            address: consensusResult.winner.address || 'Central District',
+            distanceKm: consensusResult.winner.distance_km ?? null,
+            address: consensusResult.winner.address || 'Chișinău',
             matchScore: consensusResult.matchScore || 94,
           },
           options: optionsList,
@@ -448,27 +467,22 @@ export default function SwipeDeck() {
   }, [showWinner, consensusResult, pin, topic, totalParticipants, cards, pairwiseBreakdown]);
 
   const activeCard = cards[currentIndex];
-
-  // Derived verified card metadata for authentic presentation
-  const activeRating = activeCard
-    ? getVenueRating(activeCard.name, activeCard.category)
-    : { rating: '4.7', reviewCount: '1.2k' };
+  const activeRating = activeCard ? getVenueRating(activeCard.name, activeCard.category) : { rating: '4.7', reviewCount: '1.2k' };
   const cardRating = activeRating.rating;
   const cardReviewCount = activeRating.reviewCount;
   const cardPriceDesc = activeCard
-    ? activeCard.price_level === 1
-      ? '$ • ~110 MDL'
-      : activeCard.price_level === 2
-      ? '$$ • ~180 MDL'
-      : activeCard.price_level === 3
-      ? '$$$ • ~350 MDL'
-      : '$$$$ • ~600 MDL'
+    ? activeCard.price_level === 1 ? '$ • ~110 MDL'
+    : activeCard.price_level === 2 ? '$$ • ~180 MDL'
+    : activeCard.price_level === 3 ? '$$$ • ~350 MDL'
+    : '$$$$ • ~600 MDL'
     : '$$ • ~180 MDL';
   const cardWalkDesc = activeCard
-    ? activeCard.distance_km != null && activeCard.distance_km <= 3.5
-      ? `${activeCard.distance_km} km • ~${Math.max(5, Math.round(activeCard.distance_km * 12))} min walk`
-      : (activeCard.address ? activeCard.address.split(',')[0] : 'Centru, Chișinău')
-    : 'Centru, Chișinău';
+    ? activeCard.distance_km != null
+      ? activeCard.distance_km <= 2.5
+        ? `${activeCard.distance_km} km • ~${Math.max(3, Math.round(activeCard.distance_km * 12))} min walk`
+        : `${activeCard.distance_km} km away`
+      : (activeCard.address ? activeCard.address.split(',')[0] : 'Chișinău')
+    : 'Chișinău';
 
   // Direct turn-by-turn Google Maps link
   const mapsDirUrl = consensusResult.winner
