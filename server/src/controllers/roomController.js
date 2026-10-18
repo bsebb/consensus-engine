@@ -114,7 +114,7 @@ const createNewRoom = async (req, res) => {
       longitude,
       radius,
       is_exact_gps,
-      targetPlaces: 30,
+      targetPlaces: 50,
     });
 
     let createdOptions = [];

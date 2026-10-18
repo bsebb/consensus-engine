@@ -499,6 +499,9 @@ io.on('connection', (socket) => {
         lobby.topic = cleanRoomTopic;
       }
       if (data?.group_size) lobby.groupSize = data.group_size;
+      if (data?.deck_size && (!lobby.visiblePlacesCount || hasVerifiedHostToken)) {
+        lobby.visiblePlacesCount = Math.max(4, Math.min(50, parseInt(data.deck_size, 10) || 12));
+      }
       if (!lobby.suggestions) lobby.suggestions = [];
 
       // Cryptographically verify host privilege via token
@@ -637,16 +640,17 @@ io.on('connection', (socket) => {
   // Handle adding the next cached place to the table in discovery mode
   socket.on('add_discovery_place', (data) => {
     try {
-      const { pin } = data || {};
+      const { pin, count } = data || {};
       if (!pin) return;
       let lobby = activeLobbies.get(pin);
       if (!lobby) {
         lobby = new Map();
-        lobby.visiblePlacesCount = 6;
+        lobby.visiblePlacesCount = 12;
         activeLobbies.set(pin, lobby);
       }
-      lobby.visiblePlacesCount = (lobby.visiblePlacesCount || 6) + 1;
-      console.log(`[Socket] Added place to room ${pin} (visible count: ${lobby.visiblePlacesCount})`);
+      const inc = Math.max(1, Math.min(50, parseInt(count, 10) || 1));
+      lobby.visiblePlacesCount = Math.min(50, (lobby.visiblePlacesCount || 6) + inc);
+      console.log(`[Socket] Added ${inc} place(s) to room ${pin} (visible count: ${lobby.visiblePlacesCount})`);
       io.to(pin).emit('table_places_updated', {
         pin,
         visiblePlacesCount: lobby.visiblePlacesCount,

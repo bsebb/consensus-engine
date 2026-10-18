@@ -58,6 +58,13 @@ async function runTests() {
   assert(optionRecords[0].googlePlaceId.startsWith('test_123|0.5|Str. Test 10, Chișinău|Bistro|47.02,28.83|'));
   console.log('[PASS] Test 5: Option records composite ID formatted accurately');
 
+  // Test 6: Chișinău restaurant search supports up to 50 venues
+  const largePool = await resolveRegionalFallback('restaurant', 47.0225, 28.8340, true, 50, 5000);
+  assert(largePool.length >= 45, `Expected at least 45 venues for 50-target search, got ${largePool.length}`);
+  const activityPlaces = await resolveRegionalFallback('activities', 47.0225, 28.8340, true, 15, 5000);
+  assert(activityPlaces.length >= 10, `Expected at least 10 activities, got ${activityPlaces.length}`);
+  console.log(`[PASS] Test 6: Chișinău pool scales up to 50 venues (${largePool.length} venues returned) and activities (${activityPlaces.length})`);
+
   console.log('\n--- ALL FALLBACK & DISCOVERY TESTS PASSED SUCCESSFULLY ---');
 }
 

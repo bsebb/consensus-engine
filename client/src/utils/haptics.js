@@ -20,18 +20,21 @@ function unlockIosAudioSession() {
 }
 
 function triggerIosTaptic() {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
   try {
-    let el = document.getElementById('ios-haptic-trigger');
-    if (!el) {
-      el = document.createElement('input');
-      el.id = 'ios-haptic-trigger';
-      el.type = 'checkbox';
-      el.setAttribute('aria-hidden', 'true');
-      el.style.cssText = 'position:fixed;opacity:0;pointer-events:none;left:-9999px;top:-9999px;width:1px;height:1px;';
-      document.body.appendChild(el);
-    }
-    el.checked = !el.checked;
+    const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (!isTouch) return;
+    const label = document.createElement('label');
+    label.setAttribute('aria-hidden', 'true');
+    label.style.display = 'none';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('switch', '');
+    label.appendChild(input);
+    const parent = document.body || document.documentElement;
+    parent.appendChild(label);
+    label.click();
+    parent.removeChild(label);
   } catch {}
 }
 
@@ -293,6 +296,16 @@ export function triggerHaptic(type = 'tap') {
   // Ensure AudioContext is active synchronously in the user gesture event loop
   unlockIosAudioSession();
   triggerIosTaptic();
+  if (type === 'like' || type === 'superlike') {
+    setTimeout(triggerIosTaptic, 100);
+  } else if (type === 'veto') {
+    setTimeout(triggerIosTaptic, 90);
+    setTimeout(triggerIosTaptic, 190);
+  } else if (type === 'match') {
+    setTimeout(triggerIosTaptic, 80);
+    setTimeout(triggerIosTaptic, 170);
+    setTimeout(triggerIosTaptic, 270);
+  }
 
   const ctx = getAudioContext();
   if (ctx && ctx.state === 'suspended') {

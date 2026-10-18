@@ -139,7 +139,7 @@ async function expandRoomVenues({
     latitude,
     longitude,
     is_exact_gps,
-    45,
+    60,
     radius
   );
 

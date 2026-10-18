@@ -125,7 +125,9 @@ async function resolveRegionalFallback(
   const key = theme.toLowerCase().includes('cinema') ? 'cinema' :
     theme.toLowerCase().includes('cafe') ? 'cafes' :
     theme.toLowerCase().includes('bar') ? 'bars' :
-    theme.toLowerCase().includes('dessert') ? 'desserts' : 'restaurants';
+    theme.toLowerCase().includes('dessert') ? 'desserts' :
+    theme.toLowerCase().includes('activit') || theme.toLowerCase().includes('bowling') || theme.toLowerCase().includes('arcade') ? 'activities' :
+    'restaurants';
 
   const rawPlaces = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;
   const searchRadiusMeters = Math.max(Number(radius) || 5000, 1500);
@@ -170,6 +172,15 @@ async function resolveRegionalFallback(
     }
     return p.distance_meters <= maxAllowedDistance;
   });
+
+  // If in Chișinău metropolitan area and filtered count is lower than targetCount,
+  // expand radius within Chișinău (up to 18km) so users can access the full catalog
+  if (distToChisinau <= 18000 && filtered.length < targetCount) {
+    const chisinauExpanded = withDistance.filter((p) => p.locality === 'Chișinău');
+    if (chisinauExpanded.length > filtered.length) {
+      filtered = chisinauExpanded;
+    }
+  }
 
   // If filtered pool is empty (e.g. searching in Bălți, Cahul, or other towns), query OSM
   if (filtered.length === 0) {

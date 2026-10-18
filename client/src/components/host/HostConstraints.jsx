@@ -90,10 +90,11 @@ export default function HostConstraints({
 
             <SegmentedControl
               options={[
-                { value: 4, label: '4', sub: 'Fast' },
-                { value: 6, label: '6', sub: 'Standard' },
-                { value: 8, label: '8', sub: 'Expanded' },
-                { value: 10, label: '10', sub: 'Wide' },
+                { value: 6, label: '6', sub: 'Quick' },
+                { value: 12, label: '12', sub: 'Standard' },
+                { value: 20, label: '20', sub: 'Deep' },
+                { value: 30, label: '30', sub: 'Broad' },
+                { value: 50, label: '50', sub: 'All' },
               ]}
               value={deckSize}
               onChange={setDeckSize}

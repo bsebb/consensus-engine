@@ -58,7 +58,7 @@ export default function HostSettings() {
   const [category, setCategory] = useState('Restaurants');
   const [radiusKm, setRadiusKm] = useState(5);
   const [priceTier, setPriceTier] = useState('$$');
-  const [deckSize, setDeckSize] = useState(6);
+  const [deckSize, setDeckSize] = useState(12);
 
   // Custom Mode State
   const [topic, setTopic] = useState('Where should we hang out tonight?');

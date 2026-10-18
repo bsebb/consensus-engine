@@ -134,7 +134,7 @@ export default function SwipeDeck() {
                 photo_url: meta.photoUrl,
               };
             });
-            setCards(filterOutReportedVenues(deduplicateVenues(rehydrated)).slice(0, 8));
+            setCards(filterOutReportedVenues(deduplicateVenues(rehydrated)));
           }
         })
         .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));

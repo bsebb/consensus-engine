@@ -37,6 +37,7 @@ export function useLobbySync({
         mode: locationState?.mode,
         topic: locationState?.topic,
         group_size: locationState?.groupSize,
+        deck_size: locationState?.deckSize,
       });
     };
 

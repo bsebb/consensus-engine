@@ -65,7 +65,7 @@ export default function RoomLobby() {
   ));
   const [userGps, setUserGps] = useState(() => getSavedExactGps());
   const [roadRoutes, setRoadRoutes] = useState({});
-  const [visiblePlacesCount, setVisiblePlacesCount] = useState(6);
+  const [visiblePlacesCount, setVisiblePlacesCount] = useState(() => location.state?.deckSize || 12);
   const [removedPlaceIds, setRemovedPlaceIds] = useState(() => new Set());
 
   useEffect(() => {
@@ -420,12 +420,13 @@ export default function RoomLobby() {
     ? candidatePoolPreview.length - filteredCandidates.length
     : 0;
 
-  const handleAddNextPlace = () => {
+  const handleAddNextPlace = (count = 1) => {
     if (mode === 'CUSTOM' || remainingPoolCount <= 0) return;
     triggerHaptic('selection');
-    const nextCount = Math.min(activePool.length, visiblePlacesCount + 1);
+    const inc = typeof count === 'number' ? count : 1;
+    const nextCount = Math.min(activePool.length, visiblePlacesCount + inc);
     setVisiblePlacesCount(nextCount);
-    emit('add_discovery_place', { pin });
+    emit('add_discovery_place', { pin, count: inc });
 
     // When remaining pool gets low (<= 5 remaining), prefetch 10 more locations in the background!
     if (remainingPoolCount <= 5 && realOptions.length < 50 && !isPrefetchingRef.current) {

@@ -183,23 +183,31 @@ export default function CandidatePoolDeck({
             </button>
           )}
 
-          {/* Discovery Mode: Add Next Place Button (Pulls from 30 cached venues) */}
+          {/* Discovery Mode: Add Next Place / Add All Buttons */}
           {mode !== 'CUSTOM' && handleAddNextPlace && (
-            <button
-              type="button"
-              onClick={handleAddNextPlace}
-              disabled={remainingPoolCount <= 0}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.96] shadow-2xs disabled:opacity-40 disabled:pointer-events-none"
-              title="Add next venue from pool"
-            >
-              <Plus size={13} strokeWidth={2.5} />
-              <span>{t('addPlace')}</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleAddNextPlace(1)}
+                disabled={remainingPoolCount <= 0}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.96] shadow-2xs disabled:opacity-40 disabled:pointer-events-none"
+                title="Add next venue from pool"
+              >
+                <Plus size={13} strokeWidth={2.5} />
+                <span>{t('addPlace')}</span>
+              </button>
+
               {remainingPoolCount > 0 && (
-                <span className="text-[10px] font-semibold bg-white/20 px-1.5 py-0.2 rounded-full tabular-nums">
-                  +{remainingPoolCount}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => handleAddNextPlace(remainingPoolCount)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-[var(--accent-bg)]/15 border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--accent-bg)] transition-all cursor-pointer active:scale-[0.96]"
+                  title={`Add all ${remainingPoolCount} remaining venues to table`}
+                >
+                  <span>+{remainingPoolCount} All</span>
+                </button>
               )}
-            </button>
+            </div>
           )}
         </div>
       </div>
