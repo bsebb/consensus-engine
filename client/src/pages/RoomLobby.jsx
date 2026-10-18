@@ -20,7 +20,6 @@ import { apiUrl } from '../utils/api';
 import { calculateDistanceKm, detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
 import { deduplicateVenues } from '../utils/venueImages';
-import { getDefaultSeedOptions, resolveCuratedOptionPhoto } from '../utils/customOptionService';
 
 function levenshteinDistance(a, b) {
   const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
@@ -72,12 +71,7 @@ export default function RoomLobby() {
 
   // Custom Suggestions State
   const [suggestion, setSuggestion] = useState('');
-  const [groupPool, setGroupPool] = useState(() => {
-    if ((location.state?.mode || 'DISCOVERY') === 'CUSTOM') {
-      return getDefaultSeedOptions(location.state?.topic);
-    }
-    return [];
-  });
+  const [groupPool, setGroupPool] = useState([]);
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
 
@@ -193,7 +187,6 @@ export default function RoomLobby() {
       isTransitioningToDeckRef.current = true;
     },
     locationState: location.state,
-    initialSuggestions: groupPool,
     lockedConstraint,
     budgetLimit,
     setMode,
@@ -300,7 +293,6 @@ export default function RoomLobby() {
       distance_km: null,
       address: 'Added by group',
       tags: ['Custom'],
-      photo_url: resolveCuratedOptionPhoto(name),
       isCustom: true,
       customIndex: idx,
     }));

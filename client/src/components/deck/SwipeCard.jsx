@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info, Layers } from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
-import { useCustomOptionPhoto } from '../../utils/customOptionService';
+import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 
 export default function SwipeCard({
   mode,
@@ -106,11 +106,11 @@ export default function SwipeCard({
           customPhoto && !customImgError ? (
             /* Visual Poster Card for Custom Options with matched photos */
             <>
-              <div className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden">
+              <div className={`relative flex-1 min-h-0 w-full overflow-hidden ${isLogoImage(customPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
                 <img
                   src={customPhoto}
                   alt={activeCard?.name}
-                  className="w-full h-full object-cover"
+                  className={isLogoImage(customPhoto) ? 'w-full h-full object-contain p-10 pb-24' : 'w-full h-full object-cover'}
                   draggable="false"
                   onError={() => setCustomImgError(true)}
                 />

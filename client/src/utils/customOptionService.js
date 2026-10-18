@@ -13,9 +13,6 @@ export const KNOWN_CUSTOM_POSTERS = {
   'fifa / ea fc': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
   'ea fc': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
   'ea sports fc': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
-  'minecraft': 'https://images.unsplash.com/photo-1627856013091-fed6e4e30025?w=800&auto=format&fit=crop&q=80',
-  'sandbox': 'https://images.unsplash.com/photo-1627856013091-fed6e4e30025?w=800&auto=format&fit=crop&q=80',
-  'mario kart': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80',
   'jackbox': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1005300/header.jpg',
   'party games': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1005300/header.jpg',
   'grand theft auto': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/271590/header.jpg',
@@ -89,7 +86,7 @@ const posterMemoryCache = new Map();
 function loadPersistentPosterCache() {
   if (typeof localStorage === 'undefined') return {};
   try {
-    return JSON.parse(localStorage.getItem('consensus_custom_posters') || '{}');
+    return JSON.parse(localStorage.getItem('consensus_custom_posters_v2') || '{}');
   } catch {
     return {};
   }
@@ -100,7 +97,7 @@ function savePersistentPoster(name, url) {
   try {
     const existing = loadPersistentPosterCache();
     existing[name.toLowerCase().trim()] = url;
-    localStorage.setItem('consensus_custom_posters', JSON.stringify(existing));
+    localStorage.setItem('consensus_custom_posters_v2', JSON.stringify(existing));
   } catch {}
 }
 
@@ -156,10 +153,12 @@ export function resolveCuratedOptionPhoto(name = '') {
   // Direct exact match
   if (KNOWN_CUSTOM_POSTERS[clean]) return KNOWN_CUSTOM_POSTERS[clean];
 
-  // Substring match
-  for (const [key, url] of Object.entries(KNOWN_CUSTOM_POSTERS)) {
-    if (clean.includes(key) || key.includes(clean)) {
-      return url;
+  // Whole-word phrase match, longest key first ("helldivers 2" beats "helldivers")
+  const keys = Object.keys(KNOWN_CUSTOM_POSTERS).sort((a, b) => b.length - a.length);
+  for (const key of keys) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(clean)) {
+      return KNOWN_CUSTOM_POSTERS[key];
     }
   }
 
@@ -179,6 +178,13 @@ export function resolveCuratedOptionPhoto(name = '') {
 }
 
 /**
+ * Logos are transparent marks, not banners; cards render them contained instead of cropped.
+ */
+export function isLogoImage(url = '') {
+  return /logo|\.svg/i.test(String(url || ''));
+}
+
+/**
  * Resolves a game poster dynamically via the Steam Store Search proxy.
  */
 export async function fetchDynamicGamePoster(name = '') {
@@ -190,7 +196,7 @@ export async function fetchDynamicGamePoster(name = '') {
 
   try {
     const res = await fetch(apiUrl(`/api/v1/options/game-poster?query=${encodeURIComponent(clean)}`), {
-      signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
+      signal: AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined,
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -226,7 +232,7 @@ export function useCustomOptionPhoto(name = '', topic = '', initialUrl = null) {
     }
 
     let isMounted = true;
-    const isGamingTopic = inferLibraryTabFromTopic(topic) === 'gaming' || /\b(game|gaming|play)\b/i.test(name);
+    const isGamingTopic = inferLibraryTabFromTopic(topic) === 'gaming' || inferLibraryTabFromTopic(name) === 'gaming';
 
     if (isGamingTopic) {
       fetchDynamicGamePoster(name).then((url) => {

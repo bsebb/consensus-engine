@@ -118,6 +118,15 @@
   }
 }
 
+/* Horizontal chip rows: swipeable without a visible scrollbar track */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* GPU Keyframe Primitives */
 @keyframes modalSpring {
   0% { transform: translate3d(0, 14px, 0) scale(0.98); opacity: 0; }

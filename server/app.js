@@ -3,6 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
+const { resolveGamePoster } = require('./src/utils/gamePosterService');
 const roomRoutes = require('./routes/roomRoutes');
 //Lilia: access the shared Socket.io instance from other server modules
 const { setIO } = require('./src/utils/socket');
@@ -70,37 +71,17 @@ app.get('/api/v1/venue-photos', async (req, res) => {
   }
 });
 
-// Steam Store Game Poster Search (public Steam API proxy with in-memory caching)
-const steamPosterCache = new Map();
+// Official game artwork lookup (strict Steam match, then Wikipedia cover art)
 app.get('/api/v1/options/game-poster', async (req, res) => {
   try {
-    const query = String(req.query.query || '').trim();
-    if (!query) {
-      return res.json({ success: true, poster_url: null });
-    }
-    const cacheKey = query.toLowerCase();
-    if (steamPosterCache.has(cacheKey)) {
-      res.set('Cache-Control', 'public, max-age=86400');
-      return res.json({ success: true, poster_url: steamPosterCache.get(cacheKey) });
-    }
-
-    const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=US`;
-    const steamRes = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-      signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
+    const result = await resolveGamePoster(req.query.query);
+    res.set('Cache-Control', 'public, max-age=86400');
+    return res.json({
+      success: true,
+      poster_url: result ? result.url : null,
+      source: result ? result.source : null,
+      name: result ? result.title : null,
     });
-    if (!steamRes.ok) {
-      return res.json({ success: true, poster_url: null });
-    }
-    const data = await steamRes.json();
-    if (Array.isArray(data.items) && data.items.length > 0) {
-      const best = data.items[0];
-      const posterUrl = `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${best.id}/header.jpg`;
-      steamPosterCache.set(cacheKey, posterUrl);
-      res.set('Cache-Control', 'public, max-age=86400');
-      return res.json({ success: true, poster_url: posterUrl, app_id: best.id, name: best.name });
-    }
-    return res.json({ success: true, poster_url: null });
   } catch {
     return res.json({ success: false, poster_url: null });
   }
@@ -423,7 +404,7 @@ io.on('connection', (socket) => {
 
       if (!activeLobbies.has(pin)) {
         const map = new Map();
-        map.suggestions = Array.isArray(data?.initial_suggestions) ? [...data.initial_suggestions] : [];
+        map.suggestions = [];
         map.mode = data?.mode || (room?.theme?.startsWith('custom') ? 'CUSTOM' : 'DISCOVERY');
         map.topic = data?.topic || (room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : 'Where should we go?');
         map.groupSize = data?.group_size || 4;
@@ -440,9 +421,6 @@ io.on('connection', (socket) => {
       }
       if (data?.group_size) lobby.groupSize = data.group_size;
       if (!lobby.suggestions) lobby.suggestions = [];
-      if (lobby.suggestions.length === 0 && Array.isArray(data?.initial_suggestions) && data.initial_suggestions.length > 0) {
-        lobby.suggestions = [...data.initial_suggestions];
-      }
 
       const isHost = (room && room.hostId === participant_id) || lobby.size === 0;
 

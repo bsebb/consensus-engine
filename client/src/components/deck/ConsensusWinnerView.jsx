@@ -20,7 +20,7 @@ import VenueDetailsModal from './VenueDetailsModal';
 import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { apiUrl } from '../../utils/api';
-import { useCustomOptionPhoto } from '../../utils/customOptionService';
+import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 import { useToast } from '../ui/Toast';
 
 export default function ConsensusWinnerView({
@@ -126,11 +126,11 @@ export default function ConsensusWinnerView({
         {isCustomWinner ? (
           customWinnerPhoto && !customImgErr ? (
             /* Visual Poster Card for Custom Option Winner */
-            <div className="relative h-56 w-full bg-[var(--bg-inset)]">
+            <div className={`relative h-56 w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
               <img
                 src={customWinnerPhoto}
                 alt={winner?.name}
-                className="w-full h-full object-cover"
+                className={isLogoImage(customWinnerPhoto) ? 'w-full h-full object-contain p-6 pb-12' : 'w-full h-full object-cover'}
                 onError={() => setCustomImgErr(true)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20" />

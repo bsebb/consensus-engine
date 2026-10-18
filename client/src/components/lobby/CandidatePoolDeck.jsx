@@ -4,20 +4,21 @@ import Button from '../ui/Button';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
-import { inferLibraryTabFromTopic, useCustomOptionPhoto } from '../../utils/customOptionService';
+import { inferLibraryTabFromTopic, useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 
 function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   const { photo } = useCustomOptionPhoto(item.name, topic, item.photo_url);
   const [imgError, setImgError] = useState(false);
 
   if (photo && !imgError) {
+    const isLogo = isLogoImage(photo);
     return (
       <div className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group text-left">
-        <div className="relative h-32 sm:h-36 w-full bg-[var(--bg-elevated)] overflow-hidden">
+        <div className={`relative h-32 sm:h-36 w-full ${isLogo ? 'bg-zinc-900' : 'bg-[var(--bg-elevated)]'} overflow-hidden`}>
           <img
             src={photo}
             alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className={isLogo ? 'w-full h-full object-contain p-4 pb-8' : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'}
             loading="lazy"
             onError={() => setImgError(true)}
           />
@@ -277,7 +278,10 @@ export default function CandidatePoolDeck({
               </div>
 
               {/* Category Tabs */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              <div
+                className="no-scrollbar flex items-center gap-1.5 overflow-x-auto -mx-0.5 px-0.5"
+                style={{ maskImage: 'linear-gradient(to right, black 88%, transparent)', WebkitMaskImage: 'linear-gradient(to right, black 88%, transparent)' }}
+              >
                 {CUSTOM_POLL_LIBRARY.map((cat) => (
                   <button
                     key={cat.id}
