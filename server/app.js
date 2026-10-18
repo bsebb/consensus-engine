@@ -1,12 +1,14 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const helmet = require('helmet');
 const { Server } = require('socket.io');
 const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
 const { resolveGamePoster } = require('./src/utils/gamePosterService');
 const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteService');
 const { resolveGooglePhotoMedia } = require('./src/utils/googlePlaces');
 const { reportClosedVenue } = require('./src/utils/reportedVenues');
+const { getStorageMetrics, pruneExpiredRooms, initStorageSafeguard } = require('./src/utils/storageSafeguard');
 const roomRoutes = require('./routes/roomRoutes');
 const { setIO } = require('./src/utils/socket');
 const { verifyHostToken } = require('./src/utils/hostAuth');
@@ -16,7 +18,7 @@ const cors = require('cors');
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https?:\/\/localhost(:\d+)?$/,
   /^https:\/\/([a-zA-Z0-9-]+\.)*noyoupick\.org$/,
-  /^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/,
+  /^https:\/\/consensus-engine(-[a-z0-9-]+)?\.vercel\.app$/,
 ];
 if (process.env.CLIENT_URL) {
   try {
@@ -33,6 +35,11 @@ const checkOrigin = (origin, callback) => {
 };
 
 const app = express();
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
 app.use(cors({ origin: checkOrigin, credentials: true }));
 app.use(express.json({ limit: '16kb' }));
 
@@ -74,6 +81,26 @@ app.get(['/health', '/api/v1/health'], (req, res) => {
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
+});
+
+// Resource telemetry endpoint returning memory, PostgreSQL capacity, and safeguard status
+app.get('/api/v1/system/telemetry', sensitiveLimiter, async (req, res) => {
+  try {
+    const metrics = await getStorageMetrics();
+    return res.status(200).json({ success: true, ...metrics });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Trigger database prune manually
+app.post('/api/v1/system/prune', sensitiveLimiter, async (req, res) => {
+  try {
+    const result = await pruneExpiredRooms(7);
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 app.use('/api/v1/rooms', roomRoutes);
@@ -474,13 +501,12 @@ io.on('connection', (socket) => {
       if (data?.group_size) lobby.groupSize = data.group_size;
       if (!lobby.suggestions) lobby.suggestions = [];
 
-      // Cryptographically verify host privilege via token, DB record, or creator status
+      // Cryptographically verify host privilege via token
       const hasVerifiedHostToken = Boolean(host_token && verifyHostToken(pin, participant_id, host_token));
-      const isDbHost = Boolean(room && room.hostId === participant_id);
-      const isHost = hasVerifiedHostToken || isDbHost || lobby.size === 0;
+      const isHost = hasVerifiedHostToken;
 
       socket.data.isHost = isHost;
-      socket.data.hostToken = host_token || null;
+      socket.data.hostToken = hasVerifiedHostToken ? host_token : null;
 
       // Preserve budgetSealed state if reconnecting
       const existing = lobby.get(participant_id);
@@ -509,6 +535,7 @@ io.on('connection', (socket) => {
         group_size: lobby.groupSize || 4,
         suggestions: lobby.suggestions || [],
         visible_places_count: lobby.visiblePlacesCount || 6,
+        removed_place_ids: Array.from(lobby.removedOptionIds || []),
       });
 
       // Also send directly to the joining socket to guarantee instant state sync
@@ -521,6 +548,7 @@ io.on('connection', (socket) => {
         group_size: lobby.groupSize || 4,
         suggestions: lobby.suggestions || [],
         visible_places_count: lobby.visiblePlacesCount || 6,
+        removed_place_ids: Array.from(lobby.removedOptionIds || []),
       });
 
       // REJOIN RECOVERY: If a voting session is already in progress, immediately dispatch voting_started
@@ -611,15 +639,19 @@ io.on('connection', (socket) => {
     try {
       const { pin } = data || {};
       if (!pin) return;
-      const lobby = activeLobbies.get(pin);
-      if (lobby) {
-        lobby.visiblePlacesCount = (lobby.visiblePlacesCount || 6) + 1;
-        console.log(`[Socket] Added place to room ${pin} (visible count: ${lobby.visiblePlacesCount})`);
-        io.to(pin).emit('table_places_updated', {
-          pin,
-          visiblePlacesCount: lobby.visiblePlacesCount,
-        });
+      let lobby = activeLobbies.get(pin);
+      if (!lobby) {
+        lobby = new Map();
+        lobby.visiblePlacesCount = 6;
+        activeLobbies.set(pin, lobby);
       }
+      lobby.visiblePlacesCount = (lobby.visiblePlacesCount || 6) + 1;
+      console.log(`[Socket] Added place to room ${pin} (visible count: ${lobby.visiblePlacesCount})`);
+      io.to(pin).emit('table_places_updated', {
+        pin,
+        visiblePlacesCount: lobby.visiblePlacesCount,
+        removedOptionIds: Array.from(lobby.removedOptionIds || []),
+      });
     } catch (err) {
       console.error('[Socket] add_discovery_place error:', err.message);
     }
@@ -630,18 +662,21 @@ io.on('connection', (socket) => {
     try {
       const { pin, option_id } = data || {};
       if (!pin) return;
-      const lobby = activeLobbies.get(pin);
-      if (lobby) {
-        if (!lobby.removedOptionIds) lobby.removedOptionIds = new Set();
-        if (option_id) lobby.removedOptionIds.add(String(option_id));
-        console.log(`[Socket] Removed place ${option_id} from room ${pin}`);
-        io.to(pin).emit('table_places_updated', {
-          pin,
-          visiblePlacesCount: lobby.visiblePlacesCount,
-          removedOptionId: option_id,
-          removedOptionIds: Array.from(lobby.removedOptionIds),
-        });
+      let lobby = activeLobbies.get(pin);
+      if (!lobby) {
+        lobby = new Map();
+        lobby.visiblePlacesCount = 6;
+        activeLobbies.set(pin, lobby);
       }
+      if (!lobby.removedOptionIds) lobby.removedOptionIds = new Set();
+      if (option_id) lobby.removedOptionIds.add(String(option_id));
+      console.log(`[Socket] Removed place ${option_id} from room ${pin}`);
+      io.to(pin).emit('table_places_updated', {
+        pin,
+        visiblePlacesCount: lobby.visiblePlacesCount,
+        removedOptionId: option_id,
+        removedOptionIds: Array.from(lobby.removedOptionIds),
+      });
     } catch (err) {
       console.error('[Socket] remove_discovery_place error:', err.message);
     }
@@ -696,13 +731,10 @@ io.on('connection', (socket) => {
       }
 
       const lobby = activeLobbies.get(pin);
-      const callerId = host_id || socket.data.participantId;
+      const callerId = socket.data.participantId || host_id;
       const tokenToCheck = host_token || socket.data.hostToken;
-      const hasVerifiedToken = Boolean(tokenToCheck && verifyHostToken(pin, callerId, tokenToCheck));
-      const isDbHost = Boolean(room && room.hostId === callerId);
-      const isSocketHost = Boolean(socket.data.isHost);
-
-      const isAuthorized = hasVerifiedToken || isDbHost || isSocketHost || !lobby || lobby.size <= 1;
+      const hasVerifiedToken = Boolean(tokenToCheck && callerId && verifyHostToken(pin, callerId, tokenToCheck));
+      const isAuthorized = hasVerifiedToken || Boolean(socket.data.isHost && socket.data.hostToken);
 
       if (!isAuthorized) {
         console.warn(`[Socket] Unauthorized host_start_voting in room ${pin} by ${callerId}`);
@@ -844,9 +876,8 @@ io.on('connection', (socket) => {
       const session = activeVotingSessions.get(pin);
       const hostId = session?.hostId || (lobby && Array.from(lobby.values()).find(p => p.isHost)?.id);
 
-      const hasVerifiedToken = Boolean(tokenToCheck && verifyHostToken(pin, callerId, tokenToCheck));
-      const isSocketHost = Boolean(socket.data.isHost);
-      const isAuthorized = hasVerifiedToken || isSocketHost || (hostId && callerId && hostId === callerId);
+      const hasVerifiedToken = Boolean(tokenToCheck && callerId && verifyHostToken(pin, callerId, tokenToCheck));
+      const isAuthorized = hasVerifiedToken || Boolean(socket.data.isHost && socket.data.hostToken);
 
       if (!isAuthorized) {
         console.warn(`[Socket] Unauthorized force reveal attempt by ${callerId} in room ${pin}`);
@@ -977,6 +1008,7 @@ const PORT = process.env.PORT || 3000;
 
 httpServer.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+  initStorageSafeguard();
 });
 
 // Gracefully handle process termination (Render deploys, container recycling, local ctrl-c)

@@ -226,4 +226,53 @@ export const en = {
   stageFilter: 'Eliminating closed spots & ghost listings...',
   stageRouting: 'Calculating real street travel times...',
   stageDeck: 'Assembling high-res candidate cards...',
+
+  // Connectivity & Actions
+  addPlace: 'Add Place',
+  reconnecting: 'Reconnecting to room...',
+
+  // Review Modal
+  sessionFeedback: 'Session Feedback',
+  overallSatisfaction: 'Overall Satisfaction',
+  budgetMatchedQuestion: 'Did the budget match your expectation?',
+  notesOrRecommendations: 'Notes or Recommendations (Optional)',
+  notesPlaceholder: 'Atmosphere, food quality, or venue notes...',
+  skip: 'Skip',
+  submitFeedbackAction: 'Submit Feedback',
+  thankYou: 'Thank You!',
+  feedbackSavedDesc: 'Your feedback on {name} has been saved.',
+
+  // Host Settings & Constraints
+  setupStages: 'Interactive Setup Stages',
+  consensusDomain: 'Consensus Domain',
+  decisionFormatContext: 'Decision format & context',
+  localVenues: 'Local Venues',
+  customTopics: 'Custom Topics',
+  nextTarget: 'Next: Target',
+  nextConstraints: 'Next: Constraints',
+  nextQuorum: 'Next: Quorum',
+  categorySelection: 'Category Selection',
+  customTopic: 'Custom Topic',
+  vibeSubjectMatter: 'Vibe or subject matter',
+  radiusPriceCeiling: 'Radius & Price Ceiling',
+  submissionLimits: 'Submission Limits',
+  searchRangeBoundaries: 'Search range & boundaries',
+  groupQuorumLaunch: 'Group Quorum & Launch',
+  targetHeadcount: 'Target participant headcount',
+  expectedHeadcount: 'Expected Headcount',
+  votingThreshold: 'Voting threshold',
+  launchRoomLobby: 'Launch Room & Enter Lobby',
+  searchRadius: 'Search Radius',
+  targetPriceBracket: 'Target Price Bracket',
+  votingDeckSize: 'Voting Deck Size',
+  searchOrigin: 'Search Origin',
+  adaptiveGrid: 'Adaptive Grid',
+  suggestionsPerVoter: 'Suggestions per Voter',
+  candidatePoolCapacity: 'Candidate pool capacity',
+
+  // Winner View
+  winningGroupPick: 'Winning Group Pick',
+  consensusChoice: 'Consensus Choice',
+  winningPollOption: 'Winning Poll Option',
 };
+

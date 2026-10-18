@@ -50,6 +50,12 @@ export function useLobbySync({
       if (typeof data?.visible_places_count === 'number' && setVisiblePlacesCount) {
         setVisiblePlacesCount(data.visible_places_count);
       }
+      if (Array.isArray(data?.removed_place_ids) && setRemovedPlaceIds) {
+        setRemovedPlaceIds(new Set(data.removed_place_ids.map(String)));
+      }
+      if (Array.isArray(data?.removedOptionIds) && setRemovedPlaceIds) {
+        setRemovedPlaceIds(new Set(data.removedOptionIds.map(String)));
+      }
       if (Array.isArray(data?.suggestions)) {
         setGroupPool(data.suggestions);
       }
@@ -194,15 +200,22 @@ export function useLobbySync({
         setVisiblePlacesCount(data.visiblePlacesCount);
       }
       if (Array.isArray(data?.removedOptionIds) && setRemovedPlaceIds) {
-        setRemovedPlaceIds(new Set(data.removedOptionIds));
+        setRemovedPlaceIds(new Set(data.removedOptionIds.map(String)));
+      } else if (data?.removedOptionId && setRemovedPlaceIds) {
+        setRemovedPlaceIds((prev) => new Set([...prev, String(data.removedOptionId)]));
       }
     };
 
     const handleOptionsExpanded = (data) => {
-      if (Array.isArray(data?.newOptions) && setRealOptions) {
+      const incoming = Array.isArray(data?.newOptions)
+        ? data.newOptions
+        : Array.isArray(data?.options)
+          ? data.options
+          : [];
+      if (incoming.length > 0 && setRealOptions) {
         setRealOptions((prev) => {
-          const existingIds = new Set(prev.map((o) => o.id));
-          const toAdd = data.newOptions.filter((o) => !existingIds.has(o.id));
+          const existingIds = new Set(prev.map((o) => String(o.id)));
+          const toAdd = incoming.filter((o) => !existingIds.has(String(o.id)));
           return [...prev, ...toAdd];
         });
       }

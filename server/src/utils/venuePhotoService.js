@@ -1,5 +1,7 @@
 const fs = require('fs');
 const path = require('path');
+const dns = require('dns').promises;
+const net = require('net');
 
 const SERVER_DATA_DIR = path.join(__dirname, '../../data');
 const ROOT_DATA_DIR = path.join(__dirname, '../../../data');
@@ -79,26 +81,63 @@ function setBoundedCache(map, key, value, maxEntries = MAX_CACHE_ENTRIES) {
   map.set(key, value);
 }
 
-function isSafeExternalUrl(rawUrl) {
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  let cleanIp = String(ip).toLowerCase().trim();
+  if (cleanIp.startsWith('::ffff:')) {
+    cleanIp = cleanIp.replace('::ffff:', '');
+  }
+
+  if (net.isIPv4(cleanIp)) {
+    const parts = cleanIp.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(isNaN)) return true;
+    if (parts[0] === 0) return true; // 0.0.0.0/8
+    if (parts[0] === 10) return true; // 10.0.0.0/8
+    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true; // 100.64.0.0/10 (CG-NAT)
+    if (parts[0] === 127) return true; // 127.0.0.0/8 (All Loopback)
+    if (parts[0] === 169 && parts[1] === 254) return true; // 169.254.0.0/16 (Link-local & IMDS)
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true; // 172.16.0.0/12
+    if (parts[0] === 192 && parts[1] === 168) return true; // 192.168.0.0/16
+    if (parts[0] >= 224) return true; // Multicast & Reserved
+    return false;
+  }
+
+  if (net.isIPv6(cleanIp)) {
+    if (cleanIp === '::1' || cleanIp === '::') return true;
+    if (/^f[cd][0-9a-f]{2}:/i.test(cleanIp)) return true; // ULA fc00::/7
+    if (/^fe[89ab][0-9a-f]:/i.test(cleanIp)) return true; // Link-local fe80::/10
+    return false;
+  }
+
+  return true;
+}
+
+async function isSafeExternalUrl(rawUrl) {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== 'https:') return false;
-    const host = parsed.hostname.toLowerCase();
+    const host = parsed.hostname.toLowerCase().replace(/^[\[]|[\]]$/g, '');
+
     if (
       host === 'localhost' ||
       host.endsWith('.local') ||
       host.endsWith('.internal') ||
-      host === '169.254.169.254' ||
-      host === '127.0.0.1' ||
-      host === '0.0.0.0' ||
-      host === '::1' ||
-      /^10\./.test(host) ||
-      /^192\.168\./.test(host) ||
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) ||
-      /^169\.254\./.test(host)
+      host.endsWith('.corp') ||
+      host.endsWith('.home')
     ) {
       return false;
     }
+
+    if (net.isIP(host)) {
+      return !isPrivateIp(host);
+    }
+
+    const addresses = await dns.resolve(host).catch(() => []);
+    if (!addresses || addresses.length === 0) return false;
+    for (const addr of addresses) {
+      if (isPrivateIp(addr)) return false;
+    }
+
     return true;
   } catch {
     return false;
@@ -156,7 +195,7 @@ async function fetchOnlineVenuePhoto(name, locality = '', address = '') {
 
     for (const item of results.slice(0, 5)) {
       const url = item.image;
-      if (!url || typeof url !== 'string' || !isSafeExternalUrl(url)) continue;
+      if (!url || typeof url !== 'string' || !(await isSafeExternalUrl(url))) continue;
       if (url.includes('lookaside.fbsbx') || url.includes('favicon') || url.includes('icon')) continue;
 
       try {

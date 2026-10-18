@@ -17,6 +17,7 @@ export function useSwipeDeckSync({
   setServerMatchScore,
   setServerPairwise,
   setShowWinner,
+  onAlreadyVoted,
   emit,
   on,
   off,
@@ -76,6 +77,15 @@ export function useSwipeDeckSync({
       if (data?.total_participants) {
         setQuorumTotal(data.total_participants);
       }
+      if (data?.already_voted && onAlreadyVoted) {
+        onAlreadyVoted();
+      }
+    };
+
+    const handleVotingStarted = (data) => {
+      if (Array.isArray(data?.options) && data.options.length > 0 && !locationState?.customCards) {
+        setCards(data.options);
+      }
     };
 
     on('vote_progress', handleVoteProgress);
@@ -83,6 +93,7 @@ export function useSwipeDeckSync({
     on('MATCH_FOUND', handleWinner);
     on('winner_announced', handleWinner);
     on('state_restore', handleStateRestore);
+    on('voting_started', handleVotingStarted);
 
     return () => {
       off('vote_progress', handleVoteProgress);
@@ -90,8 +101,9 @@ export function useSwipeDeckSync({
       off('MATCH_FOUND', handleWinner);
       off('winner_announced', handleWinner);
       off('state_restore', handleStateRestore);
+      off('voting_started', handleVotingStarted);
     };
-  }, [pin, on, off, cards, locationState, setVotesReceived, setQuorumTotal, setServerWinner, setServerMatchScore, setServerPairwise, setShowWinner, setCards]);
+  }, [pin, on, off, cards, locationState, setVotesReceived, setQuorumTotal, setServerWinner, setServerMatchScore, setServerPairwise, setShowWinner, setCards, onAlreadyVoted]);
 
   const hasSubmittedRef = useRef(false);
 

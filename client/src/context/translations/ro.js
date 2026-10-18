@@ -226,4 +226,53 @@ export const ro = {
   stageFilter: 'Eliminăm locurile închise și listările vechi...',
   stageRouting: 'Calculăm rutele reale pe străzi...',
   stageDeck: 'Pregătim pachetul de vot...',
+
+  // Connectivity & Actions
+  addPlace: 'Adaugă loc',
+  reconnecting: 'Se reconectează la cameră...',
+
+  // Review Modal
+  sessionFeedback: 'Feedback sesiune',
+  overallSatisfaction: 'Satisfacție generală',
+  budgetMatchedQuestion: 'A corespuns bugetul așteptărilor?',
+  notesOrRecommendations: 'Note sau recomandări (opțional)',
+  notesPlaceholder: 'Atmosferă, calitatea mâncării sau note despre locație...',
+  skip: 'Omite',
+  submitFeedbackAction: 'Trimite feedback',
+  thankYou: 'Mulțumim!',
+  feedbackSavedDesc: 'Feedback-ul tău pentru {name} a fost salvat.',
+
+  // Host Settings & Constraints
+  setupStages: 'Etape interactive de configurare',
+  consensusDomain: 'Domeniu de consens',
+  decisionFormatContext: 'Formatul și contextul deciziei',
+  localVenues: 'Locații locale',
+  customTopics: 'Subiecte personalizate',
+  nextTarget: 'Următorul: Țintă',
+  nextConstraints: 'Următorul: Limite',
+  nextQuorum: 'Următorul: Cvorum',
+  categorySelection: 'Selectare categorie',
+  customTopic: 'Subiect personalizat',
+  vibeSubjectMatter: 'Atmosferă sau subiect',
+  radiusPriceCeiling: 'Rază și plafon de preț',
+  submissionLimits: 'Limite de propuneri',
+  searchRangeBoundaries: 'Interval de căutare și limite',
+  groupQuorumLaunch: 'Cvorum de grup și lansare',
+  targetHeadcount: 'Număr țintă de participanți',
+  expectedHeadcount: 'Participanți așteptați',
+  votingThreshold: 'Prag de vot',
+  launchRoomLobby: 'Lansează camera și intră în lobby',
+  searchRadius: 'Rază de căutare',
+  targetPriceBracket: 'Interval de preț țintă',
+  votingDeckSize: 'Mărime pachet de vot',
+  searchOrigin: 'Punct de pornire',
+  adaptiveGrid: 'Grilă adaptivă',
+  suggestionsPerVoter: 'Sugestii per votant',
+  candidatePoolCapacity: 'Capacitate listă candidați',
+
+  // Winner View
+  winningGroupPick: 'Alegerea câștigătoare a grupului',
+  consensusChoice: 'Alegerea prin consens',
+  winningPollOption: 'Opțiunea câștigătoare',
 };
+

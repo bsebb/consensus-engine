@@ -3,8 +3,17 @@
 // so real-world queries never get overwhelmed by obscure Steam video games.
 
 const HEADERS = { 'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)' };
+const MAX_CACHE_ENTRIES = 500;
 const cache = new Map();
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+function setBoundedCache(key, value) {
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
+  cache.set(key, value);
+}
 
 const normalize = (s) =>
   String(s || '')
@@ -549,7 +558,7 @@ async function searchCustomAutocomplete({ query = '', topic = '' }) {
   }
 
   const finalResults = deduped.slice(0, 6);
-  cache.set(cacheKey, { timestamp: Date.now(), results: finalResults });
+  setBoundedCache(cacheKey, { timestamp: Date.now(), results: finalResults });
   return finalResults;
 }
 

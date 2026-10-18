@@ -21,26 +21,51 @@ const { generatePin, issueHostToken, verifyHostToken } = require('../utils/hostA
 const { buildOptionRecords, discoverDiscoveryVenues, expandRoomVenues } = require('../services/venueDiscoveryService');
 const { reportClosedVenue } = require('../utils/reportedVenues');
 
-// Helper to execute Schulze worker thread off the main event loop
-const runSchulzeWorker = (submissions) => {
+// Helper to execute Schulze worker thread off the main event loop with 5s timeout
+const runSchulzeWorker = (submissions, timeoutMs = 5000) => {
   return new Promise((resolve, reject) => {
     const workerPath = path.resolve(__dirname, '../workers/schulzeWorker.js');
     const worker = new Worker(workerPath, {
       workerData: { submissions },
     });
+    let isDone = false;
+
+    const timer = setTimeout(() => {
+      if (!isDone) {
+        isDone = true;
+        worker.terminate().catch(() => {});
+        reject(new Error('Schulze consensus worker calculation timed out.'));
+      }
+    }, timeoutMs);
+    if (timer.unref) timer.unref();
 
     worker.on('message', (message) => {
-      if (message.success) {
-        resolve(message.winner);
-      } else {
-        reject(new Error(message.error));
+      if (!isDone) {
+        isDone = true;
+        clearTimeout(timer);
+        if (message.success) {
+          resolve(message.winner);
+        } else {
+          reject(new Error(message.error));
+        }
       }
     });
 
-    worker.on('error', reject);
+    worker.on('error', (err) => {
+      if (!isDone) {
+        isDone = true;
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
+
     worker.on('exit', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Worker thread stopped with exit code ${code}`));
+      if (!isDone) {
+        isDone = true;
+        clearTimeout(timer);
+        if (code !== 0) {
+          reject(new Error(`Worker thread stopped with exit code ${code}`));
+        }
       }
     });
   });
@@ -68,9 +93,18 @@ const createNewRoom = async (req, res) => {
     });
   }
 
-  const pin = generatePin();
   const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
-  const room = await createRoom(host_id, pin, roomTheme, radius);
+  let pin = null;
+  let room = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      pin = generatePin();
+      room = await createRoom(host_id, pin, roomTheme, radius);
+      break;
+    } catch (err) {
+      if (attempt === 4) throw err;
+    }
+  }
 
   // Fetch places from Google, Geoapify, or spatial fallback engine
   if (mode === 'DISCOVERY') {
@@ -161,6 +195,23 @@ const getRoom = async (req, res) => {
 const updateConfig = async (req, res) => {
   const { id } = req.params;
   const { host_id, host_token, pin, theme, radius, status } = req.body || {};
+
+  if (!id || !pin || !host_id || !host_token) {
+    return res.status(400).json({
+      success: false,
+      error: 'MISSING_CREDENTIALS',
+      message: 'id, pin, host_id, and host_token are required.',
+    });
+  }
+
+  const room = await getRoomByPin(pin).catch(() => null);
+  if (!room || room.id !== id) {
+    return res.status(403).json({
+      success: false,
+      error: 'FORBIDDEN',
+      message: 'Authorization mismatch for requested room identifier.',
+    });
+  }
 
   if (!verifyHostToken(pin, host_id, host_token)) {
     return res.status(403).json({
@@ -494,7 +545,7 @@ const getMorePlaces = async (req, res) => {
       io.to(pin).emit('options_expanded', {
         pin,
         newOptions: created,
-        totalOptionsCount: existingOptions.length + created.length,
+        totalOptionsCount: (room.options || []).length + created.length,
       });
     }
 

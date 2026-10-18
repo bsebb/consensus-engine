@@ -193,7 +193,7 @@ export default function CandidatePoolDeck({
               title="Add next venue from pool"
             >
               <Plus size={13} strokeWidth={2.5} />
-              <span>{t('addOption')}</span>
+              <span>{t('addPlace')}</span>
               {remainingPoolCount > 0 && (
                 <span className="text-[10px] font-semibold bg-white/20 px-1.5 py-0.2 rounded-full tabular-nums">
                   +{remainingPoolCount}

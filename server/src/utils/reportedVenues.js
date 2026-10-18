@@ -74,18 +74,23 @@ function persistReport(reportItem) {
 }
 
 function reportClosedVenue({ name = '', address = '', lat = null, lng = null, reason = 'permanently_closed' }) {
+  if (typeof name !== 'string' || name.trim().length < 3) {
+    return { success: false, error: 'Venue name must be at least 3 characters' };
+  }
   const normKey = normalizeVenueKey(name);
-  if (!normKey) return { success: false, error: 'Venue name is required' };
+  if (!normKey || normKey.length < 3) {
+    return { success: false, error: 'Invalid venue identifier' };
+  }
 
   closedVenueKeys.add(normKey);
 
   const reportItem = {
     key: normKey,
-    name: String(name).trim(),
-    address: String(address || '').trim(),
-    lat: lat != null ? Number(lat) : null,
-    lng: lng != null ? Number(lng) : null,
-    reason: String(reason || 'permanently_closed'),
+    name: String(name).trim().slice(0, 100),
+    address: String(address || '').trim().slice(0, 150),
+    lat: lat != null && !isNaN(Number(lat)) ? Number(lat) : null,
+    lng: lng != null && !isNaN(Number(lng)) ? Number(lng) : null,
+    reason: String(reason || 'permanently_closed').slice(0, 50),
     reportedAt: new Date().toISOString(),
   };
 
@@ -95,12 +100,12 @@ function reportClosedVenue({ name = '', address = '', lat = null, lng = null, re
 
 function isVenueReportedClosed(name = '', lat = null, lng = null) {
   const normKey = normalizeVenueKey(name);
-  if (!normKey) return false;
+  if (!normKey || normKey.length < 3) return false;
   if (closedVenueKeys.has(normKey)) return true;
 
-  // Partial match check for known defunct venue names
+  // Exact prefix match only allowed for verified long keys (>= 7 chars)
   for (const defunct of closedVenueKeys) {
-    if (normKey.includes(defunct) || (defunct.length >= 5 && normKey.startsWith(defunct))) {
+    if (defunct.length >= 7 && normKey.startsWith(defunct)) {
       return true;
     }
   }

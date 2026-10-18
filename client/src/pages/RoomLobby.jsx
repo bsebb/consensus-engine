@@ -24,18 +24,16 @@ export default function RoomLobby() {
   const { pin } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { participantId, emit, on, off } = useSocket();
+  const { isConnected, participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
   const { t } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isTransitioningToDeckRef = useRef(false);
+  const isPrefetchingRef = useRef(false);
 
-  const [isHost, setIsHost] = useState(() => {
-    return Boolean(
-      location.state?.isHost ||
-      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
-    );
-  });
+  const [isHost, setIsHost] = useState(() => Boolean(
+    location.state?.isHost || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
+  ));
   const currentUserName = location.state?.userName || localStorage.getItem('consensus_user_name') || (isHost ? 'Host' : 'Friend');
   const [groupSize, setGroupSize] = useState(location.state?.groupSize || 2);
   const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
@@ -52,24 +50,19 @@ export default function RoomLobby() {
   // Custom Suggestions State
   const [suggestion, setSuggestion] = useState('');
   const [groupPool, setGroupPool] = useState(() => {
-    if (Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0) {
-      return location.state.initialCustomOptions;
-    }
-    return [];
+    return Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0
+      ? location.state.initialCustomOptions
+      : [];
   });
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
 
   // Real room venue options loaded from database/Foursquare
-  const [realOptions, setRealOptions] = useState(() => {
-    return location.state?.roomData?.options || [];
-  });
-  const [loadingOptions, setLoadingOptions] = useState(() => {
-    return (
-      (location.state?.mode || 'DISCOVERY') !== 'CUSTOM' &&
-      (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0)
-    );
-  });
+  const [realOptions, setRealOptions] = useState(() => location.state?.roomData?.options || []);
+  const [loadingOptions, setLoadingOptions] = useState(() => (
+    (location.state?.mode || 'DISCOVERY') !== 'CUSTOM' &&
+    (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0)
+  ));
   const [userGps, setUserGps] = useState(() => getSavedExactGps());
   const [roadRoutes, setRoadRoutes] = useState({});
   const [visiblePlacesCount, setVisiblePlacesCount] = useState(6);
@@ -410,7 +403,7 @@ export default function RoomLobby() {
 
   const activePool = useMemo(() => {
     if (mode === 'CUSTOM') return filteredCandidates;
-    return filteredCandidates.filter((item) => !removedPlaceIds.has(item.id));
+    return filteredCandidates.filter((item) => !removedPlaceIds.has(String(item.id)) && !removedPlaceIds.has(item.id));
   }, [mode, filteredCandidates, removedPlaceIds]);
 
   const displayedCandidates = useMemo(() => {
@@ -435,40 +428,35 @@ export default function RoomLobby() {
     emit('add_discovery_place', { pin });
 
     // When remaining pool gets low (<= 5 remaining), prefetch 10 more locations in the background!
-    if (remainingPoolCount <= 5 && realOptions.length < 50) {
+    if (remainingPoolCount <= 5 && realOptions.length < 50 && !isPrefetchingRef.current) {
+      isPrefetchingRef.current = true;
       fetch(apiUrl(`/api/v1/rooms/${pin}/more-places`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          latitude: userGps?.lat,
-          longitude: userGps?.lng,
-          is_exact_gps: Boolean(userGps),
-        }),
+        body: JSON.stringify({ latitude: userGps?.lat, longitude: userGps?.lng, is_exact_gps: Boolean(userGps) }),
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.options && Array.isArray(data.options)) {
             setRealOptions((prev) => {
-              const existingIds = new Set(prev.map((o) => o.id));
-              const toAdd = data.options.filter((o) => !existingIds.has(o.id));
+              const existingIds = new Set(prev.map((o) => String(o.id)));
+              const toAdd = data.options.filter((o) => !existingIds.has(String(o.id)));
               return [...prev, ...toAdd];
             });
           }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => { isPrefetchingRef.current = false; });
     }
   };
 
   const handleRemovePlace = (item) => {
     if (!item?.id) return;
     triggerHaptic('tap');
-    setRemovedPlaceIds((prev) => new Set([...prev, item.id]));
-    emit('remove_discovery_place', { pin, option_id: item.id });
-    addToast({
-      title: 'Place Removed',
-      message: `"${item.name}" removed from table`,
-      type: 'info',
-    });
+    const strId = String(item.id);
+    setRemovedPlaceIds((prev) => new Set([...prev, strId]));
+    emit('remove_discovery_place', { pin, option_id: strId });
+    addToast({ title: 'Place Removed', message: `"${item.name}" removed from table`, type: 'info' });
   };
 
   const handleStartVoting = () => {
@@ -524,6 +512,13 @@ export default function RoomLobby() {
         onCopyPin={handleCopyPin}
         onOpenSettings={() => setSettingsOpen(true)}
       />
+
+      {!isConnected && (
+        <div className="bg-amber-500/15 border-b border-amber-500/25 px-4 py-1.5 text-center flex items-center justify-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+          <span>{t('reconnecting')}</span>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">

@@ -5,8 +5,16 @@
 
 const HEADERS = { 'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)' };
 const WIKI_API = 'https://en.wikipedia.org/w/api.php?format=json&action=query';
-const EDITION_SUFFIX = /\s(remastered|definitive edition|enhanced edition|complete edition|deluxe edition|goty edition|game of the year edition)$/;
+const MAX_CACHE_ENTRIES = 500;
 const cache = new Map();
+
+function setBoundedCache(key, value) {
+  if (cache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
+  cache.set(key, value);
+}
 
 const normalize = (s) =>
   String(s || '')
@@ -93,7 +101,7 @@ async function resolveGamePoster(rawQuery) {
   if (cache.has(key)) return cache.get(key);
 
   const result = (await fromSteam(query)) || (await fromWikipedia(query));
-  cache.set(key, result);
+  setBoundedCache(key, result);
   return result;
 }
 

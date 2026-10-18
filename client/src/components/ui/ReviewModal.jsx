@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, X, CheckCircle2, ThumbsUp } from 'lucide-react';
 import Button from './Button';
 import { apiUrl } from '../../utils/api';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function ReviewModal({
   isOpen = false,
@@ -11,12 +12,14 @@ export default function ReviewModal({
   optionId,
   participantId,
 }) {
+  const { t } = useLanguage();
   const [satisfaction, setSatisfaction] = useState(5);
   const [priceAccuracy, setPriceAccuracy] = useState(4);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+
 
   const handleClose = () => {
     if (isClosing) return;
@@ -99,7 +102,7 @@ export default function ReviewModal({
         <div className="grid grid-cols-[40px_1fr_40px] items-center pb-4 border-b border-[var(--border-subtle)] mb-5">
           <div />
           <h3 className="text-base font-semibold text-center text-[var(--text-primary)] tracking-tight">
-            Session Feedback
+            {t('sessionFeedback')}
           </h3>
           <div className="flex justify-end">
             <button
@@ -117,16 +120,16 @@ export default function ReviewModal({
             <div className="w-14 h-14 rounded-full bg-[rgba(16,185,129,0.15)] flex items-center justify-center text-[var(--status-success)]">
               <CheckCircle2 size={32} />
             </div>
-            <h4 className="text-lg font-semibold text-[var(--text-primary)]">Thank You!</h4>
+            <h4 className="text-lg font-semibold text-[var(--text-primary)]">{t('thankYou')}</h4>
             <p className="text-sm text-[var(--text-secondary)] max-w-xs">
-              Your feedback on <strong className="text-[var(--text-primary)]">{winnerName}</strong> has been saved.
+              {t('feedbackSavedDesc').replace('{name}', winnerName || 'Consensus Option')}
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">
-                Consensus Winner
+                {t('consensusWinner')}
               </p>
               <p className="text-base font-bold text-[var(--text-primary)]">
                 {winnerName || 'Group Consensus Option'}
@@ -136,7 +139,7 @@ export default function ReviewModal({
             {/* Satisfaction Rating */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-[var(--text-secondary)]">
-                Overall Satisfaction
+                {t('overallSatisfaction')}
               </span>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -163,7 +166,7 @@ export default function ReviewModal({
             {/* Price Accuracy Rating */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-[var(--text-secondary)]">
-                Did the budget match your expectation?
+                {t('budgetMatchedQuestion')}
               </span>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -190,14 +193,14 @@ export default function ReviewModal({
             {/* Comment Area */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="review-comment" className="text-xs font-medium text-[var(--text-secondary)]">
-                Notes or Recommendations (Optional)
+                {t('notesOrRecommendations')}
               </label>
               <textarea
                 id="review-comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
-                placeholder="Atmosphere, food quality, or venue notes..."
+                placeholder={t('notesPlaceholder')}
                 className="w-full text-sm rounded-xl p-3 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-all resize-none"
               />
             </div>
@@ -210,7 +213,7 @@ export default function ReviewModal({
                 onClick={handleClose}
                 className="flex-1"
               >
-                Skip
+                {t('skip')}
               </Button>
               <Button
                 type="submit"
@@ -220,7 +223,7 @@ export default function ReviewModal({
                 icon={ThumbsUp}
                 className="flex-1"
               >
-                Submit Feedback
+                {t('submitFeedbackAction')}
               </Button>
             </div>
           </form>

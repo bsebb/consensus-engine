@@ -226,4 +226,53 @@ export const ru = {
   stageFilter: 'Исключаем закрытые места...',
   stageRouting: 'Расчёт реальных маршрутов...',
   stageDeck: 'Формирование карточек для голосования...',
+
+  // Connectivity & Actions
+  addPlace: 'Добавить место',
+  reconnecting: 'Переподключение к комнате...',
+
+  // Review Modal
+  sessionFeedback: 'Отзыв о сессии',
+  overallSatisfaction: 'Общая удовлетворенность',
+  budgetMatchedQuestion: 'Соответствовал ли бюджет ожиданиям?',
+  notesOrRecommendations: 'Заметки или рекомендации (необязательно)',
+  notesPlaceholder: 'Атмосфера, качество еды или заметки о месте...',
+  skip: 'Пропустить',
+  submitFeedbackAction: 'Отправить отзыв',
+  thankYou: 'Спасибо!',
+  feedbackSavedDesc: 'Ваш отзыв о {name} был сохранён.',
+
+  // Host Settings & Constraints
+  setupStages: 'Этапы интерактивной настройки',
+  consensusDomain: 'Область консенсуса',
+  decisionFormatContext: 'Формат и контекст решения',
+  localVenues: 'Местные заведения',
+  customTopics: 'Свои темы',
+  nextTarget: 'Далее: Цель',
+  nextConstraints: 'Далее: Ограничения',
+  nextQuorum: 'Далее: Кворум',
+  categorySelection: 'Выбор категории',
+  customTopic: 'Своя тема',
+  vibeSubjectMatter: 'Атмосфера или тематика',
+  radiusPriceCeiling: 'Радиус и потолок цен',
+  submissionLimits: 'Лимиты предложений',
+  searchRangeBoundaries: 'Диапазон поиска и границы',
+  groupQuorumLaunch: 'Кворум группы и запуск',
+  targetHeadcount: 'Целевое количество участников',
+  expectedHeadcount: 'Ожидаемые участники',
+  votingThreshold: 'Порог голосования',
+  launchRoomLobby: 'Запустить комнату и войти',
+  searchRadius: 'Радиус поиска',
+  targetPriceBracket: 'Ценовой диапазон',
+  votingDeckSize: 'Размер колоды для голосования',
+  searchOrigin: 'Точка поиска',
+  adaptiveGrid: 'Адаптивная сетка',
+  suggestionsPerVoter: 'Предложений на участника',
+  candidatePoolCapacity: 'Вместимость пула кандидатов',
+
+  // Winner View
+  winningGroupPick: 'Победивший выбор группы',
+  consensusChoice: 'Выбор консенсуса',
+  winningPollOption: 'Победивший вариант опроса',
 };
+

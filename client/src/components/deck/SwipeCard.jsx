@@ -125,14 +125,14 @@ export default function SwipeCard({
                     <span className="truncate">{topic || 'Custom Poll'}</span>
                   </span>
                   <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-bold text-white tabular-nums">
-                    {cardIndex} of {totalCards}
+                    {cardIndex} {t('ofWord')} {totalCards}
                   </span>
                 </div>
 
                 {/* Bottom Photo Overlay: Option Name */}
                 <div className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
-                    Option #{cardIndex}
+                    {t('option')} #{cardIndex}
                   </div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-2">
                     {activeCard?.name}
@@ -156,7 +156,7 @@ export default function SwipeCard({
                   <span className="truncate">{topic || 'Custom Poll'}</span>
                 </span>
                 <span className="px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] tabular-nums">
-                  {cardIndex} of {totalCards}
+                  {cardIndex} {t('ofWord')} {totalCards}
                 </span>
               </div>
 

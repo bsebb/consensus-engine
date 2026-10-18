@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { triggerHaptic } from '../../utils/haptics';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function HostCategoryPicker({
   mode,
@@ -11,6 +12,7 @@ export default function HostCategoryPicker({
   setTopic,
   advanceToStage,
 }) {
+  const { t } = useLanguage();
   return (
     <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3">
       {mode === 'DISCOVERY' ? (
@@ -66,7 +68,7 @@ export default function HostCategoryPicker({
             }}
             className="self-end py-1.5 px-3 rounded-xl bg-[var(--accent-bg)] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
           >
-            <span>Next: Constraints</span>
+            <span>{t('nextConstraints')}</span>
             <ArrowRight size={12} />
           </button>
         </div>

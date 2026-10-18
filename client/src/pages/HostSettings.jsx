@@ -37,6 +37,7 @@ export default function HostSettings() {
   const { participantId } = useSocket();
   const { addToast } = useToast();
   const { t } = useLanguage();
+  const userName = localStorage.getItem('consensus_user_name') || 'Host';
 
   // Settings Modal State
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -296,7 +297,7 @@ export default function HostSettings() {
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
             <Layers size={12} />
-            <span>Interactive Setup Stages</span>
+            <span>{t('setupStages')}</span>
           </span>
           <span className="text-[11px] font-mono font-bold text-[var(--accent-bg)]">
             {Math.round(progressPercent)}% Configured
@@ -316,14 +317,14 @@ export default function HostSettings() {
                 01
               </span>
               <div>
-                <h3 className="text-xs font-bold text-[var(--text-primary)]">Consensus Domain</h3>
-                <p className="text-[10px] text-[var(--text-secondary)]">Decision format & context</p>
+                <h3 className="text-xs font-bold text-[var(--text-primary)]">{t('consensusDomain')}</h3>
+                <p className="text-[10px] text-[var(--text-secondary)]">{t('decisionFormatContext')}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-lg bg-[var(--bg-inset)] text-[10px] font-mono font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                {mode === 'DISCOVERY' ? 'Local Venues' : 'Custom Topics'}
+                {mode === 'DISCOVERY' ? t('localVenues') : t('customTopics')}
               </span>
               <ChevronDown
                 size={16}
@@ -338,8 +339,8 @@ export default function HostSettings() {
             <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3">
               <SegmentedControl
                 options={[
-                  { value: 'DISCOVERY', label: 'Local Venues', icon: Compass },
-                  { value: 'CUSTOM', label: 'Custom Topics', icon: Layers },
+                  { value: 'DISCOVERY', label: t('localVenues'), icon: Compass },
+                  { value: 'CUSTOM', label: t('customTopics'), icon: Layers },
                 ]}
                 value={mode}
                 onChange={handleSelectMode}
@@ -350,7 +351,7 @@ export default function HostSettings() {
                 onClick={() => advanceToStage(2)}
                 className="self-end py-1.5 px-3 rounded-xl bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 text-[11px] font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center gap-1 cursor-pointer transition-colors"
               >
-                <span>Next: Target</span>
+                <span>{t('nextTarget')}</span>
                 <ArrowRight size={12} />
               </button>
             </div>
@@ -371,9 +372,9 @@ export default function HostSettings() {
               </span>
               <div>
                 <h3 className="text-xs font-bold text-[var(--text-primary)]">
-                  {mode === 'DISCOVERY' ? 'Category Selection' : 'Custom Topic'}
+                  {mode === 'DISCOVERY' ? t('categorySelection') : t('customTopic')}
                 </h3>
-                <p className="text-[10px] text-[var(--text-secondary)]">Vibe or subject matter</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">{t('vibeSubjectMatter')}</p>
               </div>
             </div>
 
@@ -417,9 +418,9 @@ export default function HostSettings() {
               </span>
               <div>
                 <h3 className="text-xs font-bold text-[var(--text-primary)]">
-                  {mode === 'DISCOVERY' ? 'Radius & Price Ceiling' : 'Submission Limits'}
+                  {mode === 'DISCOVERY' ? t('radiusPriceCeiling') : t('submissionLimits')}
                 </h3>
-                <p className="text-[10px] text-[var(--text-secondary)]">Search range & boundaries</p>
+                <p className="text-[10px] text-[var(--text-secondary)]">{t('searchRangeBoundaries')}</p>
               </div>
             </div>
 
@@ -470,14 +471,14 @@ export default function HostSettings() {
                 04
               </span>
               <div>
-                <h3 className="text-xs font-bold text-[var(--text-primary)]">Group Quorum & Launch</h3>
-                <p className="text-[10px] text-[var(--text-secondary)]">Target participant headcount</p>
+                <h3 className="text-xs font-bold text-[var(--text-primary)]">{t('groupQuorumLaunch')}</h3>
+                <p className="text-[10px] text-[var(--text-secondary)]">{t('targetHeadcount')}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-lg bg-[var(--bg-inset)] text-[10px] font-mono font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                {groupSize} Voters
+                {groupSize} {t('historyVoters')}
               </span>
               <ChevronDown
                 size={16}
@@ -496,8 +497,8 @@ export default function HostSettings() {
                     <Users size={16} />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">Expected Headcount</span>
-                    <span className="text-[10px] text-[var(--text-secondary)]">Voting threshold</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">{t('expectedHeadcount')}</span>
+                    <span className="text-[10px] text-[var(--text-secondary)]">{t('votingThreshold')}</span>
                   </div>
                 </div>
 
@@ -534,7 +535,7 @@ export default function HostSettings() {
                 icon={ArrowRight}
                 className="w-full h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
               >
-                Launch Room & Enter Lobby
+                {t('launchRoomLobby')}
               </Button>
             </div>
           </div>
@@ -552,7 +553,7 @@ export default function HostSettings() {
               icon={ArrowRight}
               className="w-full h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
             >
-              Launch Room & Enter Lobby
+              {t('launchRoomLobby')}
             </Button>
           </div>
         )}

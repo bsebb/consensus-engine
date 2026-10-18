@@ -140,7 +140,7 @@ export default function ConsensusWinnerView({
               {/* Floating Winner Badges */}
               <div className="absolute top-4 inset-x-4 flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
-                  Winning Group Pick
+                  {t('winningGroupPick')}
                 </span>
                 {topic && (
                   <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate max-w-[180px]">
@@ -152,7 +152,7 @@ export default function ConsensusWinnerView({
               {/* Title overlay */}
               <div className="absolute bottom-4 inset-x-4 text-left">
                 <span className="text-xs font-semibold text-amber-300">
-                  Consensus Choice
+                  {t('consensusChoice')}
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
                   {winner?.name}
@@ -164,7 +164,7 @@ export default function ConsensusWinnerView({
             <div className="p-6 pb-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-2.5">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
-                  Winning Poll Option
+                  {t('winningPollOption')}
                 </span>
                 {topic && (
                   <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[180px]">

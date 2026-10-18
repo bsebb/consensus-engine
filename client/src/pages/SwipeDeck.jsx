@@ -309,7 +309,9 @@ export default function SwipeDeck() {
     myVotes,
     currentIndex, showWinner, locationState: location.state,
     setCards, setVotesReceived, setQuorumTotal, setServerWinner,
-    setServerMatchScore, setServerPairwise, setShowWinner, emit, on, off,
+    setServerMatchScore, setServerPairwise, setShowWinner,
+    onAlreadyVoted: () => setCurrentIndex(cards.length),
+    emit, on, off,
   });
 
   const handleHostForceReveal = () => {
@@ -402,10 +404,13 @@ export default function SwipeDeck() {
           participantsCount: totalParticipants,
           priceLevel: consensusResult.winner.price_level || 2,
         };
-        if (!history.some((h) => h.pin === pin)) {
+        const existingIdx = history.findIndex((h) => h.pin === pin);
+        if (existingIdx !== -1) {
+          history[existingIdx] = entry;
+        } else {
           history.unshift(entry);
-          localStorage.setItem('consensus_history', JSON.stringify(history.slice(0, 30)));
         }
+        localStorage.setItem('consensus_history', JSON.stringify(history.slice(0, 30)));
       } catch (err) {
         console.warn('[SwipeDeck] Local history save error:', err);
       }
@@ -482,6 +487,14 @@ export default function SwipeDeck() {
             <ThemeToggle />
           </div>
         </div>
+
+        {/* Reconnection notification */}
+        {!isConnected && (
+          <div className="bg-amber-500/15 border border-amber-500/25 rounded-xl px-3 py-1 text-center flex items-center justify-center gap-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-2 max-w-md mx-auto">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+            <span>{t('reconnecting')}</span>
+          </div>
+        )}
 
         {/* Flush Hairline Progress Edge */}
         {!showWinner && currentIndex < cards.length && (

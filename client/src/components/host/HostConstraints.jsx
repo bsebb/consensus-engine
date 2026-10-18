@@ -2,6 +2,7 @@ import React from 'react';
 import { MapPin, Navigation, Minus, Plus, ArrowRight } from 'lucide-react';
 import RangeSlider from '../ui/RangeSlider';
 import SegmentedControl from '../ui/SegmentedControl';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function HostConstraints({
   mode,
@@ -20,6 +21,8 @@ export default function HostConstraints({
   deckSize = 6,
   setDeckSize,
 }) {
+  const { t } = useLanguage();
+
   return (
     <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3.5">
       {mode === 'DISCOVERY' ? (
@@ -27,7 +30,7 @@ export default function HostConstraints({
           {/* Radius Slider with Quick Presets */}
           <div className="flex flex-col gap-2 pt-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[var(--text-secondary)]">Search Radius</span>
+              <span className="text-[11px] font-bold text-[var(--text-secondary)]">{t('searchRadius')}</span>
               <span className="font-mono text-xs font-extrabold text-[var(--accent-bg)]">
                 {radiusKm.toFixed(1)} km
               </span>
@@ -49,7 +52,7 @@ export default function HostConstraints({
               step={0.5}
               value={radiusKm}
               onChange={setRadiusKm}
-              label="Maximum Distance"
+              label={t('searchRadius')}
               valueDisplay={`${radiusKm.toFixed(1)} km`}
             />
           </div>
@@ -57,7 +60,7 @@ export default function HostConstraints({
           {/* Price Tier Segmented Pills */}
           <div className="flex flex-col gap-1.5 pt-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[var(--text-secondary)]">Target Price Bracket</span>
+              <span className="text-[11px] font-bold text-[var(--text-secondary)]">{t('targetPriceBracket')}</span>
               <span className="font-mono text-xs font-extrabold text-[var(--accent-bg)]">
                 {priceTiers.find((p) => p.value === priceTier)?.desc}
               </span>
@@ -79,9 +82,9 @@ export default function HostConstraints({
           {/* Voting Deck Size Selector */}
           <div className="flex flex-col gap-1.5 pt-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[var(--text-secondary)]">Voting Deck Size</span>
+              <span className="text-[11px] font-bold text-[var(--text-secondary)]">{t('votingDeckSize')}</span>
               <span className="font-mono text-xs font-extrabold text-[var(--accent-bg)]">
-                {deckSize} Places
+                {deckSize} {t('placesSuffix')}
               </span>
             </div>
 
@@ -104,7 +107,7 @@ export default function HostConstraints({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <MapPin size={14} className="text-[var(--accent-bg)]" />
-                <span className="text-[11px] font-bold text-[var(--text-primary)]">Search Origin</span>
+                <span className="text-[11px] font-bold text-[var(--text-primary)]">{t('searchOrigin')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
@@ -141,7 +144,7 @@ export default function HostConstraints({
               </span>
               <span className="font-bold text-[var(--accent-bg)] flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Adaptive Grid
+                {t('adaptiveGrid')}
               </span>
             </div>
 
@@ -153,8 +156,8 @@ export default function HostConstraints({
       ) : (
         <div className="flex items-center justify-between bg-[var(--bg-inset)] p-3 rounded-xl border border-[var(--border-subtle)] pt-1">
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-[var(--text-primary)]">Suggestions per Voter</span>
-            <span className="text-[10px] text-[var(--text-secondary)]">Candidate pool capacity</span>
+            <span className="text-xs font-bold text-[var(--text-primary)]">{t('suggestionsPerVoter')}</span>
+            <span className="text-[10px] text-[var(--text-secondary)]">{t('candidatePoolCapacity')}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -186,7 +189,7 @@ export default function HostConstraints({
         onClick={() => advanceToStage(4)}
         className="self-end py-1.5 px-3 rounded-xl bg-[var(--accent-bg)] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
       >
-        <span>Next: Quorum</span>
+        <span>{t('nextQuorum')}</span>
         <ArrowRight size={12} />
       </button>
     </div>
