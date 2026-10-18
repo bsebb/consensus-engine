@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MapPin, Navigation, Plus, Minus, RotateCcw } from 'lucide-react';
+import { MapPin, Plus, Minus, RotateCcw } from 'lucide-react';
 
 function latLngToTile(lat, lng, zoom) {
   const n = Math.pow(2, zoom);
@@ -136,7 +136,6 @@ export default function CleanStreetMiniMap({
     return { tiles: tileList, pinPosition: { left: pinLeft, top: pinTop } };
   }, [latNum, lngNum, zoom, panOffset, dimensions]);
 
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latNum},${lngNum}`;
   const isPanned = Math.abs(panOffset.x) > 10 || Math.abs(panOffset.y) > 10;
 
   return (
@@ -226,17 +225,6 @@ export default function CleanStreetMiniMap({
           </button>
         )}
       </div>
-
-      {/* Floating Directions Shortcut Pill */}
-      <a
-        href={mapsUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute bottom-2 left-2 z-20 pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md text-white text-[10px] font-bold border border-white/20 shadow-xs hover:bg-black/90 transition-colors cursor-pointer"
-      >
-        <Navigation size={10} className="text-[var(--accent-bg)]" />
-        <span>Open in Maps</span>
-      </a>
 
       {/* Clean Unobtrusive Attribution Floor (Strictly >= 10px typography) */}
       <div className="absolute bottom-1 right-1.5 z-10 pointer-events-none px-1.5 py-0.5 rounded bg-black/55 backdrop-blur-xs text-[10px] text-white/70 font-sans">

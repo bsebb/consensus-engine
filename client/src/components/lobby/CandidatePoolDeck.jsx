@@ -89,11 +89,11 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
 }
 
 function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectDetails }) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
   const vibeSubtitle = getVenueVibe(item.name, item.category);
   const venueRating = getVenueRating(item.name, item.category);
-  const travelText = formatTravelSummary(item);
+  const travelText = formatTravelSummary(item, lang);
 
   if (item.isCustom) {
     return (

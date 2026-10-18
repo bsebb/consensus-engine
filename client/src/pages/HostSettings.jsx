@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
+import { useLanguage } from '../context/LanguageContext';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -35,6 +36,7 @@ export default function HostSettings() {
   const navigate = useNavigate();
   const { participantId } = useSocket();
   const { addToast } = useToast();
+  const { t } = useLanguage();
 
   // Settings Modal State
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -255,14 +257,14 @@ export default function HostSettings() {
             type="button"
             onClick={() => navigate('/')}
             className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
-            aria-label="Back to Join"
+            aria-label={t('back')}
           >
             <ArrowLeft size={15} />
-            <span>Back</span>
+            <span>{t('back')}</span>
           </button>
 
           <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-            Create Room
+            {t('createRoomBtn')}
           </h1>
 
           <div className="flex items-center gap-2">
@@ -270,8 +272,8 @@ export default function HostSettings() {
               type="button"
               onClick={() => setSettingsOpen(true)}
               className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-              aria-label="Open Settings"
-              title="Preferences"
+              aria-label={t('prefTitle')}
+              title={t('prefTitle')}
             >
               <Settings size={16} />
             </button>

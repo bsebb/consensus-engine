@@ -30,7 +30,7 @@ export default function SwipeDeck() {
   const navigate = useNavigate();
   const { isConnected, participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
 
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
@@ -429,7 +429,7 @@ export default function SwipeDeck() {
   const cardPriceDesc = activeCard
     ? (activeCard.price_level === 1 ? '$ • ~110 MDL' : activeCard.price_level === 3 ? '$$$ • ~350 MDL' : activeCard.price_level === 4 ? '$$$$ • ~600 MDL' : '$$ • ~180 MDL')
     : '$$ • ~180 MDL';
-  const cardWalkDesc = activeCard ? formatTravelSummary(activeCard) : 'Local Spot';
+  const cardWalkDesc = activeCard ? formatTravelSummary(activeCard, lang) : (lang === 'ro' ? 'Locație în apropiere' : lang === 'ru' ? 'Место поблизости' : 'Local Spot');
 
   const mapsDirUrl = consensusResult.winner
     ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(

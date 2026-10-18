@@ -21,9 +21,11 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function History() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [expandedPin, setExpandedPin] = useState(null);
@@ -204,14 +206,14 @@ export default function History() {
             type="button"
             onClick={() => navigate('/')}
             className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
-            aria-label="Back to Home"
+            aria-label={t('back')}
           >
             <ArrowLeft size={16} />
-            <span>Back</span>
+            <span>{t('back')}</span>
           </button>
 
           <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-            Decision Ledger
+            {t('history')}
           </h1>
 
           <div className="flex items-center gap-1.5">
@@ -219,8 +221,8 @@ export default function History() {
               type="button"
               onClick={() => setSettingsOpen(true)}
               className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-              aria-label="Open Settings"
-              title="Preferences"
+              aria-label={t('prefTitle')}
+              title={t('prefTitle')}
             >
               <Settings size={16} />
             </button>
@@ -234,10 +236,10 @@ export default function History() {
         <div className="flex items-center justify-between px-1">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-              Historical Agreements
+              {t('history')}
             </span>
             <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
-              Resolved Sessions ({sessions.length})
+              {t('history')} ({sessions.length})
             </h2>
           </div>
 
@@ -246,10 +248,10 @@ export default function History() {
               type="button"
               onClick={handleClearHistory}
               className="text-xs text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors flex items-center gap-1.5 p-1.5 rounded-md min-h-[36px] cursor-pointer"
-              title="Clear History"
+              title={t('clearHistoryBtn')}
             >
               <Trash2 size={13} />
-              <span>Clear</span>
+              <span>{t('clearHistoryBtn')}</span>
             </button>
           )}
         </div>

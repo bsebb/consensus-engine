@@ -42,7 +42,7 @@ export default function ConsensusWinnerView({
   emit,
 }) {
   const { addToast } = useToast();
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const isCustomWinner = Boolean(mode === 'CUSTOM' || winner?.isCustom);
 
   const { primaryPhoto, isRealPhoto, fallbackPhoto } = useVenuePhotos(
@@ -65,7 +65,7 @@ export default function ConsensusWinnerView({
 
   const winnerVibe = getVenueVibe(winner?.name, winner?.category);
   const winnerRating = getVenueRating(winner?.name, winner?.category);
-  const travelSummary = formatTravelSummary(winner);
+  const travelSummary = formatTravelSummary(winner, lang);
 
   const handleSelectSatisfaction = (score) => {
     setSatisfactionScore(score);
@@ -208,14 +208,14 @@ export default function ConsensusWinnerView({
             <div className="absolute bottom-4 inset-x-4 text-left flex items-end justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <span className="text-xs font-semibold text-amber-300">
-                  {isRealPhoto ? `${winnerVibe} • Real Venue Photo` : winnerVibe}
+                  {isRealPhoto ? `${winnerVibe} • ${t('realVenuePhoto')}` : winnerVibe}
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
                   {winner?.name}
                 </h2>
                 <div className="flex items-center gap-1.5 text-xs text-zinc-200 mt-1">
                   <MapPin size={13} className="text-amber-400 shrink-0" />
-                  <span className="truncate">{winner?.address || 'Local Spot'}</span>
+                  <span className="truncate">{winner?.address || t('localVenue')}</span>
                 </div>
               </div>
 
@@ -236,15 +236,15 @@ export default function ConsensusWinnerView({
             /* Custom Poll Metrics Row (Group Match + Condorcet Status only) */
             <div className="grid grid-cols-2 gap-2.5 w-full">
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Group Match</span>
+                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('groupMatch')}</span>
                 <span className="text-lg font-black text-emerald-500 tabular-nums">
                   {matchScore}%
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Voting Result</span>
+                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('votingResult')}</span>
                 <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">
-                  Condorcet Winner
+                  {t('condorcetWinner')}
                 </span>
               </div>
             </div>
@@ -253,14 +253,14 @@ export default function ConsensusWinnerView({
               {/* Metrics Row: Match %, Price Tier, Road Distance & Travel Time */}
               <div className="grid grid-cols-3 gap-2 w-full">
                 <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Group Match</span>
+                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('groupMatch')}</span>
                   <span className="text-base font-black text-emerald-500 tabular-nums">
                     {matchScore}%
                   </span>
                 </div>
 
                 <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Price Tier</span>
+                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('priceTierLabel')}</span>
                   <span className="text-base font-bold text-[var(--text-primary)]">
                     {'$'.repeat(winner?.price_level || 2)}
                   </span>
@@ -273,7 +273,7 @@ export default function ConsensusWinnerView({
                 >
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)] flex items-center gap-1">
                     <Route size={10} className="text-[var(--accent-bg)]" />
-                    <span>Road Route</span>
+                    <span>{t('roadRoute')}</span>
                   </span>
                   <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[100px] tabular-nums mt-0.5">
                     {travelSummary}
@@ -290,7 +290,7 @@ export default function ConsensusWinnerView({
                   className="py-3 px-3 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-[0_6px_20px_var(--accent-glow)] cursor-pointer"
                 >
                   <Navigation size={14} />
-                  <span>Road Directions</span>
+                  <span>{t('roadDirections')}</span>
                   <ExternalLink size={12} className="opacity-80" />
                 </a>
 
@@ -300,7 +300,7 @@ export default function ConsensusWinnerView({
                   className="py-3 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] flex items-center justify-center gap-1.5 text-xs font-bold transition-colors cursor-pointer"
                 >
                   <MapPin size={14} className="text-[var(--accent-bg)]" />
-                  <span>Photos & Route Map</span>
+                  <span>{t('photosAndMap')}</span>
                 </button>
               </div>
             </>
@@ -320,10 +320,10 @@ export default function ConsensusWinnerView({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-[var(--text-primary)]">
-                    How Your Group Voted
+                    {t('howGroupVoted')}
                   </span>
                   <span className="text-[11px] text-[var(--text-tertiary)]">
-                    Pairwise Condorcet head-to-head results
+                    {t('headToHeadResults')}
                   </span>
                 </div>
               </div>
@@ -338,7 +338,7 @@ export default function ConsensusWinnerView({
               <div className="p-3 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 pt-2">
                   <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
-                  <span>Highest group approval (0 vetoes)</span>
+                  <span>{t('highestApproval')}</span>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -348,7 +348,7 @@ export default function ConsensusWinnerView({
                       className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
                     >
                       <span className="font-medium text-[var(--text-primary)]">
-                        Preferred over {item.opponent}
+                        {t('preferredOver')} {item.opponent}
                       </span>
                       <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums">
                         {item.score}
@@ -372,14 +372,16 @@ export default function ConsensusWinnerView({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black uppercase tracking-wider text-[var(--accent-bg)]">
-                  Community Data Collection
+                  {t('communityDataTitle')}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  Quick Rating
+                  {t('quickRating')}
                 </span>
               </div>
               <h3 className="text-sm font-black text-[var(--text-primary)] mt-0.5">
-                {isCustomWinner ? `Rate "${winner?.name}"` : `Rate ${winner?.name} & Share Feedback`}
+                {isCustomWinner
+                  ? `${t('rateSpotTitle').split('&')[0].trim().replace('{name}', `"${winner?.name || ''}"`)}`
+                  : t('rateSpotTitle').replace('{name}', winner?.name || '')}
               </h3>
             </div>
           </div>
@@ -387,8 +389,8 @@ export default function ConsensusWinnerView({
 
         <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
           {isCustomWinner
-            ? 'Help us understand how well this pick worked for your group.'
-            : 'Your feedback helps ensure local budget tiers and venue recommendations stay accurate.'}
+            ? t('customFeedbackDesc')
+            : t('rateSpotDesc')}
         </p>
 
         {telemetrySubmitted ? (
@@ -398,11 +400,11 @@ export default function ConsensusWinnerView({
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   {isCustomWinner
-                    ? `Feedback Recorded (${satisfactionScore || 5}/5 Group Match)`
-                    : `Rating Saved (${satisfactionScore || 5}/5 Match • ${priceAccuracyScore || 5}/5 Price)`}
+                    ? `${t('feedbackSaved')} (${satisfactionScore || 5}/5)`
+                    : `${t('feedbackSaved')} (${satisfactionScore || 5}/5 • ${priceAccuracyScore || 5}/5)`}
                 </span>
                 <span className="text-[11px] text-[var(--text-secondary)]">
-                  Thank you for sharing your feedback!
+                  {t('thanksFeedback')}
                 </span>
               </div>
             </div>
@@ -411,7 +413,7 @@ export default function ConsensusWinnerView({
               onClick={() => setIsReviewOpen(true)}
               className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] cursor-pointer"
             >
-              Add Note
+              {t('fullForm')}
             </button>
           </div>
         ) : (
@@ -420,10 +422,10 @@ export default function ConsensusWinnerView({
             <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-[var(--text-primary)]">
-                  {isCustomWinner ? 'Group Decision Satisfaction' : '1. Group Pick Satisfaction'}
+                  {isCustomWinner ? t('groupPickSatisfaction') : `1. ${t('groupPickSatisfaction')}`}
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)]">
-                  {isCustomWinner ? 'Are you happy with this winning option?' : 'Does this spot fit your group?'}
+                  {isCustomWinner ? t('customFeedbackDesc') : t('fitsGroupQuestion')}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -449,10 +451,10 @@ export default function ConsensusWinnerView({
               <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-[var(--text-primary)]">
-                    2. Price Tier Accuracy ({'$'.repeat(winner?.price_level || 2)})
+                    2. {t('priceAccuracy')} ({'$'.repeat(winner?.price_level || 2)})
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)]">
-                    Is the estimated MDL spend accurate?
+                    {t('spendAccurateQuestion')}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -485,10 +487,10 @@ export default function ConsensusWinnerView({
                 <Send size={14} />
                 <span>
                   {isSubmittingTelemetry
-                    ? 'Saving Feedback...'
+                    ? t('savingFeedback')
                     : satisfactionScore > 0
-                    ? 'Submit Feedback & Complete'
-                    : 'Quick-Submit 5/5 Feedback'}
+                    ? t('submitFeedback')
+                    : t('quickSubmit5')}
                 </span>
               </button>
 
@@ -499,7 +501,7 @@ export default function ConsensusWinnerView({
                 title="Open Detailed Feedback Form"
               >
                 <MessageSquarePlus size={15} />
-                <span>Full Form</span>
+                <span>{t('fullForm')}</span>
               </button>
             </div>
           </div>

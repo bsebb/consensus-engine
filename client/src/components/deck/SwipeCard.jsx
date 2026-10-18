@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info, Layers } from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function SwipeCard({
   mode,
@@ -22,6 +23,7 @@ export default function SwipeCard({
   cardWalkDesc,
   onOpenDetails,
 }) {
+  const { t } = useLanguage();
   const isCustomCard = Boolean(mode === 'CUSTOM' || activeCard?.isCustom);
   const { photo: customPhoto } = useCustomOptionPhoto(isCustomCard ? activeCard?.name : '', topic, activeCard?.photo_url);
 
@@ -80,7 +82,7 @@ export default function SwipeCard({
             className="absolute top-6 right-6 px-4 py-1.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/80 text-emerald-400 font-bold text-sm tracking-wide -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-lg"
           >
             <ThumbsUp size={16} strokeWidth={2.5} />
-            <span>Like</span>
+            <span>{t('likeAction')}</span>
           </div>
         )}
         {dragOffset.x < -30 && (
@@ -89,7 +91,7 @@ export default function SwipeCard({
             className="absolute top-6 left-6 px-4 py-1.5 rounded-2xl border-2 border-rose-500 bg-rose-950/80 text-rose-400 font-bold text-sm tracking-wide rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-lg"
           >
             <ThumbsDown size={16} strokeWidth={2.5} />
-            <span>Pass</span>
+            <span>{t('passAction')}</span>
           </div>
         )}
         {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
@@ -98,7 +100,7 @@ export default function SwipeCard({
             className="absolute inset-x-12 top-7 py-2 rounded-2xl border-2 border-amber-500 bg-amber-950/85 text-amber-300 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-lg"
           >
             <Flame size={16} strokeWidth={2.5} />
-            <span>Veto Option</span>
+            <span>{t('vetoAction')}</span>
           </div>
         )}
 
@@ -140,9 +142,9 @@ export default function SwipeCard({
 
               {/* Action Instruction Footer */}
               <div className="px-4 py-3 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-center gap-4 text-xs font-medium text-[var(--text-tertiary)] shrink-0">
-                <span>Swipe right to approve</span>
+                <span>{t('swipeRightApprove')}</span>
                 <span>•</span>
-                <span>Swipe left to decline</span>
+                <span>{t('swipeLeftDecline')}</span>
               </div>
             </>
           ) : (
@@ -168,9 +170,9 @@ export default function SwipeCard({
               </div>
 
               <div className="pt-3 border-t border-[var(--border-subtle)] text-xs font-medium text-[var(--text-tertiary)] flex items-center justify-center gap-4">
-                <span>Swipe right to approve</span>
+                <span>{t('swipeRightApprove')}</span>
                 <span>•</span>
-                <span>Swipe left to decline</span>
+                <span>{t('swipeLeftDecline')}</span>
               </div>
             </div>
           )
@@ -260,7 +262,7 @@ export default function SwipeCard({
                   className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-colors cursor-pointer"
                 >
                   <Info size={13} className="text-[var(--text-secondary)]" />
-                  <span>Details</span>
+                  <span>{t('details')}</span>
                 </button>
               )}
             </div>

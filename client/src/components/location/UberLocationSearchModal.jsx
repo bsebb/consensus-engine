@@ -89,7 +89,7 @@ export default function UberLocationSearchModal({
       aria-label="Location Search"
     >
       <div
-        className="w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-main)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-[modalSpring_0.3s_var(--spring-smooth)]"
+        className="w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-main)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-[modalSpring_0.3s_var(--spring-smooth)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Search Input */}

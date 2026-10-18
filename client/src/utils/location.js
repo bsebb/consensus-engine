@@ -321,17 +321,23 @@ export async function fetchRoadRouteMetrics(userLat, userLng, venues = []) {
 /**
  * Formats road distance and walking/driving time into a clear human-friendly string.
  */
-export function formatTravelSummary(item) {
-  if (!item) return 'Local Venue';
+export function formatTravelSummary(item, lang = 'en') {
+  if (!item) {
+    return lang === 'ro' ? 'Locație în apropiere' : lang === 'ru' ? 'Место поблизости' : 'Local Spot';
+  }
   const dist = item.distance_km;
   if (dist == null) {
-    return item.address ? item.address.split(',')[0] : 'Local Area';
+    return item.address ? item.address.split(',')[0] : (lang === 'ro' ? 'Zonă centrală' : lang === 'ru' ? 'В центре' : 'Local Area');
   }
   const walkMin = item.walk_minutes || Math.max(2, Math.round(dist * 12.5));
   const driveMin = item.drive_minutes || Math.max(2, Math.round(dist * 2.2));
   if (dist <= 1.5) {
+    if (lang === 'ro') return `${dist} km • ~${walkMin} min pe jos`;
+    if (lang === 'ru') return `${dist} км • ~${walkMin} мин пешком`;
     return `${dist} km • ~${walkMin} min walk`;
   }
+  if (lang === 'ro') return `${dist} km • ~${driveMin} min cu mașina`;
+  if (lang === 'ru') return `${dist} км • ~${driveMin} мин на авто`;
   return `${dist} km • ~${driveMin} min drive`;
 }
 

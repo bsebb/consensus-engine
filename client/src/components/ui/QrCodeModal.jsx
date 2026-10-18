@@ -72,7 +72,7 @@ export default function QrCodeModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="qr-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
