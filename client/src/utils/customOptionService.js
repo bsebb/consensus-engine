@@ -36,6 +36,18 @@ export const KNOWN_CUSTOM_POSTERS = {
   'apex legends': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1172470/header.jpg',
   'fighting games': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1778820/header.jpg',
   'tekken': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1778820/header.jpg',
+  'path of exile 2': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2694490/header.jpg',
+  'path of exile': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/238960/header.jpg',
+  'poe 2': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2694490/header.jpg',
+  'poe': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/238960/header.jpg',
+  'witcher 3': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/header.jpg',
+  'the witcher 3': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292030/header.jpg',
+  'hades 2': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145350/header.jpg',
+  'hades ii': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145350/header.jpg',
+  'black myth: wukong': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg',
+  'wukong': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2358720/header.jpg',
+  'diablo 4': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2344520/header.jpg',
+  'diablo iv': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2344520/header.jpg',
 
   // Board Games & Tabletop
   'poker': 'https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=800&auto=format&fit=crop&q=80',
@@ -117,6 +129,13 @@ function savePersistentPoster(name, url) {
   } catch {}
 }
 
+export function cacheOptionPoster(name, url) {
+  if (!name || !url) return;
+  const clean = String(name).toLowerCase().trim();
+  posterMemoryCache.set(clean, url);
+  savePersistentPoster(name, url);
+}
+
 /**
  * Automatically detects the most relevant Idea Library tab based on the room's custom topic.
  * E.g. "What game are we playing?", "what are we playin tonight" -> 'gaming'
@@ -125,7 +144,7 @@ export function inferLibraryTabFromTopic(topic = '') {
   const norm = String(topic || '').toLowerCase();
 
   // Gaming: covers "play", "playing", "playin", "playin'", "games", "gaming", "gamer", video games, steam, consoles, etc.
-  if (/\b(gam(e|es|ing|ers?)|play(ing|in|s|ed)?|steam|ps[45]|playstation|xbox|nintendo|switch|lan|esports?|co-?op|multiplayer|boardgames?|videogames?|rpg|fps|mmo)\b/i.test(norm)) {
+  if (/\b(gam(e|es|ing|ers?)|play(ing|in|s|ed)?|steam|ps[45]|playstation|xbox|nintendo|switch|lan|esports?|co-?op|multiplayer|boardgames?|videogames?|rpg|arpg|fps|mmo|poe|exile|witcher|hades|diablo|wukong|kart|smash|zelda|pokemon)\b/i.test(norm)) {
     return 'gaming';
   }
 
@@ -253,18 +272,12 @@ export function useCustomOptionPhoto(name = '', topic = '', initialUrl = null) {
     }
 
     let isMounted = true;
-    const isGamingTopic = inferLibraryTabFromTopic(topic) === 'gaming' || inferLibraryTabFromTopic(name) === 'gaming';
-
-    if (isGamingTopic) {
-      fetchDynamicGamePoster(name).then((url) => {
-        if (isMounted) {
-          if (url) setPhoto(url);
-          setHasResolved(true);
-        }
-      });
-    } else {
-      setHasResolved(true);
-    }
+    fetchDynamicGamePoster(name).then((url) => {
+      if (isMounted) {
+        if (url) setPhoto(url);
+        setHasResolved(true);
+      }
+    });
 
     return () => {
       isMounted = false;

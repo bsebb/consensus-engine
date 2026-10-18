@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
 const { resolveGamePoster } = require('./src/utils/gamePosterService');
+const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteService');
 const roomRoutes = require('./routes/roomRoutes');
 //Lilia: access the shared Socket.io instance from other server modules
 const { setIO } = require('./src/utils/socket');
@@ -84,6 +85,23 @@ app.get('/api/v1/options/game-poster', async (req, res) => {
     });
   } catch {
     return res.json({ success: false, poster_url: null });
+  }
+});
+
+// Multi-domain live autocomplete query (Steam games, movies, activities)
+app.get('/api/v1/options/autocomplete', async (req, res) => {
+  try {
+    const suggestions = await searchCustomAutocomplete({
+      query: req.query.query,
+      topic: req.query.topic,
+    });
+    res.set('Cache-Control', 'public, max-age=600');
+    return res.json({
+      success: true,
+      suggestions: Array.isArray(suggestions) ? suggestions : [],
+    });
+  } catch {
+    return res.json({ success: false, suggestions: [] });
   }
 });
 
