@@ -81,11 +81,18 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
   const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
 
   try {
-    let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&radius=${radius}&limit=12&fields=fsq_id,name,price`;
-    if (latitude && longitude) {
-      url += `&ll=${latitude},${longitude}`;
-    } else {
+    let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&limit=12`;
+
+    // Foursquare API requirement: 'radius' must be paired with 'll' coordinates, never directly with 'near'
+    const lat = latitude || (near && near.toLowerCase().includes('chisinau') ? 47.0105 : null);
+    const lng = longitude || (near && near.toLowerCase().includes('chisinau') ? 28.8638 : null);
+
+    if (lat && lng) {
+      url += `&ll=${lat},${lng}&radius=${radius || 5000}`;
+    } else if (near) {
       url += `&near=${encodeURIComponent(near)}`;
+    } else {
+      url += `&ll=47.0105,28.8638&radius=5000`;
     }
 
     const headers = {
@@ -118,13 +125,16 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     const data = await response.json();
 
     if (data.results && data.results.length > 0) {
-      const results = data.results.map((place) => ({
-        name: place.name,
-        fsq_id: place.fsq_id,
-        fsq_place_id: place.fsq_id,
-        priceLevel: place.price || null,
-        priceLabel: formatPriceLabel(place.price),
-      }));
+      const results = data.results.map((place) => {
+        const id = place.fsq_place_id || place.fsq_id || place.id;
+        return {
+          name: place.name,
+          fsq_id: id,
+          fsq_place_id: id,
+          priceLevel: place.price || null,
+          priceLabel: formatPriceLabel(place.price),
+        };
+      });
 
       queryCache.set(cacheKey, { data: results, timestamp: Date.now() });
       return results;
