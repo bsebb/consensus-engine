@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star, Info, Check, Layers } from 'lucide-react';
-import Button from '../ui/Button';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
+import CustomOptionAutocomplete from './CustomOptionAutocomplete';
 import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { inferLibraryTabFromTopic, useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
@@ -239,30 +239,20 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Add Option Input */}
+      {/* Add Option Input with Multi-Domain Autocomplete */}
       {(mode === 'CUSTOM' || showAddInput) && (
         <div className="flex flex-col gap-2.5 pt-0.5 pb-1">
-          <form onSubmit={handleAddSuggestion} className="flex gap-2">
-            <input
-              type="text"
-              id="lobby-custom-suggestion"
-              aria-label="New candidate suggestion"
-              value={suggestion}
-              onChange={(e) => setSuggestion(e.target.value)}
-              placeholder={mode === 'CUSTOM' ? 'Type your own idea (e.g. Bowling, Movie Night, Poker)...' : 'Add a custom option...'}
-              className="flex-1 text-xs rounded-xl px-3.5 py-2.5 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
-            />
-            <Button type="submit" variant="primary" size="sm" icon={Plus}>
-              Add
-            </Button>
-          </form>
-
-          {duplicateMatch && (
-            <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg">
-              <AlertTriangle size={14} />
-              <span>Already on the table: "{duplicateMatch}"</span>
-            </div>
-          )}
+          <CustomOptionAutocomplete
+            suggestion={suggestion}
+            setSuggestion={setSuggestion}
+            handleAddSuggestion={handleAddSuggestion}
+            handleQuickAddSuggestion={handleQuickAddSuggestion}
+            topic={topic}
+            existingNames={candidates.map((c) => c.name)}
+            duplicateMatch={duplicateMatch}
+            mode={mode}
+            disabled={displayedCandidates.length >= 8}
+          />
 
           {/* Quick-Add Idea Library for Custom Polls */}
           {mode === 'CUSTOM' && handleQuickAddSuggestion && (

@@ -56,6 +56,22 @@ export const KNOWN_CUSTOM_POSTERS = {
   'darts': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format&fit=crop&q=80',
   'night drive': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=80',
 
+  // Sports & Fitness
+  'football': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&auto=format&fit=crop&q=80',
+  'soccer': 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&auto=format&fit=crop&q=80',
+  'basketball': 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&auto=format&fit=crop&q=80',
+  'tennis': 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800&auto=format&fit=crop&q=80',
+  'padel': 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?w=800&auto=format&fit=crop&q=80',
+  'bouldering': 'https://images.unsplash.com/photo-1522163182402-834f871fd851?w=800&auto=format&fit=crop&q=80',
+  'climbing': 'https://images.unsplash.com/photo-1522163182402-834f871fd851?w=800&auto=format&fit=crop&q=80',
+  'volleyball': 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800&auto=format&fit=crop&q=80',
+  'karting': 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80',
+  'go-kart': 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80',
+  'table tennis': 'https://images.unsplash.com/photo-1534158914592-062992fbe900?w=800&auto=format&fit=crop&q=80',
+  'ping pong': 'https://images.unsplash.com/photo-1534158914592-062992fbe900?w=800&auto=format&fit=crop&q=80',
+  'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=80',
+  'swimming': 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&auto=format&fit=crop&q=80',
+
   // Movies & TV
   'sci-fi': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
   'thriller': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
@@ -111,6 +127,11 @@ export function inferLibraryTabFromTopic(topic = '') {
   // Gaming: covers "play", "playing", "playin", "playin'", "games", "gaming", "gamer", video games, steam, consoles, etc.
   if (/\b(gam(e|es|ing|ers?)|play(ing|in|s|ed)?|steam|ps[45]|playstation|xbox|nintendo|switch|lan|esports?|co-?op|multiplayer|boardgames?|videogames?|rpg|fps|mmo)\b/i.test(norm)) {
     return 'gaming';
+  }
+
+  // Sports & Fitness: covers "sport", "sports", "football", "soccer", "basketball", "padel", "tennis", "volleyball", "climb", "gym", "workout", "lifting", "running", "jog", "cycling", "bike", "swimming", "badminton", "golf", "kart", "paintball", "yoga"
+  if (/\b(sport|sports|football|soccer|basketball|padel|tennis|volleyball|climb(ing)?|boulder(ing)?|gym|workout|lift(ing)?|run(ning)?|jog(ging)?|cycl(ing)?|bikes?|swim(ming)?|badminton|golf|kart(ing)?|paintball|boxing|yoga|fitness|match)\b/i.test(norm)) {
+    return 'sports';
   }
 
   // Movies & TV: covers "movie", "movies", "film", "films", "cinema", "watch", "watching", "netflix", "series", "shows", "anime"

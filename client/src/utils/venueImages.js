@@ -108,6 +108,20 @@ export const CUSTOM_POLL_LIBRARY = [
     ],
   },
   {
+    id: 'sports',
+    label: 'Sports',
+    items: [
+      'Football / Soccer Match',
+      'Padel Tennis',
+      'Basketball 3v3',
+      'Bouldering / Rock Climbing',
+      'Table Tennis / Ping Pong',
+      'Go-Kart Racing',
+      'Volleyball Match',
+      'Bowling Night',
+    ],
+  },
+  {
     id: 'food_ideas',
     label: 'Food & Takeout',
     items: [
