@@ -280,7 +280,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   const latitude = isObj ? param1.latitude : null;
   const longitude = isObj ? param1.longitude : null;
   let isExactGps = isObj ? Boolean(param1.is_exact_gps) : false;
-  const targetPlaces = isObj && param1.targetPlaces ? Math.max(3, Math.min(12, Number(param1.targetPlaces))) : 6;
+  const targetPlaces = isObj && param1.targetPlaces ? Math.max(3, Math.min(30, Number(param1.targetPlaces))) : 6;
 
   const DEFAULT_LAT = 47.0225;
   const DEFAULT_LNG = 28.8340;

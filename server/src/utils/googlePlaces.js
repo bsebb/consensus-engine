@@ -102,7 +102,7 @@ async function fetchGooglePlaces({
   const lngNum = Number(longitude);
   const searchRadius = Math.max(500, Math.min(50000, Math.round(radius)));
   const types = getGoogleTypesForTheme(theme);
-  const targetCount = Math.max(3, Math.min(12, Number(targetPlaces) || 6));
+  const targetCount = Math.max(3, Math.min(30, Number(targetPlaces) || 30));
 
   const cacheKey = `gplaces_v1_${theme}_${latNum.toFixed(3)}_${lngNum.toFixed(3)}_${searchRadius}_${targetCount}`;
   const cached = memoryCache.get(cacheKey);
@@ -128,7 +128,7 @@ async function fetchGooglePlaces({
 
   const body = {
     includedTypes: types,
-    maxResultCount: Math.min(20, targetCount + 6),
+    maxResultCount: 20,
     rankPreference: 'POPULARITY',
     locationRestriction: {
       circle: {

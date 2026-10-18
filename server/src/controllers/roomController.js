@@ -77,7 +77,7 @@ const createNewRoom = async (req, res) => {
 
   // Fetch places from Google Places (New) or fallback spatial engine and save to DB
   if (mode === 'DISCOVERY') {
-    const targetPlaces = Math.max(3, Math.min(12, parseInt(deckSize || deck_size, 10) || 10));
+    const targetPlaces = 30; // One query pre-caches up to 30 locations for the room
     const hasGoogleKey = Boolean(
       (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
     );
@@ -549,6 +549,77 @@ const submitFeedback = async (req, res) => {
     return res.status(200).json({ success: true });
 };
 
+// Fetch 10 more locations when a room approaches the end of its 30-venue pool
+const getMorePlaces = async (req, res) => {
+  try {
+    const { pin } = req.params;
+    const { latitude, longitude, radius = 5000, is_exact_gps = false } = req.body || {};
+
+    const room = await getRoomByPin(pin);
+    if (!room || (room.theme && room.theme.startsWith('custom'))) {
+      return res.status(400).json({ success: false, error: 'INVALID_ROOM', message: 'Room not eligible for venue discovery.' });
+    }
+
+    const theme = room.theme || 'restaurant';
+    const existingOptions = room.options || [];
+    const existingNames = new Set(existingOptions.map((o) => (o.name || '').toLowerCase().trim()));
+
+    // Resolve up to 40 candidates and pick 10 not already in the room
+    const candidatePlaces = await resolveRegionalFallback(theme, latitude, longitude, is_exact_gps, 40);
+    const newPlaces = (candidatePlaces || []).filter((p) => {
+      const nameNorm = (p.name || '').toLowerCase().trim();
+      return nameNorm && !existingNames.has(nameNorm);
+    }).slice(0, 10);
+
+    if (newPlaces.length === 0) {
+      return res.status(200).json({ success: true, count: 0, options: [] });
+    }
+
+    const optionsData = newPlaces.map((place) => {
+      const placeId = place.fsq_place_id || place.fsq_id || 'fsq_live';
+      const distKm = place.distance_km != null ? String(place.distance_km) : '';
+      const addr = String(place.address || '').replace(/\|/g, ' ');
+      const catLabel = String(place.category || '').replace(/\|/g, ' ');
+      const coordPair = place.lat != null && place.lng != null ? `${place.lat},${place.lng}` : '';
+      const rawPhoto = typeof place.photo_url === 'string'
+        ? place.photo_url
+        : (place.photo_url && typeof place.photo_url.photo_url === 'string' ? place.photo_url.photo_url : '');
+      const photoUrl = String(rawPhoto || '').replace(/\|/g, '');
+      const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}|${photoUrl}`;
+
+      return {
+        roomId: room.id,
+        name: place.name,
+        source: 'GOOGLE_API',
+        googlePlaceId: compositeId,
+        priceLevel: place.priceLevel ?? 2,
+      };
+    });
+
+    const created = await createOptionsBulk(optionsData);
+    invalidateRoomCache(pin);
+
+    // Broadcast expanded options to active room sockets
+    const io = req.app?.get('io');
+    if (io) {
+      io.to(pin).emit('options_expanded', {
+        pin,
+        newOptions: created,
+        totalOptionsCount: existingOptions.length + created.length,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: created.length,
+      options: created,
+    });
+  } catch (err) {
+    console.error('[RoomController] getMorePlaces error:', err.message);
+    return res.status(500).json({ success: false, error: 'SERVER_ERROR', message: err.message });
+  }
+};
+
 // Ephemeral Crowd-Sourced Self-Healing: Instant closure flag by users
 const reportClosedVenueHandler = async (req, res) => {
   const { name, address, lat, lng, reason } = req.body || {};
@@ -567,6 +638,7 @@ const reportClosedVenueHandler = async (req, res) => {
 module.exports = {
   createNewRoom,
   getRoom,
+  getMorePlaces,
   updateConfig,
   //Lilia: export Step Zero constraints handler
   submitConstraints,

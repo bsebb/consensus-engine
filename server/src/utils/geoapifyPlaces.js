@@ -100,7 +100,7 @@ async function fetchGeoapifyPlaces({
   }
 
   const categories = mapThemeToGeoapifyCategories(theme);
-  const url = `https://api.geoapify.com/v2/places?categories=${categories}&filter=circle:${lngNum},${latNum},${radiusNum}&bias=proximity:${lngNum},${latNum}&limit=25&apiKey=${apiKey}`;
+  const url = `https://api.geoapify.com/v2/places?categories=${categories}&filter=circle:${lngNum},${latNum},${radiusNum}&bias=proximity:${lngNum},${latNum}&limit=35&apiKey=${apiKey}`;
 
   try {
     const res = await fetch(url, {

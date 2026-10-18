@@ -15,6 +15,9 @@ export function useLobbySync({
   setGroupSize,
   setGroupPool,
   setParticipants,
+  setVisiblePlacesCount,
+  setRemovedPlaceIds,
+  setRealOptions,
   navigate,
   emit,
   on,
@@ -44,6 +47,9 @@ export function useLobbySync({
       if (data?.mode) setMode(data.mode);
       if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') setTopic(data.topic);
       if (data?.group_size) setGroupSize(data.group_size);
+      if (typeof data?.visible_places_count === 'number' && setVisiblePlacesCount) {
+        setVisiblePlacesCount(data.visible_places_count);
+      }
       if (Array.isArray(data?.suggestions)) {
         setGroupPool(data.suggestions);
       }
@@ -183,8 +189,29 @@ export function useLobbySync({
       });
     };
 
+    const handleTablePlacesUpdated = (data) => {
+      if (typeof data?.visiblePlacesCount === 'number' && setVisiblePlacesCount) {
+        setVisiblePlacesCount(data.visiblePlacesCount);
+      }
+      if (Array.isArray(data?.removedOptionIds) && setRemovedPlaceIds) {
+        setRemovedPlaceIds(new Set(data.removedOptionIds));
+      }
+    };
+
+    const handleOptionsExpanded = (data) => {
+      if (Array.isArray(data?.newOptions) && setRealOptions) {
+        setRealOptions((prev) => {
+          const existingIds = new Set(prev.map((o) => o.id));
+          const toAdd = data.newOptions.filter((o) => !existingIds.has(o.id));
+          return [...prev, ...toAdd];
+        });
+      }
+    };
+
     on('participant_joined', handleParticipantJoined);
     on('lobby_state', handleParticipantJoined);
+    on('table_places_updated', handleTablePlacesUpdated);
+    on('options_expanded', handleOptionsExpanded);
     on('suggestions_updated', handleSuggestionsUpdated);
     on('budget_updated', handleBudgetUpdated);
     on('participant_left', handleParticipantLeft);
@@ -195,11 +222,13 @@ export function useLobbySync({
       off('connect', sendJoin);
       off('participant_joined', handleParticipantJoined);
       off('lobby_state', handleParticipantJoined);
+      off('table_places_updated', handleTablePlacesUpdated);
+      off('options_expanded', handleOptionsExpanded);
       off('suggestions_updated', handleSuggestionsUpdated);
       off('budget_updated', handleBudgetUpdated);
       off('participant_left', handleParticipantLeft);
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, isHost, setIsHost, onTransitionToDeck, locationState, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants]);
+  }, [pin, participantId, currentUserName, isHost, setIsHost, onTransitionToDeck, locationState, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants, setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions]);
 }

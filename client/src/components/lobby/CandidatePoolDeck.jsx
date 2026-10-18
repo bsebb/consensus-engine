@@ -1,85 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   LayoutGrid,
   PlusCircle,
   ShieldCheck,
   Plus,
-  AlertTriangle,
   Trash2,
   MapPin,
   Star,
-  Info,
-  Check,
-  Layers,
   Shuffle,
-  ChevronDown,
-  ChevronUp,
+  X,
 } from 'lucide-react';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
-import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
+import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
-import { inferLibraryTabFromTopic, useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 import { useLanguage } from '../../context/LanguageContext';
-import { triggerHaptic } from '../../utils/haptics';
 
 function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
-  const { photo } = useCustomOptionPhoto(item.name, topic, item.photo_url);
-  const [imgError, setImgError] = useState(false);
-
-  if (photo && !imgError) {
-    const isLogo = isLogoImage(photo);
-    return (
-      <div className="rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group text-left">
-        <div className={`relative aspect-[4/3] w-full ${isLogo ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'} overflow-hidden`}>
-          <img
-            src={photo}
-            alt={item.name}
-            className={isLogo ? 'w-full h-full object-contain p-4 pb-6' : 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'}
-            loading="lazy"
-            onError={() => setImgError(true)}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-
-          {/* Index pill */}
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 shadow-2xs z-10 tabular-nums">
-            <span>#{idx + 1}</span>
-          </div>
-
-          {/* Remove button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemoveSuggestion(item.customIndex ?? idx);
-            }}
-            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10"
-            title="Remove option"
-            aria-label={`Remove ${item.name}`}
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
-
-        {/* Card Body */}
-        <div className="p-3 flex flex-col gap-1 flex-1 justify-between">
-          <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
-            {item.name}
-          </h4>
-          <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)] truncate">
-            {topic || 'Custom Poll'}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="rounded-2xl p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between min-h-[140px] shadow-2xs text-left">
+    <div className="rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px]">
       <div className="flex items-center justify-between gap-2">
-        <div className="w-6 h-6 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
+        <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
           #{idx + 1}
-        </div>
+        </span>
         <button
           type="button"
           onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
@@ -91,36 +34,25 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
         </button>
       </div>
 
-      <div className="py-2">
+      <div className="py-1">
         <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug" title={item.name}>
           {item.name}
         </h4>
       </div>
 
-      <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)]">
-        {topic || 'Custom Option'}
+      <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)] truncate">
+        {topic || 'Custom Poll'}
       </div>
     </div>
   );
 }
 
-function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectDetails }) {
+function CandidatePoolCard({ item, onSelectDetails, onRemoveVenue }) {
   const { lang, t } = useLanguage();
   const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
   const vibeSubtitle = getVenueVibe(item.name, item.category);
   const venueRating = getVenueRating(item.name, item.category);
   const travelText = formatTravelSummary(item, lang);
-
-  if (item.isCustom) {
-    return (
-      <CustomOptionCard
-        item={item}
-        idx={idx}
-        topic={topic}
-        handleRemoveSuggestion={handleRemoveSuggestion}
-      />
-    );
-  }
 
   return (
     <div
@@ -146,19 +78,32 @@ function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectD
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
-        {/* Rating Pill */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs z-10 tabular-nums">
-          <Star size={10} className="fill-amber-300 text-amber-300" />
-          <span>{venueRating.rating}</span>
-          <span className="text-[10px] text-white/70 font-normal">({venueRating.reviewCount})</span>
-        </div>
-
-        {/* Price Tag */}
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {/* Rating and Price Pills */}
+        <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs tabular-nums">
+            <Star size={10} className="fill-amber-300 text-amber-300" />
+            <span>{venueRating.rating}</span>
+          </div>
           <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 tabular-nums">
             {'$'.repeat(item.price_level || 2)}
           </span>
         </div>
+
+        {/* Remove Venue Button */}
+        {onRemoveVenue && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveVenue(item);
+            }}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10 active:scale-90"
+            title="Remove from table"
+            aria-label={`Remove ${item.name}`}
+          >
+            <X size={12} />
+          </button>
+        )}
       </div>
 
       {/* Card Body with Full Title & Travel Summary */}
@@ -193,38 +138,27 @@ export default function CandidatePoolDeck({
   mode,
   topic = '',
   candidates = [],
+  remainingPoolCount = 0,
   isLoading = false,
   lockedConstraint,
   prunedCount,
-  budgetLimit,
   suggestion,
   setSuggestion,
   handleAddSuggestion,
   handleQuickAddSuggestion,
   handleRemoveSuggestion,
+  handleAddNextPlace,
+  handleRemovePlace,
   duplicateMatch,
   onShuffle,
   onReportClosed,
 }) {
   const { t } = useLanguage();
-  const [showAddInput, setShowAddInput] = useState(mode === 'CUSTOM');
   const [selectedVenue, setSelectedVenue] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-  const [activeLibraryTab, setActiveLibraryTab] = useState(() => inferLibraryTabFromTopic(topic));
-
-  useEffect(() => {
-    if (topic) {
-      setActiveLibraryTab(inferLibraryTabFromTopic(topic));
-    }
-  }, [topic]);
-
-  // Display up to 6 initially, or up to 16 when expanded
-  const displayedCandidates = expanded ? candidates.slice(0, 16) : candidates.slice(0, 6);
-  const existingNamesLower = new Set(candidates.map((c) => String(c.name || '').toLowerCase().trim()));
-  const currentLibraryCategory = CUSTOM_POLL_LIBRARY.find((cat) => cat.id === activeLibraryTab) || CUSTOM_POLL_LIBRARY[0];
 
   return (
     <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
+      {/* Section Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <LayoutGrid size={16} className="text-[var(--accent-bg)] shrink-0" />
@@ -249,20 +183,28 @@ export default function CandidatePoolDeck({
             </button>
           )}
 
-          {mode !== 'CUSTOM' && (
+          {/* Discovery Mode: Add Next Place Button (Pulls from 30 cached venues) */}
+          {mode !== 'CUSTOM' && handleAddNextPlace && (
             <button
               type="button"
-              onClick={() => setShowAddInput((prev) => !prev)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.96]"
+              onClick={handleAddNextPlace}
+              disabled={remainingPoolCount <= 0}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.96] shadow-2xs disabled:opacity-40 disabled:pointer-events-none"
+              title="Add next venue from pool"
             >
-              <Plus size={13} />
-              <span>{showAddInput ? t('close') : t('addOption')}</span>
+              <Plus size={13} strokeWidth={2.5} />
+              <span>{t('addOption')}</span>
+              {remainingPoolCount > 0 && (
+                <span className="text-[10px] font-semibold bg-white/20 px-1.5 py-0.2 rounded-full tabular-nums">
+                  +{remainingPoolCount}
+                </span>
+              )}
             </button>
           )}
         </div>
       </div>
 
-      {/* Group Spending Filter Notice */}
+      {/* Discovery Mode: Price Filter Notice */}
       {lockedConstraint && prunedCount > 0 && mode !== 'CUSTOM' && (
         <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 font-medium">
           <div className="flex items-center gap-2">
@@ -275,9 +217,9 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Add Option Input with Multi-Domain Autocomplete */}
-      {(mode === 'CUSTOM' || showAddInput) && (
-        <div className="flex flex-col gap-2.5 pt-0.5 pb-1">
+      {/* Custom Mode: Clean, Unobtrusive Input Bar (No Cluttered Idea Library) */}
+      {mode === 'CUSTOM' && (
+        <div className="pt-0.5 pb-1">
           <CustomOptionAutocomplete
             suggestion={suggestion}
             setSuggestion={setSuggestion}
@@ -289,69 +231,10 @@ export default function CandidatePoolDeck({
             mode={mode}
             disabled={candidates.length >= 12}
           />
-
-          {/* Quick-Add Idea Library for Custom Polls */}
-          {mode === 'CUSTOM' && handleQuickAddSuggestion && (
-            <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
-                  <Layers size={13} className="text-[var(--accent-bg)]" />
-                  <span>{t('ideaLibraryTitle')}</span>
-                </div>
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)] tabular-nums">
-                  {candidates.length}/12 {t('selectedSuffix')}
-                </span>
-              </div>
-
-              {/* Category Tabs */}
-              <div
-                className="no-scrollbar flex items-center gap-1.5 overflow-x-auto -mx-0.5 px-0.5"
-                style={{ maskImage: 'linear-gradient(to right, black 88%, transparent)', WebkitMaskImage: 'linear-gradient(to right, black 88%, transparent)' }}
-              >
-                {CUSTOM_POLL_LIBRARY.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveLibraryTab(cat.id)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                      activeLibraryTab === cat.id
-                        ? 'bg-[var(--accent-bg)] text-white shadow-2xs'
-                        : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)]'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Quick-Add Idea Chips */}
-              <div className="flex flex-wrap gap-1.5">
-                {currentLibraryCategory.items.map((idea) => {
-                  const isAdded = existingNamesLower.has(idea.toLowerCase());
-                  return (
-                    <button
-                      key={idea}
-                      type="button"
-                      disabled={isAdded || candidates.length >= 12}
-                      onClick={() => handleQuickAddSuggestion(idea)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        isAdded
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 cursor-default'
-                          : 'bg-[var(--bg-elevated)] hover:border-[var(--accent-bg)] text-[var(--text-primary)] border border-[var(--border-subtle)] active:scale-95'
-                      }`}
-                    >
-                      {isAdded ? <Check size={12} className="text-emerald-500" /> : <Plus size={12} className="text-[var(--accent-bg)]" />}
-                      <span>{idea}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Candidate Grid (1-col or 2-col for Custom Options, 2-col for Places) */}
+      {/* Candidates Grid */}
       <div className="grid grid-cols-2 gap-3">
         {isLoading ? (
           [0, 1, 2, 3, 4, 5].map((i) => (
@@ -376,7 +259,7 @@ export default function CandidatePoolDeck({
               </div>
             </div>
           ))
-        ) : displayedCandidates.length === 0 ? (
+        ) : candidates.length === 0 ? (
           <div className="col-span-2 p-6 rounded-2xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-main)] text-center flex flex-col items-center gap-2">
             <PlusCircle size={24} className="text-[var(--text-tertiary)]" />
             <span className="text-xs font-semibold text-[var(--text-primary)]">
@@ -387,44 +270,29 @@ export default function CandidatePoolDeck({
             </span>
           </div>
         ) : (
-          displayedCandidates.map((item, idx) => (
-            <CandidatePoolCard
-              key={item.id || item.name || idx}
-              item={item}
-              idx={idx}
-              topic={topic}
-              handleRemoveSuggestion={handleRemoveSuggestion}
-              onSelectDetails={setSelectedVenue}
-            />
-          ))
+          candidates.map((item, idx) =>
+            mode === 'CUSTOM' || item.isCustom ? (
+              <CustomOptionCard
+                key={item.id || item.name || idx}
+                item={item}
+                idx={idx}
+                topic={topic}
+                handleRemoveSuggestion={handleRemoveSuggestion}
+              />
+            ) : (
+              <CandidatePoolCard
+                key={item.id || item.name || idx}
+                item={item}
+                idx={idx}
+                onSelectDetails={setSelectedVenue}
+                onRemoveVenue={handleRemovePlace}
+              />
+            )
+          )
         )}
       </div>
 
-      {/* Expand / Collapse Toggle for Pools with > 6 Candidates */}
-      {candidates.length > 6 && (
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic('tap');
-            setExpanded((prev) => !prev);
-          }}
-          className="w-full py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-[0.98]"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp size={14} />
-              <span>{t('showLessPlaces')}</span>
-            </>
-          ) : (
-            <>
-              <ChevronDown size={14} />
-              <span>{t('showMorePlaces')} ({candidates.length})</span>
-            </>
-          )}
-        </button>
-      )}
-
-      {/* Venue Details & Road Route Modal (Discovery Places Only) */}
+      {/* Venue Details Modal */}
       <VenueDetailsModal
         key={selectedVenue?.id || selectedVenue?.name || 'lobby-venue-modal'}
         venue={selectedVenue}
@@ -438,4 +306,3 @@ export default function CandidatePoolDeck({
     </section>
   );
 }
-

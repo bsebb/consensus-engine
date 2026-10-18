@@ -14,13 +14,11 @@ import LobbyHeader from '../components/lobby/LobbyHeader';
 import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
-import { calculateDistanceKm, detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
+import { detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
-import { deduplicateVenues } from '../utils/venueImages';
 import { levenshteinDistance } from '../utils/levenshtein';
-import { filterOutReportedVenues } from '../utils/reportedVenuesClient';
-import { parseGooglePlaceMetadata } from '../utils/roomOptionsParser';
+import { buildCandidatePool } from '../utils/roomOptionsParser';
 
 export default function RoomLobby() {
   const { pin } = useParams();
@@ -74,6 +72,8 @@ export default function RoomLobby() {
   });
   const [userGps, setUserGps] = useState(() => getSavedExactGps());
   const [roadRoutes, setRoadRoutes] = useState({});
+  const [visiblePlacesCount, setVisiblePlacesCount] = useState(6);
+  const [removedPlaceIds, setRemovedPlaceIds] = useState(() => new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -185,6 +185,9 @@ export default function RoomLobby() {
     setGroupSize,
     setGroupPool,
     setParticipants,
+    setVisiblePlacesCount,
+    setRemovedPlaceIds,
+    setRealOptions,
     navigate,
     emit,
     on,
@@ -261,77 +264,15 @@ export default function RoomLobby() {
 
   // Candidate pool resolution from live database options + custom suggestions
   const candidatePoolPreview = useMemo(() => {
-    const customItems = groupPool.map((name, idx) => ({
-      id: `custom-${idx}-${name}`,
-      name,
-      category: 'Group Suggestion',
-      price_level: 2,
-      distance_km: null,
-      address: 'Added by group',
-      tags: ['Custom'],
-      isCustom: true,
-      customIndex: idx,
-    }));
-
-    if (mode === 'CUSTOM') {
-      return customItems;
-    }
-
-    let baseList = [];
-    if (realOptions && realOptions.length > 0) {
-      baseList = realOptions.map((opt) => {
-        const meta = parseGooglePlaceMetadata(opt.googlePlaceId);
-        const catLabel = meta.catLabel || location.state?.category || 'Local Favorite';
-        const venueLat = meta.lat;
-        const venueLng = meta.lng;
-        const addr = meta.addr || 'Local Venue';
-        const photoUrl = meta.photoUrl;
-
-        const route = roadRoutes[opt.id];
-        let dist = meta.dist;
-        if (route && route.roadDistanceKm != null) {
-          dist = route.roadDistanceKm;
-        } else if (userGps && venueLat != null && venueLng != null) {
-          dist = calculateDistanceKm(userGps.lat, userGps.lng, venueLat, venueLng);
-        } else if (!userGps && dist == null) {
-          dist = null;
-        }
-
-        return {
-          id: opt.id, name: opt.name, category: catLabel,
-          price_level: opt.priceLevel || 2, distance_km: dist,
-          drive_minutes: route?.driveMinutes ?? null, walk_minutes: route?.walkMinutes ?? null,
-          lat: venueLat, lng: venueLng, tags: [catLabel], address: addr, photo_url: photoUrl, isCustom: false,
-        };
-      });
-    } else {
-      let pool = restaurantsMock || [];
-      const category = location.state?.category;
-      if (category && category !== 'Restaurants') {
-        const catLower = category.toLowerCase();
-        const matched = pool.filter(
-          (r) =>
-            r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
-            r.category?.toLowerCase().includes(catLower) ||
-            r.name?.toLowerCase().includes(catLower)
-        );
-        if (matched.length > 0) pool = matched;
-      }
-      baseList = pool.map((r) => {
-        const route = roadRoutes[r.id];
-        const dist = route?.roadDistanceKm != null
-          ? route.roadDistanceKm
-          : userGps && r.lat != null && r.lng != null
-          ? calculateDistanceKm(userGps.lat, userGps.lng, r.lat, r.lng)
-          : null;
-        return {
-          ...r, distance_km: dist,
-          drive_minutes: route?.driveMinutes ?? null, walk_minutes: route?.walkMinutes ?? null,
-        };
-      });
-    }
-
-    return filterOutReportedVenues(deduplicateVenues([...customItems, ...baseList]));
+    return buildCandidatePool({
+      mode,
+      groupPool,
+      realOptions,
+      category: location.state?.category,
+      userGps,
+      roadRoutes,
+      mockPool: restaurantsMock,
+    });
   }, [mode, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
 
   // Query OSRM street network for real road distance & travel time from user's exact coordinates
@@ -464,16 +405,75 @@ export default function RoomLobby() {
   const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
   const filteredCandidates = useMemo(() => {
     if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
-    return candidatePoolPreview.filter((item) => item.isCustom || (item.price_level || 2) <= maxBudgetLevel);
+    return candidatePoolPreview.filter((item) => (item.price_level || 2) <= maxBudgetLevel);
   }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
+
+  const activePool = useMemo(() => {
+    if (mode === 'CUSTOM') return filteredCandidates;
+    return filteredCandidates.filter((item) => !removedPlaceIds.has(item.id));
+  }, [mode, filteredCandidates, removedPlaceIds]);
+
+  const displayedCandidates = useMemo(() => {
+    if (mode === 'CUSTOM') return activePool;
+    return activePool.slice(0, visiblePlacesCount);
+  }, [mode, activePool, visiblePlacesCount]);
+
+  const remainingPoolCount = useMemo(() => {
+    if (mode === 'CUSTOM') return 0;
+    return Math.max(0, activePool.length - displayedCandidates.length);
+  }, [mode, activePool.length, displayedCandidates.length]);
 
   const prunedCount = lockedConstraint && mode !== 'CUSTOM'
     ? candidatePoolPreview.length - filteredCandidates.length
     : 0;
 
+  const handleAddNextPlace = () => {
+    if (mode === 'CUSTOM' || remainingPoolCount <= 0) return;
+    triggerHaptic('selection');
+    const nextCount = Math.min(activePool.length, visiblePlacesCount + 1);
+    setVisiblePlacesCount(nextCount);
+    emit('add_discovery_place', { pin });
+
+    // When remaining pool gets low (<= 5 remaining), prefetch 10 more locations in the background!
+    if (remainingPoolCount <= 5 && realOptions.length < 50) {
+      fetch(apiUrl(`/api/v1/rooms/${pin}/more-places`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: userGps?.lat,
+          longitude: userGps?.lng,
+          is_exact_gps: Boolean(userGps),
+        }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.options && Array.isArray(data.options)) {
+            setRealOptions((prev) => {
+              const existingIds = new Set(prev.map((o) => o.id));
+              const toAdd = data.options.filter((o) => !existingIds.has(o.id));
+              return [...prev, ...toAdd];
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  const handleRemovePlace = (item) => {
+    if (!item?.id) return;
+    triggerHaptic('tap');
+    setRemovedPlaceIds((prev) => new Set([...prev, item.id]));
+    emit('remove_discovery_place', { pin, option_id: item.id });
+    addToast({
+      title: 'Place Removed',
+      message: `"${item.name}" removed from table`,
+      type: 'info',
+    });
+  };
+
   const handleStartVoting = () => {
     triggerHaptic('selection');
-    const cardsToPass = filteredCandidates.length > 0 ? filteredCandidates : candidatePoolPreview;
+    const cardsToPass = displayedCandidates;
 
     if (cardsToPass.length < 2) {
       addToast({
@@ -549,15 +549,17 @@ export default function RoomLobby() {
           mode={mode}
           topic={topic}
           isLoading={loadingOptions}
-          candidates={filteredCandidates}
+          candidates={displayedCandidates}
+          remainingPoolCount={remainingPoolCount}
           lockedConstraint={lockedConstraint}
           prunedCount={prunedCount}
-          budgetLimit={budgetLimit}
           suggestion={suggestion}
           setSuggestion={setSuggestion}
           handleAddSuggestion={handleAddSuggestion}
           handleQuickAddSuggestion={handleQuickAddSuggestion}
           handleRemoveSuggestion={handleRemoveSuggestion}
+          handleAddNextPlace={handleAddNextPlace}
+          handleRemovePlace={handleRemovePlace}
           duplicateMatch={duplicateMatch}
           onShuffle={handleShuffleCandidates}
           onReportClosed={handleReportClosedVenue}
@@ -576,7 +578,7 @@ export default function RoomLobby() {
               icon={ArrowRight}
               className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl active:scale-[0.98] transition-transform"
             >
-              {t('startVoting')} • {filteredCandidates.length}{' '}
+              {t('startVoting')} • {displayedCandidates.length}{' '}
               {mode === 'CUSTOM' ? t('optionsSuffix') : t('placesSuffix')}
             </Button>
           ) : (

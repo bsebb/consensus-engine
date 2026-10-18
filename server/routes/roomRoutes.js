@@ -19,6 +19,7 @@ router.get('/:pin', asyncHandler(roomController.getRoom));
 router.patch('/:id/config', asyncHandler(roomController.updateConfig));
 // Lilia: added Step Zero budget constraints endpoint
 router.post('/:pin/constraints', asyncHandler(roomController.submitConstraints));
+router.post('/:pin/more-places', asyncHandler(roomController.getMorePlaces));
 router.post('/:pin/finalize', asyncHandler(roomController.finalizeVoting));
 // Afina: endpoint for Post-Event Feedback Loop
 router.post('/:pin/feedback', asyncHandler(roomController.submitFeedback));

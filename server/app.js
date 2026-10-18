@@ -447,9 +447,14 @@ io.on('connection', (socket) => {
         map.mode = data?.mode || (room?.theme?.startsWith('custom') ? 'CUSTOM' : 'DISCOVERY');
         map.topic = data?.topic || (room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : 'Where should we go?');
         map.groupSize = data?.group_size || 4;
+        map.visiblePlacesCount = data?.visible_places_count || 6;
         activeLobbies.set(pin, map);
       }
       const lobby = activeLobbies.get(pin);
+      if (!lobby.visiblePlacesCount) lobby.visiblePlacesCount = 6;
+      if (data?.visible_places_count && data.visible_places_count > lobby.visiblePlacesCount) {
+        lobby.visiblePlacesCount = data.visible_places_count;
+      }
       if (!lobby.persistedParticipants) lobby.persistedParticipants = new Set();
 
       // Ensure participant is persisted in PostgreSQL exactly once per session
@@ -503,6 +508,7 @@ io.on('connection', (socket) => {
         topic: lobby.topic || 'Where should we go?',
         group_size: lobby.groupSize || 4,
         suggestions: lobby.suggestions || [],
+        visible_places_count: lobby.visiblePlacesCount || 6,
       });
 
       // Also send directly to the joining socket to guarantee instant state sync
@@ -514,6 +520,7 @@ io.on('connection', (socket) => {
         topic: lobby.topic || 'Where should we go?',
         group_size: lobby.groupSize || 4,
         suggestions: lobby.suggestions || [],
+        visible_places_count: lobby.visiblePlacesCount || 6,
       });
 
       // REJOIN RECOVERY: If a voting session is already in progress, immediately dispatch voting_started
@@ -596,6 +603,47 @@ io.on('connection', (socket) => {
       }
     } catch (err) {
       console.error('[Socket] remove_suggestion error:', err.message);
+    }
+  });
+
+  // Handle adding the next cached place to the table in discovery mode
+  socket.on('add_discovery_place', (data) => {
+    try {
+      const { pin } = data || {};
+      if (!pin) return;
+      const lobby = activeLobbies.get(pin);
+      if (lobby) {
+        lobby.visiblePlacesCount = (lobby.visiblePlacesCount || 6) + 1;
+        console.log(`[Socket] Added place to room ${pin} (visible count: ${lobby.visiblePlacesCount})`);
+        io.to(pin).emit('table_places_updated', {
+          pin,
+          visiblePlacesCount: lobby.visiblePlacesCount,
+        });
+      }
+    } catch (err) {
+      console.error('[Socket] add_discovery_place error:', err.message);
+    }
+  });
+
+  // Handle removing a specific place from the active table in discovery mode
+  socket.on('remove_discovery_place', (data) => {
+    try {
+      const { pin, option_id } = data || {};
+      if (!pin) return;
+      const lobby = activeLobbies.get(pin);
+      if (lobby) {
+        if (!lobby.removedOptionIds) lobby.removedOptionIds = new Set();
+        if (option_id) lobby.removedOptionIds.add(String(option_id));
+        console.log(`[Socket] Removed place ${option_id} from room ${pin}`);
+        io.to(pin).emit('table_places_updated', {
+          pin,
+          visiblePlacesCount: lobby.visiblePlacesCount,
+          removedOptionId: option_id,
+          removedOptionIds: Array.from(lobby.removedOptionIds),
+        });
+      }
+    } catch (err) {
+      console.error('[Socket] remove_discovery_place error:', err.message);
     }
   });
 
