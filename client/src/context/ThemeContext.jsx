@@ -25,42 +25,17 @@ export function ThemeProvider({ children }) {
     return root ? root.classList.contains('dark') : false;
   });
 
-  // Apply dark / light class on mount and when system preference changes
+  // Listen for system preference changes when in 'system' mode
   useEffect(() => {
-    const root = document.documentElement;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const applyTheme = () => {
-      let activeDark = false;
-      if (theme === 'dark') {
-        activeDark = true;
-      } else if (theme === 'light') {
-        activeDark = false;
-      } else {
-        activeDark = mediaQuery.matches;
-      }
-
-      setIsDark(activeDark);
-      if (activeDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) {
-        meta.setAttribute('content', activeDark ? '#111113' : '#f7f5f0');
+    const handleSystemChange = () => {
+      if (theme === 'system') {
+        changeTheme('system');
       }
     };
 
-    applyTheme();
-    localStorage.setItem('app-theme', theme);
-
-    const listener = () => {
-      if (theme === 'system') applyTheme();
-    };
-    mediaQuery.addEventListener('change', listener);
-    return () => mediaQuery.removeEventListener('change', listener);
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
   }, [theme]);
 
   // Apply accent color CSS variables
@@ -86,6 +61,7 @@ export function ThemeProvider({ children }) {
     const willBeDark = newTheme === 'dark' || (newTheme === 'system' && mediaQuery.matches);
 
     const updateDOM = () => {
+      root.classList.add('theme-switching');
       setTheme(newTheme);
       setIsDark(willBeDark);
       if (willBeDark) {
@@ -101,13 +77,28 @@ export function ThemeProvider({ children }) {
     };
 
     if (typeof document !== 'undefined' && document.startViewTransition) {
-      document.startViewTransition(() => {
+      const transition = document.startViewTransition(() => {
         flushSync(updateDOM);
       });
+      const cleanup = () => {
+        root.classList.remove('theme-switching');
+      };
+      if (transition && transition.finished) {
+        transition.finished.finally(cleanup);
+      } else {
+        setTimeout(cleanup, 260);
+      }
       return;
     }
 
     updateDOM();
+    // Force synchronous reflow so all styles paint in one single unified frame
+    void root.offsetHeight;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        root.classList.remove('theme-switching');
+      });
+    });
   };
 
   const toggleTheme = () => {

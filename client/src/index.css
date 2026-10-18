@@ -253,10 +253,13 @@
   }
 }
 
-/* Fallback Theme Transition */
-.theme-switching,
-.theme-switching * {
+/* Universal Theme Transition Lock: Prevents Staggered / Delayed Element Updates */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
   transition: none !important;
+  animation-duration: 0s !important;
 }
 
 /* Mobile PWA Shell */
