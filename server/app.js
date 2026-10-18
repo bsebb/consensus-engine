@@ -775,16 +775,30 @@ io.on('connection', (socket) => {
 
       const lobby = activeLobbies.get(pin);
       if (lobby) {
+        const wasHost = Boolean(lobby.get(participantId)?.isHost);
         lobby.delete(participantId);
-        if (lobby.size === 0 && !activeVotingSessions.has(pin)) activeLobbies.delete(pin);
+
+        if (lobby.size === 0 && !activeVotingSessions.has(pin)) {
+          activeLobbies.delete(pin);
+        } else if (wasHost && lobby.size > 0) {
+          // Promote oldest remaining participant to Host so lobby is never orphaned
+          const remaining = Array.from(lobby.values());
+          if (!remaining.some((p) => p.isHost)) {
+            remaining[0].isHost = true;
+            lobby.set(remaining[0].id, remaining[0]);
+            console.log(`[Socket] Promoted ${remaining[0].name} to Host in room ${pin}`);
+          }
+        }
       }
 
       const remainingParticipants = lobby ? Array.from(lobby.values()) : [];
+      const newHost = remainingParticipants.find((p) => p.isHost);
 
       io.to(pin).emit('participant_left', {
         pin,
         participant_id: participantId,
         user_name: userName,
+        host_id: newHost ? newHost.id : null,
         total_participants: remainingParticipants.length,
         participants: remainingParticipants,
       });
@@ -793,7 +807,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Notify the room when a participant disconnects with a 30s grace period for rejoining
+  // Notify the room when a participant disconnects with a 10s grace period for rejoining
   socket.on('disconnect', () => {
     const pin = socket.data.pin;
     const participantId = socket.data.participantId;
@@ -817,22 +831,34 @@ io.on('connection', (socket) => {
         disconnectTimeouts.delete(dcKey);
         const currentLobby = activeLobbies.get(pin);
         if (currentLobby) {
+          const wasHost = Boolean(currentLobby.get(participantId)?.isHost);
           currentLobby.delete(participantId);
+
           if (currentLobby.size === 0 && !activeVotingSessions.has(pin)) {
             activeLobbies.delete(pin);
+          } else if (wasHost && currentLobby.size > 0) {
+            const remaining = Array.from(currentLobby.values());
+            if (!remaining.some((p) => p.isHost)) {
+              remaining[0].isHost = true;
+              currentLobby.set(remaining[0].id, remaining[0]);
+              console.log(`[Socket] Promoted ${remaining[0].name} to Host in room ${pin} after disconnect timeout`);
+            }
           }
 
           const remainingParticipants = Array.from(currentLobby.values());
+          const newHost = remainingParticipants.find((p) => p.isHost);
+
           io.to(pin).emit('participant_left', {
             pin,
             participant_id: participantId,
             user_name: userName,
+            host_id: newHost ? newHost.id : null,
             total_participants: remainingParticipants.length,
             participants: remainingParticipants,
           });
           console.log(`[Socket] Evicted participant ${userName} from room ${pin} after grace timeout`);
         }
-      }, 30000);
+      }, 10000);
 
       disconnectTimeouts.set(dcKey, timeout);
     }

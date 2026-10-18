@@ -5,6 +5,8 @@ export function useLobbySync({
   participantId,
   currentUserName,
   isHost,
+  setIsHost,
+  onTransitionToDeck,
   locationState,
   lockedConstraint,
   budgetLimit,
@@ -52,6 +54,14 @@ export function useLobbySync({
             budgetSealed: Boolean(p.budgetSealed),
           }))
         );
+
+        if (setIsHost) {
+          const myRecord = data.participants.find((p) => p.id === participantId);
+          if (myRecord?.isHost) {
+            setIsHost(true);
+            sessionStorage.setItem(`consensus_host_${pin}`, 'true');
+          }
+        }
       } else if (data?.user_name) {
         setParticipants((prev) => {
           if (prev.some((p) => p.id === data.participant_id || p.name === data.user_name)) return prev;
@@ -107,6 +117,23 @@ export function useLobbySync({
       } else if (data?.participant_id) {
         setParticipants((prev) => prev.filter((p) => p.id !== data.participant_id));
       }
+
+      if (setIsHost) {
+        const amIHost = Boolean(
+          data?.host_id === participantId ||
+          (data?.participants && data.participants.find((p) => p.id === participantId)?.isHost)
+        );
+        if (amIHost) {
+          setIsHost(true);
+          sessionStorage.setItem(`consensus_host_${pin}`, 'true');
+          addToast({
+            title: 'You Are Now Host',
+            message: 'The previous host left. You can now start voting when ready.',
+            type: 'info',
+          });
+        }
+      }
+
       if (data?.user_name) {
         addToast({
           title: 'Participant Left',
@@ -117,6 +144,10 @@ export function useLobbySync({
     };
 
     const handleVotingStarted = (data) => {
+      if (onTransitionToDeck) {
+        onTransitionToDeck();
+      }
+
       addToast({
         title: 'Voting Started',
         message: 'Entering the Swipe Deck now...',
@@ -168,5 +199,5 @@ export function useLobbySync({
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, isHost, locationState, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants]);
+  }, [pin, participantId, currentUserName, isHost, setIsHost, onTransitionToDeck, locationState, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants]);
 }

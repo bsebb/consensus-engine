@@ -98,7 +98,7 @@ export default function ReviewModal({
             </div>
             <h4 className="text-lg font-semibold text-[var(--text-primary)]">Thank You!</h4>
             <p className="text-sm text-[var(--text-secondary)] max-w-xs">
-              Your feedback on <strong className="text-[var(--text-primary)]">{winnerName}</strong> has been recorded to calibrate future recommendations.
+              Your feedback on <strong className="text-[var(--text-primary)]">{winnerName}</strong> has been saved.
             </p>
           </div>
         ) : (

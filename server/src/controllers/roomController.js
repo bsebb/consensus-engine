@@ -113,6 +113,7 @@ const createNewRoom = async (req, res) => {
       pin: room.pin,
       status: room.status,
       theme: roomTheme,
+      topic: theme || 'Places Nearby',
       mode: 'DISCOVERY',
       options: createdOptions,
     });
@@ -123,6 +124,7 @@ const createNewRoom = async (req, res) => {
     pin: room.pin,
     status: room.status,
     theme: roomTheme,
+    topic: theme || 'What should we do?',
     mode: 'CUSTOM',
     options: [],
   });
@@ -134,11 +136,16 @@ const getRoom = async (req, res) => {
     const room = await getRoomByPin(pin);
 
     const isCustom = Boolean(room.theme && room.theme.startsWith('custom'));
+    const resolvedTopic = isCustom
+      ? (room.theme ? room.theme.replace(/^custom:/, '') : 'What should we do?')
+      : (room.theme || 'Places Nearby');
+
     return res.status(200).json({
       room_id: room.id,
       pin: room.pin,
       status: room.status,
       theme: room.theme,
+      topic: resolvedTopic,
       mode: isCustom ? 'CUSTOM' : 'DISCOVERY',
       participants: room.participants,
       options: room.options,

@@ -38,6 +38,7 @@ export default function ConsensusWinnerView({
   navigate,
   pin,
   participantId,
+  emit,
 }) {
   const { addToast } = useToast();
   const isCustomWinner = Boolean(mode === 'CUSTOM' || winner?.isCustom);
@@ -94,13 +95,28 @@ export default function ConsensusWinnerView({
       setIsSubmittingTelemetry(false);
       setTelemetrySubmitted(true);
       addToast({
-        title: isCustomWinner ? 'Poll Feedback Saved' : 'Venue Telemetry Saved',
+        title: isCustomWinner ? 'Poll Feedback Saved' : 'Rating Saved',
         message: isCustomWinner
           ? `Recorded ${finalSat}/5 group satisfaction for "${winner?.name}".`
           : `Recorded ${finalSat}/5 satisfaction & ${finalPrice}/5 price accuracy for ${winner?.name}.`,
         type: 'success',
       });
     }
+  };
+
+  const handleStartAnother = () => {
+    if (pin) {
+      if (typeof emit === 'function') {
+        emit('leave_lobby', {
+          pin,
+          participant_id: participantId,
+        });
+      }
+      localStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem(`consensus_host_${pin}`);
+    }
+    navigate('/');
   };
 
   return (
@@ -357,11 +373,11 @@ export default function ConsensusWinnerView({
                   Community Data Collection
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  Required Step
+                  Quick Rating
                 </span>
               </div>
               <h3 className="text-sm font-black text-[var(--text-primary)] mt-0.5">
-                {isCustomWinner ? `Rate "${winner?.name}" Group Consensus` : `Verify ${winner?.name} & Calibrate Local Data`}
+                {isCustomWinner ? `Rate "${winner?.name}"` : `Rate ${winner?.name} & Share Feedback`}
               </h3>
             </div>
           </div>
@@ -369,8 +385,8 @@ export default function ConsensusWinnerView({
 
         <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
           {isCustomWinner
-            ? 'Your feedback helps calibrate our group consensus algorithm for custom polls.'
-            : 'Your group’s feedback trains our local consensus & price engine so future groups get accurate budget tiers and venue rankings.'}
+            ? 'Help us understand how well this pick worked for your group.'
+            : 'Your feedback helps ensure local budget tiers and venue recommendations stay accurate.'}
         </p>
 
         {telemetrySubmitted ? (
@@ -381,10 +397,10 @@ export default function ConsensusWinnerView({
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   {isCustomWinner
                     ? `Feedback Recorded (${satisfactionScore || 5}/5 Group Match)`
-                    : `Telemetry Recorded (${satisfactionScore || 5}/5 Match • ${priceAccuracyScore || 5}/5 Price)`}
+                    : `Rating Saved (${satisfactionScore || 5}/5 Match • ${priceAccuracyScore || 5}/5 Price)`}
                 </span>
                 <span className="text-[11px] text-[var(--text-secondary)]">
-                  Thank you for contributing to group decision data!
+                  Thank you for sharing your feedback!
                 </span>
               </div>
             </div>
@@ -493,7 +509,7 @@ export default function ConsensusWinnerView({
         <Button
           variant="secondary"
           size="md"
-          onClick={() => navigate('/')}
+          onClick={handleStartAnother}
           icon={RotateCcw}
           className="w-full rounded-2xl"
         >

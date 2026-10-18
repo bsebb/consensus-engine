@@ -524,6 +524,7 @@ export default function SwipeDeck() {
           navigate={navigate}
           pin={pin}
           participantId={participantId}
+          emit={emit}
         />
       ) : currentIndex >= cards.length ? (
         <WaitingForBallotsView

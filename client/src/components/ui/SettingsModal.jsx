@@ -291,7 +291,7 @@ export default function SettingsModal({ isOpen, onClose }) {
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
               <Wifi size={12} />
-              <span>Realtime Telemetry</span>
+              <span>Connection & Status</span>
             </span>
             <button
               type="button"

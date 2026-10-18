@@ -48,8 +48,14 @@ export default function RoomLobby() {
   const { participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const isTransitioningToDeckRef = useRef(false);
 
-  const isHost = location.state?.isHost ?? (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true');
+  const [isHost, setIsHost] = useState(() => {
+    return Boolean(
+      location.state?.isHost ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
+    );
+  });
   const currentUserName = location.state?.userName || localStorage.getItem('consensus_user_name') || (isHost ? 'Host' : 'Friend');
   const [groupSize, setGroupSize] = useState(location.state?.groupSize || 2);
   const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
@@ -95,44 +101,76 @@ export default function RoomLobby() {
   }, []);
 
   useEffect(() => {
-    if (pin) {
-      if (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0) {
-        setLoadingOptions(true);
-      }
-      fetch(apiUrl(`/api/v1/rooms/${pin}`))
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data) {
-            if (data.mode) setMode(data.mode);
-            if (data.theme && data.theme.startsWith('custom:')) {
-              const customTopic = data.theme.replace(/^custom:/, '');
-              if (customTopic && customTopic !== 'poll') setTopic(customTopic);
-            }
-            if (Array.isArray(data.options) && data.options.length > 0) {
-              setRealOptions(data.options);
-            }
-          }
-        })
-        .catch((err) => console.warn('[RoomLobby] Room options fetch notice:', err))
-        .finally(() => setLoadingOptions(false));
+    if (!pin) return;
+    if (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0) {
+      setLoadingOptions(true);
     }
+    fetch(apiUrl(`/api/v1/rooms/${pin}`))
+      .then((res) => {
+        if (!res.ok) throw new Error('ROOM_NOT_FOUND');
+        return res.json();
+      })
+      .then((data) => {
+        if (data) {
+          if (data.mode) setMode(data.mode);
+          if (data.topic) {
+            setTopic(data.topic);
+          } else if (data.theme && data.theme.startsWith('custom:')) {
+            const customTopic = data.theme.replace(/^custom:/, '');
+            if (customTopic && customTopic !== 'poll') setTopic(customTopic);
+          }
+          if (Array.isArray(data.options) && data.options.length > 0) {
+            setRealOptions(data.options);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('[RoomLobby] Room fetch notice:', err.message);
+        addToast({
+          title: 'Room Not Found',
+          message: `Room #${pin} could not be loaded or is expired.`,
+          type: 'error',
+        });
+        localStorage.removeItem('consensus_active_pin');
+        sessionStorage.removeItem('consensus_active_pin');
+        sessionStorage.removeItem(`consensus_host_${pin}`);
+        navigate('/');
+      })
+      .finally(() => setLoadingOptions(false));
   }, [pin]);
 
   useEffect(() => {
-    if (pin) {
-      localStorage.setItem('consensus_active_pin', pin);
-    }
-  }, [pin]);
+    if (pin) localStorage.setItem('consensus_active_pin', pin);
+
+    const handleBeforeUnload = () => {
+      if (pin && participantId) {
+        emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
+      }
+    };
+
+    window.addEventListener('pagehide', handleBeforeUnload);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('pagehide', handleBeforeUnload);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+
+      if (!isTransitioningToDeckRef.current && pin) {
+        emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
+        localStorage.removeItem('consensus_active_pin');
+        sessionStorage.removeItem('consensus_active_pin');
+        sessionStorage.removeItem(`consensus_host_${pin}`);
+      }
+    };
+  }, [pin, participantId, currentUserName, emit]);
 
   const handleLeaveLobby = () => {
+    isTransitioningToDeckRef.current = false;
     if (pin) {
-      emit('leave_lobby', {
-        pin,
-        participant_id: participantId,
-        user_name: currentUserName,
-      });
+      emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
       localStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem(`consensus_host_${pin}`);
     }
     navigate('/');
   };
@@ -142,6 +180,10 @@ export default function RoomLobby() {
     participantId,
     currentUserName,
     isHost,
+    setIsHost,
+    onTransitionToDeck: () => {
+      isTransitioningToDeckRef.current = true;
+    },
     locationState: location.state,
     lockedConstraint,
     budgetLimit,
@@ -451,6 +493,7 @@ export default function RoomLobby() {
       mode,
     });
 
+    isTransitioningToDeckRef.current = true;
     sessionStorage.setItem(`consensus_host_${pin}`, 'true');
     navigate(`/deck/${pin}`, {
       state: {
