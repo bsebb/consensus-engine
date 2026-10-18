@@ -43,36 +43,67 @@ app.get('/', (req, res) => {
 
 // Lightweight health check endpoint for Render health monitoring and keep-alive pingers
 app.get(['/health', '/api/v1/health'], (req, res) => {
+  const hasKey = Boolean(process.env.FOURSQUARE_API_KEY && process.env.FOURSQUARE_API_KEY.trim());
   res.status(200).json({
     status: 'ok',
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
+    foursquare_configured: hasKey,
+    foursquare_prefix: hasKey ? `${process.env.FOURSQUARE_API_KEY.trim().slice(0, 4)}***` : null,
   });
 });
 
 app.use('/api/v1/rooms', roomRoutes);
 
 app.get('/api/v1/test-foursquare', async (req, res) => {
-    try {
-        const restaurants = await searchRestaurants({
-            latitude: 47.0105,
-            longitude: 28.8638,
-            radius: 5000,
-        });
-
-        res.json({
-            success: true,
-            count: restaurants.length,
-            restaurants,
-        });
-    } catch (error) {
-        console.error('Foursquare error:', error);
-
-        res.status(500).json({
-            success: false,
-            error: error.message,
-        });
+  try {
+    const apiKey = process.env.FOURSQUARE_API_KEY;
+    if (!apiKey || !apiKey.trim()) {
+      return res.json({
+        success: true,
+        live_api: false,
+        reason: 'FOURSQUARE_API_KEY environment variable is not set in Render Dashboard Environment tab.',
+      });
     }
+
+    const testRes = await fetch('https://api.foursquare.com/v3/places/search?near=Chisinau&limit=5', {
+      headers: {
+        accept: 'application/json',
+        Authorization: apiKey.trim(),
+      },
+    });
+
+    const status = testRes.status;
+    const bodyText = await testRes.text();
+    let parsed;
+    try {
+      parsed = JSON.parse(bodyText);
+    } catch {
+      parsed = bodyText;
+    }
+
+    if (!testRes.ok) {
+      return res.json({
+        success: false,
+        live_api: false,
+        foursquare_http_status: status,
+        foursquare_response: parsed,
+        key_prefix: `${apiKey.trim().slice(0, 4)}***`,
+      });
+    }
+
+    return res.json({
+      success: true,
+      live_api: true,
+      count: parsed.results ? parsed.results.length : 0,
+      results: parsed.results ? parsed.results.map((r) => ({ name: r.name, fsq_id: r.fsq_id })) : [],
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
 });
 
 
