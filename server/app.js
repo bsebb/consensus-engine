@@ -57,8 +57,8 @@ app.use('/api/v1/rooms', roomRoutes);
 
 app.get('/api/v1/test-foursquare', async (req, res) => {
   try {
-    const apiKey = process.env.FOURSQUARE_API_KEY;
-    if (!apiKey || !apiKey.trim()) {
+    const rawKey = process.env.FOURSQUARE_API_KEY;
+    if (!rawKey || !rawKey.trim()) {
       return res.json({
         success: true,
         live_api: false,
@@ -66,12 +66,27 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
       });
     }
 
-    const testRes = await fetch('https://api.foursquare.com/v3/places/search?near=Chisinau&limit=5', {
+    const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '');
+    const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
+    const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
+
+    let testRes = await fetch('https://api.foursquare.com/v3/places/search?near=Chisinau&limit=5', {
       headers: {
         accept: 'application/json',
-        Authorization: apiKey.trim(),
+        Authorization: bearerAuth,
       },
     });
+
+    let usedFormat = 'Bearer';
+    if (testRes.status === 401) {
+      testRes = await fetch('https://api.foursquare.com/v3/places/search?near=Chisinau&limit=5', {
+        headers: {
+          accept: 'application/json',
+          Authorization: rawAuth,
+        },
+      });
+      usedFormat = 'Raw';
+    }
 
     const status = testRes.status;
     const bodyText = await testRes.text();
@@ -88,7 +103,8 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
         live_api: false,
         foursquare_http_status: status,
         foursquare_response: parsed,
-        key_prefix: `${apiKey.trim().slice(0, 4)}***`,
+        auth_format_tested: usedFormat,
+        key_prefix: `${cleanKey.slice(0, 4)}***`,
       });
     }
 

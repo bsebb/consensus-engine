@@ -131,11 +131,10 @@ async function getRoomById(roomId) {
         }
         return room;
     } catch (error) {
-        console.error(error);
-        if (error.message === "Room not found") {
-            throw error;
+        if (error.message !== "Room not found") {
+            console.error(error);
         }
-        throw new Error("Failed to get room by ID");
+        throw error;
     }
 }
 
@@ -155,11 +154,10 @@ async function getRoomByPin(pin) {
         }
         return room;
     } catch (error) {
-        console.error(error);
-        if (error.message === "Room not found") {
-            throw error;
+        if (error.message !== "Room not found") {
+            console.error(error);
         }
-        throw new Error("Failed to get room by PIN");
+        throw error;
     }
 }
 

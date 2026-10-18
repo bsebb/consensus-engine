@@ -58,8 +58,12 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
   }
 
   // Fast path: if no API key is configured, return fallback data immediately (0ms delay)
-  const apiKey = process.env.FOURSQUARE_API_KEY;
-  if (!apiKey || apiKey.trim() === '') {
+  const rawKey = process.env.FOURSQUARE_API_KEY;
+  if (!rawKey || !rawKey.trim()) {
+    return FALLBACK_PLACES;
+  }
+  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '');
+  if (!cleanKey) {
     return FALLBACK_PLACES;
   }
 
@@ -70,15 +74,11 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     return cached.data;
   }
 
-  const options = {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-      Authorization: apiKey.trim(),
-    },
-    // Set a strict 4-second timeout so a slow Foursquare response never blocks room creation
-    signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
-  };
+  // Foursquare Places API v3 requires 'Authorization: Bearer <key>'
+  const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ')
+    ? cleanKey
+    : `Bearer ${cleanKey}`;
+  const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
 
   try {
     let url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(theme)}&radius=${radius}&limit=12&fields=fsq_id,name,price`;
@@ -88,7 +88,26 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
       url += `&near=${encodeURIComponent(near)}`;
     }
 
-    const response = await fetch(url, options);
+    let response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json',
+        Authorization: bearerAuth,
+      },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    });
+
+    // If 401 with Bearer header, retry with raw key format
+    if (response.status === 401) {
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          Authorization: rawAuth,
+        },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+      });
+    }
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '');
