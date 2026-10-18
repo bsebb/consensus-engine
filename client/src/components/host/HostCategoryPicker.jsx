@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function HostCategoryPicker({
   mode,
@@ -59,7 +60,10 @@ export default function HostCategoryPicker({
           />
           <button
             type="button"
-            onClick={() => advanceToStage(3)}
+            onClick={() => {
+              triggerHaptic('tap');
+              advanceToStage(3);
+            }}
             className="self-end py-1.5 px-3 rounded-xl bg-[var(--accent-bg)] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
           >
             <span>Next: Constraints</span>

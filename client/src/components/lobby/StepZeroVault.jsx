@@ -26,11 +26,6 @@ export default function StepZeroVault({
     { id: '3', label: '$$$', limit: 450, isFiltered: true, desc: t('budgetDesc3') },
   ];
 
-  const handleTierClick = (limit, isFiltered) => {
-    triggerHaptic('selection');
-    onSelectTier?.(limit, isFiltered);
-  };
-
   const activeTier = tiers[activeTierIndex] || tiers[0];
 
   return (

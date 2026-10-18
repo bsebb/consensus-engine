@@ -55,6 +55,32 @@ function isHapticsEnabled() {
 }
 
 /**
+ * 1200Hz -> 420Hz crisp acoustic micro-tick for selection / segmented controls
+ */
+export function playSelectionTick() {
+  const ctx = getAudioContext();
+  if (!ctx || !isHapticsEnabled()) return;
+  try {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.exponentialRampToValueAtTime(420, now + 0.014);
+
+    gain.gain.setValueAtTime(0.16, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.014);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.016);
+  } catch {}
+}
+
+/**
  * 950Hz crisp acoustic micro-tick for subtle tap feedback
  */
 export function playTapTick() {
@@ -216,17 +242,34 @@ export function playMatchChime() {
   } catch {}
 }
 
+let lastHapticTime = 0;
+let lastHapticType = '';
+
 /**
  * Universal haptic trigger combining vibration and synthesized acoustic feedback
- * @param {'tap'|'like'|'pass'|'veto'|'superlike'|'match'} type
+ * @param {'tap'|'selection'|'light'|'like'|'pass'|'veto'|'superlike'|'match'} type
  */
 export function triggerHaptic(type = 'tap') {
   if (!isHapticsEnabled()) return;
 
+  const now = Date.now();
+  if (type === lastHapticType && now - lastHapticTime < 35) {
+    return;
+  }
+  lastHapticTime = now;
+  lastHapticType = type;
+
+  // Ensure AudioContext is active synchronously in the user gesture event loop
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+
   // 1. Hardware vibration for Android / supported mobile devices
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     try {
-      if (type === 'tap') navigator.vibrate(12);
+      if (type === 'selection' || type === 'light') navigator.vibrate(8);
+      else if (type === 'tap') navigator.vibrate(12);
       else if (type === 'like') navigator.vibrate([15, 30, 20]);
       else if (type === 'pass') navigator.vibrate(22);
       else if (type === 'veto') navigator.vibrate([35, 30, 35]);
@@ -236,7 +279,8 @@ export function triggerHaptic(type = 'tap') {
   }
 
   // 2. Synthesized acoustic feedback for iOS Safari, macOS, and Desktop
-  if (type === 'tap') playTapTick();
+  if (type === 'selection') playSelectionTick();
+  else if (type === 'tap' || type === 'light') playTapTick();
   else if (type === 'like') playSwipeRightSound();
   else if (type === 'pass') playSwipeLeftSound();
   else if (type === 'veto') playVetoSound();

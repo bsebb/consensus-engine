@@ -1,4 +1,5 @@
 import React from 'react';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function SpringToggle({
   checked = false,
@@ -10,6 +11,11 @@ export default function SpringToggle({
   className = '',
 }) {
   const toggleId = id || (label ? `toggle-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
+
+  const handleChange = (e) => {
+    triggerHaptic('selection');
+    onChange?.(e.target.checked);
+  };
 
   return (
     <div className={`flex items-center justify-between gap-3 ${className}`}>
@@ -25,7 +31,7 @@ export default function SpringToggle({
         id={toggleId}
         type="checkbox"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={handleChange}
         disabled={disabled}
         className="spring-toggle cursor-pointer"
       />

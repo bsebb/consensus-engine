@@ -8,6 +8,7 @@ export default function SegmentedControl({
   className = '',
   size = 'md',
   variant = 'default', // 'default' (surface thumb) | 'accent' (accent thumb)
+  pill = false,
 }) {
   const containerRef = useRef(null);
   const buttonRefs = useRef(new Map());
@@ -68,31 +69,35 @@ export default function SegmentedControl({
     return () => ro.disconnect();
   }, [updateThumbMetrics]);
 
-  // Strict Concentric Radii: R_inner = R_outer - padding
-  // sm: outer rounded-lg (8px), padding 2px (p-0.5) -> inner rounded-md (6px)
-  // md: outer rounded-xl (12px), padding 4px (p-1) -> inner rounded-lg (8px)
-  // lg: outer rounded-2xl (16px), padding 6px (p-1.5) -> inner rounded-[10px] (10px)
-  const sizeConfig = {
+  // Strict Concentric Radii Law: R_inner = R_outer - padding
+  // sm: outer 10px, padding 2.5px -> inner 7.5px
+  // md: outer 12px, padding 3px   -> inner 9px
+  // lg: outer 14px, padding 3.5px -> inner 10.5px
+  // pill: outer 9999px, padding 3px -> inner 9999px
+  const sizeConfigs = {
     sm: {
-      container: 'rounded-lg p-0.5 text-xs',
-      thumb: 'rounded-md',
-      btn: 'py-1 px-2 min-h-[30px] rounded-md text-xs',
+      padding: '2.5px',
+      trackRadius: pill ? '9999px' : '10px',
+      innerRadius: pill ? '9999px' : '7.5px',
+      btn: 'py-1 px-2.5 min-h-[30px] text-xs',
+      text: 'text-xs',
     },
     md: {
-      container: 'rounded-xl p-1 text-sm',
-      thumb: 'rounded-lg',
-      btn: 'py-1.5 px-3 min-h-[36px] rounded-lg text-xs sm:text-sm',
+      padding: '3px',
+      trackRadius: pill ? '9999px' : '12px',
+      innerRadius: pill ? '9999px' : '9px',
+      btn: 'py-1.5 px-3 min-h-[36px] text-xs sm:text-sm',
+      text: 'text-sm',
     },
     lg: {
-      container: 'rounded-2xl p-1.5 text-sm sm:text-base',
-      thumb: 'rounded-[10px]',
-      btn: 'py-2 px-3.5 min-h-[42px] rounded-[10px] text-sm',
+      padding: '3.5px',
+      trackRadius: pill ? '9999px' : '14px',
+      innerRadius: pill ? '9999px' : '10.5px',
+      btn: 'py-2 px-3.5 min-h-[42px] text-sm',
+      text: 'text-sm sm:text-base',
     },
-  }[size] || {
-    container: 'rounded-xl p-1 text-sm',
-    thumb: 'rounded-lg',
-    btn: 'py-1.5 px-3 min-h-[36px] rounded-lg text-xs sm:text-sm',
   };
+  const cfg = sizeConfigs[size] || sizeConfigs.md;
 
   const handleSelect = (newVal) => {
     if (newVal !== value) {
@@ -107,12 +112,16 @@ export default function SegmentedControl({
     <div
       ref={containerRef}
       role="tablist"
-      className={`relative inline-flex items-center w-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] ${sizeConfig.container} select-none ${className}`}
+      style={{
+        borderRadius: cfg.trackRadius,
+        padding: cfg.padding,
+      }}
+      className={`relative inline-flex items-center w-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] ${cfg.text} select-none ${className}`}
     >
       {/* 60fps GPU Sliding Indicator Thumb (Strict Concentric & Borderless) */}
       <div
         aria-hidden="true"
-        className={`seg-thumb absolute top-0 left-0 m-0 ${sizeConfig.thumb} pointer-events-none z-10 ${
+        className={`seg-thumb absolute top-0 left-0 m-0 pointer-events-none z-10 ${
           isAccent
             ? 'bg-[var(--accent-bg)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)]'
             : 'bg-white dark:bg-[var(--bg-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.06)]'
@@ -123,6 +132,7 @@ export default function SegmentedControl({
           bottom: 'auto',
           margin: 0,
           border: 'none',
+          borderRadius: cfg.innerRadius,
           transform: `translate3d(${thumbMetrics.left}px, ${thumbMetrics.top}px, 0)`,
           width: thumbMetrics.width > 0 ? `${thumbMetrics.width}px` : undefined,
           height: thumbMetrics.height > 0 ? `${thumbMetrics.height}px` : undefined,
@@ -147,7 +157,10 @@ export default function SegmentedControl({
             type="button"
             aria-selected={isSelected}
             onClick={() => handleSelect(opt.value)}
-            className={`relative z-20 flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 ${sizeConfig.btn} font-bold cursor-pointer transition-colors duration-150 active:scale-[0.98] ${
+            style={{
+              borderRadius: cfg.innerRadius,
+            }}
+            className={`relative z-20 flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 ${cfg.btn} font-bold cursor-pointer transition-colors duration-150 active:scale-[0.98] ${
               isSelected
                 ? isAccent
                   ? 'text-white'

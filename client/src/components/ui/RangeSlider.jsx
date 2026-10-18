@@ -1,4 +1,5 @@
 import React from 'react';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function RangeSlider({
   min = 0,
@@ -12,6 +13,14 @@ export default function RangeSlider({
   className = '',
 }) {
   const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+
+  const handleChange = (e) => {
+    const val = Number(e.target.value);
+    if (val !== value) {
+      triggerHaptic('selection');
+      onChange?.(val);
+    }
+  };
 
   return (
     <div className={`w-full flex flex-col gap-2 ${className}`}>
@@ -50,7 +59,7 @@ export default function RangeSlider({
           max={max}
           step={step}
           value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={handleChange}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 touch-none"
         />
       </div>

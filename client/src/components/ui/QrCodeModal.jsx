@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, Share2, Smartphone } from 'lucide-react';
 import { useToast } from './Toast';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function QrCodeModal({
   isOpen = false,
@@ -15,6 +16,7 @@ export default function QrCodeModal({
 
   const handleClose = () => {
     if (isClosing) return;
+    triggerHaptic('light');
     setIsClosing(true);
     setTimeout(() => {
       setIsClosing(false);
@@ -31,6 +33,7 @@ export default function QrCodeModal({
       if (e.key === 'Escape' && isOpen) handleClose();
     };
     if (isOpen) {
+      triggerHaptic('tap');
       document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleKeyDown);
     }
@@ -43,6 +46,7 @@ export default function QrCodeModal({
   if (!isOpen && !isClosing) return null;
 
   const handleCopy = async () => {
+    triggerHaptic('tap');
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
@@ -62,6 +66,7 @@ export default function QrCodeModal({
   };
 
   const handleShare = async () => {
+    triggerHaptic('tap');
     if (navigator.share) {
       try {
         await navigator.share({

@@ -91,14 +91,14 @@ export function ThemeProvider({ children }) {
       return;
     }
 
-    updateDOM();
+    flushSync(() => {
+      updateDOM();
+    });
     // Force synchronous reflow so all styles paint in one single unified frame
     void root.offsetHeight;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        root.classList.remove('theme-switching');
-      });
-    });
+    setTimeout(() => {
+      root.classList.remove('theme-switching');
+    }, 120);
   };
 
   const toggleTheme = () => {

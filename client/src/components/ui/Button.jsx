@@ -1,4 +1,5 @@
 import React from 'react';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function Button({
   children,
@@ -31,10 +32,17 @@ export default function Button({
       'glass-surface text-[var(--text-primary)] hover:bg-white/90 dark:hover:bg-black/60 shadow-[0_4px_16px_rgba(0,0,0,0.06)]',
   }[variant] || 'bg-[var(--accent-bg)] text-white';
 
+  const handleClick = (e) => {
+    if (!disabled && !loading) {
+      triggerHaptic('tap');
+      onClick?.(e);
+    }
+  };
+
   return (
     <button
       type={type}
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled || loading}
       className={`inline-flex items-center justify-center select-none transition-all duration-150 cursor-pointer active:scale-[0.96] disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
       {...props}
