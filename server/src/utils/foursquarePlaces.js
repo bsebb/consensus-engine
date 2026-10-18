@@ -66,6 +66,12 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
   const catNames = cats.map((c) => `${c.name || ''} ${c.short_name || ''}`).join(' ').toLowerCase();
   const combined = `${nameLower} ${catNames}`;
 
+  // Global rejection of permanently closed historical / defunct venues
+  const defunctVenues = /\b(odeon|flac[aă]ra|gaudeamus|moscova|patria r[iî][sș]cani|smokehouse|barbar|propaganda|hostaria amarcord|casa dac[aă]|the york pub|morimoto|ava 1727|havana mama)\b/i;
+  if (defunctVenues.test(combined)) {
+    return false;
+  }
+
   const bannedPatterns = [
     /\b(convenience store|grocery|supermarket|hypermarket|alimentara|magazin|minimarket|butic)\b/i,
     /\b(gas station|petrol|fuel|peco|rompetrol|lukoil|petrom|bemol|vento|car wash|auto service|tire)\b/i,
@@ -94,9 +100,6 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
   }
 
   if (categoryKey === 'cinema') {
-    if (/\b(odeon|flac[aă]ra|gaudeamus|moscova|patria r[iî][sș]cani)\b/i.test(combined)) {
-      return false;
-    }
     return /\b(cinema|movie|theater|theatre|film|multiplex|cineplex|autocinema|cinematograf)\b/i.test(combined);
   }
 
@@ -105,22 +108,22 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
   }
 
   if (categoryKey === 'cafes') {
-    return /\b(cafe|café|coffee|espresso|bakery|pastry|patisserie|tea house|teahouse|bistro|dessert|cappuccino|latte|roastery|tucano|crème|creme|rozmarin|sensi|propaganda|coffeemolka|delice|délice)\b/i.test(combined);
+    return /\b(cafe|café|coffee|espresso|bakery|pastry|patisserie|tea house|teahouse|bistro|dessert|cappuccino|latte|roastery|tucano|crème|creme|rozmarin|sensi|coffeemolka|delice|délice)\b/i.test(combined);
   }
   if (categoryKey === 'bars') {
-    return /\b(bar|pub|beer|wine bar|brewery|taproom|cocktail|lounge|nightlife|tavern|pivnice|gastropub|kozlovna|draft|smokehouse|invino|pivko)\b/i.test(combined);
+    return /\b(bar|pub|beer|wine bar|brewery|taproom|cocktail|lounge|nightlife|tavern|pivnice|gastropub|kozlovna|draft|marl[eè]ne|invino|covor|pivko)\b/i.test(combined);
   }
   if (categoryKey === 'desserts') {
-    return /\b(dessert|bakery|pastry|patisserie|ice cream|icecream|gelato|cake|sweet|confectionery|cafe|café|crème|creme|delice|délice|dulcinella|sandra|granier|covrigo|cuptorul)\b/i.test(combined);
+    return /\b(dessert|bakery|pastry|patisserie|ice cream|icecream|gelato|cake|sweet|confectionery|cafe|café|crème|creme|delice|délice|dulcinella|gioelia|granier|covrigo|cuptorul)\b/i.test(combined);
   }
-  return /\b(restaurant|pizza|pizzeria|steak|grill|sushi|burger|bistro|kitchen|trattoria|tavern|gastropub|bbq|diner|cafe|café|bar|pub|european|italian|romanian|moldovan|asian|fast food|plăcinte|placinte|kfc|mcdonald|mcdonald's|hanul)\b/i.test(combined);
+  return /\b(restaurant|pizza|pizzeria|steak|grill|sushi|burger|bistro|kitchen|trattoria|tavern|gastropub|bbq|diner|cafe|café|bar|pub|european|italian|romanian|moldovan|asian|fast food|plăcinte|placinte|kfc|mcdonald|mcdonald's|hanul|fuior|nonna)\b/i.test(combined);
 }
 
 function inferPriceLevel(place, categoryKey) {
   if (place.price && place.price >= 1 && place.price <= 4) return place.price;
   const nameLower = String(place.name || '').toLowerCase();
   const catNames = (place.categories || []).map((c) => (c.name || '').toLowerCase()).join(' ');
-  if (nameLower.includes('osho') || nameLower.includes('mi piace') || nameLower.includes('pegas') || nameLower.includes('invino') || nameLower.includes('chateau') || nameLower.includes('nobil') || catNames.includes('steakhouse') || catNames.includes('fine dining') || catNames.includes('modern european')) return 3;
+  if (nameLower.includes('osho') || nameLower.includes('mi piace') || nameLower.includes('pegas') || nameLower.includes('invino') || nameLower.includes('chateau') || nameLower.includes('nobil') || nameLower.includes('fuior') || nameLower.includes('marlene') || nameLower.includes('marlène') || catNames.includes('steakhouse') || catNames.includes('fine dining') || catNames.includes('modern european')) return 3;
   if (nameLower.includes('mania') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('coffeemolka') || nameLower.includes('granier') || catNames.includes('fast food') || catNames.includes('bakery') || catNames.includes('ice cream')) return 1;
   return 2;
 }
@@ -306,12 +309,14 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       osho: { rating: 4.7, reviews: 2450 }, mipiace: { rating: 4.6, reviews: 3420 },
       cremedelacreme: { rating: 4.7, reviews: 2980 }, andys: { rating: 4.4, reviews: 4250 },
       placinte: { rating: 4.5, reviews: 3600 }, draft: { rating: 4.3, reviews: 1180 },
-      pizzamania: { rating: 4.5, reviews: 1340 }, propaganda: { rating: 4.6, reviews: 1870 },
+      pizzamania: { rating: 4.5, reviews: 1340 }, fuior: { rating: 4.8, reviews: 1450 },
       kozlovna: { rating: 4.5, reviews: 1930 }, pegas: { rating: 4.7, reviews: 3890 },
-      tucano: { rating: 4.6, reviews: 2800 }, smokehouse: { rating: 4.6, reviews: 1650 },
+      tucano: { rating: 4.6, reviews: 2800 }, marlene: { rating: 4.8, reviews: 920 },
       rozmarin: { rating: 4.6, reviews: 1230 }, invino: { rating: 4.8, reviews: 750 },
       cineplex: { rating: 4.6, reviews: 4200 }, loteanu: { rating: 4.6, reviews: 3100 },
       autocinema: { rating: 4.5, reviews: 850 }, privatecinema: { rating: 4.7, reviews: 420 },
+      gioelia: { rating: 4.8, reviews: 1250 }, nonna: { rating: 4.6, reviews: 2600 },
+      covor: { rating: 4.7, reviews: 680 },
       alindor: { rating: 4.5, reviews: 410 }, struguras: { rating: 4.4, reviews: 320 },
       laculverde: { rating: 4.6, reviews: 540 }, hanul: { rating: 4.5, reviews: 480 },
       delice: { rating: 4.6, reviews: 280 }, azasu: { rating: 4.8, reviews: 520 },

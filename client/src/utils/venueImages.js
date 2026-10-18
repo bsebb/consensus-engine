@@ -180,7 +180,14 @@ const VENUE_RATINGS_MAP = {
   "aer liber": { rating: "4.6", reviewCount: "560", rawReviews: 560 },
   "movie hall": { rating: "4.5", reviewCount: "340", rawReviews: 340 },
   "taproom": { rating: "4.6", reviewCount: "780", rawReviews: 780 },
-  "barbar": { rating: "4.5", reviewCount: "910", rawReviews: 910 },
+  "marlène": { rating: "4.8", reviewCount: "920", rawReviews: 920 },
+  "marlene": { rating: "4.8", reviewCount: "920", rawReviews: 920 },
+  "fuior": { rating: "4.8", reviewCount: "1.4k", rawReviews: 1450 },
+  "gioelia": { rating: "4.8", reviewCount: "1.2k", rawReviews: 1250 },
+  "nonna": { rating: "4.6", reviewCount: "2.6k", rawReviews: 2600 },
+  "trattoria della nonna": { rating: "4.6", reviewCount: "2.6k", rawReviews: 2600 },
+  "covor bar": { rating: "4.7", reviewCount: "680", rawReviews: 680 },
+  "covor": { rating: "4.7", reviewCount: "680", rawReviews: 680 },
   "alindor": { rating: "4.5", reviewCount: "410", rawReviews: 410 },
   "alin d'or": { rating: "4.5", reviewCount: "410", rawReviews: 410 },
   "struguraș": { rating: "4.4", reviewCount: "320", rawReviews: 320 },
@@ -279,7 +286,15 @@ const VENUE_IMAGE_MAP = {
   "movie hall": "https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=900&q=85",
   "movie hall chisinau": "https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=900&q=85",
   "taproom": "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
-  "barbar": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  "marlène": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  "marlene": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  "fuior": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
+  "gioelia": "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=900&q=85",
+  "gioelia cremeria": "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=900&q=85",
+  "covor bar": "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=85",
+  "covor": "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=85",
+  "trattoria della nonna": "https://img.restaurantguru.com/c7ae-Ristorante-Trattoria-della-Nonna-interior.jpg",
+  "nonna": "https://img.restaurantguru.com/c7ae-Ristorante-Trattoria-della-Nonna-interior.jpg",
   // Chișinău & Regional Hotspots
   "azasu": "https://qmzxbjlpwqkagcyhcglm.supabase.co/storage/v1/object/public/place-photos/places/google-1778416720729-i713zi6pcod.webp",
   "greko fresh": "https://grekofresh.md/wp-content/uploads/2020/10/restraraunt-photo-02-500x330.jpg",
@@ -423,6 +438,11 @@ export function getVenueVibe(name = '', category = '') {
   if (normName.includes('private cinema')) return 'VIP Screening Lounge';
   if (normName.includes('aer liber')) return 'Open-Air Cinema';
   if (normName.includes('movie hall')) return 'Boutique Screening Cinema';
+  if (normName.includes('fuior')) return 'Modern Moldovan Fine Dining';
+  if (normName.includes('nonna')) return 'Traditional Italian Trattoria';
+  if (normName.includes('marlène') || normName.includes('marlene')) return 'Craft Cocktail Lounge & Mixology';
+  if (normName.includes('covor')) return 'Concept Cocktail Bar & Patio';
+  if (normName.includes('gioelia')) return 'Artisanal Italian Gelateria';
   if (normName.includes('osho')) return 'Steakhouse & Modern Kitchen';
   if (normName.includes('mi piace') || normName.includes('dolce vita')) return 'Italian Trattoria & Pizza';
   if (normName.includes('andy')) return 'Casual Dining & Pizzeria';
@@ -431,17 +451,13 @@ export function getVenueVibe(name = '', category = '') {
   if (normName.includes('pegas')) return '24/7 Grill & Terrace';
   if (normName.includes('crème') || normName.includes('creme')) return 'French Patisserie & Café';
   if (normName.includes('kozlovna') || normName.includes('boozer')) return 'Pub & Grill';
-  if (normName.includes('propaganda')) return 'Vintage Café & Bistro';
   if (normName.includes('rozmarin')) return 'Artisanal Brunch & Roastery';
   if (normName.includes('tucano') || normName.includes('drive')) return 'Specialty Coffee & Café';
   if (normName.includes('sensi')) return 'Espresso Bar & Lounge';
   if (normName.includes('coffeemolka')) return 'Cozy Artisanal Coffee House';
-  if (normName.includes('smokehouse')) return 'Texas BBQ & Craft Beer';
   if (normName.includes('taproom') || normName.includes('pivko')) return 'Craft Beer Taproom & Pub';
   if (normName.includes('invino') || normName.includes('asti') || normName.includes('vartely')) return 'Wine & Gastronomy';
   if (normName.includes('draft')) return 'Gastropub & Live Sports';
-  if (normName.includes('barbar')) return 'Cocktail Bar & Lounge';
-  if (normName.includes('sandra') || normName.includes('morpho')) return 'Artisanal Gelato & Ice Cream';
   if (normName.includes('dulcinella') || normName.includes('granier') || normName.includes('cuptorul') || normName.includes('covrigo')) return 'Bakery & Sweet Pastries';
 
   const genericCategories = ['discovery', 'restaurants', 'restaurant', 'cafes', 'bars & pubs', 'cinema', 'desserts', 'local venue', 'top pick', 'custom', 'suggestion'];

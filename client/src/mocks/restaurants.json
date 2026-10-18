@@ -74,9 +74,9 @@
     "name": "Sensi Bar & Cafe",
     "price_level": 2,
     "distance_km": null,
-    "lat": 47.0265,
-    "lng": 28.8310,
-    "address": "Str. Alexandru cel Bun 111, Centru",
+    "lat": 47.0145,
+    "lng": 28.8525,
+    "address": "Bd. Dimitrie Cantemir 3/2, Centru",
     "tags": ["Cafes", "Coffee", "Brunch"]
   },
   {
@@ -90,14 +90,14 @@
     "tags": ["Bars & Pubs", "Bars", "Beer", "Drinks"]
   },
   {
-    "id": "smokehouse_bar",
-    "name": "Smokehouse: BBQ & Beer",
-    "price_level": 2,
+    "id": "marlene_bar",
+    "name": "Marlène Cocktail Bar",
+    "price_level": 3,
     "distance_km": null,
-    "lat": 47.0245,
+    "lat": 47.0228,
     "lng": 28.8315,
-    "address": "Bd. Ștefan cel Mare 128, Centru",
-    "tags": ["Bars & Pubs", "Bars", "Beer", "Drinks"]
+    "address": "Str. București 75, Centru",
+    "tags": ["Bars & Pubs", "Cocktails", "Lounge", "Drinks"]
   },
   {
     "id": "invino_bar",
@@ -150,17 +150,37 @@
     "tags": ["Cafes", "French Bistro", "Patisserie"]
   },
   {
-    "id": "propaganda_6",
-    "name": "Propaganda Cafe",
-    "price_level": 2,
+    "id": "fuior_6",
+    "name": "Fuior Gourmet",
+    "price_level": 3,
     "distance_km": null,
-    "lat": 47.0210,
-    "lng": 28.8375,
-    "address": "Str. Alexei Șciusev 47, Centru",
-    "tags": ["Cafes", "Bistro", "Cozy Ambience"]
+    "lat": 47.0235,
+    "lng": 28.8355,
+    "address": "Str. Aleksandr Pușkin 30, Centru",
+    "tags": ["Restaurants", "Modern Moldovan", "Fine Dining"]
   },
   {
-    "id": "taifas_7",
+    "id": "gioelia_7",
+    "name": "Gioelia Cremeria",
+    "price_level": 2,
+    "distance_km": null,
+    "lat": 47.0285,
+    "lng": 28.8365,
+    "address": "Str. Constantin Tănase 9, Centru",
+    "tags": ["Desserts", "Gelato", "Ice Cream", "Cafes"]
+  },
+  {
+    "id": "nonna_8",
+    "name": "Trattoria della Nonna",
+    "price_level": 2,
+    "distance_km": null,
+    "lat": 47.0182,
+    "lng": 28.8305,
+    "address": "Str. Mihail Kogălniceanu 62, Centru",
+    "tags": ["Restaurants", "Italian", "Pasta", "Dining"]
+  },
+  {
+    "id": "taifas_9",
     "name": "La Taifas",
     "price_level": 3,
     "distance_km": null,
