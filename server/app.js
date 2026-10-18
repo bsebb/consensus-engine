@@ -196,6 +196,27 @@ const activeVotingSessions = new Map();
 // Disconnect grace tracking: `${pin}:${participant_id}` -> timeoutId
 const disconnectTimeouts = new Map();
 
+// In-memory room summary cache: pin -> { room, expiresAt } to avoid heavy DB queries on socket joins
+const roomSummaryCache = new Map();
+const { getRoomSummaryByPin, createParticipantWithId, prisma } = require('./db/helpers');
+
+async function getCachedRoomSummary(pin) {
+  if (!pin) return null;
+  const cached = roomSummaryCache.get(pin);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.room;
+  }
+  try {
+    const room = await getRoomSummaryByPin(pin);
+    if (room) {
+      roomSummaryCache.set(pin, { room, expiresAt: Date.now() + 45000 });
+    }
+    return room;
+  } catch {
+    return null;
+  }
+}
+
 const { calculateSchulzeWinner } = require('./src/utils/schulze');
 
 async function resolveAndBroadcastWinner(pin) {
@@ -404,17 +425,11 @@ io.on('connection', (socket) => {
         disconnectTimeouts.delete(dcKey);
       }
 
-      const { getRoomByPin, createParticipantWithId } = require('./db/helpers');
-
       let room = null;
       try {
-        room = await getRoomByPin(pin);
-        if (room) {
-          // Ensure participant is persisted in PostgreSQL
-          await createParticipantWithId(room.id, participant_id).catch(() => {});
-        }
+        room = await getCachedRoomSummary(pin);
       } catch (dbErr) {
-        console.warn('[Socket] DB lookup notice:', dbErr.message);
+        console.warn('[Socket] DB lookup notice:', dbErr?.message);
       }
 
       // Check if room exists before allocating in-memory lobby structures
@@ -428,12 +443,21 @@ io.on('connection', (socket) => {
       if (!activeLobbies.has(pin)) {
         const map = new Map();
         map.suggestions = [];
+        map.persistedParticipants = new Set();
         map.mode = data?.mode || (room?.theme?.startsWith('custom') ? 'CUSTOM' : 'DISCOVERY');
         map.topic = data?.topic || (room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : 'Where should we go?');
         map.groupSize = data?.group_size || 4;
         activeLobbies.set(pin, map);
       }
       const lobby = activeLobbies.get(pin);
+      if (!lobby.persistedParticipants) lobby.persistedParticipants = new Set();
+
+      // Ensure participant is persisted in PostgreSQL exactly once per session
+      if (room && !lobby.persistedParticipants.has(participant_id)) {
+        lobby.persistedParticipants.add(participant_id);
+        createParticipantWithId(room.id, participant_id).catch(() => {});
+      }
+
       if (data?.mode) lobby.mode = data.mode;
       const cleanDataTopic = data?.topic && data.topic !== 'custom' && data.topic !== 'poll' ? data.topic : null;
       const cleanRoomTopic = room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : null;
@@ -616,13 +640,11 @@ io.on('connection', (socket) => {
         return;
       }
 
-      const { getRoomByPin } = require('./db/helpers');
-
       let room = null;
       try {
-        room = await getRoomByPin(pin);
+        room = await getCachedRoomSummary(pin);
       } catch (dbErr) {
-        console.warn('[Socket] DB lookup notice in host_start_voting:', dbErr.message);
+        console.warn('[Socket] DB lookup notice in host_start_voting:', dbErr?.message);
       }
 
       const lobby = activeLobbies.get(pin);
@@ -908,3 +930,30 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
+
+// Gracefully handle process termination (Render deploys, container recycling, local ctrl-c)
+// to immediately release PostgreSQL client connections and prevent connection pool exhaustion.
+async function gracefulShutdown(signal) {
+  console.log(`[Server] Received ${signal}. Draining sockets, closing HTTP server, and releasing database connections...`);
+  httpServer.close(async () => {
+    try {
+      if (prisma && prisma.$disconnect) {
+        await prisma.$disconnect();
+        console.log('[Server] Prisma disconnected cleanly.');
+      }
+    } catch (e) {
+      console.error('[Server] Error during database disconnect:', e.message);
+    }
+    process.exit(0);
+  });
+
+  // Force exit after 5 seconds if connections fail to drain
+  setTimeout(() => {
+    console.error('[Server] Forced shutdown: connection drain timeout exceeded.');
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+

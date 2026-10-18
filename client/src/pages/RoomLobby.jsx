@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, Settings, ArrowRight, Copy, Check } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
-import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SettingsModal from '../components/ui/SettingsModal';
 import QrCodeModal from '../components/ui/QrCodeModal';
 import StepZeroVault from '../components/lobby/StepZeroVault';
 import CandidatePoolDeck from '../components/lobby/CandidatePoolDeck';
 import LobbyRoster from '../components/lobby/LobbyRoster';
+import LobbyHeader from '../components/lobby/LobbyHeader';
 import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
@@ -89,9 +89,13 @@ export default function RoomLobby() {
 
   useEffect(() => {
     if (!pin) return;
-    if (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0) {
-      setLoadingOptions(true);
+    // Optimization: Skip network fetch if options were already passed in navigation state
+    if (location.state?.roomData?.options && location.state.roomData.options.length > 0) {
+      setLoadingOptions(false);
+      return;
     }
+
+    setLoadingOptions(true);
     fetch(apiUrl(`/api/v1/rooms/${pin}`))
       .then((res) => {
         if (!res.ok) throw new Error('ROOM_NOT_FOUND');
@@ -513,54 +517,13 @@ export default function RoomLobby() {
 
   return (
     <div className="flex-1 flex flex-col min-h-[100dvh] pb-36 sm:pb-40 select-none">
-      {/* Solid Opaque Header */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <button
-            type="button"
-            onClick={handleLeaveLobby}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] active:scale-[0.97]"
-            aria-label="Leave Room"
-          >
-            <LogOut size={13} />
-            <span>{t('home')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopyPin}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.97]"
-            title={t('shareLink')}
-            aria-label={t('shareLink')}
-          >
-            {copied ? (
-              <>
-                <Check size={12} className="text-emerald-500" />
-                <span className="text-emerald-600 dark:text-emerald-400">{t('copied')}</span>
-              </>
-            ) : (
-              <>
-                <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
-                <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
-                <Copy size={11} className="text-[var(--text-tertiary)] ml-0.5" />
-              </>
-            )}
-          </button>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-              aria-label="Open Settings"
-              title="Preferences"
-            >
-              <Settings size={16} />
-            </button>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <LobbyHeader
+        pin={pin}
+        copied={copied}
+        onLeave={handleLeaveLobby}
+        onCopyPin={handleCopyPin}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       {/* Main Content */}
       <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">

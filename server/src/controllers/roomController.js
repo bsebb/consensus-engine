@@ -176,11 +176,7 @@ const createNewRoom = async (req, res) => {
           priceLevel: place.priceLevel ?? 2,
         };
       });
-      await createOptionsBulk(optionsData);
-      try {
-        const hydratedRoom = await getRoomByPin(room.pin);
-        createdOptions = hydratedRoom?.options || [];
-      } catch {}
+      createdOptions = await createOptionsBulk(optionsData);
     }
 
     return res.status(201).json({
@@ -207,9 +203,21 @@ const createNewRoom = async (req, res) => {
   });
 };
 
+// Short in-memory cache (15s TTL) for room lookups to reduce PostgreSQL connection pressure
+const roomResponseCache = new Map();
+
+function invalidateRoomCache(pin) {
+  if (pin) roomResponseCache.delete(String(pin));
+}
+
 const getRoom = async (req, res) => {
   try {
     const { pin } = req.params;
+    const cached = roomResponseCache.get(pin);
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.status(200).json(cached.payload);
+    }
+
     const room = await getRoomByPin(pin);
 
     const isCustom = Boolean(room.theme && room.theme.startsWith('custom'));
@@ -218,7 +226,7 @@ const getRoom = async (req, res) => {
       ? (rawThemeTopic && rawThemeTopic !== 'custom' && rawThemeTopic !== 'poll' ? rawThemeTopic : 'What should we do?')
       : (room.theme || 'Places Nearby');
 
-    return res.status(200).json({
+    const payload = {
       room_id: room.id,
       pin: room.pin,
       status: room.status,
@@ -227,7 +235,10 @@ const getRoom = async (req, res) => {
       mode: isCustom ? 'CUSTOM' : 'DISCOVERY',
       participants: room.participants,
       options: room.options,
-    });
+    };
+
+    roomResponseCache.set(pin, { payload, expiresAt: Date.now() + 15000 });
+    return res.status(200).json(payload);
   } catch (error) {
     return res.status(404).json({
       success: false,
@@ -257,6 +268,7 @@ const updateConfig = async (req, res) => {
   }
 
   const updatedRoom = await updateRoomConfig(id, safeUpdateData);
+  if (pin) invalidateRoomCache(pin);
 
   return res.status(200).json({
     success: true,

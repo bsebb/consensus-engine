@@ -1,6 +1,42 @@
 const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+function getSafeDatabaseUrl() {
+    const rawUrl = (process.env.DATABASE_URL || '').trim();
+    if (!rawUrl) return undefined;
+    try {
+        const parsed = new URL(rawUrl);
+        // On free-tier PostgreSQL (Neon, Supabase, Render), prevent connection exhaustion
+        // by capping connection_limit to 5 (default in Prisma without pgbouncer can spawn 10-20 per process)
+        if (!parsed.searchParams.has('connection_limit')) {
+            parsed.searchParams.set('connection_limit', '5');
+        }
+        if (!parsed.searchParams.has('pool_timeout')) {
+            parsed.searchParams.set('pool_timeout', '10');
+        }
+        return parsed.toString();
+    } catch {
+        return rawUrl;
+    }
+}
+
+const safeUrl = getSafeDatabaseUrl();
+const prisma = global.__prisma || new PrismaClient(
+    safeUrl
+        ? {
+            datasources: {
+                db: { url: safeUrl },
+            },
+            log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+        }
+        : {
+            log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+        }
+);
+
+if (process.env.NODE_ENV !== 'production') {
+    global.__prisma = prisma;
+}
 
 async function createRoom(hostId, pin, theme = null, radius = null) {
     try {
@@ -88,10 +124,11 @@ async function createOptionsBulk(optionsData) {
             googlePlaceId: opt.googlePlaceId || opt.fsq_id || opt.fsq_place_id || null,
             priceLevel: opt.priceLevel ?? null,
         }));
-        return await prisma.option.createMany({
+        await prisma.option.createMany({
             data: sanitized,
             skipDuplicates: true,
         });
+        return sanitized;
     } catch (error) {
         console.error(error);
         throw new Error("Failed to create options in bulk");
@@ -159,6 +196,27 @@ async function getRoomByPin(pin) {
         if (error.message !== "Room not found") {
             console.error(error);
         }
+        throw error;
+    }
+}
+
+// Lightweight query without nested joins for fast socket room validation & auth checks
+async function getRoomSummaryByPin(pin) {
+    try {
+        const room = await prisma.room.findUnique({
+            where: { pin },
+            select: {
+                id: true,
+                pin: true,
+                hostId: true,
+                status: true,
+                theme: true,
+                radius: true,
+            },
+        });
+        return room;
+    } catch (error) {
+        console.error(error);
         throw error;
     }
 }
@@ -350,6 +408,7 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
 
 
 module.exports = {
+    prisma,
     createRoom,
     createParticipant,
     createOption,
@@ -357,6 +416,7 @@ module.exports = {
     createVotesBulk,
     getRoomById,
     getRoomByPin,
+    getRoomSummaryByPin,
     createVote,
     //Lilia: export vote progress helper
     countVotedParticipants,
