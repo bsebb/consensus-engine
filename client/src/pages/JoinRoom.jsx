@@ -299,7 +299,7 @@ export default function JoinRoom() {
       </header>
 
       <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
-        <div className="text-center mb-5 space-y-1">
+        <div className="text-center mb-5 space-y-1 min-h-[64px] flex flex-col justify-center">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
             {activeTab === 'create' ? activeCatObj.topic : t('joinWithCode')}
           </h1>
@@ -356,9 +356,9 @@ export default function JoinRoom() {
                           setSelectedCategory(cat.id);
                           triggerHaptic('tap');
                         }}
-                        className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer min-h-[54px] ${
+                        className={`relative flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer h-[60px] min-h-[60px] overflow-hidden ${
                           isSelected
-                            ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs'
+                            ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs ring-1 ring-[var(--accent-bg)]/20'
                             : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
                         }`}
                       >
@@ -371,13 +371,20 @@ export default function JoinRoom() {
                         >
                           <Icon size={16} />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-[var(--text-primary)] leading-snug">{cat.title}</div>
-                          <div className="text-[11px] text-[var(--text-tertiary)] truncate">{cat.desc}</div>
+                        <div className="min-w-0 flex-1 pr-1.5">
+                          <div className="text-xs font-bold text-[var(--text-primary)] leading-tight truncate">
+                            {cat.title}
+                          </div>
+                          <div className="text-[11px] text-[var(--text-tertiary)] truncate mt-0.5">
+                            {cat.desc}
+                          </div>
                         </div>
-                        {isSelected && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-bg)] shrink-0 animate-checkmark-pop" />
-                        )}
+                        {/* Smooth non-reflowing active dot indicator */}
+                        <div
+                          className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--accent-bg)] transition-all duration-200 pointer-events-none ${
+                            isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                          }`}
+                        />
                       </button>
                     );
                   })}

@@ -81,6 +81,24 @@ export const TRANSLATIONS = {
     clearHistoryMsg: 'Delete all past consensus records',
     closeBtn: 'Done',
 
+    // History
+    historyEmptyTitle: 'No Decisions Yet',
+    historyEmptyDesc: 'When your group completes a vote, the consensus winner will be archived here.',
+    historyStartPick: 'Start a Pick',
+    historyResolved: 'Resolved',
+    historyWinnerPick: 'Consensus Pick',
+    historyAgreement: 'agreement',
+    historyVoters: 'voters',
+    historyRankings: 'Final Standings',
+    historyWinnerTag: 'Winner',
+    historyVetoedTag: 'Vetoed',
+    historyDirections: 'Directions',
+    historyWinnerCard: 'Winner Screen',
+    historySampleDinner: 'Friday Dinner Out',
+    historySampleCoffee: 'Team Coffee Break',
+    historySampleWinnerSweep: 'Consensus Winner (unanimous sweep)',
+    historySampleDefeatedBy: 'Defeated by',
+
     // Lobby
     invite: 'Invite',
     inviteFriends: 'Invite Friends',
@@ -277,6 +295,24 @@ export const TRANSLATIONS = {
     clearHistoryMsg: 'Șterge toate voturile anterioare',
     closeBtn: 'Închide',
 
+    // History
+    historyEmptyTitle: 'Niciun istoric încă',
+    historyEmptyDesc: 'Când grupul tău termină un vot, alegerea câștigătoare va fi salvată aici.',
+    historyStartPick: 'Începe o sesiune',
+    historyResolved: 'Finalizat',
+    historyWinnerPick: 'Alegerea grupului',
+    historyAgreement: 'acord',
+    historyVoters: 'votanți',
+    historyRankings: 'Clasament final',
+    historyWinnerTag: 'Câștigător',
+    historyVetoedTag: 'Veto',
+    historyDirections: 'Direcții',
+    historyWinnerCard: 'Ecran câștigător',
+    historySampleDinner: 'Cină de vineri în oraș',
+    historySampleCoffee: 'Pauză de cafea cu echipa',
+    historySampleWinnerSweep: 'Câștigător prin consens (unanim)',
+    historySampleDefeatedBy: 'Învins de',
+
     // Lobby
     invite: 'Invită',
     inviteFriends: 'Invită prietenii',
@@ -472,6 +508,24 @@ export const TRANSLATIONS = {
     clearHistoryBtn: 'Очистить историю',
     clearHistoryMsg: 'Удалить сохранённые результаты',
     closeBtn: 'Готово',
+
+    // History
+    historyEmptyTitle: 'История пока пуста',
+    historyEmptyDesc: 'Когда группа завершит голосование, общий выбор появится здесь.',
+    historyStartPick: 'Создать комнату',
+    historyResolved: 'Завершено',
+    historyWinnerPick: 'Выбор группы',
+    historyAgreement: 'совпадение',
+    historyVoters: 'участников',
+    historyRankings: 'Итоги голосования',
+    historyWinnerTag: 'Победитель',
+    historyVetoedTag: 'Вето',
+    historyDirections: 'Маршрут',
+    historyWinnerCard: 'Экран победы',
+    historySampleDinner: 'Ужин в пятницу',
+    historySampleCoffee: 'Кофе-брейк с командой',
+    historySampleWinnerSweep: 'Единогласный выбор группы',
+    historySampleDefeatedBy: 'Уступил',
 
     // Lobby
     invite: 'Пригласить',
