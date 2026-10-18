@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { searchRestaurants } = require('./src/utils/foursquarePlaces');
+const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
 const roomRoutes = require('./routes/roomRoutes');
 //Lilia: access the shared Socket.io instance from other server modules
 const { setIO } = require('./src/utils/socket');
@@ -54,6 +54,21 @@ app.get(['/health', '/api/v1/health'], (req, res) => {
 });
 
 app.use('/api/v1/rooms', roomRoutes);
+
+// Real venue photography endpoint (returns up to 4 real high-res CDN photos for any venue)
+app.get('/api/v1/venue-photos', async (req, res) => {
+  try {
+    const { name = '', address = '', category = '' } = req.query;
+    if (!name.trim()) {
+      return res.json({ success: true, photos: [] });
+    }
+    const photos = await fetchRealVenuePhotos(name, address, category);
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.json({ success: true, photos });
+  } catch {
+    return res.json({ success: false, photos: [] });
+  }
+});
 
 app.get('/api/v1/test-foursquare', async (req, res) => {
   try {

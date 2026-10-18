@@ -226,3 +226,77 @@ export function getSavedExactGps() {
   } catch {}
   return null;
 }
+
+const roadMetricsCache = new Map();
+
+/**
+ * Queries OSRM for actual road/bridge network distances and travel durations
+ * from (userLat, userLng) to an array of venues.
+ */
+export async function fetchRoadRouteMetrics(userLat, userLng, venues = []) {
+  if (userLat == null || userLng == null || !Array.isArray(venues) || venues.length === 0) {
+    return {};
+  }
+  const validVenues = venues.filter((v) => v && v.lat != null && v.lng != null);
+  if (validVenues.length === 0) return {};
+
+  const cacheKey = `${Number(userLat).toFixed(3)},${Number(userLng).toFixed(3)}|${validVenues.map((v) => v.id || v.name).join(',')}`;
+  if (roadMetricsCache.has(cacheKey)) {
+    return roadMetricsCache.get(cacheKey);
+  }
+
+  try {
+    const coordStr = [`${userLng},${userLat}`, ...validVenues.map((v) => `${v.lng},${v.lat}`)].join(';');
+    const url = `https://router.project-osrm.org/table/v1/driving/${coordStr}?sources=0&annotations=distance,duration`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    const distances = data?.distances?.[0];
+    const durations = data?.durations?.[0];
+    if (!Array.isArray(distances)) return {};
+
+    const resultMap = {};
+    validVenues.forEach((v, i) => {
+      const roadMeters = distances[i + 1];
+      const driveSeconds = durations?.[i + 1];
+      if (typeof roadMeters === 'number' && roadMeters > 0) {
+        const roadDistanceKm = Math.max(0.1, Number((roadMeters / 1000).toFixed(1)));
+        const driveMinutes =
+          typeof driveSeconds === 'number'
+            ? Math.max(2, Math.round(driveSeconds / 60))
+            : Math.max(2, Math.round(roadDistanceKm * 2.2));
+        const walkMinutes = Math.max(2, Math.round(roadMeters / 78));
+        resultMap[v.id || v.name] = {
+          roadDistanceKm,
+          walkMinutes,
+          driveMinutes,
+        };
+      }
+    });
+
+    roadMetricsCache.set(cacheKey, resultMap);
+    return resultMap;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Formats road distance and walking/driving time into a clear human-friendly string.
+ */
+export function formatTravelSummary(item) {
+  if (!item) return 'Local Venue';
+  const dist = item.distance_km;
+  if (dist == null) {
+    return item.address ? item.address.split(',')[0] : 'Local Area';
+  }
+  const walkMin = item.walk_minutes || Math.max(2, Math.round(dist * 12.5));
+  const driveMin = item.drive_minutes || Math.max(2, Math.round(dist * 2.2));
+  if (dist <= 1.8) {
+    return `${dist} km road • ~${walkMin} min walk`;
+  }
+  return `${dist} km road • ~${driveMin} min drive (${walkMin}m walk)`;
+}
+

@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-} from 'lucide-react';
+import { ArrowLeft, Layers, MapPin } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
@@ -11,17 +9,18 @@ import ConsensusWinnerView from '../components/deck/ConsensusWinnerView';
 import SwipeCard from '../components/deck/SwipeCard';
 import SwipeControls from '../components/deck/SwipeControls';
 import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
+import VenueDetailsModal from '../components/deck/VenueDetailsModal';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import { getVenueRating } from '../utils/venueImages';
-import { calculateDistanceKm, getSavedExactGps } from '../utils/location';
+import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
 
 const DEFAULT_WINNER = {
   id: 'winner_default',
   name: 'Consensus Spot',
   category: 'Local Favorites',
-  address: 'Centru, Chișinău',
+  address: 'Local Venue',
   distance_km: null,
   price_level: 2,
   tags: ['Group Favorite', 'Cozy Atmosphere'],
@@ -42,14 +41,10 @@ export default function SwipeDeck() {
     (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
   );
 
-  // Track active PIN
   useEffect(() => {
-    if (pin) {
-      localStorage.setItem('consensus_active_pin', pin);
-    }
+    if (pin) localStorage.setItem('consensus_active_pin', pin);
   }, [pin]);
 
-  // Initialize deck options with true client-side GPS distance when available
   const [cards, setCards] = useState(() => {
     const savedGps = getSavedExactGps();
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
@@ -65,22 +60,23 @@ export default function SwipeDeck() {
             address: 'Added by group',
           };
         }
-        const liveDist =
-          savedGps && item.lat != null && item.lng != null
-            ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
-            : savedGps && typeof item.distance_km === 'number'
-            ? item.distance_km
-            : null;
+        const liveDist = typeof item.distance_km === 'number'
+          ? item.distance_km
+          : savedGps && item.lat != null && item.lng != null
+          ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
+          : null;
         return {
           id: item.id || `option-${idx}`,
           name: item.name || `Option ${idx + 1}`,
           category: item.category || 'Local Favorite',
           tags: item.tags || ['Top Pick'],
           distance_km: liveDist,
+          drive_minutes: item.drive_minutes ?? null,
+          walk_minutes: item.walk_minutes ?? null,
           lat: item.lat ?? null,
           lng: item.lng ?? null,
           price_level: typeof item.price_level === 'number' ? item.price_level : 2,
-          address: item.address || 'Centru, Chișinău',
+          address: item.address || 'Local Venue',
         };
       });
     }
@@ -95,14 +91,10 @@ export default function SwipeDeck() {
 
     return (restaurantsMock || []).map((r) => ({
       ...r,
-      distance_km:
-        savedGps && r.lat != null && r.lng != null
-          ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng)
-          : null,
+      distance_km: savedGps && r.lat != null && r.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng) : null,
     }));
   });
 
-  // Rehydrate cards from REST if loaded directly or after page refresh without location state
   useEffect(() => {
     if (!location.state?.customCards && pin) {
       fetch(apiUrl(`/api/v1/rooms/${pin}`))
@@ -112,7 +104,7 @@ export default function SwipeDeck() {
             const savedGps = getSavedExactGps();
             setCards(data.options.slice(0, 8).map((opt) => {
               let dist = null;
-              let addr = 'Centru, Chișinău';
+              let addr = 'Local Venue';
               let catLabel = location.state?.category || 'Local Favorite';
               let vLat = null;
               let vLng = null;
@@ -126,13 +118,10 @@ export default function SwipeDeck() {
                   const [latS, lngS] = parts[4].split(',');
                   const pLat = parseFloat(latS);
                   const pLng = parseFloat(lngS);
-                  if (!isNaN(pLat) && !isNaN(pLng)) {
-                    vLat = pLat;
-                    vLng = pLng;
-                  }
+                  if (!isNaN(pLat) && !isNaN(pLng)) { vLat = pLat; vLng = pLng; }
                 }
               }
-              if (savedGps && vLat != null && vLng != null) {
+              if (savedGps && vLat != null && vLng != null && dist == null) {
                 dist = calculateDistanceKm(savedGps.lat, savedGps.lng, vLat, vLng);
               }
               return {
@@ -153,16 +142,34 @@ export default function SwipeDeck() {
     }
   }, [pin, location.state]);
 
+  useEffect(() => {
+    const savedGps = getSavedExactGps();
+    if (!savedGps || mode === 'CUSTOM') return;
+    const needsRoad = cards.filter((c) => c.lat != null && c.lng != null && c.drive_minutes == null);
+    if (needsRoad.length === 0) return;
+
+    let cancelled = false;
+    fetchRoadRouteMetrics(savedGps.lat, savedGps.lng, cards).then((map) => {
+      if (cancelled || !map || Object.keys(map).length === 0) return;
+      setCards((prev) =>
+        prev.map((c) => {
+          const r = map[c.id];
+          return r ? { ...c, distance_km: r.roadDistanceKm ?? c.distance_km, drive_minutes: r.driveMinutes, walk_minutes: r.walkMinutes } : c;
+        })
+      );
+    });
+    return () => { cancelled = true; };
+  }, [cards.length, mode]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState('swipe');
   const [myVotes, setMyVotes] = useState([]);
   const [exitDirection, setExitDirection] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showWinner, setShowWinner] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('reveal') === 'true' || params.get('winner') === 'true') {
-        return true;
-      }
+      if (params.get('reveal') === 'true' || params.get('winner') === 'true') return true;
     }
     return Boolean(location.state?.resolved);
   });
@@ -175,18 +182,13 @@ export default function SwipeDeck() {
   const [userRating, setUserRating] = useState(0);
   const [condorcetOpen, setCondorcetOpen] = useState(false);
 
-  // If only 1 participant is in the room (solo run), automatically reveal the winner once all cards are swiped
   useEffect(() => {
     if (currentIndex >= cards.length && !showWinner && quorumTotal <= 1 && cards.length > 0) {
-      const timer = setTimeout(() => {
-        setShowWinner(true);
-      }, 450);
+      const timer = setTimeout(() => setShowWinner(true), 450);
       return () => clearTimeout(timer);
     }
   }, [currentIndex, cards.length, showWinner, quorumTotal]);
 
-
-  // Manage swiping active state to hide MobileNav dock
   const isSwiping = !showWinner && currentIndex < cards.length;
 
   useEffect(() => {
@@ -205,22 +207,13 @@ export default function SwipeDeck() {
 
   const handleInlineRate = (rating) => {
     setUserRating(rating);
-    addToast({
-      title: 'Rating Saved',
-      message: `You rated this decision ${rating} stars`,
-      type: 'success',
-    });
+    addToast({ title: 'Rating Saved', message: `You rated this decision ${rating} stars`, type: 'success' });
     const winnerId = serverWinner?.id || cards[0]?.id;
     if (winnerId) {
       fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          participant_id: participantId,
-          option_id: winnerId,
-          satisfaction_score: rating,
-          price_accuracy_score: rating,
-        }),
+        body: JSON.stringify({ participant_id: participantId, option_id: winnerId, satisfaction_score: rating, price_accuracy_score: rating }),
       }).catch((err) => console.warn('[SwipeDeck] Inline rating feedback offline:', err));
     }
   };
@@ -230,13 +223,12 @@ export default function SwipeDeck() {
   const [isDragging, setIsDragging] = useState(false);
   const rafId = useRef(null);
 
-  // Vote handler with spring exit direction
   const handleVote = useCallback((score) => {
     if (currentIndex >= cards.length || exitDirection) return;
-
     const dir = score === 1 ? 'right' : score === -100 ? 'down' : 'left';
     setExitDirection(dir);
     setIsDragging(false);
+    setActiveTab('swipe');
 
     setTimeout(() => {
       const current = cards[currentIndex];
@@ -247,101 +239,62 @@ export default function SwipeDeck() {
     }, 200);
   }, [cards, currentIndex, exitDirection]);
 
-  // Pointer event handlers with hardware setPointerCapture
   const handlePointerDown = (e) => {
     if (exitDirection || currentIndex >= cards.length) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {}
-
-    pointerStart.current = {
-      x: e.clientX,
-      y: e.clientY,
-      pointerId: e.pointerId,
-    };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    pointerStart.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
     setIsDragging(true);
   };
 
   const handlePointerMove = (e) => {
     if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
-
     const diffX = e.clientX - pointerStart.current.x;
     const rawDiffY = e.clientY - pointerStart.current.y;
-    // Upward dragging is resistance-damped
     const diffY = rawDiffY < 0 ? rawDiffY * 0.25 : rawDiffY;
-
     if (rafId.current) cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => {
-      setDragOffset({ x: diffX, y: diffY });
-    });
+    rafId.current = requestAnimationFrame(() => setDragOffset({ x: diffX, y: diffY }));
   };
 
   const handlePointerUp = (e) => {
     if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
-
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {}
-
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     if (rafId.current) cancelAnimationFrame(rafId.current);
-
     const diffX = e.clientX - pointerStart.current.x;
     const diffY = e.clientY - pointerStart.current.y;
-
     pointerStart.current = null;
     setIsDragging(false);
 
-    // Vote classification thresholds
-    // Right swipe: Approve (+1)
     if (diffX > 70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
       handleVote(1);
-    }
-    // Left swipe: Pass (-1)
-    else if (diffX < -70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
+    } else if (diffX < -70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
       handleVote(-1);
-    }
-    // Downward pull: Veto (-100)
-    else if (diffY > 80 && Math.abs(diffY) > Math.abs(diffX)) {
+    } else if (diffY > 80 && Math.abs(diffY) > Math.abs(diffX)) {
       handleVote(-100);
-    }
-    // Snap back to center with spring physics
-    else {
+    } else {
       setDragOffset({ x: 0, y: 0 });
     }
   };
 
   const handlePointerCancel = (e) => {
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {}
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
     if (rafId.current) cancelAnimationFrame(rafId.current);
     pointerStart.current = null;
     setIsDragging(false);
     setDragOffset({ x: 0, y: 0 });
   };
 
-  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (currentIndex >= cards.length || showWinner) return;
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        handleVote(1);
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        handleVote(-1);
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        handleVote(-100);
-      }
+      if (e.key === 'ArrowRight') { e.preventDefault(); handleVote(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); handleVote(-1); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); handleVote(-100); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, cards.length, showWinner, handleVote]);
 
-  // Handle real-time sync, winner resolution, and automatic ballot submission
   useSwipeDeckSync({
     pin,
     participantId,
@@ -365,12 +318,9 @@ export default function SwipeDeck() {
 
   const handleHostForceReveal = () => {
     emit('host_force_reveal', { pin, host_id: participantId });
-    if (!isConnected) {
-      setShowWinner(true);
-    }
+    if (!isConnected) setShowWinner(true);
   };
 
-  // Client-side Condorcet Veto elimination calculation
   const consensusResult = useMemo(() => {
     if (serverWinner) {
       const matchedCard = cards.find((c) => c.id === serverWinner.id || c.name === serverWinner.name);
@@ -387,7 +337,7 @@ export default function SwipeDeck() {
         name: winnerName,
         price_level: location.state?.priceLevel || 2,
         distance_km: null,
-        address: 'Chișinău',
+        address: 'Local Venue',
       };
       return { winner: found, vetoCount: 0, matchScore: location.state?.matchScore || 94 };
     }
@@ -410,7 +360,6 @@ export default function SwipeDeck() {
     };
   }, [cards, myVotes, serverWinner, serverMatchScore, location.state]);
 
-  // Dynamic Pairwise Condorcet Breakdown for Victory Screen
   const pairwiseBreakdown = useMemo(() => {
     if (serverPairwise && Array.isArray(serverPairwise) && serverPairwise.length > 0) return serverPairwise;
     const winner = consensusResult.winner;
@@ -424,7 +373,6 @@ export default function SwipeDeck() {
     });
   }, [serverPairwise, consensusResult.winner, cards, totalParticipants]);
 
-  // Save completed session to local history
   useEffect(() => {
     if (showWinner && consensusResult.winner) {
       try {
@@ -447,7 +395,7 @@ export default function SwipeDeck() {
             name: consensusResult.winner.name,
             priceLevel: consensusResult.winner.price_level || 2,
             distanceKm: consensusResult.winner.distance_km ?? null,
-            address: consensusResult.winner.address || 'Chișinău',
+            address: consensusResult.winner.address || 'Local Venue',
             matchScore: consensusResult.matchScore || 94,
           },
           options: optionsList,
@@ -476,15 +424,8 @@ export default function SwipeDeck() {
     : activeCard.price_level === 3 ? '$$$ • ~350 MDL'
     : '$$$$ • ~600 MDL'
     : '$$ • ~180 MDL';
-  const cardWalkDesc = activeCard
-    ? activeCard.distance_km != null
-      ? activeCard.distance_km <= 2.5
-        ? `${activeCard.distance_km} km • ~${Math.max(3, Math.round(activeCard.distance_km * 12))} min walk`
-        : `${activeCard.distance_km} km away`
-      : (activeCard.address ? activeCard.address.split(',')[0] : 'Chișinău')
-    : 'Chișinău';
+  const cardWalkDesc = activeCard ? formatTravelSummary(activeCard) : 'Local Spot';
 
-  // Direct turn-by-turn Google Maps link
   const mapsDirUrl = consensusResult.winner
     ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
         consensusResult.winner.name + ' ' + (consensusResult.winner.address || '')
@@ -502,31 +443,59 @@ export default function SwipeDeck() {
       }`}
     >
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3 relative">
-        <div className="flex items-center justify-between">
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-2.5 relative">
+        <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
           <button
             type="button"
             onClick={() => navigate(`/lobby/${pin}`)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)]"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0"
             aria-label="Back to Lobby"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={14} />
             <span>Lobby</span>
           </button>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)] font-normal">Choice</span>
-            <span className="text-[var(--accent-bg)]">{Math.min(currentIndex + 1, cards.length)}</span>
-            <span className="text-[var(--text-tertiary)] font-normal">of</span>
-            <span>{cards.length}</span>
-          </div>
+          {/* Segmented Tab Switcher: Vote Card vs Details & Route */}
+          {!showWinner && currentIndex < cards.length ? (
+            <div className="flex items-center p-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <button
+                type="button"
+                onClick={() => setActiveTab('swipe')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer tabular-nums ${
+                  activeTab === 'swipe'
+                    ? 'bg-[var(--accent-bg)] text-white shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Layers size={12} />
+                <span>Card {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('details')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'details'
+                    ? 'bg-[var(--accent-bg)] text-white shadow-xs'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <MapPin size={12} />
+                <span>Details & Route</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
+              <span className="text-[var(--text-tertiary)] font-normal">Room</span>
+              <span className="text-[var(--accent-bg)] tabular-nums">#{pin}</span>
+            </div>
+          )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
           </div>
         </div>
 
-        {/* Flush Hairline Progress Edge: Never leaves an empty dark trench */}
+        {/* Flush Hairline Progress Edge */}
         {!showWinner && currentIndex < cards.length && (
           <div className="absolute bottom-0 inset-x-0 h-[2px] bg-transparent overflow-hidden pointer-events-none">
             <div
@@ -550,17 +519,26 @@ export default function SwipeDeck() {
           handleInlineRate={handleInlineRate}
           setIsReviewOpen={setIsReviewOpen}
           navigate={navigate}
+          pin={pin}
+          participantId={participantId}
         />
       ) : currentIndex >= cards.length ? (
-        /* WAITING FOR BALLOTS */
         <WaitingForBallotsView
           isHost={isHost}
           votesReceived={votesReceived}
           quorumTotal={quorumTotal}
           handleHostForceReveal={handleHostForceReveal}
         />
+      ) : activeTab === 'details' ? (
+        <main className="px-4 py-2 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
+          <VenueDetailsModal
+            venue={activeCard}
+            isOpen={true}
+            inline={true}
+            onClose={() => setActiveTab('swipe')}
+          />
+        </main>
       ) : (
-        /* ACTIVE SWIPE CARD */
         <SwipeCard
           activeCard={activeCard}
           dragOffset={dragOffset}
@@ -574,10 +552,11 @@ export default function SwipeDeck() {
           cardReviewCount={cardReviewCount}
           cardPriceDesc={cardPriceDesc}
           cardWalkDesc={cardWalkDesc}
+          onOpenDetails={() => setActiveTab('details')}
         />
       )}
 
-      {/* Floating Tactical Control Dock (Comfortably positioned at bottom-6) */}
+      {/* Floating Tactical Control Dock */}
       {!showWinner && currentIndex < cards.length && (
         <SwipeControls handleVote={handleVote} />
       )}
@@ -594,3 +573,4 @@ export default function SwipeDeck() {
     </div>
   );
 }
+

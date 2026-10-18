@@ -1,7 +1,94 @@
 import React, { useState } from 'react';
-import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star } from 'lucide-react';
+import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star, Info } from 'lucide-react';
 import Button from '../ui/Button';
-import { getVenueImage, getVenueVibe, getVenueRating } from '../../utils/venueImages';
+import VenueDetailsModal from '../deck/VenueDetailsModal';
+import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
+import { formatTravelSummary } from '../../utils/location';
+
+function CandidatePoolCard({ item, idx, handleRemoveSuggestion, onSelectDetails }) {
+  const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category);
+  const vibeSubtitle = getVenueVibe(item.name, item.category);
+  const venueRating = getVenueRating(item.name, item.category);
+  const travelText = formatTravelSummary(item);
+
+  return (
+    <div
+      onClick={() => onSelectDetails(item)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onSelectDetails(item);
+      }}
+      className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left"
+    >
+      {/* Real Venue Image */}
+      <div className="relative h-32 sm:h-36 w-full bg-[var(--bg-elevated)] overflow-hidden">
+        <img
+          src={primaryPhoto}
+          alt={item.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = fallbackPhoto;
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+
+        {/* Verified Rating Pill */}
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs z-10 tabular-nums">
+          <Star size={11} className="fill-amber-300 text-amber-300" />
+          <span>{venueRating.rating}</span>
+          <span className="text-[10px] text-white/75 font-normal">({venueRating.reviewCount})</span>
+        </div>
+
+        {/* Price Tag or Custom Remove Pill */}
+        <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
+          {item.isCustom ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveSuggestion(item.customIndex ?? idx);
+              }}
+              className="w-6 h-6 rounded-full bg-black/65 text-white hover:bg-rose-600 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+              title="Remove option"
+              aria-label={`Remove ${item.name}`}
+            >
+              <Trash2 size={12} />
+            </button>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-white border border-white/10">
+              {'$'.repeat(item.price_level || 2)}
+            </span>
+          )}
+        </div>
+
+        {/* Title overlay at base of image */}
+        <div className="absolute bottom-2 inset-x-2.5 flex items-center justify-between gap-1">
+          <span className="text-xs sm:text-sm font-bold text-white line-clamp-1 drop-shadow-xs" title={item.name}>
+            {item.name}
+          </span>
+          <span className="px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-xs text-[10px] font-semibold text-white shrink-0 flex items-center gap-0.5">
+            <Info size={10} />
+            <span>Details</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Metadata Footer with Road Distance & Travel Time */}
+      <div className="p-2.5 flex flex-col gap-0.5 text-left">
+        <span className="text-[11px] text-[var(--text-secondary)] font-semibold truncate leading-tight">
+          {vibeSubtitle}
+        </span>
+        <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] truncate">
+          <MapPin size={11} className="shrink-0 text-[var(--accent-bg)]" />
+          <span className="truncate">{travelText}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CandidatePoolDeck({
   mode,
@@ -16,6 +103,7 @@ export default function CandidatePoolDeck({
   duplicateMatch,
 }) {
   const [showAddInput, setShowAddInput] = useState(mode === 'CUSTOM');
+  const [selectedVenue, setSelectedVenue] = useState(null);
 
   // Cap displayed deck at 8 options (6 curated + up to 2 custom additions)
   const displayedCandidates = candidates.slice(0, 8);
@@ -55,7 +143,7 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Add Spot Input (Always open in Custom mode, toggleable in Discovery mode) */}
+      {/* Add Spot Input */}
       {(mode === 'CUSTOM' || showAddInput) && (
         <div className="flex flex-col gap-2 pt-0.5 pb-1">
           <form onSubmit={handleAddSuggestion} className="flex gap-2">
@@ -97,80 +185,24 @@ export default function CandidatePoolDeck({
             </span>
           </div>
         ) : (
-          displayedCandidates.map((item, idx) => {
-            const imageUrl = getVenueImage(item.name, item.category);
-            const vibeSubtitle = getVenueVibe(item.name, item.category);
-            const venueRating = getVenueRating(item.name, item.category);
-            const streetPart = item.address ? item.address.split(',')[0].trim() : 'Centru';
-            const distancePart = item.distance_km != null && item.distance_km <= 5.0
-              ? `${item.distance_km} km`
-              : null;
-            const locationDisplay = distancePart ? `${distancePart} • ${streetPart}` : streetPart;
-
-            return (
-              <div
-                key={item.id || item.name || idx}
-                className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all flex flex-col justify-between shadow-2xs relative group"
-              >
-                {/* Hero Culinary/Venue Image */}
-                <div className="relative h-32 sm:h-36 w-full bg-[var(--bg-elevated)] overflow-hidden">
-                  <img
-                    src={imageUrl}
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-
-                  {/* Verified Rating Pill */}
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs z-10 tabular-nums">
-                    <Star size={11} className="fill-amber-300 text-amber-300" />
-                    <span>{venueRating.rating}</span>
-                    <span className="text-[10px] text-white/75 font-normal">({venueRating.reviewCount})</span>
-                  </div>
-
-                  {/* Price Tag or Custom Remove Pill */}
-                  <div className="absolute top-2.5 right-2.5 z-10">
-                    {item.isCustom ? (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
-                        className="w-6 h-6 rounded-full bg-black/65 text-white hover:bg-rose-600 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
-                        title="Remove option"
-                        aria-label={`Remove ${item.name}`}
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-white border border-white/10">
-                        {'$'.repeat(item.price_level || 2)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Title overlay at base of image */}
-                  <div className="absolute bottom-2 inset-x-2.5 text-left">
-                    <span className="text-xs sm:text-sm font-bold text-white line-clamp-1 drop-shadow-xs" title={item.name}>
-                      {item.name}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Clean Neutral Metadata Footer (Zero Red Text Slop) */}
-                <div className="p-2.5 flex flex-col gap-0.5 text-left">
-                  <span className="text-[11px] text-[var(--text-secondary)] font-semibold truncate leading-tight">
-                    {vibeSubtitle}
-                  </span>
-                  <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] truncate">
-                    <MapPin size={11} className="shrink-0 text-[var(--text-tertiary)]" />
-                    <span className="truncate">{locationDisplay}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          displayedCandidates.map((item, idx) => (
+            <CandidatePoolCard
+              key={item.id || item.name || idx}
+              item={item}
+              idx={idx}
+              handleRemoveSuggestion={handleRemoveSuggestion}
+              onSelectDetails={setSelectedVenue}
+            />
+          ))
         )}
       </div>
+
+      {/* Venue Details & Road Route Modal */}
+      <VenueDetailsModal
+        venue={selectedVenue}
+        isOpen={Boolean(selectedVenue)}
+        onClose={() => setSelectedVenue(null)}
+      />
     </section>
   );
 }

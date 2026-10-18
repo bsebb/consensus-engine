@@ -1,8 +1,5 @@
-/**
- * Curated high-resolution culinary & venue photography and verified ratings registry.
- * Maps known Chișinău venues and dining categories to authentic food, ambient interior visuals,
- * and verified Google Maps ratings.
- */
+import { useState, useEffect } from 'react';
+import { apiUrl } from './api';
 
 // Verified ratings and review counts from Google Maps for Chișinău hotspots
 const VENUE_RATINGS_MAP = {
@@ -216,4 +213,65 @@ export function getVenueVibe(name = '', category = '') {
   if (norm.includes('dessert') || norm.includes('bakery') || norm.includes('gelato')) return 'Bakery & Desserts';
   return 'Local Favorite';
 }
+
+const clientPhotoCache = new Map();
+
+/**
+ * React hook that fetches actual real photos of the venue (up to 4 photos) from the backend
+ * and falls back gracefully to category photography if offline.
+ */
+export function useVenuePhotos(name = '', address = '', category = '') {
+  const fallback = getVenueImage(name, category);
+  const cacheKey = `${String(name || '').toLowerCase().trim()}|${String(address || '').toLowerCase().trim()}`;
+
+  const [photos, setPhotos] = useState(() => {
+    const cached = clientPhotoCache.get(cacheKey);
+    return cached && cached.length > 0 ? cached : [fallback];
+  });
+  const [isRealPhoto, setIsRealPhoto] = useState(() => {
+    const cached = clientPhotoCache.get(cacheKey);
+    return Boolean(cached && cached.length > 0);
+  });
+
+  useEffect(() => {
+    if (!name || !name.trim()) return;
+    const existing = clientPhotoCache.get(cacheKey);
+    if (existing && existing.length > 0) {
+      setPhotos(existing);
+      setIsRealPhoto(true);
+      return;
+    }
+
+    let mounted = true;
+    setPhotos([fallback]);
+    setIsRealPhoto(false);
+
+    const url = apiUrl(
+      `/api/v1/venue-photos?name=${encodeURIComponent(name)}&address=${encodeURIComponent(address || '')}&category=${encodeURIComponent(category || '')}`
+    );
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!mounted) return;
+        if (data?.photos && Array.isArray(data.photos) && data.photos.length > 0) {
+          clientPhotoCache.set(cacheKey, data.photos);
+          setPhotos(data.photos);
+          setIsRealPhoto(true);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [name, address, category, cacheKey, fallback]);
+
+  return {
+    primaryPhoto: photos[0] || fallback,
+    photos,
+    isRealPhoto,
+    fallbackPhoto: fallback,
+  };
+}
+
 

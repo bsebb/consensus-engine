@@ -17,7 +17,7 @@ import LobbyRoster from '../components/lobby/LobbyRoster';
 import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
-import { calculateDistanceKm, detectUserGps, getSavedExactGps } from '../utils/location';
+import { calculateDistanceKm, detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
 import restaurantsMock from '../mocks/restaurants.json';
 
 function levenshteinDistance(a, b) {
@@ -73,6 +73,7 @@ export default function RoomLobby() {
     return location.state?.roomData?.options || [];
   });
   const [userGps, setUserGps] = useState(() => getSavedExactGps());
+  const [roadRoutes, setRoadRoutes] = useState({});
 
   useEffect(() => {
     let mounted = true;
@@ -242,7 +243,7 @@ export default function RoomLobby() {
     if (realOptions && realOptions.length > 0) {
       baseList = realOptions.map((opt) => {
         let dist = null;
-        let addr = 'Centru, Chișinău';
+        let addr = 'Local Venue';
         let catLabel = location.state?.category || 'Local Favorite';
         let venueLat = null;
         let venueLng = null;
@@ -264,9 +265,10 @@ export default function RoomLobby() {
           }
         }
 
-        // Compute true distance from this device's exact GPS when available;
-        // if this device does not have exact street-level GPS, do not display a baked fallback distance
-        if (userGps && venueLat != null && venueLng != null) {
+        const route = roadRoutes[opt.id];
+        if (route && route.roadDistanceKm != null) {
+          dist = route.roadDistanceKm;
+        } else if (userGps && venueLat != null && venueLng != null) {
           dist = calculateDistanceKm(userGps.lat, userGps.lng, venueLat, venueLng);
         } else if (!userGps) {
           dist = null;
@@ -278,6 +280,8 @@ export default function RoomLobby() {
           category: catLabel,
           price_level: opt.priceLevel || 2,
           distance_km: dist,
+          drive_minutes: route?.driveMinutes ?? null,
+          walk_minutes: route?.walkMinutes ?? null,
           lat: venueLat,
           lng: venueLng,
           tags: [catLabel],
@@ -298,17 +302,41 @@ export default function RoomLobby() {
         );
         if (matched.length > 0) pool = matched;
       }
-      baseList = pool.map((r) => ({
-        ...r,
-        distance_km:
-          userGps && r.lat != null && r.lng != null
-            ? calculateDistanceKm(userGps.lat, userGps.lng, r.lat, r.lng)
-            : null,
-      }));
+      baseList = pool.map((r) => {
+        const route = roadRoutes[r.id];
+        const dist = route?.roadDistanceKm != null
+          ? route.roadDistanceKm
+          : userGps && r.lat != null && r.lng != null
+          ? calculateDistanceKm(userGps.lat, userGps.lng, r.lat, r.lng)
+          : null;
+        return {
+          ...r,
+          distance_km: dist,
+          drive_minutes: route?.driveMinutes ?? null,
+          walk_minutes: route?.walkMinutes ?? null,
+        };
+      });
     }
 
     return [...customItems, ...baseList];
-  }, [mode, groupPool, realOptions, location.state?.category, userGps]);
+  }, [mode, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
+
+  // Query OSRM street network for real road distance & travel time from user's exact coordinates
+  useEffect(() => {
+    if (!userGps || mode === 'CUSTOM') return;
+    const venuesWithCoords = candidatePoolPreview.filter((v) => !v.isCustom && v.lat != null && v.lng != null);
+    if (venuesWithCoords.length === 0) return;
+
+    let cancelled = false;
+    fetchRoadRouteMetrics(userGps.lat, userGps.lng, venuesWithCoords).then((map) => {
+      if (!cancelled && map && Object.keys(map).length > 0) {
+        setRoadRoutes((prev) => ({ ...prev, ...map }));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userGps, realOptions, mode]);
 
   // Duplicate check across both custom and discovery options
   const duplicateMatch = useMemo(() => {

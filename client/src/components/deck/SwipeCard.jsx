@@ -1,6 +1,6 @@
-import React from 'react';
-import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Navigation } from 'lucide-react';
-import { getVenueImage, getVenueVibe } from '../../utils/venueImages';
+import React, { useState, useEffect } from 'react';
+import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info } from 'lucide-react';
+import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 
 export default function SwipeCard({
   activeCard,
@@ -15,8 +15,23 @@ export default function SwipeCard({
   cardReviewCount,
   cardPriceDesc,
   cardWalkDesc,
+  onOpenDetails,
 }) {
-  const imageUrl = getVenueImage(activeCard.name, activeCard.category);
+  const { primaryPhoto, photos, isRealPhoto, fallbackPhoto } = useVenuePhotos(
+    activeCard?.name,
+    activeCard?.address,
+    activeCard?.category
+  );
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const [failedUrls, setFailedUrls] = useState({});
+
+  useEffect(() => {
+    setPhotoIdx(0);
+    setFailedUrls({});
+  }, [activeCard?.id, activeCard?.name]);
+
+  const validPhotos = (photos || []).filter((u) => !failedUrls[u]);
+  const displayPhoto = validPhotos[photoIdx] || validPhotos[0] || primaryPhoto || fallbackPhoto;
   const vibeSubtitle = getVenueVibe(activeCard.name, activeCard.category);
 
   return (
@@ -74,42 +89,86 @@ export default function SwipeCard({
           </div>
         )}
 
-        {/* Dominant Venue Photography */}
+        {/* Dominant Real Venue Photography */}
         <div className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden">
           <img
-            src={imageUrl}
+            src={displayPhoto}
             alt={activeCard.name}
             className="w-full h-full object-cover"
             draggable="false"
+            onError={(e) => {
+              if (e.currentTarget.src !== fallbackPhoto) {
+                setFailedUrls((prev) => ({ ...prev, [displayPhoto]: true }));
+                e.currentTarget.src = fallbackPhoto;
+              }
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/15" />
+
+          {/* Multi-photo Story Bars at Top */}
+          {validPhotos.length > 1 && (
+            <div className="absolute top-2.5 inset-x-4 flex items-center gap-1.5 z-20">
+              {validPhotos.slice(0, 4).map((url, idx) => (
+                <button
+                  key={url}
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotoIdx(idx);
+                  }}
+                  aria-label={`View photo ${idx + 1}`}
+                  className={`h-1 flex-1 rounded-full transition-all cursor-pointer ${
+                    idx === photoIdx ? 'bg-white shadow-xs' : 'bg-white/35 hover:bg-white/60'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Top Floating Pills: Category & Verified Rating */}
-          <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
-            <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10">
-              {vibeSubtitle}
+          <div className={`absolute ${validPhotos.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10`}>
+            <span className="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-semibold text-white border border-white/10">
+              {isRealPhoto ? `${vibeSubtitle} • Live Photo` : vibeSubtitle}
             </span>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
               <Star size={13} className="fill-amber-300 text-amber-300" />
               <span>{cardRating}</span>
               <span className="text-[11px] text-white/75 font-normal">({cardReviewCount})</span>
             </div>
           </div>
 
-          {/* Bottom Photo Overlay: Venue Name & Address */}
-          <div className="absolute bottom-4 inset-x-4 text-left flex flex-col gap-1 z-10">
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight line-clamp-1 drop-shadow-xs">
-              {activeCard.name}
-            </h2>
-            <div className="flex items-center gap-1.5 text-xs text-zinc-200 font-medium">
-              <MapPin size={13} className="text-amber-400 shrink-0" />
-              <span className="truncate">{activeCard.address || 'Centru, Chișinău'}</span>
+          {/* Bottom Photo Overlay: Venue Name, Address & Details Trigger */}
+          <div className="absolute bottom-3.5 inset-x-4 text-left flex items-end justify-between gap-2 z-10">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight line-clamp-1 drop-shadow-xs">
+                {activeCard.name}
+              </h2>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-200 font-medium">
+                <MapPin size={13} className="text-amber-400 shrink-0" />
+                <span className="truncate">{activeCard.address || 'Local Spot'}</span>
+              </div>
             </div>
+
+            {onOpenDetails && (
+              <button
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDetails();
+                }}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Info size={13} />
+                <span>Details & Map</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Clean 2-Spec Card Footer */}
+        {/* Clean 2-Spec Card Footer: Price Range + Road Distance & Travel Time */}
         <div className="p-3.5 bg-[var(--bg-elevated)] grid grid-cols-2 gap-2.5 text-left shrink-0">
           <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] min-w-0">
             <Coins size={16} className="text-amber-500 shrink-0" />
@@ -119,15 +178,24 @@ export default function SwipeCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] min-w-0">
-            <Navigation size={16} className="text-[var(--accent-bg)] shrink-0" />
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenDetails) onOpenDetails();
+            }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] min-w-0 text-left transition-colors cursor-pointer"
+          >
+            <Route size={16} className="text-[var(--accent-bg)] shrink-0" />
             <div className="flex flex-col min-w-0">
-              <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Location</span>
+              <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Road Route & Time</span>
               <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">{cardWalkDesc}</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </main>
   );
 }
+

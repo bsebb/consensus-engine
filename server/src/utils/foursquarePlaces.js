@@ -520,9 +520,24 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
     }
 
     if (accumulatedVenues.size > 0) {
-      const sortedResults = Array.from(accumulatedVenues.values())
+      let candidatesList = Array.from(accumulatedVenues.values())
+        .sort((a, b) => a.distance_meters - b.distance_meters)
+        .slice(0, 10);
+
+      // Compute true road/bridge network distances via OSRM so venues across rivers/railways
+      // reflect real street distance and travel duration rather than straight-line distance
+      candidatesList = await enrichVenuesWithRoadDistances(centerLat, centerLng, candidatesList, isExactGps);
+
+      const sortedResults = candidatesList
         .sort((a, b) => a.distance_meters - b.distance_meters)
         .slice(0, 6);
+
+      // Warm real photo cache sequentially in the background for the top 6 venues
+      (async () => {
+        for (const v of sortedResults) {
+          await fetchRealVenuePhotos(v.name, v.address, v.category).catch(() => []);
+        }
+      })().catch(() => {});
 
       queryCache.set(cacheKey, { data: sortedResults, timestamp: Date.now() });
       return sortedResults;
@@ -534,9 +549,117 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   return resolveFallback(theme, centerLat, centerLng, isExactGps);
 };
 
+// In-memory cache & in-flight deduplication for real venue photos
+const venuePhotoCache = new Map();
+const inFlightPhotoRequests = new Map();
+
+/**
+ * Fetches up to 4 real high-resolution CDN photos for a specific venue (name + city/address + category).
+ */
+async function fetchRealVenuePhotos(name = '', address = '', category = '') {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return [];
+
+  const cityPart = String(address || '').split(',').pop()?.trim() || '';
+  const cacheKey = `${cleanName.toLowerCase()}|${cityPart.toLowerCase()}`;
+  const cached = venuePhotoCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < 12 * 60 * 60 * 1000) {
+    return cached.photos;
+  }
+
+  if (inFlightPhotoRequests.has(cacheKey)) {
+    return inFlightPhotoRequests.get(cacheKey);
+  }
+
+  const reqPromise = (async () => {
+    const query = [cleanName, cityPart, category || 'restaurant'].filter(Boolean).join(' ');
+    try {
+      const url = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&first=1`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml',
+        },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined,
+      });
+      if (!res.ok) return [];
+      const html = await res.text();
+      const matches = [...html.matchAll(/turl&quot;:&quot;(https:\/\/ts[0-9]\.mm\.bing\.net\/th\?id=OIP\.[^&]+?)&amp;/g)];
+      const uniquePhotos = [];
+      const seen = new Set();
+      for (const m of matches) {
+        const highResUrl = `${m[1]}&w=800&h=600&c=7`;
+        if (!seen.has(highResUrl)) {
+          seen.add(highResUrl);
+          uniquePhotos.push(highResUrl);
+        }
+        if (uniquePhotos.length >= 4) break;
+      }
+      if (uniquePhotos.length > 0) {
+        venuePhotoCache.set(cacheKey, { photos: uniquePhotos, timestamp: Date.now() });
+      }
+      return uniquePhotos;
+    } catch {
+      return [];
+    } finally {
+      inFlightPhotoRequests.delete(cacheKey);
+    }
+  })();
+
+  inFlightPhotoRequests.set(cacheKey, reqPromise);
+  return reqPromise;
+}
+
+/**
+ * Queries OSRM (Open Source Routing Machine) to replace straight-line Haversine distances
+ * with actual street/road network distances and travel durations.
+ */
+async function enrichVenuesWithRoadDistances(centerLat, centerLng, venues, isExactGps) {
+  if (!Array.isArray(venues) || venues.length === 0 || centerLat == null || centerLng == null) {
+    return venues;
+  }
+  const withCoords = venues.filter((v) => v.lat != null && v.lng != null);
+  if (withCoords.length === 0) return venues;
+
+  try {
+    const coordPairs = [`${centerLng},${centerLat}`, ...withCoords.map((v) => `${v.lng},${v.lat}`)].join(';');
+    const url = `https://router.project-osrm.org/table/v1/driving/${coordPairs}?sources=0&annotations=distance,duration`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined,
+    });
+    if (!res.ok) return venues;
+    const data = await res.json();
+    const roadDistances = data?.distances?.[0];
+    const driveDurations = data?.durations?.[0];
+    if (!Array.isArray(roadDistances)) return venues;
+
+    return venues.map((v) => {
+      const idx = withCoords.findIndex((wc) => wc.name === v.name && wc.lat === v.lat);
+      if (idx === -1) return v;
+      const roadMeters = roadDistances[idx + 1];
+      const driveSec = driveDurations?.[idx + 1];
+      if (typeof roadMeters !== 'number' || isNaN(roadMeters) || roadMeters <= 0) return v;
+
+      const roadKm = Math.max(0.1, Number((roadMeters / 1000).toFixed(1)));
+      return {
+        ...v,
+        distance_meters: Math.round(roadMeters),
+        distance_km: isExactGps ? roadKm : null,
+        drive_minutes: typeof driveSec === 'number' ? Math.max(2, Math.round(driveSec / 60)) : Math.max(2, Math.round(roadKm * 2.2)),
+        walk_minutes: Math.max(2, Math.round(roadMeters / 78)),
+      };
+    });
+  } catch {
+    return venues;
+  }
+}
+
 module.exports = {
   fetchFoursquarePlaces,
   searchRestaurants: fetchFoursquarePlaces,
+  fetchRealVenuePhotos,
+  enrichVenuesWithRoadDistances,
   formatPriceLabel,
   generateHexRingCenters,
   CATEGORIZED_FALLBACKS,
