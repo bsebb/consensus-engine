@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 export const ACCENTS = [
   { id: 'coral', name: 'Flame Coral', color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)' },
@@ -19,9 +20,12 @@ export function ThemeProvider({ children }) {
     return localStorage.getItem('app-accent') || 'coral';
   });
 
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    const root = typeof document !== 'undefined' ? document.documentElement : null;
+    return root ? root.classList.contains('dark') : false;
+  });
 
-  // Apply dark / light class
+  // Apply dark / light class on mount and when system preference changes
   useEffect(() => {
     const root = document.documentElement;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -41,6 +45,11 @@ export function ThemeProvider({ children }) {
         root.classList.add('dark');
       } else {
         root.classList.remove('dark');
+      }
+
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', activeDark ? '#111113' : '#f7f5f0');
       }
     };
 
@@ -71,19 +80,38 @@ export function ThemeProvider({ children }) {
     }
   };
 
-  const toggleTheme = () => {
-    if (document.startViewTransition) {
+  const changeTheme = (newTheme) => {
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const willBeDark = newTheme === 'dark' || (newTheme === 'system' && mediaQuery.matches);
+
+    const updateDOM = () => {
+      setTheme(newTheme);
+      setIsDark(willBeDark);
+      if (willBeDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+      localStorage.setItem('app-theme', newTheme);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute('content', willBeDark ? '#111113' : '#f7f5f0');
+      }
+    };
+
+    if (typeof document !== 'undefined' && document.startViewTransition) {
       document.startViewTransition(() => {
-        setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+        flushSync(updateDOM);
       });
       return;
     }
-    const root = document.documentElement;
-    root.classList.add('theme-switching');
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-    setTimeout(() => {
-      root.classList.remove('theme-switching');
-    }, 280);
+
+    updateDOM();
+  };
+
+  const toggleTheme = () => {
+    changeTheme(isDark ? 'light' : 'dark');
   };
 
   return (
@@ -92,7 +120,7 @@ export function ThemeProvider({ children }) {
         theme,
         isDark,
         toggleTheme,
-        setTheme,
+        setTheme: changeTheme,
         accent,
         setAccent,
         ACCENTS,

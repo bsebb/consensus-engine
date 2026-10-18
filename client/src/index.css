@@ -83,7 +83,7 @@
   }
 
   body {
-    background-color: transparent;
+    background-color: var(--bg-root);
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -154,35 +154,32 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Cohesive Warm Ambient Canvas */
-.bg-mesh-container {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  overflow: hidden;
+/* Smooth, Flash-Free Native View Transitions for Theme Switching */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
-.bg-mesh-light, .bg-mesh-dark {
-  position: absolute;
-  inset: 0;
-  transition: opacity 0.4s var(--spring-smooth);
+::view-transition-old(root) {
+  z-index: 1;
 }
 
-.bg-mesh-light {
-  background: #f7f5f0;
-  opacity: 1;
+::view-transition-new(root) {
+  z-index: 2;
+  animation: viewTransitionFadeIn 0.22s var(--spring-smooth);
 }
 
-.bg-mesh-dark {
-  background: #111113;
-  opacity: 0;
+@keyframes viewTransitionFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
-.dark .bg-mesh-light { opacity: 0; }
-.dark .bg-mesh-dark { opacity: 1; }
-
-/* Instant Theme Switching Transition Lock */
+/* Fallback Theme Transition */
 .theme-switching,
 .theme-switching * {
   transition: none !important;

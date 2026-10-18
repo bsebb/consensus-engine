@@ -17,12 +17,6 @@ function App() {
       <LanguageProvider>
         <SocketProvider>
           <ToastProvider>
-            {/* Dual-Div Ambient Mesh Background */}
-            <div className="bg-mesh-container">
-              <div className="bg-mesh-light" />
-              <div className="bg-mesh-dark" />
-            </div>
-
             <BrowserRouter>
               <div className="pwa-shell">
                 <Routes>
