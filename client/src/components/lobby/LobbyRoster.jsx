@@ -27,7 +27,7 @@ export default function LobbyRoster({
           <button
             type="button"
             onClick={() => setQrModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[var(--accent-bg)]/10 hover:bg-[var(--accent-bg)]/20 text-xs font-bold text-[var(--accent-bg)] border border-[var(--accent-bg)]/20 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)]/10 hover:bg-[var(--accent-bg)]/20 text-xs font-bold text-[var(--accent-bg)] border border-[var(--accent-bg)]/20 transition-all cursor-pointer"
             title="Show QR Code"
           >
             <QrCode size={14} />
@@ -36,7 +36,7 @@ export default function LobbyRoster({
           <button
             type="button"
             onClick={handleCopyPin}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-all cursor-pointer"
           >
             {copied ? <Check size={14} className="text-[var(--status-success)]" /> : <Copy size={14} />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -44,10 +44,11 @@ export default function LobbyRoster({
           <button
             type="button"
             onClick={handleShareInvite}
-            className="p-2.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)] text-white hover:opacity-90 text-xs font-bold transition-all cursor-pointer shadow-sm"
             title="Share Invite"
           >
-            <Share2 size={16} />
+            <Share2 size={14} />
+            <span>Share</span>
           </button>
         </div>
       </div>

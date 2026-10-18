@@ -396,8 +396,8 @@ export default function RoomLobby() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
-      {/* Consumer Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
+      {/* Consumer Mobile Header - Solid Opaque Ground to Prevent Ghost Text */}
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 py-3 shadow-xs">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
@@ -444,19 +444,7 @@ export default function RoomLobby() {
           setQrModalOpen={setQrModalOpen}
         />
 
-        {/* Step Zero: Anonymous Privacy Vault & Ceiling */}
-        <StepZeroVault
-          lockedConstraint={lockedConstraint}
-          budgetLimit={budgetLimit}
-          setBudgetLimit={setBudgetLimit}
-          handleLockBudget={handleLockBudget}
-          handleUnlockBudget={handleUnlockBudget}
-          lockingBudget={lockingBudget}
-          hasPendingBudgetChange={hasPendingBudgetChange}
-          setHasPendingBudgetChange={setHasPendingBudgetChange}
-        />
-
-        {/* Curated Candidate Pool Deck */}
+        {/* Curated Places on the Table (Front and Center) */}
         <CandidatePoolDeck
           mode={mode}
           candidates={filteredCandidates}
@@ -470,8 +458,20 @@ export default function RoomLobby() {
           duplicateMatch={duplicateMatch}
         />
 
-        {/* Action Dock */}
-        <div className="pt-2 pb-4 flex flex-col gap-2">
+        {/* Step Zero: Anonymous Spending Comfort (Optional) */}
+        <StepZeroVault
+          lockedConstraint={lockedConstraint}
+          budgetLimit={budgetLimit}
+          setBudgetLimit={setBudgetLimit}
+          handleLockBudget={handleLockBudget}
+          handleUnlockBudget={handleUnlockBudget}
+          lockingBudget={lockingBudget}
+          hasPendingBudgetChange={hasPendingBudgetChange}
+          setHasPendingBudgetChange={setHasPendingBudgetChange}
+        />
+
+        {/* Primary Action Dock */}
+        <div className="sticky bottom-4 z-20 pt-2 pb-2 flex flex-col gap-2">
           {isHost ? (
             <Button
               type="button"
@@ -479,17 +479,17 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl"
+              className="w-full h-14 shadow-[0_12px_32px_var(--accent-glow)] font-black text-base rounded-2xl"
             >
-              Start Swiping
+              Start Swiping ({participants.length} {participants.length === 1 ? 'person' : 'friends'} ready)
             </Button>
           ) : (
-            <div className="p-4 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-center flex flex-col items-center gap-1.5">
+            <div className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-center flex flex-col items-center gap-1 shadow-lg">
               <span className="text-xs font-bold text-[var(--text-primary)]">
                 Waiting for Host to Start
               </span>
               <span className="text-[11px] text-[var(--text-secondary)]">
-                The swipe deck will automatically launch when the host is ready.
+                Swiping will launch automatically as soon as the host taps start.
               </span>
             </div>
           )}

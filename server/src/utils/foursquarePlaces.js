@@ -13,18 +13,41 @@ function formatPriceLabel(price) {
   }
 }
 
-const FALLBACK_PLACES = [
-  { name: "Andy's Pizza", fsq_id: "fsq_andys_1", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0245, lng: 28.8322, address: "Strada Ștefan cel Mare 202, Centru" },
-  { name: "Draft Pizza", fsq_id: "fsq_draft_2", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0189, lng: 28.8415, address: "Strada 31 August 1989 78, Centru" },
-  { name: "Pizza Mania", fsq_id: "fsq_pizzamania_3", priceLevel: 1, priceLabel: "$ (Budget: ~50-120 MDL)", lat: 47.0261, lng: 28.8354, address: "Bulevardul Grigore Vieru 13, Rîșcani" },
-  { name: "Mi Piace", fsq_id: "fsq_mipiace_4", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 46.9922, lng: 28.8598, address: "Strada Trandafirilor 4, Botanica" },
-  { name: "Crème de la Crème", fsq_id: "fsq_creme_5", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0238, lng: 28.8340, address: "Strada Alexandru cel Bun 98A, Centru" },
-  { name: "Propaganda Cafe", fsq_id: "fsq_propaganda_6", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0210, lng: 28.8375, address: "Strada Alexei Șciusev 47, Centru" },
-  { name: "Osho Bar & Kitchen", fsq_id: "fsq_osho_7", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 46.9895, lng: 28.8640, address: "Strada Decebal 7/1, Botanica" },
-  { name: "Kozlovna", fsq_id: "fsq_kozlovna_8", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0218, lng: 28.8360, address: "Strada Pușkin 24, Centru" },
-  { name: "La Taifas", fsq_id: "fsq_taifas_9", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 47.0235, lng: 28.8335, address: "Strada București 67, Centru" },
-  { name: "Pegas Restaurant", fsq_id: "fsq_pegas_10", priceLevel: 4, priceLabel: "$$$$ (Fine Dining: 500+ MDL)", lat: 47.0315, lng: 28.8510, address: "Strada Albișoara 20/1, Rîșcani" },
-];
+// Categorized fallback pools for Chișinău
+const CATEGORIZED_FALLBACKS = {
+  cinema: [
+    { name: "Cineplex Loteanu", fsq_id: "fsq_cineplex_loteanu", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0252, lng: 28.8315, address: "Bulevardul Ștefan cel Mare 103, Centru" },
+    { name: "Cineplex MallDova", fsq_id: "fsq_cineplex_malldova", priceLevel: 2, priceLabel: "$$ (~140-200 MDL / ticket)", lat: 46.9972, lng: 28.8510, address: "Strada Arborilor 21 (Shopping MallDova), Centru" },
+    { name: "Odeon Cinema", fsq_id: "fsq_odeon_cinema", priceLevel: 1, priceLabel: "$ (~80-120 MDL / ticket)", lat: 47.0215, lng: 28.8350, address: "Strada Mihai Eminescu 55, Centru" },
+    { name: "Auto Cinema Chișinău", fsq_id: "fsq_auto_cinema", priceLevel: 2, priceLabel: "$$ (~150 MDL / car)", lat: 47.0450, lng: 28.8050, address: "Calea Ieșilor, Buiucani" },
+    { name: "Centrul Cultural Odeon", fsq_id: "fsq_centrul_odeon", priceLevel: 1, priceLabel: "$ (~90-130 MDL / ticket)", lat: 47.0195, lng: 28.8380, address: "Strada Vlaicu Pârcălab 45, Centru" },
+    { name: "Patria Multiplex Rîșcani", fsq_id: "fsq_patria_riscani", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0410, lng: 28.8620, address: "Strada Kiev 16/1, Rîșcani" }
+  ],
+  cafes: [
+    { name: "Tucano Coffee Costa Rica", fsq_id: "fsq_tucano_1", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.0225, lng: 28.8340, address: "Strada Aleksandr Pușkin 15, Centru" },
+    { name: "Sensi Bar & Cafe", fsq_id: "fsq_sensi_2", priceLevel: 2, priceLabel: "$$ (~80-150 MDL)", lat: 47.0265, lng: 28.8310, address: "Strada Alexandru cel Bun 111, Centru" },
+    { name: "Crème de la Crème", fsq_id: "fsq_creme_3", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0238, lng: 28.8340, address: "Strada Alexandru cel Bun 98A, Centru" },
+    { name: "Propaganda Cafe", fsq_id: "fsq_propaganda_4", priceLevel: 2, priceLabel: "$$ (~80-160 MDL)", lat: 47.0210, lng: 28.8375, address: "Strada Alexei Șciusev 47, Centru" },
+    { name: "Rozmarin Cafe", fsq_id: "fsq_rozmarin_5", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0240, lng: 28.8320, address: "Bulevardul Ștefan cel Mare 202, Centru" },
+    { name: "Coffeemolka", fsq_id: "fsq_coffeemolka_6", priceLevel: 1, priceLabel: "$ (~50-100 MDL)", lat: 47.0220, lng: 28.8360, address: "Strada Mihai Eminescu 72, Centru" }
+  ],
+  bars: [
+    { name: "Kozlovna Ceska Pivnice", fsq_id: "fsq_kozlovna_bar_1", priceLevel: 2, priceLabel: "$$ (~120-220 MDL)", lat: 47.0218, lng: 28.8360, address: "Strada Pușkin 24, Centru" },
+    { name: "Smokehouse: BBQ & Beer", fsq_id: "fsq_smokehouse_bar_2", priceLevel: 2, priceLabel: "$$ (~140-250 MDL)", lat: 47.0245, lng: 28.8315, address: "Bulevardul Ștefan cel Mare 128, Centru" },
+    { name: "Draft Arena", fsq_id: "fsq_draft_bar_3", priceLevel: 2, priceLabel: "$$ (~120-220 MDL)", lat: 47.0189, lng: 28.8415, address: "Strada 31 August 1989 78, Centru" },
+    { name: "Invino Enoteca", fsq_id: "fsq_invino_bar_4", priceLevel: 3, priceLabel: "$$$ (~200-400 MDL)", lat: 47.0230, lng: 28.8330, address: "Strada Mitropolit Bănulescu-Bodoni 41, Centru" },
+    { name: "Taproom 27 Craft Beer", fsq_id: "fsq_taproom_bar_5", priceLevel: 2, priceLabel: "$$ (~110-200 MDL)", lat: 47.0205, lng: 28.8390, address: "Strada Vasile Alecsandri 117, Centru" },
+    { name: "Barbar Bar", fsq_id: "fsq_barbar_bar_6", priceLevel: 2, priceLabel: "$$ (~130-240 MDL)", lat: 47.0215, lng: 28.8370, address: "Strada Mihai Eminescu 56, Centru" }
+  ],
+  restaurants: [
+    { name: "Osho Bar & Kitchen", fsq_id: "fsq_osho_7", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 46.9895, lng: 28.8640, address: "Strada Decebal 7/1, Botanica" },
+    { name: "Mi Piace", fsq_id: "fsq_mipiace_4", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 46.9922, lng: 28.8598, address: "Strada Trandafirilor 4, Botanica" },
+    { name: "Andy's Pizza", fsq_id: "fsq_andys_1", priceLevel: 2, priceLabel: "$$ (~120-250 MDL)", lat: 47.0245, lng: 28.8322, address: "Strada Ștefan cel Mare 202, Centru" },
+    { name: "La Taifas", fsq_id: "fsq_taifas_9", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 47.0235, lng: 28.8335, address: "Strada București 67, Centru" },
+    { name: "Pegas Restaurant", fsq_id: "fsq_pegas_10", priceLevel: 4, priceLabel: "$$$$ (500+ MDL)", lat: 47.0315, lng: 28.8510, address: "Strada Albișoara 20/1, Rîșcani" },
+    { name: "Pizza Mania", fsq_id: "fsq_pizzamania_3", priceLevel: 1, priceLabel: "$ (~80-160 MDL)", lat: 47.0261, lng: 28.8354, address: "Bulevardul Grigore Vieru 13, Rîșcani" }
+  ]
+};
 
 // In-memory cache for API queries to avoid repeated external requests
 const queryCache = new Map();
@@ -46,8 +69,27 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-function resolveFallback(centerLat, centerLng) {
-  return FALLBACK_PLACES.map((p) => {
+function getCategoryKey(theme = '') {
+  const norm = String(theme).toLowerCase().trim();
+  if (norm.includes('cinema') || norm.includes('movie') || norm.includes('film')) return 'cinema';
+  if (norm.includes('cafe') || norm.includes('coffee') || norm.includes('tea') || norm.includes('bakery')) return 'cafes';
+  if (norm.includes('bar') || norm.includes('pub') || norm.includes('beer') || norm.includes('wine') || norm.includes('drink')) return 'bars';
+  return 'restaurants';
+}
+
+function getFoursquareCategory(theme = '') {
+  const key = getCategoryKey(theme);
+  if (key === 'cinema') return '10024'; // Movie Theaters
+  if (key === 'cafes') return '13032'; // Coffee Shops & Cafes
+  if (key === 'bars') return '13003,13018'; // Bars & Pubs
+  return '13000'; // Dining and Drinking
+}
+
+function resolveFallback(theme = '', centerLat = 47.0105, centerLng = 28.8638) {
+  const key = getCategoryKey(theme);
+  const places = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;
+
+  return places.map((p) => {
     let distKm = null;
     let distMeters = 999999;
     if (centerLat != null && centerLng != null && p.lat && p.lng) {
@@ -75,8 +117,9 @@ function resolveFallback(centerLat, centerLng) {
 async function queryFoursquarePlaces({ theme, lat, lng, radius, cleanKey }) {
   const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
   const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
+  const catParam = getFoursquareCategory(theme);
 
-  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&categories=13000&limit=15&fields=fsq_place_id,name,location,categories,distance,geocodes,price`;
+  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&categories=${catParam}&limit=15&fields=fsq_place_id,name,location,categories,distance,geocodes,price`;
   if (lat && lng) {
     url += `&ll=${lat},${lng}&radius=${Math.min(radius, 100000)}`;
   } else {
@@ -140,17 +183,17 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     theme = 'restaurant';
   }
 
-  const centerLat = latitude != null ? Number(latitude) : (near && near.toLowerCase().includes('chisinau') ? 47.0105 : 47.0105);
-  const centerLng = longitude != null ? Number(longitude) : (near && near.toLowerCase().includes('chisinau') ? 28.8638 : 28.8638);
+  const centerLat = latitude != null ? Number(latitude) : 47.0105;
+  const centerLng = longitude != null ? Number(longitude) : 28.8638;
   const maxRequestedRadius = Math.max(Number(radius) || 5000, 1000);
 
   const rawKey = process.env.FOURSQUARE_API_KEY;
   if (!rawKey || !rawKey.trim()) {
-    return resolveFallback(centerLat, centerLng);
+    return resolveFallback(theme, centerLat, centerLng);
   }
   const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '');
   if (!cleanKey) {
-    return resolveFallback(centerLat, centerLng);
+    return resolveFallback(theme, centerLat, centerLng);
   }
 
   // Quantize coordinates to ~200m grid for efficient in-memory caching
@@ -239,7 +282,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     console.warn("[Foursquare] API warning, using local venue pool:", error.message);
   }
 
-  return resolveFallback(centerLat, centerLng);
+  return resolveFallback(theme, centerLat, centerLng);
 };
 
 // Export both names to prevent undefined import errors
@@ -247,5 +290,6 @@ module.exports = {
   fetchFoursquarePlaces,
   searchRestaurants: fetchFoursquarePlaces,
   formatPriceLabel,
-  FALLBACK_PLACES,
+  CATEGORIZED_FALLBACKS,
+  FALLBACK_PLACES: CATEGORIZED_FALLBACKS.restaurants,
 };

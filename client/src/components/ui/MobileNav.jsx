@@ -33,7 +33,7 @@ export default function MobileNav({ isHidden = false }) {
     }
   }, [location.pathname]);
 
-  if (location.pathname.startsWith('/deck')) {
+  if (location.pathname.startsWith('/deck') || location.pathname.startsWith('/lobby')) {
     return null;
   }
 

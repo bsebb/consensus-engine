@@ -16,18 +16,20 @@ export default function WaitingForBallotsView({
         </div>
 
         <div className="flex flex-col gap-1">
-          <h3 className="text-lg font-bold text-[var(--text-primary)]">
-            Tallying Group Ballots
+          <h3 className="text-xl font-black text-[var(--text-primary)]">
+            You're All Done!
           </h3>
           <p className="text-xs text-[var(--text-secondary)]">
-            Waiting for peers to complete swiping...
+            Waiting for your friends to finish swiping...
           </p>
         </div>
 
         <div className="w-full flex flex-col gap-2">
           <div className="flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
-            <span>Quorum Status</span>
-            <span className="font-mono tabular-nums">{votesReceived} of {quorumTotal}</span>
+            <span>Group Progress</span>
+            <span className="font-bold tabular-nums text-[var(--text-primary)]">
+              {votesReceived} of {quorumTotal} finished
+            </span>
           </div>
           <div className="w-full h-2 rounded-full bg-[var(--bg-inset)] overflow-hidden">
             <div
@@ -38,22 +40,22 @@ export default function WaitingForBallotsView({
         </div>
 
         {isHost ? (
-          <div className="flex flex-col items-center gap-1.5 w-full mt-2">
+          <div className="flex flex-col items-center gap-2 w-full mt-2">
             <Button
               variant="primary"
               size="md"
               onClick={handleHostForceReveal}
-              className="w-full text-xs shadow-md"
+              className="w-full text-sm font-bold shadow-md rounded-2xl"
             >
-              Skip Waiting (Reveal for Everyone)
+              Reveal Winner Now
             </Button>
-            <span className="text-[10px] text-[var(--text-tertiary)]">
-              Host control: tallies submitted votes and reveals for all devices
+            <span className="text-[11px] text-[var(--text-tertiary)] text-center">
+              Ready? You can reveal the top pick for everyone right away.
             </span>
           </div>
         ) : (
-          <div className="p-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] mt-2 w-full text-center">
-            Waiting for everyone to submit. Results will reveal together!
+          <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] mt-2 w-full text-center font-medium">
+            Sit tight! Once everyone finishes, the winning spot will reveal automatically.
           </div>
         )}
       </div>

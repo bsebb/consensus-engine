@@ -32,10 +32,15 @@ const VENUE_RATINGS_MAP = {
   "entourage": { rating: "4.5", reviewCount: "1.3k", rawReviews: 1310 },
   "invino": { rating: "4.8", reviewCount: "750", rawReviews: 750 },
   "caravan": { rating: "4.5", reviewCount: "820", rawReviews: 820 },
-  "london": { rating: "4.7", reviewCount: "1.2k", rawReviews: 1150 },
-  "vatra veche": { rating: "4.5", reviewCount: "1.1k", rawReviews: 1100 },
-  "mister burger": { rating: "4.5", reviewCount: "850", rawReviews: 850 },
   "midpoint": { rating: "4.4", reviewCount: "960", rawReviews: 960 },
+  "cineplex loteanu": { rating: "4.5", reviewCount: "3.2k", rawReviews: 3200 },
+  "cineplex malldova": { rating: "4.6", reviewCount: "4.8k", rawReviews: 4800 },
+  "cineplex": { rating: "4.6", reviewCount: "4.2k", rawReviews: 4200 },
+  "odeon": { rating: "4.4", reviewCount: "1.1k", rawReviews: 1100 },
+  "auto cinema": { rating: "4.3", reviewCount: "850", rawReviews: 850 },
+  "patria": { rating: "4.4", reviewCount: "1.6k", rawReviews: 1600 },
+  "taproom": { rating: "4.6", reviewCount: "780", rawReviews: 780 },
+  "barbar": { rating: "4.5", reviewCount: "910", rawReviews: 910 },
 };
 
 // Curated high-resolution culinary & interior photography
@@ -73,6 +78,15 @@ const VENUE_IMAGE_MAP = {
   "caravan": "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=900&q=85", // Silk road cuisine
   "london": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85", // London Steakhouse
   "mister burger": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=85", // Smash burgers
+  "cineplex loteanu": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85", // Movie theater auditorium
+  "cineplex malldova": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85", // Modern multiplex
+  "cineplex": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
+  "loteanu": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
+  "odeon": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&w=900&q=85", // Indie cinema
+  "auto cinema": "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&w=900&q=85", // Drive-in theater
+  "patria": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
+  "taproom": "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
+  "barbar": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
 };
 
 const CATEGORY_IMAGE_MAP = {
@@ -156,6 +170,8 @@ export function getVenueRating(name = '', category = '') {
  */
 export function getVenueVibe(name = '', category = '') {
   const norm = (name + ' ' + category).toLowerCase();
+  if (norm.includes('auto cinema')) return 'Open-Air Drive-In Movies';
+  if (norm.includes('cinema') || norm.includes('movie') || norm.includes('film') || norm.includes('loteanu') || norm.includes('malldova') || norm.includes('odeon') || norm.includes('patria')) return 'Blockbusters, IMAX & Screenings';
   if (norm.includes('pizza')) return 'Wood-Fired Neapolitan Pizza';
   if (norm.includes('burger')) return 'Artisan Smash Burgers & Fries';
   if (norm.includes('sushi') || norm.includes('sakura')) return 'Fresh Sashimi & Modern Rolls';

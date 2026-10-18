@@ -197,6 +197,14 @@ export default function JoinRoom() {
         const generatedPin = realRoom.pin;
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
 
+        const topicTitle = quickCategory === 'Cinema'
+          ? 'Which cinema are we going to?'
+          : quickCategory === 'Cafes'
+          ? 'Where are we grabbing coffee?'
+          : quickCategory === 'Bars & Pubs'
+          ? 'Where are we getting drinks?'
+          : 'Where are we eating tonight?';
+
         setLoading(false);
         navigate(`/lobby/${generatedPin}`, {
           state: {
@@ -205,7 +213,7 @@ export default function JoinRoom() {
             userName: cleanName,
             groupSize,
             category: quickCategory,
-            topic: `Where should we go for ${quickCategory}?`,
+            topic: topicTitle,
             radiusKm: 5,
             roomData: realRoom,
           },
@@ -456,17 +464,17 @@ export default function JoinRoom() {
                   disabled={!name.trim() || loading}
                   loading={loading}
                   icon={ArrowRight}
-                  className="w-full"
+                  className="w-full h-12 rounded-2xl font-black text-base shadow-[0_8px_24px_var(--accent-glow)]"
                 >
-                  Create Instant Room
+                  Start Group Pick
                 </Button>
 
                 <button
                   type="button"
                   onClick={() => navigate('/host')}
-                  className="text-xs font-semibold text-[var(--accent-bg)] hover:underline text-center py-1 cursor-pointer"
+                  className="text-xs font-semibold text-[var(--text-tertiary)] hover:text-[var(--accent-bg)] hover:underline text-center py-1 cursor-pointer transition-colors"
                 >
-                  Advanced Host Studio (Custom options & radius)
+                  Custom topics & options
                 </button>
               </div>
             </div>
@@ -475,11 +483,11 @@ export default function JoinRoom() {
 
         {/* Past Decisions Fast Recovery */}
         {recentSession && (
-          <div className="w-full mt-4 p-3 rounded-lg bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex items-center justify-between">
+          <div className="w-full mt-4 p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock size={14} className="text-[var(--text-tertiary)]" />
               <div className="text-xs">
-                <span className="text-[var(--text-tertiary)]">Recent Winner: </span>
+                <span className="text-[var(--text-tertiary)]">Recent Pick: </span>
                 <span className="font-semibold text-[var(--text-primary)]">{recentSession.winner || 'Past Venue'}</span>
               </div>
             </div>
@@ -496,8 +504,8 @@ export default function JoinRoom() {
 
       {/* Footer Branding */}
       <footer className="text-center pt-4">
-        <p className="text-[11px] text-[var(--text-tertiary)] font-mono">
-          Powered by Schulze Graph Consensus
+        <p className="text-[11px] text-[var(--text-tertiary)] font-medium">
+          Fast, democratic picks for groups of friends
         </p>
       </footer>
 

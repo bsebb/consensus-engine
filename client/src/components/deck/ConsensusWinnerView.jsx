@@ -126,10 +126,10 @@ export default function ConsensusWinnerView({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-[var(--text-primary)]">
-                    Why Did This Win? (Pairwise Condorcet Graph)
+                    How Your Group Voted
                   </span>
                   <span className="text-[10px] text-[var(--text-tertiary)]">
-                    Head-to-head margins & quorum audit
+                    See why this was everyone's top choice
                   </span>
                 </div>
               </div>
@@ -144,12 +144,12 @@ export default function ConsensusWinnerView({
               <div className="p-3.5 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-2.5">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--status-success)] pt-2.5">
                   <CheckCircle2 size={14} className="shrink-0" />
-                  <span>0 Vetoes Received (Unanimous Quorum)</span>
+                  <span>Approved by everyone (0 vetoes)</span>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    Head-to-Head Margins:
+                    Head-to-Head Matchups:
                   </span>
                   {pairwiseBreakdown.map((item, idx) => (
                     <div
@@ -157,9 +157,9 @@ export default function ConsensusWinnerView({
                       className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
                     >
                       <span className="font-semibold text-[var(--text-primary)]">
-                        Beat {item.opponent}
+                        Ranked above {item.opponent}
                       </span>
-                      <span className="font-mono font-bold text-[var(--accent-bg)] px-2 py-0.5 rounded bg-[var(--accent-bg)]/10">
+                      <span className="font-bold text-[var(--accent-bg)] px-2 py-0.5 rounded bg-[var(--accent-bg)]/10 tabular-nums">
                         {item.score}
                       </span>
                     </div>
@@ -167,7 +167,7 @@ export default function ConsensusWinnerView({
                 </div>
 
                 <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed border-t border-[var(--border-subtle)] pt-2">
-                  Schulze Path Matrix: Defeated every candidate in direct head-to-head ballots with zero veto overrides.
+                  Scored the highest overall consensus rating across all submitted picks.
                 </p>
               </div>
             )}
@@ -205,7 +205,7 @@ export default function ConsensusWinnerView({
               icon={MessageSquarePlus}
               className="w-full shadow-md"
             >
-              Detailed Feedback
+              Add Venue Note
             </Button>
 
             <Button
@@ -215,7 +215,7 @@ export default function ConsensusWinnerView({
               icon={Clock}
               className="w-full"
             >
-              View Decision Ledger
+              View Past Decisions
             </Button>
           </div>
         </div>

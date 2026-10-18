@@ -55,14 +55,14 @@ export default function StepZeroVault({
       {!lockedConstraint ? (
         <Button
           type="button"
-          variant="primary"
+          variant="secondary"
           size="sm"
           onClick={handleLockBudget}
           loading={lockingBudget}
           icon={Check}
           className="mt-1 shadow-sm rounded-full"
         >
-          Set My Comfort Limit
+          Save Limit Preference
         </Button>
       ) : (
         <div className="flex flex-col gap-2 pt-1">
