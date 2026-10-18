@@ -52,6 +52,11 @@ export const AUTOCOMPLETE_DATABASE = [
   { name: 'Chess / Blitz Match', category: 'gaming', subtitle: 'Strategy Board Game', keywords: ['chess', 'board game', 'blitz'] },
 
   // --- SPORTS & FITNESS ---
+  { name: 'Freestyle Wrestling / Grappling', category: 'sports', subtitle: 'Combat Sport • Mat Sparring & Takedowns', keywords: ['wrestling', 'grapple', 'freestyle', 'mat', 'takedown', 'combat'] },
+  { name: 'Pro Wrestling / WWE Watch Party', category: 'sports', subtitle: 'Sports Entertainment • Live Pay-Per-View Viewing', keywords: ['wrestling', 'wwe', 'aew', 'pro wrestling', 'watch party'] },
+  { name: 'Boxing / Sparring Session', category: 'sports', subtitle: 'Combat Sport • Gloves, Heavy Bag & Footwork', keywords: ['boxing', 'box', 'sparring', 'gloves', 'punching'] },
+  { name: 'BJJ / Brazilian Jiu-Jitsu Open Mat', category: 'sports', subtitle: 'Combat Sport • Submissions & Rolls', keywords: ['bjj', 'jiu-jitsu', 'grappling', 'wrestling', 'rolls'] },
+  { name: 'MMA / Mixed Martial Arts Training', category: 'sports', subtitle: 'Combat Sport • Striking & Cage Work', keywords: ['mma', 'martial arts', 'fighting', 'combat', 'ufc'] },
   { name: 'Football / Soccer Match', category: 'sports', subtitle: 'Pitch Match • 5v5 or 7v7', keywords: ['football', 'soccer', 'match', 'pitch', 'turf'] },
   { name: 'Padel Tennis', category: 'sports', subtitle: 'Double Racquet Sport in Glass Court', keywords: ['padel', 'tennis', 'racket', 'court'] },
   { name: 'Basketball 3v3 / Pickup', category: 'sports', subtitle: 'Half-Court / Full-Court Hoops', keywords: ['basketball', 'hoops', 'streetball', '3v3'] },

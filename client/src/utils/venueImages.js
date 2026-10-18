@@ -115,6 +115,8 @@ export const CUSTOM_POLL_LIBRARY = [
       'Padel Tennis',
       'Basketball 3v3',
       'Bouldering / Rock Climbing',
+      'Freestyle Wrestling / Grappling',
+      'Boxing / Sparring Session',
       'Table Tennis / Ping Pong',
       'Go-Kart Racing',
       'Volleyball Match',
