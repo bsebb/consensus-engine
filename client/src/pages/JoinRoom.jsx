@@ -24,12 +24,12 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
+import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
 import { apiUrl } from '../utils/api';
 import {
   detectUserGps,
   getSavedExactGps,
   saveUserLocation,
-  searchLocationByQuery,
 } from '../utils/location';
 
 const CATEGORIES = [
@@ -61,10 +61,7 @@ export default function JoinRoom() {
       ? { ...saved, status: 'exact', isExact: true }
       : { status: 'detecting', lat: null, lng: null, accuracy: null, isExact: false, label: 'Detecting your area...' };
   });
-  const [editingLocation, setEditingLocation] = useState(false);
-  const [locQuery, setLocQuery] = useState('');
-  const [locResults, setLocResults] = useState([]);
-  const [searchingLoc, setSearchingLoc] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
@@ -108,33 +105,6 @@ export default function JoinRoom() {
     setGpsState((prev) => ({ ...prev, status: 'detecting', label: 'Locating via GPS...' }));
     const res = await detectUserGps({ forceRefresh: true });
     setGpsState(res);
-    setEditingLocation(false);
-  };
-
-  const handleSearchCity = async (e) => {
-    if (e) e.preventDefault();
-    if (locQuery.trim().length < 2) return;
-    setSearchingLoc(true);
-    const items = await searchLocationByQuery(locQuery);
-    setLocResults(items);
-    setSearchingLoc(false);
-  };
-
-  const handlePickLocationResult = (item) => {
-    const updated = {
-      status: 'exact',
-      lat: item.lat,
-      lng: item.lng,
-      accuracy: 100,
-      isExact: true,
-      label: item.label,
-      source: 'manual',
-    };
-    saveUserLocation(updated);
-    setGpsState(updated);
-    setEditingLocation(false);
-    setLocResults([]);
-    setLocQuery('');
   };
 
   const handleDigitChange = (index, value) => {
@@ -388,80 +358,26 @@ export default function JoinRoom() {
                   />
                 </div>
               ) : (
-                <div className="flex flex-col gap-2 p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
-                        <MapPin size={14} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-[var(--text-primary)] truncate">
-                          {gpsState.label || 'Detecting your area...'}
-                        </div>
-                        <div className="text-[11px] text-[var(--text-tertiary)] truncate">
-                          1km Hex Grid • Expands automatically if needed
-                        </div>
-                      </div>
+                <div
+                  onClick={() => setIsLocationModalOpen(true)}
+                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                      <MapPin size={15} />
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleUseMyGps}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-1"
-                        title="Detect my exact GPS coordinates"
-                      >
-                        <Navigation size={11} className="text-[var(--accent-bg)]" />
-                        <span>GPS</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingLocation((v) => !v)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] hover:underline transition-colors cursor-pointer"
-                      >
-                        {editingLocation ? 'Done' : 'Change'}
-                      </button>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-bg)] transition-colors">
+                        {gpsState.label || 'Detecting your area...'}
+                      </div>
+                      <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+                        {gpsState.source === 'gps' ? 'Live device GPS • Hex grid search' : 'Tap to change city or search anywhere'}
+                      </div>
                     </div>
                   </div>
-
-                  {editingLocation && (
-                    <div className="flex flex-col gap-2 pt-1.5 border-t border-[var(--border-subtle)]">
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          value={locQuery}
-                          onChange={(e) => setLocQuery(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSearchCity(e);
-                          }}
-                          placeholder="Type your city or street (e.g. Orhei, Bălți, Botanica)..."
-                          className="flex-1 min-h-[38px] px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleSearchCity}
-                          disabled={searchingLoc}
-                          className="px-3 rounded-xl bg-[var(--accent-bg)] text-white text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <Search size={13} />
-                          <span>{searchingLoc ? '...' : 'Find'}</span>
-                        </button>
-                      </div>
-                      {locResults.length > 0 && (
-                        <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
-                          {locResults.map((item, i) => (
-                            <button
-                              key={`${item.lat}-${item.lng}-${i}`}
-                              type="button"
-                              onClick={() => handlePickLocationResult(item)}
-                              className="w-full text-left px-2.5 py-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)]/10 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-primary)] truncate cursor-pointer"
-                            >
-                              {item.fullLabel || item.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] group-hover:bg-[var(--accent-bg)] group-hover:text-white transition-all shrink-0">
+                    Change
+                  </span>
                 </div>
               )}
 
@@ -573,6 +489,16 @@ export default function JoinRoom() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <UberLocationSearchModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        currentLocation={gpsState}
+        onSelectLocation={(loc) => {
+          saveUserLocation(loc);
+          setGpsState(loc);
+        }}
       />
     </div>
   );

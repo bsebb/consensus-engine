@@ -12,6 +12,7 @@ export default function HostConstraints({
   priceTiers,
   userLocation,
   detectLocation,
+  onOpenLocationSearch,
   suggestionLimit,
   setSuggestionLimit,
   advanceToStage,
@@ -98,15 +99,26 @@ export default function HostConstraints({
                 <MapPin size={14} className="text-[var(--accent-bg)]" />
                 <span className="text-[11px] font-bold text-[var(--text-primary)]">Search Origin</span>
               </div>
-              <button
-                type="button"
-                onClick={detectLocation}
-                disabled={userLocation.status === 'detecting'}
-                className="flex items-center gap-1 py-1 px-2 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] border border-[var(--border-subtle)] text-[10px] font-bold cursor-pointer transition-colors"
-              >
-                <Navigation size={10} className={userLocation.status === 'detecting' ? 'animate-spin' : ''} />
-                <span>{userLocation.status === 'detecting' ? 'Locating...' : 'Use Current GPS'}</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  disabled={userLocation.status === 'detecting'}
+                  className="flex items-center gap-1 py-1 px-2 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] border border-[var(--border-subtle)] text-[10px] font-bold cursor-pointer transition-colors"
+                >
+                  <Navigation size={10} className={userLocation.status === 'detecting' ? 'animate-spin' : ''} />
+                  <span>{userLocation.status === 'detecting' ? 'Locating...' : 'GPS'}</span>
+                </button>
+                {onOpenLocationSearch && (
+                  <button
+                    type="button"
+                    onClick={onOpenLocationSearch}
+                    className="py-1 px-2.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)] hover:text-white text-[var(--text-primary)] border border-[var(--border-subtle)] text-[10px] font-bold cursor-pointer transition-all"
+                  >
+                    Change
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-[10px]">

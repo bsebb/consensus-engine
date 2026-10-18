@@ -26,7 +26,9 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import HostCategoryPicker from '../components/host/HostCategoryPicker';
 import HostConstraints from '../components/host/HostConstraints';
+import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
 import { apiUrl } from '../utils/api';
+import { getSavedExactGps, saveUserLocation, detectUserGps } from '../utils/location';
 
 export default function HostSettings() {
   const navigate = useNavigate();
@@ -35,6 +37,7 @@ export default function HostSettings() {
 
   // Settings Modal State
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   // Progressive Staged Accordion State (1: Domain, 2: Target, 3: Constraints, 4: Quorum)
   const [openStages, setOpenStages] = useState({
@@ -61,47 +64,49 @@ export default function HostSettings() {
   const [loading, setLoading] = useState(false);
 
   // Geolocation State for Hyper-local Hexagonal Spatial Search
-  const [userLocation, setUserLocation] = useState({
-    latitude: null,
-    longitude: null,
-    accuracy: null,
-    status: 'idle', // 'idle' | 'detecting' | 'granted' | 'denied'
-    label: 'Downtown Chișinău (Default)',
+  const [userLocation, setUserLocation] = useState(() => {
+    const saved = getSavedExactGps();
+    if (saved && saved.lat != null && saved.lng != null) {
+      return {
+        latitude: saved.lat,
+        longitude: saved.lng,
+        accuracy: saved.accuracy || 100,
+        status: 'granted',
+        label: saved.label || 'Saved Location',
+      };
+    }
+    return {
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+      status: 'idle',
+      label: 'Downtown Chișinău (Default)',
+    };
   });
 
-  const detectLocation = () => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setUserLocation((prev) => ({ ...prev, status: 'denied', label: 'Downtown Chișinău (Default)' }));
-      return;
-    }
+  const detectLocation = async () => {
     setUserLocation((prev) => ({ ...prev, status: 'detecting' }));
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+    try {
+      const res = await detectUserGps({ forceRefresh: true });
+      if (res && res.lat != null && res.lng != null) {
         setUserLocation({
-          latitude,
-          longitude,
-          accuracy: Math.round(accuracy),
+          latitude: res.lat,
+          longitude: res.lng,
+          accuracy: res.accuracy || 50,
           status: 'granted',
-          label: `GPS Location (±${Math.round(accuracy)}m)`,
+          label: res.label || 'Current GPS',
         });
-      },
-      (err) => {
-        console.warn('[Location] GPS notice:', err.message);
-        setUserLocation({
-          latitude: null,
-          longitude: null,
-          accuracy: null,
-          status: 'denied',
-          label: 'Downtown Chișinău (Default)',
-        });
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-    );
+      }
+    } catch {
+      setUserLocation((prev) => ({ ...prev, status: 'denied' }));
+    }
   };
 
   useEffect(() => {
-    detectLocation();
+    const saved = getSavedExactGps();
+    if (!saved) {
+      detectLocation();
+    }
   }, []);
 
   const categories = [
@@ -436,6 +441,7 @@ export default function HostSettings() {
               priceTiers={priceTiers}
               userLocation={userLocation}
               detectLocation={detectLocation}
+              onOpenLocationSearch={() => setIsLocationModalOpen(true)}
               suggestionLimit={suggestionLimit}
               setSuggestionLimit={setSuggestionLimit}
               advanceToStage={advanceToStage}
@@ -548,6 +554,26 @@ export default function HostSettings() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <UberLocationSearchModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        currentLocation={{
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
+          label: userLocation.label,
+        }}
+        onSelectLocation={(loc) => {
+          saveUserLocation(loc);
+          setUserLocation({
+            latitude: loc.lat,
+            longitude: loc.lng,
+            accuracy: loc.accuracy || 100,
+            status: 'granted',
+            label: loc.label,
+          });
+        }}
       />
     </div>
   );

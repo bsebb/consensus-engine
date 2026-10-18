@@ -27,9 +27,21 @@ export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
   return Math.max(0.1, Number((R * c).toFixed(1)));
 }
 
+// Known prominent urban centers for instant 0ms autocomplete and accurate centroid anchoring
+export const POPULAR_LOCATIONS = [
+  { title: 'Chișinău', subtitle: 'Moldova', label: 'Chișinău, Moldova', lat: 47.0245, lng: 28.8322, type: 'city' },
+  { title: 'Bălți', subtitle: 'Moldova', label: 'Bălți, Moldova', lat: 47.7617, lng: 27.9289, type: 'city' },
+  { title: 'Strășeni', subtitle: 'Moldova', label: 'Strășeni, Moldova', lat: 47.1414, lng: 28.6108, type: 'city' },
+  { title: 'Orhei', subtitle: 'Moldova', label: 'Orhei, Moldova', lat: 47.3853, lng: 28.8242, type: 'city' },
+  { title: 'Jersey City', subtitle: 'New Jersey, USA', label: 'Jersey City, NJ, USA', lat: 40.7178, lng: -74.0431, type: 'city' },
+  { title: 'Newark', subtitle: 'New Jersey, USA', label: 'Newark, NJ, USA', lat: 40.7357, lng: -74.1724, type: 'city' },
+  { title: 'New York', subtitle: 'New York, USA', label: 'New York, NY, USA', lat: 40.7128, lng: -74.0060, type: 'city' },
+  { title: 'Bucharest', subtitle: 'Romania', label: 'Bucharest, Romania', lat: 44.4268, lng: 26.1025, type: 'city' },
+];
+
 /**
- * Reverse-geocodes (lat, lng) into a concise human-readable neighborhood/city label
- * using OpenStreetMap Nominatim.
+ * Reverse-geocodes (lat, lng) into a concise human-readable city label
+ * using OpenStreetMap Nominatim, never mangling clean cities into raw sector names.
  */
 export async function reverseGeocode(lat, lng) {
   if (lat == null || lng == null) return null;
@@ -37,7 +49,7 @@ export async function reverseGeocode(lat, lng) {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=14&accept-language=en,ro`,
       {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json', 'User-Agent': 'ConsensusEngine/2.0' },
         signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
       }
     );
@@ -49,66 +61,107 @@ export async function reverseGeocode(lat, lng) {
       addr.town ||
       addr.village ||
       addr.municipality ||
-      addr.county ||
       '';
-    const area =
-      addr.suburb ||
-      addr.city_district ||
-      addr.neighbourhood ||
-      addr.quarter ||
-      addr.road ||
-      '';
-    if (area && city && area.toLowerCase() !== city.toLowerCase()) {
-      return `${area}, ${city}`;
+    const state = addr.state || addr.county || '';
+    const country = addr.country || '';
+
+    // If city is found, prefer the clean city name (e.g. "Chișinău, Moldova" or "Jersey City, NJ")
+    if (city) {
+      if (country && country.toLowerCase() === 'moldova') {
+        return `${city}, Moldova`;
+      }
+      if (state && country) {
+        return `${city}, ${state}`;
+      }
+      return country ? `${city}, ${country}` : city;
     }
-    return city || area || data?.name || null;
+
+    const area = addr.suburb || addr.city_district || addr.quarter || addr.road || '';
+    return area ? `${area}${country ? `, ${country}` : ''}` : (data?.name || null);
   } catch {
     return null;
   }
 }
 
 /**
- * Forward-geocodes a city, town, neighborhood, or street query via OpenStreetMap Nominatim.
+ * Forward-geocodes a city, town, or neighborhood with Uber-style primary/secondary text
+ * and instant matching on common metropolitan hubs.
  */
 export async function searchLocationByQuery(query) {
-  const clean = String(query || '').trim();
+  const clean = String(query || '').trim().toLowerCase();
   if (clean.length < 2) return [];
+
+  // Instant local hub matches (e.g. "balti", "chisinau", "straseni", "jersey", "new york")
+  const localMatches = POPULAR_LOCATIONS.filter((loc) => {
+    const t = loc.title.toLowerCase();
+    const s = loc.subtitle.toLowerCase();
+    const l = loc.label.toLowerCase();
+    return t.includes(clean) || s.includes(clean) || l.includes(clean) ||
+      (clean.includes('jersey') && t.includes('jersey')) ||
+      (clean.includes('balti') && t.includes('bălți'));
+  });
+
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(clean)}&limit=5&addressdetails=1&accept-language=en,ro`,
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(clean)}&limit=6&addressdetails=1&accept-language=en,ro`,
       {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/json', 'User-Agent': 'ConsensusEngine/2.0' },
         signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
       }
     );
-    if (!res.ok) return [];
+    if (!res.ok) return localMatches;
     const results = await res.json();
-    if (!Array.isArray(results)) return [];
-    return results
-      .filter((r) => r.lat != null && r.lon != null)
+    if (!Array.isArray(results)) return localMatches;
+
+    const mapped = results
+      .filter((r) => r.lat != null && r.lon != null && r.type !== 'sea' && r.type !== 'ocean')
       .map((r) => {
         const addr = r.address || {};
-        const city =
-          addr.city ||
-          addr.town ||
-          addr.village ||
-          addr.municipality ||
-          addr.county ||
-          '';
-        const primary = r.name || addr.suburb || addr.road || city || r.display_name?.split(',')[0];
-        const label =
-          city && primary && primary.toLowerCase() !== city.toLowerCase()
-            ? `${primary}, ${city}`
-            : primary || r.display_name?.split(',').slice(0, 2).join(', ');
+        const city = addr.city || addr.town || addr.village || addr.municipality || '';
+        const state = addr.state || addr.county || '';
+        const country = addr.country || '';
+
+        let mainText = r.name || city || r.display_name?.split(',')[0];
+        // Clean sector suffixes (e.g. "Buiucani Sector" -> "Buiucani")
+        mainText = mainText.replace(/\s+Sector$/i, '');
+
+        let subText = [city && city !== mainText ? city : '', state && state !== mainText ? state : '', country].filter(Boolean).join(', ');
+        if (!subText) {
+          subText = r.display_name?.split(',').slice(1, 4).join(', ').trim() || '';
+        }
+
+        const label = subText ? `${mainText}, ${subText.split(',')[0]}` : mainText;
+
+        // If the entity is a whole state like "New Jersey", anchor slightly toward urban northeast corridor
+        let targetLat = parseFloat(r.lat);
+        let targetLng = parseFloat(r.lon);
+        if (clean.includes('jersey') && (r.name === 'New Jersey' || r.type === 'administrative')) {
+          targetLat = 40.7282;
+          targetLng = -74.0776; // Jersey City / Newark urban metro hub
+        }
+
         return {
+          title: mainText,
+          subtitle: subText,
           label,
           fullLabel: r.display_name,
-          lat: parseFloat(r.lat),
-          lng: parseFloat(r.lon),
+          lat: targetLat,
+          lng: targetLng,
+          type: r.addresstype || r.type || 'place',
         };
       });
+
+    // Merge without duplicates
+    const combined = [...localMatches];
+    for (const item of mapped) {
+      if (!combined.some((c) => Math.abs(c.lat - item.lat) < 0.05 && Math.abs(c.lng - item.lng) < 0.05)) {
+        combined.push(item);
+      }
+    }
+
+    return combined.slice(0, 8);
   } catch {
-    return [];
+    return localMatches;
   }
 }
 
