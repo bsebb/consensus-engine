@@ -76,14 +76,14 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
       'X-Places-Api-Version': '2025-06-17',
     };
 
-    let testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
+    let testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5&fields=fsq_place_id,name,rating,photos', {
       headers: testHeaders,
     });
 
     let usedFormat = 'Bearer';
     if (testRes.status === 401) {
       testHeaders.Authorization = rawAuth;
-      testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
+      testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5&fields=fsq_place_id,name,rating,photos', {
         headers: testHeaders,
       });
       usedFormat = 'Raw';
@@ -113,7 +113,7 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
       success: true,
       live_api: true,
       count: parsed.results ? parsed.results.length : 0,
-      results: parsed.results ? parsed.results.map((r) => ({ name: r.name, fsq_id: r.fsq_id })) : [],
+      results: parsed.results || [],
     });
   } catch (error) {
     return res.status(500).json({
