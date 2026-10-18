@@ -133,6 +133,74 @@ async function dispatchSafeguardAlert(title, message, metrics) {
 }
 
 /**
+ * Dispatches live room lifecycle events to the Discord webhook.
+ * Allows the owner to see room creation and consensus decision events in real-time.
+ */
+async function dispatchActivityNotification(eventType, data = {}) {
+  const webhookUrl = process.env.ALERT_WEBHOOK_URL;
+  if (!webhookUrl || typeof webhookUrl !== 'string' || !webhookUrl.startsWith('http')) {
+    return;
+  }
+
+  try {
+    let payload = null;
+
+    if (eventType === 'room_created') {
+      const { pin, topic, mode, optionCount, hostId } = data;
+      payload = {
+        content: `🎉 **Room Created:** Room was created with ID **#${pin}**`,
+        embeds: [
+          {
+            title: `Session #${pin} is Ready`,
+            color: 1096065, // Emerald green (0x10B981)
+            fields: [
+              { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
+              { name: 'Mode', value: mode === 'CUSTOM' ? 'Custom Poll' : 'Discovery', inline: true },
+              { name: 'Topic / Category', value: topic || 'Places Nearby', inline: true },
+              { name: 'Options Loaded', value: `${optionCount || 0} choices`, inline: true },
+              { name: 'Host ID', value: hostId ? `\`${hostId}\`` : 'Unknown', inline: true },
+            ],
+            footer: { text: 'Consensus Engine • Live Activity' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    } else if (eventType === 'decision_reached') {
+      const { pin, winnerName, winnerCategory, winnerAddress, voterCount, matchScore } = data;
+      payload = {
+        content: `🏆 **Decision Reached:** Room with ID **#${pin}** have reached a decision!`,
+        embeds: [
+          {
+            title: `Winner: ${winnerName || 'Consensus Winner'}`,
+            color: 6514417, // Indigo (0x6366F1)
+            fields: [
+              { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
+              { name: 'Agreement Score', value: `${matchScore || 96}% consensus`, inline: true },
+              { name: 'Ballots Cast', value: `${voterCount || 1} participant(s)`, inline: true },
+              { name: 'Category / Vibe', value: winnerCategory || 'Group Choice', inline: true },
+              { name: 'Address / Location', value: winnerAddress || 'Local Venue', inline: false },
+            ],
+            footer: { text: 'Consensus Engine • Decision Announced' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    }
+
+    if (!payload) return;
+
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+    }).catch(() => {});
+  } catch (err) {
+    console.warn('[ActivityWebhook] Dispatch notice:', err.message);
+  }
+}
+
+/**
  * Self-Healing Pruning: Deletes completed rooms older than 7 days
  * and unstarted abandoned rooms older than 48 hours.
  * Uses PostgreSQL cascade to instantly clean options, votes, and participants.
@@ -217,4 +285,5 @@ module.exports = {
   pruneExpiredRooms,
   checkSystemSafeguards,
   initStorageSafeguard,
+  dispatchActivityNotification,
 };

@@ -13,6 +13,7 @@ const roomRoutes = require('./routes/roomRoutes');
 const { setIO } = require('./src/utils/socket');
 const { verifyHostToken } = require('./src/utils/hostAuth');
 const { createRateLimiter } = require('./src/utils/rateLimiter');
+const { dispatchActivityNotification } = require('./src/utils/storageSafeguard');
 const cors = require('cors');
 
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -348,6 +349,15 @@ async function resolveAndBroadcastWinner(pin) {
   session.pairwise = pairwiseData;
 
   console.log(`[Socket] Consensus resolved for room ${pin}: "${winningOption.name}" won across ${submissionsArray.length} ballots!`);
+
+  dispatchActivityNotification('decision_reached', {
+    pin,
+    winnerName: winningOption.name,
+    winnerCategory: winningOption.category,
+    winnerAddress: winningOption.address,
+    voterCount: submissionsArray.length,
+    matchScore,
+  }).catch(() => {});
 
   io.to(pin).emit('winner_announced', {
     pin,

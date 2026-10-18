@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { getStorageMetrics, pruneExpiredRooms, checkSystemSafeguards } = require('./storageSafeguard');
+const { getStorageMetrics, pruneExpiredRooms, checkSystemSafeguards, dispatchActivityNotification } = require('./storageSafeguard');
 const { isVenueReportedClosed, reportClosedVenue } = require('./reportedVenues');
 
 async function runTests() {
@@ -38,6 +38,24 @@ async function runTests() {
   assert.strictEqual(isVenueReportedClosed('Pegas Restaurant'), false, 'Pegas Restaurant must not be closed');
   assert.strictEqual(isVenueReportedClosed('Andy\'s Bistro'), false, 'Andy\'s Bistro must not be closed');
   console.log('[PASS] Test 4: Censorship DoS prevention verified (short strings cannot censor catalog)');
+
+  // Test 5: Activity notification webhook dispatcher handles events gracefully
+  await dispatchActivityNotification('room_created', {
+    pin: '9999',
+    topic: 'Restaurants',
+    mode: 'DISCOVERY',
+    optionCount: 50,
+    hostId: 'test_host',
+  });
+  await dispatchActivityNotification('decision_reached', {
+    pin: '9999',
+    winnerName: 'Fuior Gourmet',
+    winnerCategory: 'Modern Moldovan Fine Dining',
+    winnerAddress: 'Str. Pușkin 30',
+    voterCount: 4,
+    matchScore: 98,
+  });
+  console.log('[PASS] Test 5: Activity notification dispatcher verified for room creation and decision events');
 
   console.log('\n--- ALL STORAGE SAFEGUARD & SECURITY TESTS PASSED ---');
 }

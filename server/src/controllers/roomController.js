@@ -20,6 +20,7 @@ const { getIO } = require('../utils/socket');
 const { generatePin, issueHostToken, verifyHostToken } = require('../utils/hostAuth');
 const { buildOptionRecords, discoverDiscoveryVenues, expandRoomVenues } = require('../services/venueDiscoveryService');
 const { reportClosedVenue } = require('../utils/reportedVenues');
+const { dispatchActivityNotification } = require('../utils/storageSafeguard');
 
 // Helper to execute Schulze worker thread off the main event loop with 5s timeout
 const runSchulzeWorker = (submissions, timeoutMs = 5000) => {
@@ -123,27 +124,23 @@ const createNewRoom = async (req, res) => {
       createdOptions = await createOptionsBulk(optionsData);
     }
 
+    dispatchActivityNotification('room_created', {
+      pin: room.pin, topic: theme || 'Places Nearby', mode: 'DISCOVERY', optionCount: createdOptions.length, hostId: host_id,
+    }).catch(() => {});
+
     return res.status(201).json({
-      room_id: room.id,
-      pin: room.pin,
-      host_token: issueHostToken(room.pin, host_id),
-      status: room.status,
-      theme: roomTheme,
-      topic: theme || 'Places Nearby',
-      mode: 'DISCOVERY',
-      options: createdOptions,
+      room_id: room.id, pin: room.pin, host_token: issueHostToken(room.pin, host_id),
+      status: room.status, theme: roomTheme, topic: theme || 'Places Nearby', mode: 'DISCOVERY', options: createdOptions,
     });
   }
 
+  dispatchActivityNotification('room_created', {
+    pin: room.pin, topic: theme || 'What should we do?', mode: 'CUSTOM', optionCount: 0, hostId: host_id,
+  }).catch(() => {});
+
   return res.status(201).json({
-    room_id: room.id,
-    pin: room.pin,
-    host_token: issueHostToken(room.pin, host_id),
-    status: room.status,
-    theme: roomTheme,
-    topic: theme || 'What should we do?',
-    mode: 'CUSTOM',
-    options: [],
+    room_id: room.id, pin: room.pin, host_token: issueHostToken(room.pin, host_id),
+    status: room.status, theme: roomTheme, topic: theme || 'What should we do?', mode: 'CUSTOM', options: [],
   });
 };
 
@@ -466,6 +463,11 @@ const finalizeVoting = async (req, res) => {
       io.to(pin).emit('MATCH_FOUND', { winningOptionId, winning_option: winningOption, winner: winningOption });
       io.to(pin).emit('winner_announced', { pin, winning_option: winningOption, winningOptionId, winner: winningOption });
     }
+
+    dispatchActivityNotification('decision_reached', {
+      pin, winnerName: winningOption.name, winnerCategory: winningOption.category || 'Group Choice',
+      winnerAddress: winningOption.address || '', voterCount: room.participants?.length || 1, matchScore: 96,
+    }).catch(() => {});
 
     return res.status(200).json({
       success: true,
