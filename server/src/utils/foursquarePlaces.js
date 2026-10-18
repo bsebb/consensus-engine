@@ -1,5 +1,6 @@
 const { resolveVenuePhotosBatch, resolveVenuePhoto } = require('./venuePhotoService');
 const { CATEGORIZED_FALLBACKS, resolveRegionalFallback, formatPriceLabel } = require('./fallbackVenues');
+const { filterReportedVenues } = require('./reportedVenues');
 
 // In-memory cache for API queries to avoid repeated external requests
 const queryCache = new Map();
@@ -501,7 +502,8 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       candidatesList = await enrichVenuesWithRoadDistances(centerLat, centerLng, candidatesList, isExactGps);
       candidatesList = await resolveVenuePhotosBatch(candidatesList);
 
-      const sortedResults = candidatesList
+      const filteredCandidates = filterReportedVenues(candidatesList);
+      const sortedResults = filteredCandidates
         .map((v) => ({ ...v, composite_score: calculateCompositeScore(v, activeRadius) }))
         .sort((a, b) => b.composite_score - a.composite_score)
         .slice(0, TARGET_PLACES);
@@ -514,7 +516,8 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   }
 
   const fallbackResults = await resolveRegionalFallback(theme, centerLat, centerLng, isExactGps, TARGET_PLACES);
-  return Array.isArray(fallbackResults) ? fallbackResults.slice(0, TARGET_PLACES) : [];
+  const activeFallback = filterReportedVenues(Array.isArray(fallbackResults) ? fallbackResults : []);
+  return activeFallback.slice(0, TARGET_PLACES);
 };
 
 /**

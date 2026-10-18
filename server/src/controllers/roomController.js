@@ -19,6 +19,8 @@ const {
 const { getIO } = require('../utils/socket');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 const { fetchGooglePlaces } = require('../utils/googlePlaces');
+const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
+const { reportClosedVenue, filterReportedVenues } = require('../utils/reportedVenues');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -96,6 +98,22 @@ const createNewRoom = async (req, res) => {
       }
     }
 
+    // Zero-Cost Open Core: Query Geoapify (3,000 req/day free, no credit card) if configured
+    if (!places || places.length === 0) {
+      try {
+        places = await fetchGeoapifyPlaces({
+          theme,
+          latitude,
+          longitude,
+          radius,
+          targetPlaces,
+          isExactGps: is_exact_gps,
+        });
+      } catch (err) {
+        console.warn('[Geoapify Places Error, falling back]:', err.message);
+      }
+    }
+
     if (!places || places.length === 0) {
       const fetchFn = searchRestaurants || fetchFoursquarePlaces;
       places = await fetchFn({
@@ -107,6 +125,9 @@ const createNewRoom = async (req, res) => {
         targetPlaces,
       });
     }
+
+    // Ephemeral Crowd-Sourced Self-Healing: Purge reported closed spots (e.g. Casa Mare)
+    places = filterReportedVenues(places || []);
 
     let createdOptions = [];
     if (places && places.length > 0) {
@@ -470,6 +491,20 @@ const submitFeedback = async (req, res) => {
     return res.status(200).json({ success: true });
 };
 
+// Ephemeral Crowd-Sourced Self-Healing: Instant closure flag by users
+const reportClosedVenueHandler = async (req, res) => {
+  const { name, address, lat, lng, reason } = req.body || {};
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ success: false, error: 'Venue name is required' });
+  }
+
+  const result = reportClosedVenue({ name, address, lat, lng, reason });
+  return res.status(200).json({
+    success: true,
+    message: 'Venue reported as closed and excluded from future discovery decks.',
+    venue: result.venue,
+  });
+};
 
 module.exports = {
   createNewRoom,
@@ -483,4 +518,5 @@ module.exports = {
   submitVotes,
   // Afina: export feedback handler
   submitFeedback,
+  reportClosedVenueHandler,
 };

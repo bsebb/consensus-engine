@@ -9,6 +9,8 @@ import {
   ExternalLink,
   Camera,
   BookOpen,
+  AlertTriangle,
+  Check,
 } from 'lucide-react';
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import CleanStreetMiniMap from './CleanStreetMiniMap';
@@ -23,9 +25,36 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
     venue?.photo_url
   );
 
+  const [reported, setReported] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
+
   useEffect(() => {
     setActivePhotoIdx(0);
+    setReported(false);
   }, [venue?.name]);
+
+  const handleReportClosed = async () => {
+    if (!venue?.name || isReporting) return;
+    setIsReporting(true);
+    try {
+      await fetch('/api/v1/venues/report-closed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: venue.name,
+          address: venue.address,
+          lat: venue.lat,
+          lng: venue.lng,
+          reason: 'permanently_closed',
+        }),
+      });
+      setReported(true);
+    } catch {
+      setReported(true);
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   if (!venue || (!isOpen && !inline)) return null;
 
@@ -233,6 +262,27 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
             <span>Menu & Reviews</span>
             <ExternalLink size={11} className="text-[var(--text-tertiary)]" />
           </a>
+        </div>
+
+        {/* Ephemeral Crowd-Sourced Self-Healing: Outdated / Closed Venue Flag */}
+        <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
+          <span className="text-[var(--text-tertiary)]">Spotted outdated info?</span>
+          {reported ? (
+            <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold animate-[fadeIn_0.2s_ease-out]">
+              <Check size={12} />
+              <span>Reported as closed</span>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={handleReportClosed}
+              disabled={isReporting}
+              className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-rose-400 transition-colors font-medium cursor-pointer"
+            >
+              <AlertTriangle size={12} className="text-amber-500/80" />
+              <span>{isReporting ? 'Reporting...' : 'Report closed / wrong spot'}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

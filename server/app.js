@@ -6,6 +6,7 @@ const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursqu
 const { resolveGamePoster } = require('./src/utils/gamePosterService');
 const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteService');
 const { resolveGooglePhotoMedia } = require('./src/utils/googlePlaces');
+const { reportClosedVenue } = require('./src/utils/reportedVenues');
 const roomRoutes = require('./routes/roomRoutes');
 //Lilia: access the shared Socket.io instance from other server modules
 const { setIO } = require('./src/utils/socket');
@@ -70,6 +71,24 @@ app.get('/api/v1/venue-photos', async (req, res) => {
     return res.json({ success: true, photos });
   } catch {
     return res.json({ success: false, photos: [] });
+  }
+});
+
+// Ephemeral Crowd-Sourced Self-Healing: report closed/outdated venue
+app.post('/api/v1/venues/report-closed', (req, res) => {
+  try {
+    const { name, address, lat, lng, reason } = req.body || {};
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({ success: false, error: 'Venue name is required' });
+    }
+    const result = reportClosedVenue({ name, address, lat, lng, reason });
+    return res.status(200).json({
+      success: true,
+      message: 'Venue reported as closed and excluded from future discovery decks.',
+      venue: result.venue,
+    });
+  } catch {
+    return res.status(500).json({ success: false, error: 'Failed to report venue' });
   }
 });
 
