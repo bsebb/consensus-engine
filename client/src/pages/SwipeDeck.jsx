@@ -452,9 +452,9 @@ export default function SwipeDeck() {
       : '$$$$ • ~600 MDL'
     : '$$ • ~180 MDL';
   const cardWalkDesc = activeCard
-    ? activeCard.distance_km != null
+    ? activeCard.distance_km != null && activeCard.distance_km <= 3.5
       ? `${activeCard.distance_km} km • ~${Math.max(5, Math.round(activeCard.distance_km * 12))} min walk`
-      : (activeCard.address || 'Centru, Chișinău')
+      : (activeCard.address ? activeCard.address.split(',')[0] : 'Centru, Chișinău')
     : 'Centru, Chișinău';
 
   // Direct turn-by-turn Google Maps link

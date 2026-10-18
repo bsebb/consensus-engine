@@ -1,4 +1,4 @@
-const CACHE_NAME = 'consensus-pwa-v2';
+const CACHE_NAME = 'consensus-pwa-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

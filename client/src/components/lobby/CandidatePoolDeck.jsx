@@ -91,7 +91,9 @@ export default function CandidatePoolDeck({
             const imageUrl = getVenueImage(item.name, item.category);
             const vibeSubtitle = getVenueVibe(item.name, item.category);
             const venueRating = getVenueRating(item.name, item.category);
-            const distanceDisplay = item.distance_km != null ? `${item.distance_km} km` : (item.address || 'Chișinău');
+            const distanceDisplay = item.distance_km != null && item.distance_km <= 3.5
+              ? `${item.distance_km} km`
+              : (item.address ? item.address.split(',')[0] : 'Centru, Chișinău');
 
             return (
               <div

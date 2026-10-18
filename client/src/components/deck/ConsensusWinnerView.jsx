@@ -30,7 +30,9 @@ export default function ConsensusWinnerView({
   const winnerImage = getVenueImage(winner?.name, winner?.category);
   const winnerVibe = getVenueVibe(winner?.name, winner?.category);
   const winnerRating = getVenueRating(winner?.name, winner?.category);
-  const distanceLabel = winner?.distance_km != null ? `${winner.distance_km} km` : (winner?.address || 'Chișinău');
+  const distanceLabel = winner?.distance_km != null && winner.distance_km <= 3.5
+    ? `${winner.distance_km} km`
+    : (winner?.address ? winner.address.split(',')[0] : 'Centru, Chișinău');
 
   return (
     <main className="px-4 py-6 pb-12 flex flex-col items-center gap-5 flex-1 my-auto max-w-md mx-auto w-full animate-[modalSpring_0.4s_var(--spring-smooth)]">
