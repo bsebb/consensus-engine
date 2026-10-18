@@ -1,70 +1,113 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <!-- Ambient Obsidian squircle background -->
+    <!-- Dark Obsidian Canvas Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0E1322" />
-      <stop offset="100%" stop-color="#07090F" />
+      <stop offset="0%" stop-color="#0F1422" />
+      <stop offset="50%" stop-color="#090C15" />
+      <stop offset="100%" stop-color="#05070B" />
     </linearGradient>
 
-    <!-- Scale Metallic / Electric Indigo Gradient -->
-    <linearGradient id="scaleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#C7D2FE" />
-      <stop offset="35%" stop-color="#818CF8" />
-      <stop offset="100%" stop-color="#6366F1" />
+    <!-- Ambient Center Halo Glow -->
+    <radialGradient id="ambientGlow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#F04D3E" stop-opacity="0.18" />
+      <stop offset="45%" stop-color="#6366F1" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#05070B" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Front Card: Electric Flame Coral Gradient -->
+    <linearGradient id="frontCardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B5B" />
+      <stop offset="40%" stop-color="#F04D3E" />
+      <stop offset="100%" stop-color="#D93828" />
     </linearGradient>
 
-    <!-- Fulcrum Core Glow -->
-    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" />
-      <stop offset="100%" stop-color="#818CF8" />
+    <!-- Back Card: Deep Electric Indigo Gradient -->
+    <linearGradient id="backCardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="50%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4338CA" />
     </linearGradient>
 
-    <!-- Subtle Hairline Border Gradient -->
+    <!-- Card Top Rim Specular Highlight -->
+    <linearGradient id="specularGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Precision Squircle Hairline Border -->
     <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818CF8" stop-opacity="0.35" />
-      <stop offset="100%" stop-color="#6366F1" stop-opacity="0.1" />
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.18" />
+      <stop offset="40%" stop-color="#818CF8" stop-opacity="0.25" />
+      <stop offset="80%" stop-color="#F04D3E" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.06" />
     </linearGradient>
 
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#6366F1" flood-opacity="0.35" />
+    <!-- Star Glow & Shadow Filters -->
+    <filter id="cardShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="-4" dy="16" stdDeviation="18" flood-color="#000000" flood-opacity="0.55" />
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#F04D3E" flood-opacity="0.25" />
+    </filter>
+
+    <filter id="backShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="-6" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.5" />
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#6366F1" flood-opacity="0.3" />
+    </filter>
+
+    <filter id="starGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#FFFFFF" flood-opacity="0.9" />
+      <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#FDE047" flood-opacity="0.75" />
+      <feDropShadow dx="0" dy="0" stdDeviation="28" flood-color="#F04D3E" flood-opacity="0.5" />
     </filter>
   </defs>
 
-  <!-- Squircle Base Frame (Standard Apple App Icon curvature r=115) -->
+  <!-- 1. Apple Standard Squircle Base (512x512, r=115) -->
   <rect width="512" height="512" rx="115" fill="url(#bgGrad)" />
-  <rect width="510" height="510" x="1" y="1" rx="114" stroke="url(#borderGrad)" stroke-width="2" />
+  <rect width="512" height="512" rx="115" fill="url(#ambientGlow)" />
+  <rect width="509" height="509" x="1.5" y="1.5" rx="114" stroke="url(#borderGrad)" stroke-width="1.5" />
 
-  <!-- Minimalist Geometric Balance Scale -->
-  <g filter="url(#glow)">
-    <!-- Central Pillar / Stem -->
-    <line x1="256" y1="140" x2="256" y2="390" stroke="url(#scaleGrad)" stroke-width="14" stroke-linecap="round" />
+  <!-- 2. Back Tilted Card: Electric Indigo (Tilt: -14 deg) -->
+  <g transform="translate(195, 270) rotate(-14) translate(-85, -125)" filter="url(#backShadow)">
+    <!-- Card Body -->
+    <rect width="170" height="236" rx="34" fill="url(#backCardGrad)" />
+    <!-- Glass Specular Highlight -->
+    <rect width="170" height="236" rx="34" stroke="url(#specularGrad)" stroke-width="2" />
+    <!-- Card Preview Geometry Skeleton -->
+    <rect x="22" y="24" width="126" height="88" rx="18" fill="#FFFFFF" fill-opacity="0.16" />
+    <rect x="22" y="130" width="80" height="14" rx="7" fill="#FFFFFF" fill-opacity="0.4" />
+    <rect x="22" y="154" width="115" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.22" />
+    <rect x="22" y="172" width="60" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.18" />
+  </g>
 
-    <!-- Weighted Base Pedestal -->
-    <path d="M196 390 H316" stroke="url(#scaleGrad)" stroke-width="16" stroke-linecap="round" />
-    <path d="M226 366 H286" stroke="url(#scaleGrad)" stroke-width="8" stroke-linecap="round" opacity="0.6" />
+  <!-- 3. Front Tilted Card: Flame Coral (Tilt: +10 deg) -->
+  <g transform="translate(305, 260) rotate(10) translate(-85, -125)" filter="url(#cardShadow)">
+    <!-- Card Body -->
+    <rect width="170" height="236" rx="34" fill="url(#frontCardGrad)" />
+    <!-- Glass Specular Highlight -->
+    <rect width="170" height="236" rx="34" stroke="url(#specularGrad)" stroke-width="2.5" />
+    <!-- Card Preview Image Skeleton -->
+    <rect x="22" y="24" width="126" height="92" rx="18" fill="#FFFFFF" fill-opacity="0.22" />
+    <!-- Heart / Like Emblem -->
+    <path d="M85 58 C85 52, 78 46, 70 46 C61 46, 56 53, 56 60 C56 73, 76 86, 85 92 C94 86, 114 73, 114 60 C114 53, 109 46, 100 46 C92 46, 85 52, 85 58 Z" fill="#FFFFFF" fill-opacity="0.9" />
+    <!-- Card Content Lines -->
+    <rect x="22" y="134" width="95" height="15" rx="7.5" fill="#FFFFFF" fill-opacity="0.92" />
+    <rect x="22" y="160" width="126" height="11" rx="5.5" fill="#FFFFFF" fill-opacity="0.5" />
+    <rect x="22" y="179" width="75" height="11" rx="5.5" fill="#FFFFFF" fill-opacity="0.35" />
+  </g>
 
-    <!-- Perfectly Balanced Horizontal Beam -->
-    <path d="M110 170 C160 162, 352 162, 402 170" stroke="url(#scaleGrad)" stroke-width="12" stroke-linecap="round" />
+  <!-- 4. Radiant Consensus Spark / Winner Starburst -->
+  <g filter="url(#starGlow)">
+    <!-- Central 4-Point Star -->
+    <path d="M260 90 Q260 145 205 145 Q260 145 260 200 Q260 145 315 145 Q260 145 260 90 Z" fill="#FFFFFF" />
+    <!-- Warm Core Center Point -->
+    <circle cx="260" cy="145" r="9" fill="#FFF176" />
+    <!-- Diagonal Subtle Rays -->
+    <path d="M225 110 L295 180 M225 180 L295 110" stroke="#FFF59D" stroke-width="2.5" stroke-linecap="round" opacity="0.75" />
+  </g>
 
-    <!-- Left Pan Suspension Lines -->
-    <path d="M110 170 L70 290" stroke="url(#scaleGrad)" stroke-width="5" stroke-linecap="round" opacity="0.85" />
-    <path d="M110 170 L150 290" stroke="url(#scaleGrad)" stroke-width="5" stroke-linecap="round" opacity="0.85" />
-
-    <!-- Left Balance Pan (Curved minimal arc) -->
-    <path d="M56 290 C70 326, 150 326, 164 290 Z" fill="url(#scaleGrad)" fill-opacity="0.2" stroke="url(#scaleGrad)" stroke-width="10" stroke-linejoin="round" />
-
-    <!-- Right Pan Suspension Lines -->
-    <path d="M402 170 L362 290" stroke="url(#scaleGrad)" stroke-width="5" stroke-linecap="round" opacity="0.85" />
-    <path d="M402 170 L442 290" stroke="url(#scaleGrad)" stroke-width="5" stroke-linecap="round" opacity="0.85" />
-
-    <!-- Right Balance Pan (Curved minimal arc) -->
-    <path d="M348 290 C362 326, 442 326, 456 290 Z" fill="url(#scaleGrad)" fill-opacity="0.2" stroke="url(#scaleGrad)" stroke-width="10" stroke-linejoin="round" />
-
-    <!-- Central Fulcrum Node / Pivot Jewel -->
-    <circle cx="256" cy="166" r="16" fill="url(#coreGrad)" />
-    <circle cx="256" cy="166" r="7" fill="#1E1B4B" />
-
-    <!-- Apex Finial (Top Diamond) -->
-    <polygon points="256,108 266,124 256,140 246,124" fill="url(#coreGrad)" />
+  <!-- Secondary Companion Sparkles -->
+  <g filter="url(#starGlow)">
+    <path d="M375 105 Q375 125 355 125 Q375 125 375 145 Q375 125 395 125 Q375 125 375 105 Z" fill="#FFFFFF" opacity="0.9" />
+    <circle cx="155" cy="180" r="4.5" fill="#FFFFFF" opacity="0.85" />
+    <circle cx="390" cy="235" r="3.5" fill="#FFD54F" opacity="0.75" />
   </g>
 </svg>

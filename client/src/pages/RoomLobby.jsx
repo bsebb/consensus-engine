@@ -18,6 +18,7 @@ import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
 import { calculateDistanceKm, detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
+import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 import { deduplicateVenues } from '../utils/venueImages';
 
@@ -204,6 +205,7 @@ export default function RoomLobby() {
   const handleCopyPin = async () => {
     try {
       await navigator.clipboard.writeText(pin);
+      triggerHaptic('tap');
       setCopied(true);
       addToast({
         title: 'Room Code Copied',
@@ -224,6 +226,7 @@ export default function RoomLobby() {
     const inviteUrl = `${window.location.origin}/?pin=${pin}`;
     if (navigator.share) {
       try {
+        triggerHaptic('tap');
         await navigator.share({
           title: `Join Room #${pin}`,
           text: `Vote on "${topic}" with me!`,
@@ -235,6 +238,7 @@ export default function RoomLobby() {
     } else {
       try {
         await navigator.clipboard.writeText(inviteUrl);
+        triggerHaptic('tap');
         setCopied(true);
         addToast({
           title: 'Invite Link Copied',
@@ -516,7 +520,7 @@ export default function RoomLobby() {
   return (
     <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none">
       {/* Solid Opaque Header */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 py-3">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"

@@ -32,6 +32,8 @@ import {
   getSavedExactGps,
   saveUserLocation,
 } from '../utils/location';
+import { triggerHaptic } from '../utils/haptics';
+import BrandLogo from '../components/ui/BrandLogo';
 
 const CATEGORIES = [
   { id: 'Restaurants', title: 'Restaurants', desc: 'Dinner & lunch spots', icon: Utensils, topic: 'Where are we eating?' },
@@ -113,7 +115,14 @@ export default function JoinRoom() {
     const newDigits = [...pinDigits];
     newDigits[index] = digit;
     setPinDigits(newDigits);
-    if (digit && index < 3) digitInputRefs[index + 1].current?.focus();
+    if (digit) {
+      triggerHaptic('tap');
+      if (index < 3) {
+        digitInputRefs[index + 1].current?.focus();
+      } else {
+        triggerHaptic('like');
+      }
+    }
   };
 
   const handleDigitKeyDown = (index, e) => {
@@ -241,13 +250,16 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-[100dvh]">
+    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 pt-[max(env(safe-area-inset-top,0px),1.25rem)] pb-[max(env(safe-area-inset-bottom,0px),1.25rem)] min-h-[100dvh]">
       <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm">
-            <Compass size={16} />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
+            <BrandLogo size={22} />
           </div>
-          <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">NoYouPick</span>
+          <div className="flex flex-col">
+            <span className="font-extrabold text-base tracking-tight text-[var(--text-primary)] leading-tight">NoYouPick</span>
+            <span className="text-[10px] font-medium text-[var(--text-tertiary)] -mt-0.5">End the debate</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -329,8 +341,11 @@ export default function JoinRoom() {
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => setSelectedCategory(cat.id)}
-                        className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer min-h-[54px] ${
+                        onClick={() => {
+                          setSelectedCategory(cat.id);
+                          triggerHaptic('tap');
+                        }}
+                        className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer min-h-[54px] ${
                           isSelected
                             ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs'
                             : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'

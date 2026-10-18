@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutGrid, MapPin, Loader2, Compass, Layers, Shield } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
+import BrandLogo from '../ui/BrandLogo';
 
 export default function LobbyLoadingView({
   topic = 'Where should we go?',
@@ -13,7 +14,7 @@ export default function LobbyLoadingView({
   return (
     <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none bg-[var(--bg-root)] animate-fade-in text-[var(--text-primary)]">
       {/* Header matching RoomLobby */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 py-3">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
           {onCancel ? (
             <button
@@ -26,10 +27,10 @@ export default function LobbyLoadingView({
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-xs">
-                <Compass size={15} />
+              <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
+                <BrandLogo size={18} />
               </div>
-              <span className="font-bold text-sm tracking-tight">Consensus</span>
+              <span className="font-bold text-sm tracking-tight">NoYouPick</span>
             </div>
           )}
 

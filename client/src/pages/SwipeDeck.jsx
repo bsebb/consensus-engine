@@ -455,7 +455,7 @@ export default function SwipeDeck() {
       }`}
     >
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-2.5 relative">
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 pt-[max(env(safe-area-inset-top,0px),0.625rem)] pb-2.5 relative">
         <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
           <button
             type="button"
