@@ -67,7 +67,7 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
   const combined = `${nameLower} ${catNames}`;
 
   // Global rejection of permanently closed historical / defunct venues
-  const defunctVenues = /\b(odeon|flac[aă]ra|gaudeamus|moscova|patria r[iî][sș]cani|smokehouse|barbar|propaganda|hostaria amarcord|casa dac[aă]|the york pub|morimoto|ava 1727|havana mama)\b/i;
+  const defunctVenues = /\b(odeon|flac[aă]ra|gaudeamus|moscova|patria r[iî][sș]cani|smokehouse|barbar|propaganda|hostaria amarcord|casa dac[aă]|casa[\s\-_]*mare|the york pub|morimoto|ava 1727|havana mama)\b/i;
   if (defunctVenues.test(combined)) {
     return false;
   }
@@ -271,6 +271,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   const latitude = isObj ? param1.latitude : null;
   const longitude = isObj ? param1.longitude : null;
   let isExactGps = isObj ? Boolean(param1.is_exact_gps) : false;
+  const targetPlaces = isObj && param1.targetPlaces ? Math.max(3, Math.min(12, Number(param1.targetPlaces))) : 6;
 
   const DEFAULT_LAT = 47.0225;
   const DEFAULT_LNG = 28.8340;
@@ -287,14 +288,14 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
 
   const cacheLat = centerLat.toFixed(3);
   const cacheLng = centerLng.toFixed(3);
-  const cacheKey = `hex_v9_${categoryKey}_${cacheLat}_${cacheLng}_${isExactGps}`;
+  const cacheKey = `hex_v10_${categoryKey}_${cacheLat}_${cacheLng}_${isExactGps}_${targetPlaces}`;
 
   const cached = queryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.data;
   }
 
-  const TARGET_PLACES = 6;
+  const TARGET_PLACES = targetPlaces;
   const hexRingsMeters = categoryKey === 'cinema' ? [2500, 6000, 12000, 18000] : [1000, 2600, 4500, 7500, 12500];
   const accumulatedVenues = new Map();
 
@@ -495,7 +496,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       let candidatesList = Array.from(accumulatedVenues.values())
         .map((v) => ({ ...v, composite_score: calculateCompositeScore(v, activeRadius) }))
         .sort((a, b) => b.composite_score - a.composite_score)
-        .slice(0, 8);
+        .slice(0, TARGET_PLACES + 2);
 
       candidatesList = await enrichVenuesWithRoadDistances(centerLat, centerLng, candidatesList, isExactGps);
       candidatesList = await resolveVenuePhotosBatch(candidatesList);
@@ -503,7 +504,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       const sortedResults = candidatesList
         .map((v) => ({ ...v, composite_score: calculateCompositeScore(v, activeRadius) }))
         .sort((a, b) => b.composite_score - a.composite_score)
-        .slice(0, 6);
+        .slice(0, TARGET_PLACES);
 
       queryCache.set(cacheKey, { data: sortedResults, timestamp: Date.now() });
       return sortedResults;
@@ -512,7 +513,8 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
     console.warn("[Hex Spatial Search] Warning, falling back:", error.message);
   }
 
-  return await resolveRegionalFallback(theme, centerLat, centerLng, isExactGps);
+  const fallbackResults = await resolveRegionalFallback(theme, centerLat, centerLng, isExactGps, TARGET_PLACES);
+  return Array.isArray(fallbackResults) ? fallbackResults.slice(0, TARGET_PLACES) : [];
 };
 
 /**

@@ -11,6 +11,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
+import CleanStreetMiniMap from './CleanStreetMiniMap';
 
 export default function VenueDetailsModal({ venue, isOpen, onClose, inline = false }) {
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -47,10 +48,6 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
   const hasCoords = venue.lat != null && venue.lng != null && !isNaN(Number(venue.lat)) && !isNaN(Number(venue.lng));
   const latNum = hasCoords ? Number(venue.lat) : null;
   const lngNum = hasCoords ? Number(venue.lng) : null;
-
-  const osmEmbedUrl = hasCoords
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${(lngNum - 0.006).toFixed(5)}%2C${(latNum - 0.004).toFixed(5)}%2C${(lngNum + 0.006).toFixed(5)}%2C${(latNum + 0.004).toFixed(5)}&layer=mapnik&marker=${latNum.toFixed(5)}%2C${lngNum.toFixed(5)}`
-    : null;
 
   const destinationQuery = encodeURIComponent(`${venue.name} ${venue.address || ''}`);
   const driveRouteUrl = hasCoords
@@ -205,16 +202,14 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
           </div>
         </div>
 
-        {/* Live Embedded Street Map */}
-        {osmEmbedUrl && (
-          <div className="rounded-2xl overflow-hidden border border-[var(--border-main)] bg-[var(--bg-inset)] h-36 relative">
-            <iframe
-              title={`Map for ${venue.name}`}
-              src={osmEmbedUrl}
-              className="w-full h-full border-0"
-              loading="lazy"
-            />
-          </div>
+        {/* Decluttered Interactive Street Mini-Map */}
+        {hasCoords && (
+          <CleanStreetMiniMap
+            lat={latNum}
+            lng={lngNum}
+            venueName={venue.name}
+            address={venue.address}
+          />
         )}
 
         {/* 1-Tap Route & Menu Actions */}

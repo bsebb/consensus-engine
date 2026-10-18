@@ -56,6 +56,8 @@ const createNewRoom = async (req, res) => {
     latitude,
     longitude,
     is_exact_gps = false,
+    deck_size = 6,
+    deckSize,
   } = req.body;
 
   if (!host_id) {
@@ -73,6 +75,7 @@ const createNewRoom = async (req, res) => {
   // Sprint 2 Logic: Fetch Foursquare data and save to DB
   if (mode === 'DISCOVERY') {
     const fetchFn = searchRestaurants || fetchFoursquarePlaces;
+    const targetPlaces = Math.max(3, Math.min(12, parseInt(deckSize || deck_size, 10) || 6));
 
     const places = await fetchFn({
       theme,
@@ -80,6 +83,7 @@ const createNewRoom = async (req, res) => {
       longitude,
       radius,
       is_exact_gps,
+      targetPlaces,
     });
 
     let createdOptions = [];

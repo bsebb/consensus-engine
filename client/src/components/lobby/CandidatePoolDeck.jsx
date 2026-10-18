@@ -197,8 +197,8 @@ export default function CandidatePoolDeck({
     }
   }, [topic]);
 
-  // Cap displayed deck at 8 options
-  const displayedCandidates = candidates.slice(0, 8);
+  // Display up to 12 options in pool deck
+  const displayedCandidates = candidates.slice(0, 12);
   const existingNamesLower = new Set(candidates.map((c) => String(c.name || '').toLowerCase().trim()));
   const currentLibraryCategory = CUSTOM_POLL_LIBRARY.find((cat) => cat.id === activeLibraryTab) || CUSTOM_POLL_LIBRARY[0];
 

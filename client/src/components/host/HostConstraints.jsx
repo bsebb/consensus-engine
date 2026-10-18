@@ -16,6 +16,8 @@ export default function HostConstraints({
   suggestionLimit,
   setSuggestionLimit,
   advanceToStage,
+  deckSize = 6,
+  setDeckSize,
 }) {
   return (
     <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3.5">
@@ -86,6 +88,42 @@ export default function HostConstraints({
                   >
                     <span className="font-mono text-xs font-black">{tier.label}</span>
                     <span className="text-[10px] opacity-80 mt-0.5">{tier.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Voting Deck Size Selector */}
+          <div className="flex flex-col gap-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-[var(--text-secondary)]">Voting Deck Size</span>
+              <span className="font-mono text-xs font-extrabold text-[var(--accent-bg)]">
+                {deckSize} Places
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { count: 4, label: '4', desc: 'Fast Vote' },
+                { count: 6, label: '6', desc: 'Standard' },
+                { count: 8, label: '8', desc: 'Expanded' },
+                { count: 10, label: '10', desc: 'Wide Choice' },
+              ].map((opt) => {
+                const isActive = deckSize === opt.count;
+                return (
+                  <button
+                    key={opt.count}
+                    type="button"
+                    onClick={() => setDeckSize?.(opt.count)}
+                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                      isActive
+                        ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-sm'
+                        : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
+                    }`}
+                  >
+                    <span className="font-mono text-xs font-black">{opt.label}</span>
+                    <span className="text-[10px] opacity-80 mt-0.5">{opt.desc}</span>
                   </button>
                 );
               })}

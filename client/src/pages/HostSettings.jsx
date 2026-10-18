@@ -55,6 +55,7 @@ export default function HostSettings() {
   const [category, setCategory] = useState('Restaurants');
   const [radiusKm, setRadiusKm] = useState(5);
   const [priceTier, setPriceTier] = useState('$$');
+  const [deckSize, setDeckSize] = useState(6);
 
   // Custom Mode State
   const [topic, setTopic] = useState('Where should we hang out tonight?');
@@ -173,6 +174,7 @@ export default function HostSettings() {
           radius: radiusKm * 1000,
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
+          deck_size: deckSize,
         }),
       });
 
@@ -199,6 +201,7 @@ export default function HostSettings() {
             category,
             radiusKm,
             priceTier,
+            deckSize,
             suggestionLimit,
             roomData: realRoom,
             userLocation,
@@ -443,6 +446,8 @@ export default function HostSettings() {
               suggestionLimit={suggestionLimit}
               setSuggestionLimit={setSuggestionLimit}
               advanceToStage={advanceToStage}
+              deckSize={deckSize}
+              setDeckSize={setDeckSize}
             />
           </div>
         </div>
