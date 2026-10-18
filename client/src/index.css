@@ -139,7 +139,7 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Cohesive Warm Ambient Canvas (Zero Indigo/Cyan AI Mesh Clash) */
+/* Cohesive Warm Ambient Canvas */
 .bg-mesh-container {
   position: fixed;
   inset: 0;
@@ -287,7 +287,7 @@ button:active:not(:disabled),
   transition: transform 0.05s ease-out;
 }
 
-/* Continuous Sliding Segmented Control Pill (Argon Law 5: Borderless Inner Pill) */
+/* Continuous Sliding Segmented Control Pill */
 .seg-track {
   position: relative;
   display: flex;
