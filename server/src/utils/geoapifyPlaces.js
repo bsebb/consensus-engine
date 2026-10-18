@@ -137,18 +137,10 @@ async function fetchGeoapifyPlaces({
     activeVenues.sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
 
     // Resolve high-resolution photography batch
-    const candidatePayloads = activeVenues.map((v) => ({
-      name: v.name,
-      address: v.address,
-      category: v.category,
-    }));
-    const photos = await resolveVenuePhotosBatch(candidatePayloads);
-    activeVenues.forEach((v, idx) => {
-      v.photo_url = photos[idx] || resolveVenuePhoto(v.name, v.address, v.category);
-    });
+    const enrichedVenues = await resolveVenuePhotosBatch(activeVenues);
 
-    geoapifyCache.set(cacheKey, { timestamp: Date.now(), data: activeVenues });
-    return activeVenues.slice(0, targetPlaces);
+    geoapifyCache.set(cacheKey, { timestamp: Date.now(), data: enrichedVenues });
+    return enrichedVenues.slice(0, targetPlaces);
   } catch (err) {
     console.warn('[Geoapify Fetch Error]:', err.message);
     return null;

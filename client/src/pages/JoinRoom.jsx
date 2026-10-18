@@ -279,17 +279,17 @@ export default function JoinRoom() {
           <button
             type="button"
             onClick={() => navigate('/history')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
-            title="Past Group Picks"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            aria-label={t('history')}
+            title={t('history')}
           >
-            <History size={14} />
-            <span>{t('history')}</span>
+            <History size={16} />
           </button>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
             className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-            aria-label="Open Settings"
+            aria-label={t('settings')}
             title={t('settings')}
           >
             <Settings size={16} />
@@ -372,7 +372,7 @@ export default function JoinRoom() {
                           <Icon size={16} />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-[var(--text-primary)] truncate">{cat.title}</div>
+                          <div className="text-xs font-bold text-[var(--text-primary)] leading-snug">{cat.title}</div>
                           <div className="text-[11px] text-[var(--text-tertiary)] truncate">{cat.desc}</div>
                         </div>
                       </button>

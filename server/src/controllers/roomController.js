@@ -132,11 +132,14 @@ const createNewRoom = async (req, res) => {
     if (places && places.length > 0) {
       const optionsData = places.map((place) => {
         const placeId = place.fsq_place_id || place.fsq_id || 'fsq_live';
-        const distKm = place.distance_km != null ? place.distance_km : '';
-        const addr = (place.address || '').replace(/\|/g, ' ');
-        const catLabel = (place.category || '').replace(/\|/g, ' ');
+        const distKm = place.distance_km != null ? String(place.distance_km) : '';
+        const addr = String(place.address || '').replace(/\|/g, ' ');
+        const catLabel = String(place.category || '').replace(/\|/g, ' ');
         const coordPair = place.lat != null && place.lng != null ? `${place.lat},${place.lng}` : '';
-        const photoUrl = (place.photo_url || '').replace(/\|/g, '');
+        const rawPhoto = typeof place.photo_url === 'string'
+          ? place.photo_url
+          : (place.photo_url && typeof place.photo_url.photo_url === 'string' ? place.photo_url.photo_url : '');
+        const photoUrl = String(rawPhoto || '').replace(/\|/g, '');
         const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}|${photoUrl}`;
 
         return {

@@ -243,26 +243,29 @@
 
 /* Bulletproof iOS Safe Area Inset Helpers with Hardware Notch/Island Floor */
 .safe-pt-page {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 3.25rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 4.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-page {
-    padding-top: 1.5rem;
+    padding-top: 1.75rem;
   }
 }
 .safe-pt-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.625rem), 3.5rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 4.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-header {
-    padding-top: 0.875rem;
+    padding-top: 1rem;
   }
 }
 .safe-pb {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
 }
 .safe-pb-dock {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.5rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.75rem);
+}
+.pb-safe {
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 1.5rem), 3rem);
 }
 
 /* Section Header Label */
