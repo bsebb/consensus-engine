@@ -249,6 +249,7 @@ export default function RoomLobby() {
         let venueLat = null;
         let venueLng = null;
 
+        let photoUrl = null;
         if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
           const parts = opt.googlePlaceId.split('|');
           const parsedDist = parseFloat(parts[1]);
@@ -263,6 +264,9 @@ export default function RoomLobby() {
               venueLat = pLat;
               venueLng = pLng;
             }
+          }
+          if (parts[5] && parts[5].startsWith('http')) {
+            photoUrl = parts[5];
           }
         }
 
@@ -287,6 +291,7 @@ export default function RoomLobby() {
           lng: venueLng,
           tags: [catLabel],
           address: addr,
+          photo_url: photoUrl,
           isCustom: false,
         };
       });

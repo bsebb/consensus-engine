@@ -36,7 +36,7 @@ function CustomOptionCard({ item, idx, handleRemoveSuggestion }) {
 }
 
 function CandidatePoolCard({ item, idx, handleRemoveSuggestion, onSelectDetails }) {
-  const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category);
+  const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
   const vibeSubtitle = getVenueVibe(item.name, item.category);
   const venueRating = getVenueRating(item.name, item.category);
   const travelText = formatTravelSummary(item);

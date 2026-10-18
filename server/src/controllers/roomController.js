@@ -89,7 +89,8 @@ const createNewRoom = async (req, res) => {
         const addr = (place.address || '').replace(/\|/g, ' ');
         const catLabel = (place.category || '').replace(/\|/g, ' ');
         const coordPair = place.lat != null && place.lng != null ? `${place.lat},${place.lng}` : '';
-        const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}`;
+        const photoUrl = (place.photo_url || '').replace(/\|/g, '');
+        const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}|${photoUrl}`;
 
         return {
           roomId: room.id,

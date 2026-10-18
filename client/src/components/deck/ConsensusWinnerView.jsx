@@ -44,7 +44,8 @@ export default function ConsensusWinnerView({
   const { primaryPhoto, isRealPhoto, fallbackPhoto } = useVenuePhotos(
     isCustomWinner ? '' : winner?.name,
     isCustomWinner ? '' : winner?.address,
-    isCustomWinner ? '' : winner?.category
+    isCustomWinner ? '' : winner?.category,
+    isCustomWinner ? null : winner?.photo_url
   );
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [satisfactionScore, setSatisfactionScore] = useState(userRating || 0);

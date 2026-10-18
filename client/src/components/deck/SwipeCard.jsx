@@ -26,7 +26,8 @@ export default function SwipeCard({
   const { primaryPhoto, photos, isRealPhoto, fallbackPhoto } = useVenuePhotos(
     isCustomCard ? '' : activeCard?.name,
     isCustomCard ? '' : activeCard?.address,
-    isCustomCard ? '' : activeCard?.category
+    isCustomCard ? '' : activeCard?.category,
+    isCustomCard ? null : activeCard?.photo_url
   );
   const [photoIdx, setPhotoIdx] = useState(0);
   const [failedUrls, setFailedUrls] = useState({});

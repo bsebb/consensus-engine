@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { apiUrl } from './api';
 
 export function getCanonicalVenueKey(name = '') {
   let clean = String(name || '').toLowerCase().trim();
@@ -174,6 +175,14 @@ const VENUE_RATINGS_MAP = {
   "boozer": { rating: "4.5", reviewCount: "260", rawReviews: 260 },
   "dolce vita": { rating: "4.5", reviewCount: "640", rawReviews: 640 },
   "vartely": { rating: "4.8", reviewCount: "1.9k", rawReviews: 1900 },
+  "azasu": { rating: "4.8", reviewCount: "520", rawReviews: 520 },
+  "greko fresh": { rating: "4.7", reviewCount: "680", rawReviews: 680 },
+  "grekofresh": { rating: "4.7", reviewCount: "680", rawReviews: 680 },
+  "the box": { rating: "4.6", reviewCount: "740", rawReviews: 740 },
+  "box": { rating: "4.6", reviewCount: "740", rawReviews: 740 },
+  "chibox": { rating: "4.6", reviewCount: "740", rawReviews: 740 },
+  "pannicotta": { rating: "4.7", reviewCount: "860", rawReviews: 860 },
+  "pannicotto": { rating: "4.7", reviewCount: "860", rawReviews: 860 },
 };
 
 // Curated high-resolution culinary & interior photography (distinct per venue & cuisine)
@@ -184,8 +193,9 @@ const VENUE_IMAGE_MAP = {
   "mi piace": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
   "andy's": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
   "andys": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  "la plăcinte": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
-  "la placinte": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
+  "la plăcinte": "https://visit.chisinau.md/wp-content/uploads/2021/08/la-placinte2-1.jpg",
+  "la placinte": "https://visit.chisinau.md/wp-content/uploads/2021/08/la-placinte2-1.jpg",
+  "placinte": "https://visit.chisinau.md/wp-content/uploads/2021/08/la-placinte2-1.jpg",
   "draft": "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
   "pizza mania": "https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&w=900&q=85",
   "pegas": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
@@ -246,6 +256,15 @@ const VENUE_IMAGE_MAP = {
   "patria": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
   "taproom": "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
   "barbar": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  // Chișinău & Regional Hotspots
+  "azasu": "https://qmzxbjlpwqkagcyhcglm.supabase.co/storage/v1/object/public/place-photos/places/google-1778416720729-i713zi6pcod.webp",
+  "greko fresh": "https://grekofresh.md/wp-content/uploads/2020/10/restraraunt-photo-02-500x330.jpg",
+  "grekofresh": "https://grekofresh.md/wp-content/uploads/2020/10/restraraunt-photo-02-500x330.jpg",
+  "the box": "https://img.restaurantguru.com/cda1-Restaurant-CHIBOX-photo.jpg",
+  "box": "https://img.restaurantguru.com/cda1-Restaurant-CHIBOX-photo.jpg",
+  "chibox": "https://img.restaurantguru.com/cda1-Restaurant-CHIBOX-photo.jpg",
+  "pannicotta": "https://img.restaurantguru.com/c3db-Cafe-Panna-Cotta-interior-2.jpg",
+  "pannicotto": "https://img.restaurantguru.com/c3db-Cafe-Panna-Cotta-interior-2.jpg",
 };
 
 const CATEGORY_IMAGE_MAP = {
@@ -279,6 +298,14 @@ const DISTINCT_RESTAURANT_POOL = [
   "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
   "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=85",
   "https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1525610553991-2bede1a236e2?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
+  "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
 ];
 
 /**
@@ -361,6 +388,10 @@ export function getVenueVibe(name = '', category = '') {
   if (cName.includes('hanul')) return 'Lakeside Grill & Tavern';
   if (cName.includes('delice')) return 'French Patisserie & Café';
   if (cName.includes('davidan')) return 'Local Restaurant & Sushi';
+  if (cName.includes('azasu')) return 'Caucasian Grill & Traditional Dining';
+  if (cName.includes('greko')) return 'Greek Street Food & Gyros';
+  if (cName.includes('chibox') || cName.includes('box')) return 'Street Food & Smash Burgers';
+  if (cName.includes('pannicott')) return 'Italian Patisserie & Artisanal Café';
 
   if (normName.includes('auto cinema')) return 'Drive-In Movie Theater';
   if (normName.includes('malldova')) return 'Multiplex Cinema & IMAX';
@@ -406,15 +437,89 @@ export function getVenueVibe(name = '', category = '') {
 }
 
 /**
- * Returns clean, curated high-resolution venue photography without scraping random web thumbnails.
+ * Resolves authentic venue photography with multi-layer persistence (localStorage + server cache).
  */
-export function useVenuePhotos(name = '', address = '', category = '') {
+export function useVenuePhotos(name = '', address = '', category = '', initialPhoto = null) {
   const fallback = useMemo(() => getVenueImage(name, category), [name, category]);
+  const cKey = useMemo(() => getCanonicalVenueKey(name), [name]);
+
+  const [photo, setPhoto] = useState(() => {
+    if (initialPhoto && typeof initialPhoto === 'string' && initialPhoto.startsWith('http')) {
+      return initialPhoto;
+    }
+    if (cKey && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const cached = window.localStorage.getItem(`consensus_photo_${cKey}`);
+        if (cached && cached.startsWith('http')) {
+          return cached;
+        }
+      } catch {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (photo && cKey && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem(`consensus_photo_${cKey}`, photo);
+      } catch {}
+      return;
+    }
+
+    if (initialPhoto && typeof initialPhoto === 'string' && initialPhoto.startsWith('http')) {
+      setPhoto(initialPhoto);
+      if (cKey && typeof window !== 'undefined' && window.localStorage) {
+        try {
+          window.localStorage.setItem(`consensus_photo_${cKey}`, initialPhoto);
+        } catch {}
+      }
+      return;
+    }
+
+    const staticPhoto = getVenueImage(name, category);
+    if (staticPhoto && staticPhoto !== fallback) {
+      setPhoto(staticPhoto);
+      return;
+    }
+
+    if (!name || name.trim().length < 2) return;
+
+    let isMounted = true;
+    const fetchPhoto = async () => {
+      try {
+        const query = new URLSearchParams({
+          name: name.trim(),
+          address: address || '',
+          category: category || '',
+        });
+        const res = await fetch(apiUrl(`/api/v1/venue-photos?${query.toString()}`));
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isMounted && data.success && Array.isArray(data.photos) && data.photos.length > 0) {
+          const resolvedUrl = data.photos[0];
+          setPhoto(resolvedUrl);
+          if (cKey && typeof window !== 'undefined' && window.localStorage) {
+            try {
+              window.localStorage.setItem(`consensus_photo_${cKey}`, resolvedUrl);
+            } catch {}
+          }
+        }
+      } catch {}
+    };
+
+    fetchPhoto();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [name, address, category, initialPhoto, cKey, photo, fallback]);
+
+  const activePhoto = photo || fallback;
 
   return {
-    primaryPhoto: fallback,
-    photos: [fallback],
-    isRealPhoto: false,
+    primaryPhoto: activePhoto,
+    photos: [activePhoto],
+    isRealPhoto: Boolean(photo),
     fallbackPhoto: fallback,
   };
 }

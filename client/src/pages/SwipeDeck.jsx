@@ -66,6 +66,7 @@ export default function SwipeDeck() {
           lng: isCustomItem ? null : (item.lng ?? null),
           price_level: typeof item.price_level === 'number' ? item.price_level : 2,
           address: isCustomItem ? '' : (item.address || 'Local Venue'),
+          photo_url: isCustomItem ? null : (item.photo_url || null),
           isCustom: isCustomItem,
         };
       });
@@ -100,6 +101,7 @@ export default function SwipeDeck() {
               let catLabel = location.state?.category || 'Local Favorite';
               let vLat = null;
               let vLng = null;
+              let photoUrl = null;
               if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
                 const parts = opt.googlePlaceId.split('|');
                 const parsedDist = parseFloat(parts[1]);
@@ -111,6 +113,9 @@ export default function SwipeDeck() {
                   const pLat = parseFloat(latS);
                   const pLng = parseFloat(lngS);
                   if (!isNaN(pLat) && !isNaN(pLng)) { vLat = pLat; vLng = pLng; }
+                }
+                if (parts[5] && parts[5].startsWith('http')) {
+                  photoUrl = parts[5];
                 }
               }
               if (savedGps && vLat != null && vLng != null && dist == null) {
@@ -126,6 +131,7 @@ export default function SwipeDeck() {
                 lng: vLng,
                 tags: [catLabel],
                 address: addr,
+                photo_url: photoUrl,
               };
             });
             setCards(deduplicateVenues(rehydrated).slice(0, 8));

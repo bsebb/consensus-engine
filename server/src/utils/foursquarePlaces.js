@@ -1,3 +1,5 @@
+const { resolveVenuePhotosBatch, resolveVenuePhoto } = require('./venuePhotoService');
+
 function formatPriceLabel(price) {
   const map = { 1: "$ (Budget: ~80-150 MDL)", 2: "$$ (Moderate: ~150-300 MDL)", 3: "$$$ (Upscale: ~300-500 MDL)", 4: "$$$$ (Fine Dining: 500+ MDL)" };
   return map[price] || "$$ (Moderate: ~150-300 MDL)";
@@ -499,6 +501,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
 
       // Compute true road/bridge network distances via OSRM
       candidatesList = await enrichVenuesWithRoadDistances(centerLat, centerLng, candidatesList, isExactGps);
+      candidatesList = await resolveVenuePhotosBatch(candidatesList);
 
       const sortedResults = candidatesList
         .sort((a, b) => a.distance_meters - b.distance_meters)
@@ -515,10 +518,11 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
 };
 
 /**
- * Returns verified venue photos only (never scrapes random web search thumbnails).
+ * Returns verified venue photos for any venue using the persistent photo cache and dynamic lookup.
  */
-async function fetchRealVenuePhotos() {
-  return [];
+async function fetchRealVenuePhotos(name = '', address = '', category = '') {
+  const photo = await resolveVenuePhoto(name, address, address, category);
+  return photo ? [photo] : [];
 }
 
 /**

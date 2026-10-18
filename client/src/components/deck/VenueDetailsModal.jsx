@@ -18,7 +18,8 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
   const { photos, isRealPhoto, fallbackPhoto } = useVenuePhotos(
     venue?.name,
     venue?.address,
-    venue?.category
+    venue?.category,
+    venue?.photo_url
   );
 
   useEffect(() => {
