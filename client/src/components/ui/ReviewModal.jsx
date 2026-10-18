@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, X, CheckCircle2, ThumbsUp } from 'lucide-react';
 import Button from './Button';
+import { apiUrl } from '../../utils/api';
 
 export default function ReviewModal({
   isOpen = false,
@@ -46,7 +47,7 @@ export default function ReviewModal({
 
     // Try posting to backend
     try {
-      await fetch(`/api/v1/rooms/${pin}/feedback`, {
+      await fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackPayload),

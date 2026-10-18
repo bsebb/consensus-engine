@@ -27,6 +27,7 @@ import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import MilledTray from '../components/ui/MilledTray';
 import ReviewModal from '../components/ui/ReviewModal';
+import { apiUrl } from '../utils/api';
 import restaurantsMock from '../mocks/restaurants.json';
 
 const DEFAULT_WINNER = {
@@ -115,7 +116,7 @@ export default function SwipeDeck() {
   // Rehydrate cards from REST if loaded directly or after page refresh without location state
   useEffect(() => {
     if (!location.state?.customCards && pin) {
-      fetch(`/api/v1/rooms/${pin}`)
+      fetch(apiUrl(`/api/v1/rooms/${pin}`))
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
@@ -174,7 +175,7 @@ export default function SwipeDeck() {
     });
     const winnerId = serverWinner?.id || cards[0]?.id;
     if (winnerId) {
-      fetch(`/api/v1/rooms/${pin}/feedback`, {
+      fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -379,7 +380,7 @@ export default function SwipeDeck() {
       emit('notify_votes_submitted', { pin, participant_id: participantId });
 
       // 2. Fallback REST submission
-      fetch(`/api/v1/rooms/${pin}/votes`, {
+      fetch(apiUrl(`/api/v1/rooms/${pin}/votes`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

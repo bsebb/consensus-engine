@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   LogOut,
   Settings,
+  QrCode,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -25,6 +26,8 @@ import Button from '../components/ui/Button';
 import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
+import QrCodeModal from '../components/ui/QrCodeModal';
+import { apiUrl } from '../utils/api';
 import restaurantsMock from '../mocks/restaurants.json';
 
 // Client-side Levenshtein distance for fuzzy duplicate detection
@@ -92,6 +95,7 @@ export default function RoomLobby() {
   const [suggestion, setSuggestion] = useState('');
   const [groupPool, setGroupPool] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
 
   // Track active PIN in localStorage for mobile navigation dock
   useEffect(() => {
@@ -321,7 +325,7 @@ export default function RoomLobby() {
     setLockingBudget(true);
     const max_price_level = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
     try {
-      await fetch(`/api/v1/rooms/${pin}/constraints`, {
+      await fetch(apiUrl(`/api/v1/rooms/${pin}/constraints`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -638,6 +642,15 @@ export default function RoomLobby() {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setQrModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--accent-bg)]/10 hover:bg-[var(--accent-bg)]/20 text-xs font-bold text-[var(--accent-bg)] border border-[var(--accent-bg)]/20 transition-colors cursor-pointer"
+              title="Show QR Code"
+            >
+              <QrCode size={14} />
+              <span>QR</span>
+            </button>
+            <button
+              type="button"
               onClick={handleCopyPin}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-xs font-bold text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
             >
@@ -937,6 +950,14 @@ export default function RoomLobby() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* QR Code Ingress Modal */}
+      <QrCodeModal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        pin={pin}
+        topic={topic}
       />
     </div>
   );

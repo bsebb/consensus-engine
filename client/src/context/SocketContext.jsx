@@ -1,20 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../utils/api';
 
 const SocketContext = createContext(null);
-
-const getSocketUrl = () => {
-  if (import.meta.env.VITE_SERVER_URL) {
-    return import.meta.env.VITE_SERVER_URL;
-  }
-  // When running on standard Vite port 5173, backend is on port 3000 of the same host
-  if (typeof window !== 'undefined' && window.location.port === '5173') {
-    return `${window.location.protocol}//${window.location.hostname}:3000`;
-  }
-  return '';
-};
-
-const SERVER_URL = getSocketUrl();
+const SERVER_URL = API_BASE_URL;
 
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);

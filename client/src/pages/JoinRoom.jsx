@@ -22,6 +22,7 @@ import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
+import { apiUrl } from '../utils/api';
 
 export default function JoinRoom() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -105,7 +106,7 @@ export default function JoinRoom() {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/v1/rooms/${cleanPin}`);
+      const response = await fetch(apiUrl(`/api/v1/rooms/${cleanPin}`));
       if (response.ok) {
         const roomData = await response.json();
         emit('join_lobby', {
@@ -159,7 +160,7 @@ export default function JoinRoom() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/v1/rooms', {
+      const response = await fetch(apiUrl('/api/v1/rooms'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

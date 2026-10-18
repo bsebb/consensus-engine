@@ -8,36 +8,40 @@ Because we use a Monorepo, we split our deployment across two distinct cloud pro
 
 ## 1. Frontend (Vercel)
 **Lead DevOps: Seb**
-*   **Target Folder:** `/client`
-*   **Tech:** React, Vite, PWA Service Workers.
-*   **Why Vercel?** Vercel is built specifically for Vite/React static assets. It deploys our UI globally to Edge CDNs, ensuring users load the swipe interface in milliseconds regardless of their geographic location.
-*   **Configuration:** Vercel will be configured to trigger a rebuild ONLY when changes occur inside the `/client` folder on the `main` branch.
+*   **Target Folder (Root Directory):** `client`
+*   **Framework Preset:** Vite
+*   **Build Command:** `npm run build`
+*   **Output Directory:** `dist`
+*   **Environment Variables:**
+    *   `VITE_SERVER_URL`: `https://<your-render-service>.onrender.com` (leave empty for local dev proxy)
+*   **Why Vercel?** Vercel deploys our SPA globally to Edge CDNs with instant cache invalidation. `client/vercel.json` ensures client-side routes like `/lobby/:pin` resolve correctly on page refresh.
 
-## 2. Backend & Database (Render or Railway)
+## 2. Backend & Database (Render)
 **Lead DevOps: Lilia**
-*   **Target Folder:** `/server`
-*   **Tech:** Node.js, Express, Socket.io, PostgreSQL.
-*   **Why Render?** Unlike Serverless environments (which kill connections after 10 seconds), Render provides persistent, always-on containers. This is **mandatory** for maintaining active Socket.io WebSocket connections during the voting phase.
-*   **Configuration:** Render will monitor the `/server` folder. Lilia will inject the production `DATABASE_URL` and `GOOGLE_PLACES_API_KEY` directly into the Render dashboard environment variables.
+*   **Target Folder (Root Directory):** `server`
+*   **Runtime:** Node.js
+*   **Build Command:** `npm install` (triggers `postinstall: prisma generate`)
+*   **Start Command:** `npm start`
+*   **Database:** Render PostgreSQL (or Neon.tech / Supabase)
+*   **Environment Variables:**
+    *   `DATABASE_URL`: `postgresql://user:password@host/consensus_db`
+    *   `PORT`: `10000` (auto-bound by Render)
+    *   `FOURSQUARE_API_KEY`: *(Optional)* API key for venue discovery
+*   **Why Render?** Persistent containers support always-on Socket.io WebSocket connections during real-time multiplayer voting sessions.
 
 ---
 
-## 3. The CORS Whitelist (Critical Security)
-Once both domains are live (e.g., `consensus-engine.vercel.app` and `api.consensus-engine.onrender.com`), the backend will completely block the frontend due to browser security rules.
-
-**The Fix:**
-Lilia must explicitly add Seb's Vercel URL to the Express CORS middleware and the Socket.io initialization configuration in the backend code:
+## 3. The CORS Whitelist
+Both Express and Socket.io are configured to accept cross-origin connections by default:
 ```javascript
-// Example Backend Config
-const corsOptions = {
-  origin: "https://consensus-engine.vercel.app", // Seb's Vercel URL
-  methods: ["GET", "POST"]
-};
+app.use(cors());
+const io = new Server(httpServer, { cors: { origin: '*' } });
 ```
+In production, you can restrict this to your specific Vercel domain if desired.
 
 ## 4. CI/CD Workflow
 Once configured, deployment is automatic:
-1. Seb merges a Pull Request for a new swipe animation.
-2. Vercel detects the merge to `main`.
-3. Vercel automatically runs `npm run build` and deploys the new UI to the live URL within 60 seconds.
-*(No manual intervention required).*
+1. Push changes to `main` on GitHub.
+2. Vercel automatically runs `npm run build` for `client` and updates the live site in ~30 seconds.
+3. Render automatically triggers `npm install` and restarts the container for `server`.
+4. Mobile QR codes dynamically encode the live Vercel domain (`https://<app>.vercel.app/?pin=1234`), enabling zero-install ingress across all smartphones.

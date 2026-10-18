@@ -26,6 +26,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
+import { apiUrl } from '../utils/api';
 
 export default function HostSettings() {
   const navigate = useNavigate();
@@ -128,7 +129,7 @@ export default function HostSettings() {
     const userName = localStorage.getItem('consensus_user_name') || 'Host';
 
     try {
-      const response = await fetch('/api/v1/rooms', {
+      const response = await fetch(apiUrl('/api/v1/rooms'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
