@@ -84,7 +84,8 @@ loadPersistentCache();
  * Searches the web for an authentic venue photo and validates the URL.
  */
 async function fetchOnlineVenuePhoto(name, locality = '', address = '') {
-  const query = `${name} ${locality || 'Moldova'} restaurant photo`.trim();
+  const loc = locality || (address ? address.split(',').slice(-2).join(' ').trim() : '');
+  const query = `${name} ${loc} venue interior photo`.trim();
   try {
     const tokenRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
