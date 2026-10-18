@@ -8,7 +8,9 @@ const {
   updateParticipantBudget,
   pruneOptionsByBudget,
   createOption,
+  createOptionsBulk,
   createVote,
+  createVotesBulk,
   countVotedParticipants,
   submitVenueFeedback,   //Afina
 } = require('../../db/helpers');
@@ -77,14 +79,15 @@ const createNewRoom = async (req, res) => {
       radius
     });
 
-    for (const place of places) {
-      await createOption(
-        room.id,
-        place.name,
-        "GOOGLE_API",
-        place.fsq_place_id || place.fsq_id,
-        place.priceLevel ?? null
-      );
+    if (places && places.length > 0) {
+      const optionsData = places.map((place) => ({
+        roomId: room.id,
+        name: place.name,
+        source: "GOOGLE_API",
+        googlePlaceId: place.fsq_place_id || place.fsq_id || null,
+        priceLevel: place.priceLevel ?? null,
+      }));
+      await createOptionsBulk(optionsData);
     }
   }
 
@@ -255,16 +258,23 @@ const submitVotes = async (req, res) => {
     }
   }
 
-  // Lilia: save all submitted rankings
-  for (const ranking of rankings) {
+  // Lilia: save all submitted rankings in a single bulk operation
+  const validRankings = rankings
+    .filter((r) => roomOptionIds.has(r.option_id))
+    .map((r) => ({
+      participantId: participant_id,
+      optionId: r.option_id,
+      score: r.score,
+    }));
+
+  if (validRankings.length > 0) {
     try {
-      await createVote(
-        participant_id,
-        ranking.option_id,
-        ranking.score
-      );
-    } catch (voteErr) {
-      console.warn('[roomController] Vote creation notice:', voteErr.message);
+      await createVotesBulk(validRankings);
+    } catch (bulkErr) {
+      console.warn('[roomController] Bulk vote insert notice:', bulkErr.message);
+      for (const r of validRankings) {
+        await createVote(r.participantId, r.optionId, r.score).catch(() => {});
+      }
     }
   }
 

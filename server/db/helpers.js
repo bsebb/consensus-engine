@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -71,6 +72,46 @@ async function createOption(roomId, name, source, googlePlaceId, priceLevel) {
     } catch (error) {
         console.error(error);
         throw new Error("Failed to create option");
+    }
+}
+
+async function createOptionsBulk(optionsData) {
+    try {
+        if (!Array.isArray(optionsData) || optionsData.length === 0) return [];
+        const sanitized = optionsData.map(opt => ({
+            id: opt.id || crypto.randomUUID(),
+            roomId: opt.roomId,
+            name: opt.name,
+            source: opt.source || "GOOGLE_API",
+            googlePlaceId: opt.googlePlaceId || opt.fsq_id || opt.fsq_place_id || null,
+            priceLevel: opt.priceLevel ?? null,
+        }));
+        return await prisma.option.createMany({
+            data: sanitized,
+            skipDuplicates: true,
+        });
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to create options in bulk");
+    }
+}
+
+async function createVotesBulk(votesData) {
+    try {
+        if (!Array.isArray(votesData) || votesData.length === 0) return [];
+        const sanitized = votesData.map(v => ({
+            id: v.id || crypto.randomUUID(),
+            participantId: v.participantId,
+            optionId: v.optionId,
+            score: v.score,
+        }));
+        return await prisma.vote.createMany({
+            data: sanitized,
+            skipDuplicates: true,
+        });
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to create votes in bulk");
     }
 }
 
@@ -312,6 +353,8 @@ module.exports = {
     createRoom,
     createParticipant,
     createOption,
+    createOptionsBulk,
+    createVotesBulk,
     getRoomById,
     getRoomByPin,
     createVote,
