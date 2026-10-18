@@ -13,7 +13,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import Button from '../ui/Button';
-import { getVenueImage, getVenueVibe } from '../../utils/venueImages';
+import { getVenueImage, getVenueVibe, getVenueRating } from '../../utils/venueImages';
 
 export default function ConsensusWinnerView({
   winner,
@@ -29,6 +29,7 @@ export default function ConsensusWinnerView({
 }) {
   const winnerImage = getVenueImage(winner?.name, winner?.category);
   const winnerVibe = getVenueVibe(winner?.name, winner?.category);
+  const winnerRating = getVenueRating(winner?.name, winner?.category);
   const distanceLabel = winner?.distance_km != null ? `${winner.distance_km} km` : (winner?.address || 'Chișinău');
 
   return (
@@ -43,13 +44,15 @@ export default function ConsensusWinnerView({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
 
-          {/* Floating Trophy & Status Pill */}
+          {/* Floating Rating & Status Pill */}
           <div className="absolute top-4 inset-x-4 flex items-center justify-between">
-            <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md text-amber-300 flex items-center justify-center shadow-lg border border-white/10">
-              <Trophy size={20} />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 shadow-sm">
+              <Star size={13} className="fill-amber-300 text-amber-300" />
+              <span>{winnerRating.rating}</span>
+              <span className="text-[11px] text-white/70 font-normal">({winnerRating.reviewCount})</span>
             </div>
             <span className="px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-500/40 text-xs font-bold text-emerald-400">
-              Group Winner
+              Group Consensus
             </span>
           </div>
 

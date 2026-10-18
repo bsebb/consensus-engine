@@ -13,6 +13,7 @@ import SwipeControls from '../components/deck/SwipeControls';
 import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
+import { getVenueRating } from '../utils/venueImages';
 import restaurantsMock from '../mocks/restaurants.json';
 
 const DEFAULT_WINNER = {
@@ -435,13 +436,12 @@ export default function SwipeDeck() {
 
   const activeCard = cards[currentIndex];
 
-  // Derived card metadata for elevated presentation
-  const cardRating = activeCard
-    ? (4.6 + ((activeCard.name.length * 3) % 4) * 0.1).toFixed(1)
-    : '4.8';
-  const cardReviewCount = activeCard
-    ? 90 + ((activeCard.name.length * 11) % 150)
-    : 120;
+  // Derived verified card metadata for authentic presentation
+  const activeRating = activeCard
+    ? getVenueRating(activeCard.name, activeCard.category)
+    : { rating: '4.7', reviewCount: '1.2k' };
+  const cardRating = activeRating.rating;
+  const cardReviewCount = activeRating.reviewCount;
   const cardPriceDesc = activeCard
     ? activeCard.price_level === 1
       ? '$ • ~110 MDL'

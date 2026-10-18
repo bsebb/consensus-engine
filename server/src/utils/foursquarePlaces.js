@@ -19,7 +19,11 @@ const FALLBACK_PLACES = [
   { name: "Pizza Mania", fsq_id: "fsq_pizzamania_3", priceLevel: 1, priceLabel: "$ (Budget: ~50-120 MDL)", lat: 47.0261, lng: 28.8354, address: "Bulevardul Grigore Vieru 13, Rîșcani" },
   { name: "Mi Piace", fsq_id: "fsq_mipiace_4", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 46.9922, lng: 28.8598, address: "Strada Trandafirilor 4, Botanica" },
   { name: "Crème de la Crème", fsq_id: "fsq_creme_5", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0238, lng: 28.8340, address: "Strada Alexandru cel Bun 98A, Centru" },
-  { name: "Propaganda Cafe", fsq_id: "fsq_propaganda_6", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0210, lng: 28.8375, address: "Strada Alexei Șciusev 47, Centru" }
+  { name: "Propaganda Cafe", fsq_id: "fsq_propaganda_6", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0210, lng: 28.8375, address: "Strada Alexei Șciusev 47, Centru" },
+  { name: "Osho Bar & Kitchen", fsq_id: "fsq_osho_7", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 46.9895, lng: 28.8640, address: "Strada Decebal 7/1, Botanica" },
+  { name: "Kozlovna", fsq_id: "fsq_kozlovna_8", priceLevel: 2, priceLabel: "$$ (Moderate: ~120-250 MDL)", lat: 47.0218, lng: 28.8360, address: "Strada Pușkin 24, Centru" },
+  { name: "La Taifas", fsq_id: "fsq_taifas_9", priceLevel: 3, priceLabel: "$$$ (Expensive: ~250-500 MDL)", lat: 47.0235, lng: 28.8335, address: "Strada București 67, Centru" },
+  { name: "Pegas Restaurant", fsq_id: "fsq_pegas_10", priceLevel: 4, priceLabel: "$$$$ (Fine Dining: 500+ MDL)", lat: 47.0315, lng: 28.8510, address: "Strada Albișoara 20/1, Rîșcani" },
 ];
 
 // In-memory cache for API queries to avoid repeated external requests
@@ -43,7 +47,7 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 function resolveFallback(centerLat, centerLng) {
-  return FALLBACK_PLACES.slice(0, 6).map((p) => {
+  return FALLBACK_PLACES.map((p) => {
     let distKm = null;
     let distMeters = 999999;
     if (centerLat != null && centerLng != null && p.lat && p.lng) {
@@ -60,7 +64,9 @@ function resolveFallback(centerLat, centerLng) {
       distance_meters: Math.round(distMeters),
       address: p.address,
     };
-  }).sort((a, b) => a.distance_meters - b.distance_meters);
+  })
+  .sort((a, b) => a.distance_meters - b.distance_meters)
+  .slice(0, 6);
 }
 
 /**
@@ -70,7 +76,7 @@ async function queryFoursquarePlaces({ theme, lat, lng, radius, cleanKey }) {
   const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
   const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
 
-  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&limit=15&fields=fsq_place_id,name,location,categories,distance,geocodes,price`;
+  let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&categories=13000&limit=15&fields=fsq_place_id,name,location,categories,distance,geocodes,price`;
   if (lat && lng) {
     url += `&ll=${lat},${lng}&radius=${Math.min(radius, 100000)}`;
   } else {

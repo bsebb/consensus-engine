@@ -19,24 +19,24 @@ export default function StepZeroVault({
         <div className="flex items-center gap-2">
           <Coins size={16} className="text-amber-500" />
           <h3 className="text-sm font-bold text-[var(--text-primary)]">
-            Secret Spending Limit
+            Spending Comfort
           </h3>
         </div>
         {lockedConstraint ? (
           <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-500 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full">
             <Lock size={12} className="text-emerald-500" />
-            <span>Limit Active</span>
+            <span>Comfort Set</span>
           </span>
         ) : (
           <span className="text-xs font-medium text-[var(--text-tertiary)]">
-            Optional & Private
+            Private & Optional
           </span>
         )}
       </div>
 
       {/* Clear Privacy Explanation */}
       <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
-        <span className="font-semibold text-[var(--text-primary)]">Zero awkwardness:</span> Set your maximum budget. Any spot that costs more than any group member's ceiling is silently removed. Nobody sees your number.
+        <span className="font-semibold text-[var(--text-primary)]">No awkward bill split:</span> Set your comfortable ceiling. Venues above anyone's limit are quietly filtered out without revealing anyone's number.
       </div>
 
       <RangeSlider
@@ -48,21 +48,21 @@ export default function StepZeroVault({
           setBudgetLimit(val);
           if (lockedConstraint) setHasPendingBudgetChange(true);
         }}
-        label="Max per Person"
+        label="Maximum per Person"
         valueDisplay={`${budgetLimit} MDL`}
       />
 
       {!lockedConstraint ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="primary"
           size="sm"
           onClick={handleLockBudget}
           loading={lockingBudget}
-          icon={ShieldCheck}
+          icon={Check}
           className="mt-1 shadow-sm rounded-full"
         >
-          Save Secret Limit
+          Set My Comfort Limit
         </Button>
       ) : (
         <div className="flex flex-col gap-2 pt-1">
@@ -87,7 +87,7 @@ export default function StepZeroVault({
               size="sm"
               onClick={handleLockBudget}
               loading={lockingBudget}
-              icon={ShieldCheck}
+              icon={Check}
               className="shadow-sm rounded-full animate-[fadeIn_0.2s_var(--spring-smooth)]"
             >
               Update to {budgetLimit} MDL

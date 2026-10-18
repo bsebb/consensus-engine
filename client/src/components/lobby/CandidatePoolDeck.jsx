@@ -1,7 +1,7 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin } from 'lucide-react';
+import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star } from 'lucide-react';
 import Button from '../ui/Button';
-import { getVenueImage, getVenueVibe } from '../../utils/venueImages';
+import { getVenueImage, getVenueVibe, getVenueRating } from '../../utils/venueImages';
 
 export default function CandidatePoolDeck({
   mode,
@@ -24,7 +24,7 @@ export default function CandidatePoolDeck({
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-[var(--accent-bg)]" />
           <h3 className="text-sm font-bold text-[var(--text-primary)]">
-            Places on the Menu ({displayedCandidates.length})
+            Places on the Table ({displayedCandidates.length})
           </h3>
         </div>
         <span className="text-xs text-[var(--text-secondary)] font-medium">
@@ -40,7 +40,7 @@ export default function CandidatePoolDeck({
             <span>{prunedCount} spot(s) above {budgetLimit} MDL filtered out</span>
           </div>
           <span className="text-[11px] font-semibold text-amber-500 bg-amber-500/15 px-2 py-0.5 rounded-full">
-            Private Filter
+            Within Budget
           </span>
         </div>
       )}
@@ -90,6 +90,7 @@ export default function CandidatePoolDeck({
           displayedCandidates.map((item, idx) => {
             const imageUrl = getVenueImage(item.name, item.category);
             const vibeSubtitle = getVenueVibe(item.name, item.category);
+            const venueRating = getVenueRating(item.name, item.category);
             const distanceDisplay = item.distance_km != null ? `${item.distance_km} km` : (item.address || 'Chișinău');
 
             return (
@@ -107,8 +108,15 @@ export default function CandidatePoolDeck({
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
+                  {/* Verified Rating Pill */}
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-sm z-10">
+                    <Star size={11} className="fill-amber-300 text-amber-300" />
+                    <span>{venueRating.rating}</span>
+                    <span className="text-[10px] text-white/70 font-normal">({venueRating.reviewCount})</span>
+                  </div>
+
                   {/* Price Tag or Custom Remove Pill */}
-                  <div className="absolute top-2.5 right-2.5">
+                  <div className="absolute top-2.5 right-2.5 z-10">
                     {mode === 'CUSTOM' ? (
                       <button
                         type="button"

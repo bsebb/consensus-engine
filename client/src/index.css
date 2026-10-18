@@ -3,10 +3,10 @@
 
 @layer base {
   :root {
-    --bg-root: #fafaf8;
+    --bg-root: #f8f7f4;
     --bg-surface: #ffffff;
     --bg-elevated: #ffffff;
-    --bg-inset: #f3f2ee;
+    --bg-inset: #eeece5;
     --border-main: rgba(0, 0, 0, 0.08);
     --border-subtle: rgba(0, 0, 0, 0.04);
     --border-glass: rgba(0, 0, 0, 0.09);
@@ -15,17 +15,17 @@
     --text-secondary: #52525b;
     --text-tertiary: #71717a;
     
-    --accent-bg: #e11d48;
-    --accent-bg-hover: #be123c;
-    --accent-glow: rgba(225, 29, 72, 0.22);
-    --accent-glow-hover: rgba(225, 29, 72, 0.35);
-    --accent-glow-focus: rgba(225, 29, 72, 0.18);
-    --accent-glow-subtle: rgba(225, 29, 72, 0.08);
+    --accent-bg: #df382b;
+    --accent-bg-hover: #c52e22;
+    --accent-glow: rgba(223, 56, 43, 0.22);
+    --accent-glow-hover: rgba(223, 56, 43, 0.35);
+    --accent-glow-focus: rgba(223, 56, 43, 0.18);
+    --accent-glow-subtle: rgba(223, 56, 43, 0.08);
 
     --status-success: #059669;
     --status-warning: #d97706;
-    --status-danger: #e11d48;
-    --status-info: #e11d48;
+    --status-danger: #df382b;
+    --status-info: #df382b;
 
     --glass-bg: rgba(255, 255, 255, 0.90);
     --glass-shadow: rgba(0, 0, 0, 0.06);
@@ -43,10 +43,10 @@
   }
 
   .dark {
-    --bg-root: #0c0d11;
-    --bg-surface: #14161d;
-    --bg-elevated: #1b1e27;
-    --bg-inset: #090a0d;
+    --bg-root: #0e0f12;
+    --bg-surface: #16171d;
+    --bg-elevated: #1e2027;
+    --bg-inset: #111216;
     --border-main: rgba(255, 255, 255, 0.09);
     --border-subtle: rgba(255, 255, 255, 0.05);
     --border-glass: rgba(255, 255, 255, 0.12);
@@ -55,19 +55,19 @@
     --text-secondary: #a1a1aa;
     --text-tertiary: #71717a;
 
-    --accent-bg: #f43f5e;
-    --accent-bg-hover: #fb7185;
-    --accent-glow: rgba(244, 63, 94, 0.28);
-    --accent-glow-hover: rgba(244, 63, 94, 0.45);
-    --accent-glow-focus: rgba(244, 63, 94, 0.20);
-    --accent-glow-subtle: rgba(244, 63, 94, 0.10);
+    --accent-bg: #ea4e40;
+    --accent-bg-hover: #f56356;
+    --accent-glow: rgba(234, 78, 64, 0.28);
+    --accent-glow-hover: rgba(234, 78, 64, 0.45);
+    --accent-glow-focus: rgba(234, 78, 64, 0.20);
+    --accent-glow-subtle: rgba(234, 78, 64, 0.10);
 
     --status-success: #10b981;
     --status-warning: #f59e0b;
-    --status-danger: #f43f5e;
-    --status-info: #f43f5e;
+    --status-danger: #ea4e40;
+    --status-info: #ea4e40;
 
-    --glass-bg: rgba(20, 22, 29, 0.90);
+    --glass-bg: rgba(22, 23, 29, 0.90);
     --glass-shadow: rgba(0, 0, 0, 0.5);
     --milled-bg: rgba(0, 0, 0, 0.3);
   }

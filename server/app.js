@@ -76,14 +76,14 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
       'X-Places-Api-Version': '2025-06-17',
     };
 
-    let testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5&fields=fsq_place_id,name,rating,photos', {
+    let testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
       headers: testHeaders,
     });
 
     let usedFormat = 'Bearer';
     if (testRes.status === 401) {
       testHeaders.Authorization = rawAuth;
-      testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5&fields=fsq_place_id,name,rating,photos', {
+      testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
         headers: testHeaders,
       });
       usedFormat = 'Raw';
