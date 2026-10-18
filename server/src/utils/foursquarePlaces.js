@@ -218,7 +218,7 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
       const res = await fetch(url, {
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'ConsensusEngine/2.0 (https://consensus-engine-mauve.vercel.app)',
+          'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)',
         },
         signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
       });

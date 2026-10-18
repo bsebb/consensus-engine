@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Consensus Engine",
-  "short_name": "Consensus",
-  "description": "Real-time group decision engine powered by Schulze Graph consensus.",
+  "name": "NoYouPick",
+  "short_name": "NoYouPick",
+  "description": "Stop arguing about where to eat or hang out. Swipe on spots with friends and find group consensus.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

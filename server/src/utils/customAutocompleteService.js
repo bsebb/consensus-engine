@@ -2,7 +2,7 @@
 // Intelligently classifies domain intent (sports, food, activities, movies, gaming)
 // so real-world queries never get overwhelmed by obscure Steam video games.
 
-const HEADERS = { 'User-Agent': 'ConsensusEngine/1.0 (https://consensus-engine-mauve.vercel.app)' };
+const HEADERS = { 'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)' };
 const cache = new Map();
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 

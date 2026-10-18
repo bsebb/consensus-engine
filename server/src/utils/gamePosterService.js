@@ -3,7 +3,7 @@
 // 2. Wikipedia article for the game: cover/box art file, then page image, then title logo.
 // Results (including misses) are cached in memory for the lifetime of the process.
 
-const HEADERS = { 'User-Agent': 'ConsensusEngine/1.0 (https://consensus-engine-mauve.vercel.app)' };
+const HEADERS = { 'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)' };
 const WIKI_API = 'https://en.wikipedia.org/w/api.php?format=json&action=query';
 const EDITION_SUFFIX = /\s(remastered|definitive edition|enhanced edition|complete edition|deluxe edition|goty edition|game of the year edition)$/;
 const cache = new Map();

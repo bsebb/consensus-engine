@@ -247,7 +247,7 @@ export default function JoinRoom() {
           <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm">
             <Compass size={16} />
           </div>
-          <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">Consensus</span>
+          <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">NoYouPick</span>
         </div>
 
         <div className="flex items-center gap-1.5">

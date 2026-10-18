@@ -14,7 +14,7 @@ export default function QrCodeModal({
 
   const inviteUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/?pin=${pin}`
-    : `https://consensus-engine.vercel.app/?pin=${pin}`;
+    : `https://noyoupick.org/?pin=${pin}`;
 
   useEffect(() => {
     const handleKeyDown = (e) => {
