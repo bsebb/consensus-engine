@@ -19,7 +19,6 @@ import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
-import StatusBadge from '../components/ui/StatusBadge';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import { apiUrl } from '../utils/api';
@@ -39,7 +38,7 @@ export default function JoinRoom() {
   const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isConnected, participantId, emit } = useSocket();
+  const { participantId, emit } = useSocket();
   const { addToast } = useToast();
 
   // Auto-populate PIN from URL query param if present (e.g. ?pin=1234)
@@ -255,16 +254,10 @@ export default function JoinRoom() {
         </div>
 
         <div className="flex items-center gap-2">
-          <StatusBadge
-            status={isConnected ? 'success' : 'neutral'}
-            label={isConnected ? 'Live' : 'Local'}
-            pulse={isConnected}
-            size="sm"
-          />
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
             aria-label="Open Settings"
             title="Preferences"
           >
@@ -275,24 +268,24 @@ export default function JoinRoom() {
       </header>
 
       {/* Main Form Content */}
-      <main className="w-full my-auto flex flex-col items-center">
+      <main className="w-full my-auto flex flex-col items-center max-w-sm mx-auto">
         {/* Hero Branding */}
         <div className="text-center mb-6 space-y-1.5">
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-            Decide together in seconds
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
+            Where are we eating?
           </h1>
-          <p className="text-xs text-[var(--text-secondary)] max-w-xs mx-auto">
-            Skip the endless debate. Rank choices with your group and find the optimal spot instantly.
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
+            Vote on dinner with friends. Fast, democratic, and zero endless group chat debates.
           </p>
         </div>
 
         {/* Tactical Card */}
-        <div className="w-full tactile-card p-5 sm:p-6 flex flex-col gap-5">
+        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.08)] p-6 sm:p-7 flex flex-col gap-5">
           {/* Segmented Control Pill */}
           <SegmentedControl
             options={[
               { value: 'join', label: 'Join Room' },
-              { value: 'create', label: 'Quick Host' },
+              { value: 'create', label: 'New Room' },
             ]}
             value={activeTab}
             onChange={setActiveTab}
@@ -305,17 +298,17 @@ export default function JoinRoom() {
               htmlFor="userName"
               className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1"
             >
-              Your Nickname
+              Your Name
             </label>
             <div className="relative">
               <input
                 id="userName"
                 name="userName"
                 type="text"
-                placeholder="e.g. Alex"
+                placeholder="What should friends call you?"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full min-h-[44px] pl-10 pr-4 rounded-lg bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] outline-none transition-all"
+                className="w-full min-h-[46px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
                 required
               />
               {name.trim() ? (
@@ -336,12 +329,12 @@ export default function JoinRoom() {
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
                     4-Digit Room PIN
                   </label>
-                  <span className="text-[11px] text-[var(--text-tertiary)] font-mono">
-                    From host invite
+                  <span className="text-[11px] text-[var(--text-tertiary)] font-medium">
+                    Ask the room host
                   </span>
                 </div>
 
-                {/* 4 Distinct OTP Passkey Cells with Active Glow & Crisp Monospace */}
+                {/* 4 Clean PIN Cells */}
                 <div className="grid grid-cols-4 gap-2.5" onPaste={handlePaste}>
                   {pinDigits.map((digit, index) => (
                     <input
@@ -354,62 +347,25 @@ export default function JoinRoom() {
                       value={digit}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                      className={`w-full h-14 text-center font-mono text-2xl font-black rounded-xl border transition-all duration-200 outline-none select-all ${
+                      className={`w-full h-14 text-center font-bold text-2xl rounded-2xl border transition-all duration-150 outline-none select-all tabular-nums ${
                         digit
-                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] ring-2 ring-[var(--accent-glow-focus)] shadow-[0_0_16px_var(--accent-glow-focus)]'
-                          : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)] focus:ring-2 focus:ring-[var(--accent-glow-focus)] focus:shadow-[0_0_16px_var(--accent-glow-focus)]'
+                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]'
+                          : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)]'
                       }`}
                       aria-label={`Digit ${index + 1}`}
                     />
                   ))}
                 </div>
-
-                {/* Quick-Tap Demo Code Chips */}
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPinDigits(['4', '9', '2', '1']);
-                      if (!name.trim()) setName('Alex');
-                      addToast({
-                        title: 'Demo Code Applied',
-                        message: 'Room #4921 pre-filled and ready to enter',
-                        type: 'info',
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)]/10 hover:bg-[var(--accent-bg)]/20 text-[var(--accent-bg)] border border-[var(--accent-bg)]/25 text-xs font-mono font-bold tracking-tight transition-all duration-150 cursor-pointer active:scale-95 shadow-sm"
-                  >
-                    <Sparkles size={12} />
-                    <span>#4921 (Dinner)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPinDigits(['8', '1', '0', '4']);
-                      if (!name.trim()) setName('Sam');
-                      addToast({
-                        title: 'Demo Code Applied',
-                        message: 'Room #8104 pre-filled and ready to enter',
-                        type: 'info',
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-secondary)] border border-[var(--border-subtle)] text-xs font-mono font-bold tracking-tight transition-all duration-150 cursor-pointer active:scale-95 shadow-sm"
-                  >
-                    <Sparkles size={12} />
-                    <span>#8104 (Coffee)</span>
-                  </button>
-                </div>
               </div>
 
               {/* Real-time Room Resolution Card */}
               {pin.length === 4 && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-500 font-semibold animate-[stampPop_0.2s_var(--spring-bounce)]">
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                   <div className="flex items-center gap-1.5">
-                    <Check size={14} className="shrink-0 text-emerald-500" />
-                    <span>{pin === '4921' ? 'Room #4921 Active • Friday Dinner (3 peers joined)' : pin === '8104' ? 'Room #8104 Active • Team Coffee (2 peers joined)' : `Room #${pin} Ready • Live Consensus Session`}</span>
+                    <Check size={15} className="shrink-0 text-emerald-500" />
+                    <span>PIN #{pin} ready to join</span>
                   </div>
-                  <span className="font-mono text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">Active</span>
+                  <span className="text-[10px] uppercase font-bold text-emerald-500 bg-emerald-500/20 px-2 py-0.5 rounded-full">Ready</span>
                 </div>
               )}
 
@@ -420,13 +376,9 @@ export default function JoinRoom() {
                 disabled={pin.length !== 4 || !name.trim() || loading}
                 loading={loading}
                 icon={ArrowRight}
-                className={`w-full transition-all duration-200 ${
-                  pin.length === 4 && name.trim()
-                    ? 'bg-gradient-to-r from-[var(--accent-bg)] to-emerald-500 shadow-[0_8px_24px_var(--accent-glow)] scale-[1.01] hover:scale-[1.02] active:scale-[0.98]'
-                    : ''
-                }`}
+                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_8px_24px_var(--accent-glow)]"
               >
-                Enter Room
+                Join Room
               </Button>
             </form>
           ) : (

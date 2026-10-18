@@ -6,7 +6,6 @@ import {
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
-import StatusBadge from '../components/ui/StatusBadge';
 import ReviewModal from '../components/ui/ReviewModal';
 import ConsensusWinnerView from '../components/deck/ConsensusWinnerView';
 import SwipeCard from '../components/deck/SwipeCard';
@@ -481,28 +480,21 @@ export default function SwipeDeck() {
           <button
             type="button"
             onClick={() => navigate(`/lobby/${pin}`)}
-            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)]"
             aria-label="Back to Lobby"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={15} />
             <span>Lobby</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-[var(--accent-bg)]">
-              #{pin}
-            </span>
-            <span className="text-[11px] font-mono text-[var(--text-tertiary)]">
-              ({Math.min(currentIndex + 1, cards.length)}/{cards.length})
-            </span>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
+            <span className="text-[var(--text-tertiary)] font-normal">Choice</span>
+            <span className="text-[var(--accent-bg)]">{Math.min(currentIndex + 1, cards.length)}</span>
+            <span className="text-[var(--text-tertiary)] font-normal">of</span>
+            <span>{cards.length}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <StatusBadge
-              status={isConnected ? 'success' : 'neutral'}
-              label={isConnected ? 'Live' : 'Local'}
-              size="sm"
-            />
             <ThemeToggle />
           </div>
         </div>

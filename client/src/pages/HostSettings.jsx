@@ -23,7 +23,6 @@ import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
 import HostCategoryPicker from '../components/host/HostCategoryPicker';
 import HostConstraints from '../components/host/HostConstraints';
@@ -31,7 +30,7 @@ import { apiUrl } from '../utils/api';
 
 export default function HostSettings() {
   const navigate = useNavigate();
-  const { isConnected, participantId } = useSocket();
+  const { participantId } = useSocket();
   const { addToast } = useToast();
 
   // Settings Modal State
@@ -240,37 +239,32 @@ export default function HostSettings() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-44 select-none">
-      {/* PWA Mobile Header with Progress Hairline */}
+      {/* Consumer Mobile Header with Progress Hairline */}
       <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3 relative">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
             aria-label="Back to Join"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={15} />
             <span>Back</span>
           </button>
 
           <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-            Host Configuration
+            Create Room
           </h1>
 
-          <div className="flex items-center gap-1.5">
-            <StatusBadge
-              status={isConnected ? 'success' : 'neutral'}
-              label={isConnected ? 'Live' : 'Local'}
-              size="sm"
-            />
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               aria-label="Open Settings"
               title="Preferences"
             >
-              <Settings size={17} />
+              <Settings size={16} />
             </button>
             <ThemeToggle />
           </div>
@@ -279,14 +273,14 @@ export default function HostSettings() {
         {/* Top Stage Progress Hairline */}
         <div className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[var(--bg-inset)] overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[var(--accent-bg)] to-indigo-500 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            className="h-full bg-[var(--accent-bg)] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </header>
 
       {/* Main Configuration Content with Staged Accordion */}
-      <main className="px-4 pt-4 flex flex-col gap-3.5 flex-1">
+      <main className="px-4 pt-4 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
         {/* Stepper Status Pill */}
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
@@ -524,7 +518,7 @@ export default function HostSettings() {
                 onClick={handleCreateRoom}
                 loading={loading}
                 icon={ArrowRight}
-                className="w-full h-11 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-sm"
+                className="w-full h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
               >
                 Launch Room & Enter Lobby
               </Button>
@@ -542,7 +536,7 @@ export default function HostSettings() {
               onClick={handleCreateRoom}
               loading={loading}
               icon={ArrowRight}
-              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-sm"
+              className="w-full h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
             >
               Launch Room & Enter Lobby
             </Button>

@@ -12,8 +12,6 @@ import {
   Clock,
   MapPin,
 } from 'lucide-react';
-import StatusBadge from '../ui/StatusBadge';
-import MilledTray from '../ui/MilledTray';
 import Button from '../ui/Button';
 import { getVenueImage, getVenueVibe } from '../../utils/venueImages';
 
@@ -34,67 +32,69 @@ export default function ConsensusWinnerView({
   const distanceLabel = winner?.distance_km != null ? `${winner.distance_km} km` : (winner?.address || 'Chișinău');
 
   return (
-    <main className="px-4 py-6 pb-12 flex flex-col items-center gap-5 flex-1 my-auto animate-[modalSpring_0.4s_var(--spring-smooth)]">
-      <div className="w-full rounded-2xl bg-[var(--bg-elevated)] overflow-hidden shadow-xl border border-[var(--border-main)] flex flex-col text-center">
+    <main className="px-4 py-6 pb-12 flex flex-col items-center gap-5 flex-1 my-auto max-w-md mx-auto w-full animate-[modalSpring_0.4s_var(--spring-smooth)]">
+      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-xl border border-[var(--border-main)] flex flex-col text-center">
         {/* Winner Hero Image Header */}
-        <div className="relative h-48 w-full bg-[var(--bg-inset)]">
+        <div className="relative h-56 w-full bg-[var(--bg-inset)]">
           <img
             src={winnerImage}
             alt={winner?.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
 
           {/* Floating Trophy & Status Pill */}
-          <div className="absolute top-3 inset-x-3 flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-black/60 backdrop-blur-md text-[var(--status-warning)] flex items-center justify-center shadow-lg">
-              <Trophy size={22} />
+          <div className="absolute top-4 inset-x-4 flex items-center justify-between">
+            <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md text-amber-300 flex items-center justify-center shadow-lg border border-white/10">
+              <Trophy size={20} />
             </div>
-            <StatusBadge status="success" label="Consensus Achieved" pulse size="sm" />
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-500/40 text-xs font-bold text-emerald-400">
+              Group Winner
+            </span>
           </div>
 
           {/* Title overlay */}
-          <div className="absolute bottom-3 inset-x-4 text-left">
-            <span className="text-[11px] font-bold text-amber-300 drop-shadow-sm uppercase tracking-wider">
+          <div className="absolute bottom-4 inset-x-4 text-left">
+            <span className="text-xs font-semibold text-rose-300 drop-shadow-sm">
               {winnerVibe}
             </span>
-            <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-md">
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-md">
               {winner?.name}
             </h2>
-            <div className="flex items-center gap-1.5 text-xs text-white/90 drop-shadow-sm mt-0.5">
-              <MapPin size={12} className="text-[var(--accent-bg)]" />
+            <div className="flex items-center gap-1.5 text-xs text-zinc-200 drop-shadow-sm mt-0.5">
+              <MapPin size={12} className="text-rose-400" />
               <span>{winner?.address || 'Centru, Chișinău'}</span>
             </div>
           </div>
         </div>
 
         <div className="p-5 flex flex-col items-center gap-4">
-          <p className="text-xs text-[var(--text-secondary)]">
-            Pairwise Condorcet & Schulze Consensus Result
+          <p className="text-xs font-medium text-[var(--text-secondary)]">
+            The group has spoken! Everyone's top-ranked spot.
           </p>
 
           {/* Metrics Row */}
-          <div className="grid grid-cols-3 gap-2 w-full">
-            <MilledTray className="flex flex-col items-center justify-center p-2.5">
-              <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Match</span>
-              <span className="text-sm font-extrabold text-[var(--status-success)] font-mono">
+          <div className="grid grid-cols-3 gap-2.5 w-full">
+            <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <span className="text-[10px] uppercase font-semibold text-[var(--text-tertiary)] tracking-wider">Group Match</span>
+              <span className="text-base font-black text-emerald-500 tabular-nums">
                 {matchScore}%
               </span>
-            </MilledTray>
+            </div>
 
-            <MilledTray className="flex flex-col items-center justify-center p-2.5">
-              <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Price</span>
-              <span className="text-sm font-bold text-[var(--text-primary)] font-mono">
+            <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <span className="text-[10px] uppercase font-semibold text-[var(--text-tertiary)] tracking-wider">Price</span>
+              <span className="text-base font-bold text-[var(--text-primary)]">
                 {'$'.repeat(winner?.price_level || 2)}
               </span>
-            </MilledTray>
+            </div>
 
-            <MilledTray className="flex flex-col items-center justify-center p-2.5">
-              <span className="text-[10px] uppercase font-bold text-[var(--text-tertiary)]">Location</span>
+            <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <span className="text-[10px] uppercase font-semibold text-[var(--text-tertiary)] tracking-wider">Distance</span>
               <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[85px]">
                 {distanceLabel}
               </span>
-            </MilledTray>
+            </div>
           </div>
 
           {/* Turn-by-Turn Google Maps Action */}

@@ -3,12 +3,12 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   LogOut,
   Settings,
+  ArrowRight,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
-import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
 import QrCodeModal from '../components/ui/QrCodeModal';
 import StepZeroVault from '../components/lobby/StepZeroVault';
@@ -59,7 +59,7 @@ export default function RoomLobby() {
   const { pin } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isConnected, participantId, emit, on, off } = useSocket();
+  const { participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -396,35 +396,29 @@ export default function RoomLobby() {
 
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
-      {/* PWA Mobile Header */}
+      {/* Consumer Mobile Header */}
       <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={handleLeaveLobby}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--status-danger)] hover:bg-rose-500/10 transition-colors cursor-pointer py-1.5 px-2.5 rounded-lg border border-transparent hover:border-rose-500/20 min-h-[36px]"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
             aria-label="Leave Lobby"
           >
-            <LogOut size={14} />
-            <span>Leave Lobby</span>
+            <LogOut size={13} />
+            <span>Leave</span>
           </button>
 
-          <div className="flex items-center gap-1.5 font-mono text-sm font-extrabold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)]">#</span>
-            <span>{pin}</span>
+          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
+            <span className="text-[var(--text-tertiary)] font-normal">Room</span>
+            <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <StatusBadge
-              status={isConnected ? 'success' : 'neutral'}
-              label={isConnected ? 'Live' : 'Local'}
-              pulse={isConnected}
-              size="sm"
-            />
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               aria-label="Open Settings"
               title="Preferences"
             >
@@ -436,7 +430,7 @@ export default function RoomLobby() {
       </header>
 
       {/* Main Content Area */}
-      <main className="px-4 pt-4 flex flex-col gap-4 flex-1">
+      <main className="px-4 pt-4 flex flex-col gap-4 flex-1 max-w-md mx-auto w-full">
         {/* Hero PIN, Target Banner & Roll-Call Roster */}
         <LobbyRoster
           pin={pin}
@@ -485,17 +479,17 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
+              className="w-full h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl"
             >
-              Start Consensus Voting
+              Start Swiping
             </Button>
           ) : (
-            <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-center flex flex-col items-center gap-1">
+            <div className="p-4 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-center flex flex-col items-center gap-1.5">
               <span className="text-xs font-bold text-[var(--text-primary)]">
-                Waiting for Host
+                Waiting for Host to Start
               </span>
               <span className="text-[11px] text-[var(--text-secondary)]">
-                Voting will automatically open when the host launches the deck.
+                The swipe deck will automatically launch when the host is ready.
               </span>
             </div>
           )}
