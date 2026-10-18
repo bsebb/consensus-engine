@@ -16,6 +16,7 @@ import {
   History,
   MapPin,
   Navigation,
+  Search,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -24,7 +25,12 @@ import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import { apiUrl } from '../utils/api';
-import { CHISINAU_SECTORS, detectUserGps, getSavedExactGps } from '../utils/location';
+import {
+  detectUserGps,
+  getSavedExactGps,
+  saveUserLocation,
+  searchLocationByQuery,
+} from '../utils/location';
 
 const CATEGORIES = [
   { id: 'Restaurants', title: 'Restaurants', desc: 'Dinner & lunch spots', icon: Utensils, topic: 'Where are we eating?' },
@@ -46,20 +52,19 @@ export default function JoinRoom() {
   const [loading, setLoading] = useState(false);
   const [recentSession, setRecentSession] = useState(null);
 
-  // Quick setup states
+  // Quick setup & universal location states
   const [selectedCategory, setSelectedCategory] = useState('Restaurants');
   const [customTopic, setCustomTopic] = useState('');
-  const [selectedSector, setSelectedSector] = useState(() => {
-    const saved = getSavedExactGps();
-    if (saved) return 'gps';
-    return localStorage.getItem('consensus_manual_sector') || 'centru';
-  });
   const [gpsState, setGpsState] = useState(() => {
     const saved = getSavedExactGps();
     return saved
-      ? { status: 'exact', lat: saved.lat, lng: saved.lng, accuracy: saved.accuracy, isExact: true }
-      : { status: 'detecting', lat: null, lng: null, accuracy: null, isExact: false };
+      ? { ...saved, status: 'exact', isExact: true }
+      : { status: 'detecting', lat: null, lng: null, accuracy: null, isExact: false, label: 'Detecting your area...' };
   });
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locQuery, setLocQuery] = useState('');
+  const [locResults, setLocResults] = useState([]);
+  const [searchingLoc, setSearchingLoc] = useState(false);
 
   const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
@@ -77,7 +82,7 @@ export default function JoinRoom() {
 
   const pin = pinDigits.join('');
 
-  // Load recent session from history, wake up backend, and acquire true GPS early
+  // Load recent session from history, wake up backend, and acquire real user coordinates
   useEffect(() => {
     try {
       const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
@@ -92,40 +97,44 @@ export default function JoinRoom() {
 
     let mounted = true;
     detectUserGps().then((res) => {
-      if (!mounted) return;
-      setGpsState(res);
-      if (res.isExact) {
-        setSelectedSector('gps');
-      }
+      if (mounted) setGpsState(res);
     });
     return () => {
       mounted = false;
     };
   }, []);
 
-  const handleSelectSector = async (sectorId) => {
-    if (sectorId === 'gps') {
-      setSelectedSector('gps');
-      if (!gpsState.isExact) {
-        setGpsState((prev) => ({ ...prev, status: 'detecting' }));
-        const res = await detectUserGps();
-        setGpsState(res);
-        if (!res.isExact) {
-          const fallbackSector = localStorage.getItem('consensus_manual_sector') || 'centru';
-          setSelectedSector(fallbackSector);
-          addToast({
-            title: 'Exact GPS Unavailable on This Device',
-            message: 'Browser returned a coarse ISP location. Pick your neighborhood below for accurate results.',
-            type: 'info',
-          });
-        }
-      }
-      return;
-    }
-    setSelectedSector(sectorId);
-    try {
-      localStorage.setItem('consensus_manual_sector', sectorId);
-    } catch {}
+  const handleUseMyGps = async () => {
+    setGpsState((prev) => ({ ...prev, status: 'detecting', label: 'Locating via GPS...' }));
+    const res = await detectUserGps({ forceRefresh: true });
+    setGpsState(res);
+    setEditingLocation(false);
+  };
+
+  const handleSearchCity = async (e) => {
+    if (e) e.preventDefault();
+    if (locQuery.trim().length < 2) return;
+    setSearchingLoc(true);
+    const items = await searchLocationByQuery(locQuery);
+    setLocResults(items);
+    setSearchingLoc(false);
+  };
+
+  const handlePickLocationResult = (item) => {
+    const updated = {
+      status: 'exact',
+      lat: item.lat,
+      lng: item.lng,
+      accuracy: 100,
+      isExact: true,
+      label: item.label,
+      source: 'manual',
+    };
+    saveUserLocation(updated);
+    setGpsState(updated);
+    setEditingLocation(false);
+    setLocResults([]);
+    setLocQuery('');
   };
 
   const handleDigitChange = (index, value) => {
@@ -133,10 +142,7 @@ export default function JoinRoom() {
     const newDigits = [...pinDigits];
     newDigits[index] = digit;
     setPinDigits(newDigits);
-
-    if (digit && index < 3) {
-      digitInputRefs[index + 1].current?.focus();
-    }
+    if (digit && index < 3) digitInputRefs[index + 1].current?.focus();
   };
 
   const handleDigitKeyDown = (index, e) => {
@@ -150,12 +156,9 @@ export default function JoinRoom() {
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
     if (pasted.length > 0) {
       const newDigits = ['', '', '', ''];
-      for (let i = 0; i < pasted.length; i++) {
-        newDigits[i] = pasted[i];
-      }
+      for (let i = 0; i < pasted.length; i++) newDigits[i] = pasted[i];
       setPinDigits(newDigits);
-      const nextIndex = Math.min(pasted.length, 3);
-      digitInputRefs[nextIndex].current?.focus();
+      digitInputRefs[Math.min(pasted.length, 3)].current?.focus();
     }
   };
 
@@ -163,7 +166,6 @@ export default function JoinRoom() {
     if (e) e.preventDefault();
     const cleanPin = pin.trim();
     const cleanName = name.trim() || 'Friend';
-
     if (cleanPin.length !== 4) return;
 
     localStorage.setItem('consensus_user_name', cleanName);
@@ -173,42 +175,27 @@ export default function JoinRoom() {
       const response = await fetch(apiUrl(`/api/v1/rooms/${cleanPin}`));
       if (response.ok) {
         const roomData = await response.json();
-        emit('join_lobby', {
-          pin: cleanPin,
-          participant_id: participantId,
-          user_name: cleanName,
-        });
-
+        emit('join_lobby', { pin: cleanPin, participant_id: participantId, user_name: cleanName });
         navigate(`/lobby/${cleanPin}`, {
-          state: {
-            isHost: false,
-            userName: cleanName,
-            roomData,
-            mode: roomData?.mode,
-            topic: roomData?.topic,
-          },
-        });
-        setLoading(false);
-        return;
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        addToast({
-          title: 'Room Not Found',
-          message: errData.message || `Room #${cleanPin} wasn't found. Double-check the code with your host.`,
-          type: 'error',
+          state: { isHost: false, userName: cleanName, roomData, mode: roomData?.mode, topic: roomData?.topic },
         });
         setLoading(false);
         return;
       }
-    } catch (err) {
-      console.warn('[JoinRoom] Server connection error joining room:', err);
+      const errData = await response.json().catch(() => ({}));
+      addToast({
+        title: 'Room Not Found',
+        message: errData.message || `Room #${cleanPin} wasn't found. Double-check the code with your host.`,
+        type: 'error',
+      });
+    } catch {
       addToast({
         title: 'Connection Error',
         message: 'Could not reach the server. Please check your internet connection.',
         type: 'error',
       });
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   const handleStartRoom = async () => {
@@ -219,25 +206,18 @@ export default function JoinRoom() {
     const isCustomMode = selectedCategory === 'Custom';
     const roomMode = isCustomMode ? 'CUSTOM' : 'DISCOVERY';
     const catConfig = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
-    const topicTitle = isCustomMode
-      ? (customTopic.trim() || 'What should we do?')
-      : catConfig.topic;
+    const topicTitle = isCustomMode ? (customTopic.trim() || 'What should we do?') : catConfig.topic;
 
-    let lat = null;
-    let lng = null;
-    let isExactGps = false;
+    let lat = gpsState.lat;
+    let lng = gpsState.lng;
+    let isExactGps = Boolean(gpsState.isExact && lat != null && lng != null);
 
-    if (!isCustomMode) {
-      if (selectedSector === 'gps' && gpsState.isExact && gpsState.lat != null) {
-        lat = gpsState.lat;
-        lng = gpsState.lng;
-        isExactGps = true;
-      } else {
-        const sectorObj = CHISINAU_SECTORS.find((s) => s.id === selectedSector) || CHISINAU_SECTORS[1];
-        lat = sectorObj.lat ?? 47.0225;
-        lng = sectorObj.lng ?? 28.8340;
-        isExactGps = false;
-      }
+    if (!isCustomMode && (lat == null || lng == null)) {
+      const fresh = await detectUserGps();
+      setGpsState(fresh);
+      lat = fresh.lat;
+      lng = fresh.lng;
+      isExactGps = Boolean(fresh.isExact && lat != null && lng != null);
     }
 
     try {
@@ -248,7 +228,7 @@ export default function JoinRoom() {
           host_id: participantId,
           mode: roomMode,
           theme: isCustomMode ? 'custom' : selectedCategory.toLowerCase(),
-          radius: selectedSector === 'gps' ? 3500 : 3000,
+          radius: 5000,
           latitude: lat,
           longitude: lng,
           is_exact_gps: isExactGps,
@@ -260,37 +240,18 @@ export default function JoinRoom() {
         const generatedPin = realRoom.pin;
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
         localStorage.setItem('consensus_active_pin', generatedPin);
-
         setLoading(false);
         navigate(`/lobby/${generatedPin}`, {
-          state: {
-            mode: roomMode,
-            isHost: true,
-            userName: cleanName,
-            category: selectedCategory,
-            topic: topicTitle,
-            radiusKm: 3.5,
-            roomData: realRoom,
-          },
+          state: { mode: roomMode, isHost: true, userName: cleanName, category: selectedCategory, topic: topicTitle, radiusKm: 5, roomData: realRoom },
         });
         return;
       } else {
         const errData = await response.json().catch(() => ({}));
-        addToast({
-          title: 'Could Not Create Room',
-          message: errData.message || 'Please try again in a moment.',
-          type: 'error',
-        });
+        addToast({ title: 'Could Not Create Room', message: errData.message || 'Please try again in a moment.', type: 'error' });
       }
-    } catch (err) {
-      console.warn('[JoinRoom] Server connection error creating room:', err);
-      addToast({
-        title: 'Connection Error',
-        message: 'Could not reach server to create room. Please check your connection.',
-        type: 'error',
-      });
+    } catch {
+      addToast({ title: 'Connection Error', message: 'Could not reach server to create room. Please check your connection.', type: 'error' });
     }
-
     setLoading(false);
   };
 
@@ -298,15 +259,12 @@ export default function JoinRoom() {
 
   return (
     <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-[100dvh]">
-      {/* Top Application Bar */}
       <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm">
             <Sparkles size={16} />
           </div>
-          <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
-            Consensus
-          </span>
+          <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">Consensus</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -332,9 +290,7 @@ export default function JoinRoom() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
-        {/* Hero Headline */}
         <div className="text-center mb-5 space-y-1">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
             {activeTab === 'create' ? activeCatObj.topic : 'Join your group'}
@@ -346,25 +302,16 @@ export default function JoinRoom() {
           </p>
         </div>
 
-        {/* Main Card */}
         <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-5 sm:p-6 flex flex-col gap-4">
-          {/* Mode Switcher */}
           <SegmentedControl
-            options={[
-              { value: 'create', label: 'Start a Pick' },
-              { value: 'join', label: 'Join with Code' },
-            ]}
+            options={[{ value: 'create', label: 'Start a Pick' }, { value: 'join', label: 'Join with Code' }]}
             value={activeTab}
             onChange={setActiveTab}
             size="md"
           />
 
-          {/* User Name Input */}
           <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="userName"
-              className="text-xs font-semibold text-[var(--text-secondary)] px-1"
-            >
+            <label htmlFor="userName" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
               Your Name
             </label>
             <div className="relative">
@@ -388,12 +335,9 @@ export default function JoinRoom() {
           </div>
 
           {activeTab === 'create' ? (
-            /* TAB 1: START A GROUP PICK */
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">
-                  What are you picking?
-                </span>
+                <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">What are you picking?</span>
                 <div className="grid grid-cols-2 gap-2.5">
                   {CATEGORIES.map((cat) => {
                     const Icon = cat.icon;
@@ -419,12 +363,8 @@ export default function JoinRoom() {
                           <Icon size={16} />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-[var(--text-primary)] truncate">
-                            {cat.title}
-                          </div>
-                          <div className="text-[11px] text-[var(--text-tertiary)] truncate">
-                            {cat.desc}
-                          </div>
+                          <div className="text-xs font-bold text-[var(--text-primary)] truncate">{cat.title}</div>
+                          <div className="text-[11px] text-[var(--text-tertiary)] truncate">{cat.desc}</div>
                         </div>
                       </button>
                     );
@@ -432,13 +372,10 @@ export default function JoinRoom() {
                 </div>
               </div>
 
-              {/* Area / Neighborhood Selector or Custom Topic Input */}
+              {/* Universal Hex Grid Location Bar or Custom Topic Input */}
               {selectedCategory === 'Custom' ? (
                 <div className="flex flex-col gap-1.5 animate-[modalSpring_0.25s_var(--spring-smooth)]">
-                  <label
-                    htmlFor="customTopicInput"
-                    className="text-xs font-semibold text-[var(--text-secondary)] px-1"
-                  >
+                  <label htmlFor="customTopicInput" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
                     Question or Topic
                   </label>
                   <input
@@ -451,39 +388,80 @@ export default function JoinRoom() {
                   />
                 </div>
               ) : (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1">
-                      <MapPin size={12} className="text-[var(--accent-bg)]" />
-                      <span>Area</span>
-                    </span>
-                    <span className="text-[11px] text-[var(--text-tertiary)]">
-                      {gpsState.isExact && selectedSector === 'gps'
-                        ? 'Exact GPS active'
-                        : 'Pick your neighborhood'}
-                    </span>
+                <div className="flex flex-col gap-2 p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                        <MapPin size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[var(--text-primary)] truncate">
+                          {gpsState.label || 'Detecting your area...'}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+                          1km Hex Grid • Expands automatically if needed
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleUseMyGps}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-1"
+                        title="Detect my exact GPS coordinates"
+                      >
+                        <Navigation size={11} className="text-[var(--accent-bg)]" />
+                        <span>GPS</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingLocation((v) => !v)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] hover:underline transition-colors cursor-pointer"
+                      >
+                        {editingLocation ? 'Done' : 'Change'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CHISINAU_SECTORS.map((sec) => {
-                      const active = selectedSector === sec.id;
-                      const isGpsBtn = sec.id === 'gps';
-                      return (
+
+                  {editingLocation && (
+                    <div className="flex flex-col gap-2 pt-1.5 border-t border-[var(--border-subtle)]">
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={locQuery}
+                          onChange={(e) => setLocQuery(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSearchCity(e);
+                          }}
+                          placeholder="Type your city or street (e.g. Orhei, Bălți, Botanica)..."
+                          className="flex-1 min-h-[38px] px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none"
+                        />
                         <button
-                          key={sec.id}
                           type="button"
-                          onClick={() => handleSelectSector(sec.id)}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1 ${
-                            active
-                              ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-2xs'
-                              : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
-                          }`}
+                          onClick={handleSearchCity}
+                          disabled={searchingLoc}
+                          className="px-3 rounded-xl bg-[var(--accent-bg)] text-white text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
                         >
-                          {isGpsBtn && <Navigation size={11} />}
-                          <span>{sec.label}</span>
+                          <Search size={13} />
+                          <span>{searchingLoc ? '...' : 'Find'}</span>
                         </button>
-                      );
-                    })}
-                  </div>
+                      </div>
+                      {locResults.length > 0 && (
+                        <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
+                          {locResults.map((item, i) => (
+                            <button
+                              key={`${item.lat}-${item.lng}-${i}`}
+                              type="button"
+                              onClick={() => handlePickLocationResult(item)}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)]/10 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-primary)] truncate cursor-pointer"
+                            >
+                              {item.fullLabel || item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

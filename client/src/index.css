@@ -155,18 +155,12 @@
 }
 
 .bg-mesh-light {
-  background: 
-    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(224, 62, 45, 0.06), transparent),
-    radial-gradient(circle at 85% 20%, rgba(245, 158, 11, 0.05), transparent 45%),
-    #f7f5f0;
+  background: #f7f5f0;
   opacity: 1;
 }
 
 .bg-mesh-dark {
-  background: 
-    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(240, 77, 62, 0.10), transparent),
-    radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.05), transparent 45%),
-    #111113;
+  background: #111113;
   opacity: 0;
 }
 

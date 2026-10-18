@@ -1,19 +1,7 @@
 /**
- * High-reliability Geolocation & Chișinău Sector Resolver.
- * Distinguishes true street-level GPS/Wi-Fi fixes (accuracy <= 2000m)
- * from coarse ISP IP centroids (which in Moldova often resolve ~22.7 km north of Chișinău),
- * and provides 1-tap neighborhood anchors when hardware GPS is unavailable.
+ * Universal Geolocation, Reverse Geocoder & Hexagonal Grid Anchor Resolver.
+ * Works in any city, town, or neighborhood without clamping to a single city.
  */
-
-export const CHISINAU_SECTORS = [
-  { id: 'gps', label: 'Near Me (GPS)', lat: null, lng: null },
-  { id: 'centru', label: 'Centru', lat: 47.0225, lng: 28.8340 },
-  { id: 'botanica', label: 'Botanica', lat: 46.9865, lng: 28.8580 },
-  { id: 'riscani', label: 'Rîșcani', lat: 47.0460, lng: 28.8655 },
-  { id: 'buiucani', label: 'Buiucani', lat: 47.0365, lng: 28.7905 },
-  { id: 'ciocana', label: 'Ciocana', lat: 47.0455, lng: 28.8915 },
-  { id: 'telecentru', label: 'Telecentru', lat: 46.9960, lng: 28.8260 },
-];
 
 /**
  * Haversine distance in kilometers between two coordinates.
@@ -40,66 +28,191 @@ export function calculateDistanceKm(lat1, lng1, lat2, lng2) {
 }
 
 /**
- * Acquires device geolocation with a two-stage strategy:
- * 1. High-accuracy GPS/Wi-Fi fix (up to 5s)
- * 2. Standard network fix fallback (up to 4s)
- * Rejects coarse ISP IP centroids (accuracy > 2500m or > 15km outside Chișinău when coarse).
+ * Reverse-geocodes (lat, lng) into a concise human-readable neighborhood/city label
+ * using OpenStreetMap Nominatim.
  */
-export async function detectUserGps() {
-  if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    return { status: 'unsupported', lat: null, lng: null, accuracy: null, isExact: false };
+export async function reverseGeocode(lat, lng) {
+  if (lat == null || lng == null) return null;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=14&accept-language=en,ro`,
+      {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const addr = data?.address || {};
+    const city =
+      addr.city ||
+      addr.town ||
+      addr.village ||
+      addr.municipality ||
+      addr.county ||
+      '';
+    const area =
+      addr.suburb ||
+      addr.city_district ||
+      addr.neighbourhood ||
+      addr.quarter ||
+      addr.road ||
+      '';
+    if (area && city && area.toLowerCase() !== city.toLowerCase()) {
+      return `${area}, ${city}`;
+    }
+    return city || area || data?.name || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Forward-geocodes a city, town, neighborhood, or street query via OpenStreetMap Nominatim.
+ */
+export async function searchLocationByQuery(query) {
+  const clean = String(query || '').trim();
+  if (clean.length < 2) return [];
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(clean)}&limit=5&addressdetails=1&accept-language=en,ro`,
+      {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
+      }
+    );
+    if (!res.ok) return [];
+    const results = await res.json();
+    if (!Array.isArray(results)) return [];
+    return results
+      .filter((r) => r.lat != null && r.lon != null)
+      .map((r) => {
+        const addr = r.address || {};
+        const city =
+          addr.city ||
+          addr.town ||
+          addr.village ||
+          addr.municipality ||
+          addr.county ||
+          '';
+        const primary = r.name || addr.suburb || addr.road || city || r.display_name?.split(',')[0];
+        const label =
+          city && primary && primary.toLowerCase() !== city.toLowerCase()
+            ? `${primary}, ${city}`
+            : primary || r.display_name?.split(',').slice(0, 2).join(', ');
+        return {
+          label,
+          fullLabel: r.display_name,
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Acquires the user's real coordinates in any city/town:
+ * 1. Saved manual or GPS override in sessionStorage (if recent)
+ * 2. Browser hardware/Wi-Fi Geolocation (high accuracy -> standard accuracy)
+ * 3. IP-based city geolocation fallback when browser permission is denied
+ */
+export async function detectUserGps({ forceRefresh = false } = {}) {
+  if (!forceRefresh) {
+    const saved = getSavedExactGps();
+    if (saved) return saved;
   }
 
-  const getPos = (highAccuracy, timeout) =>
+  const getBrowserPos = (highAccuracy, timeout) =>
     new Promise((resolve, reject) => {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        return reject(new Error('Geolocation unsupported'));
+      }
       navigator.geolocation.getCurrentPosition(resolve, reject, {
         enableHighAccuracy: highAccuracy,
         timeout,
-        maximumAge: 60000,
+        maximumAge: forceRefresh ? 0 : 60000,
       });
     });
 
   try {
     let pos;
     try {
-      pos = await getPos(true, 5000);
+      pos = await getBrowserPos(true, 5000);
     } catch {
-      pos = await getPos(false, 4000);
+      pos = await getBrowserPos(false, 4500);
     }
 
     const { latitude, longitude, accuracy } = pos.coords;
-    const distFromChisinauKm = calculateDistanceKm(latitude, longitude, 47.0185, 28.8360);
+    const label = (await reverseGeocode(latitude, longitude)) || 'Current Location';
 
-    // In Moldova, desktop ISP IP geolocation often resolves ~22.7 km north of Chișinău with accuracy > 2500m.
-    // Only treat coordinates as exact street-level GPS if accuracy <= 2500m AND not the 22.7km ISP outlier.
-    const isIspOutlier = distFromChisinauKm != null && distFromChisinauKm > 14 && accuracy > 1000;
-    const isExact = accuracy != null && accuracy <= 2500 && !isIspOutlier;
-
-    if (isExact) {
-      try {
-        sessionStorage.setItem(
-          'consensus_exact_gps',
-          JSON.stringify({ lat: latitude, lng: longitude, accuracy: Math.round(accuracy), ts: Date.now() })
-        );
-      } catch {}
-    }
-
-    return {
-      status: isExact ? 'exact' : 'coarse',
+    const payload = {
+      status: 'exact',
       lat: latitude,
       lng: longitude,
       accuracy: accuracy ? Math.round(accuracy) : null,
-      isExact,
+      isExact: true,
+      label,
+      source: 'gps',
+      ts: Date.now(),
     };
-  } catch (err) {
+
+    saveUserLocation(payload);
+    return payload;
+  } catch {
+    // Fallback to IP geolocation if browser permission was denied/blocked
+    try {
+      const ipRes = await fetch('https://get.geojs.io/v1/ip/geo.json', {
+        signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
+      });
+      if (ipRes.ok) {
+        const ipData = await ipRes.json();
+        const lat = parseFloat(ipData.latitude);
+        const lng = parseFloat(ipData.longitude);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const label = ipData.city
+            ? `${ipData.city}${ipData.region && ipData.region !== ipData.city ? `, ${ipData.region}` : ''}`
+            : (await reverseGeocode(lat, lng)) || 'Approximate Area';
+          const payload = {
+            status: 'ip',
+            lat,
+            lng,
+            accuracy: 5000,
+            isExact: true,
+            label,
+            source: 'ip',
+            ts: Date.now(),
+          };
+          saveUserLocation(payload);
+          return payload;
+        }
+      }
+    } catch {}
+
     return {
-      status: err?.code === 1 ? 'denied' : 'unavailable',
+      status: 'unavailable',
       lat: null,
       lng: null,
       accuracy: null,
       isExact: false,
+      label: 'Location not set',
+      source: 'none',
     };
   }
+}
+
+export function saveUserLocation(locObj) {
+  try {
+    sessionStorage.setItem(
+      'consensus_exact_gps',
+      JSON.stringify({
+        ...locObj,
+        isExact: true,
+        ts: Date.now(),
+      })
+    );
+  } catch {}
 }
 
 export function getSavedExactGps() {
@@ -107,7 +220,7 @@ export function getSavedExactGps() {
     const raw = sessionStorage.getItem('consensus_exact_gps');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && parsed.lat != null && parsed.lng != null && Date.now() - parsed.ts < 15 * 60 * 1000) {
+    if (parsed && parsed.lat != null && parsed.lng != null && Date.now() - parsed.ts < 30 * 60 * 1000) {
       return parsed;
     }
   } catch {}
