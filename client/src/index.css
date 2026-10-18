@@ -251,11 +251,11 @@
   }
 }
 .safe-pt-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.5rem), 3rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.625rem), 3.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-header {
-    padding-top: 0.75rem;
+    padding-top: 0.875rem;
   }
 }
 .safe-pb {

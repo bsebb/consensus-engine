@@ -13,9 +13,11 @@ import {
   Check,
 } from 'lucide-react';
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
+import { useLanguage } from '../../context/LanguageContext';
 import CleanStreetMiniMap from './CleanStreetMiniMap';
 
 export default function VenueDetailsModal({ venue, isOpen, onClose, inline = false }) {
+  const { t } = useLanguage();
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
   const { photos, isRealPhoto, fallbackPhoto } = useVenuePhotos(
@@ -180,34 +182,34 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
           <div className="p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
             <span className="text-[11px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
               <Navigation size={11} className="text-[var(--accent-bg)]" />
-              <span>Road Route</span>
+              <span>{t('roadRoute')}</span>
             </span>
             <span className="text-sm font-black text-[var(--text-primary)]">
               {distKm != null ? `${distKm} km` : 'Local'}
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)]">Via real streets</span>
+            <span className="text-[11px] text-[var(--text-secondary)]">{t('viaStreets')}</span>
           </div>
 
           <div className="p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
             <span className="text-[11px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
               <Car size={12} className="text-emerald-500" />
-              <span>By Car / Taxi</span>
+              <span>{t('byCar')}</span>
             </span>
             <span className="text-sm font-black text-[var(--text-primary)]">
               {driveMin != null ? `~${driveMin} min` : 'Quick ride'}
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)]">Street traffic</span>
+            <span className="text-[11px] text-[var(--text-secondary)]">{t('streetTraffic')}</span>
           </div>
 
           <div className="p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
             <span className="text-[11px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
               <Footprints size={12} className="text-amber-500" />
-              <span>Walking</span>
+              <span>{t('walking')}</span>
             </span>
             <span className="text-sm font-black text-[var(--text-primary)]">
               {walkMin != null ? `~${walkMin} min` : 'Walkable'}
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)]">Pedestrian path</span>
+            <span className="text-[11px] text-[var(--text-secondary)]">{t('pedestrianPath')}</span>
           </div>
         </div>
 
@@ -226,7 +228,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
           </div>
 
           <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
-            <span className="text-[var(--text-secondary)] font-medium">Estimated Spend</span>
+            <span className="text-[var(--text-secondary)] font-medium">{t('estimatedSpend')}</span>
             <span className="font-bold text-[var(--text-primary)]">{priceDesc}</span>
           </div>
         </div>
@@ -247,40 +249,40 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
             href={driveRouteUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[var(--accent-bg)] text-white text-xs font-bold shadow-xs hover:opacity-95 transition-opacity"
+            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[var(--accent-bg)] text-white text-xs font-bold shadow-xs hover:opacity-95 transition-all active:scale-[0.97]"
           >
             <Navigation size={13} />
-            <span>Road Directions</span>
+            <span>{t('roadDirections')}</span>
           </a>
           <a
             href={reviewsSearchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-bold hover:border-[var(--accent-bg)] transition-colors"
+            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-bold hover:border-[var(--accent-bg)] transition-all active:scale-[0.97]"
           >
             <BookOpen size={13} className="text-[var(--accent-bg)]" />
-            <span>Menu & Reviews</span>
+            <span>{t('menuAndReviews')}</span>
             <ExternalLink size={11} className="text-[var(--text-tertiary)]" />
           </a>
         </div>
 
         {/* Ephemeral Crowd-Sourced Self-Healing: Outdated / Closed Venue Flag */}
         <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
-          <span className="text-[var(--text-tertiary)]">Spotted outdated info?</span>
+          <span className="text-[var(--text-tertiary)]">{t('spottedOutdated')}</span>
           {reported ? (
             <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold animate-[fadeIn_0.2s_ease-out]">
               <Check size={12} />
-              <span>Reported as closed</span>
+              <span>{t('reportedClosed')}</span>
             </span>
           ) : (
             <button
               type="button"
               onClick={handleReportClosed}
               disabled={isReporting}
-              className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-rose-400 transition-colors font-medium cursor-pointer"
+              className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-rose-400 transition-colors font-medium cursor-pointer active:scale-[0.96]"
             >
               <AlertTriangle size={12} className="text-amber-500/80" />
-              <span>{isReporting ? 'Reporting...' : 'Report closed / wrong spot'}</span>
+              <span>{isReporting ? t('reporting') : t('reportClosed')}</span>
             </button>
           )}
         </div>

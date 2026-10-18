@@ -6,6 +6,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
@@ -48,6 +49,7 @@ export default function RoomLobby() {
   const navigate = useNavigate();
   const { participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
+  const { t } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isTransitioningToDeckRef = useRef(false);
 
@@ -478,12 +480,13 @@ export default function RoomLobby() {
     : 0;
 
   const handleStartVoting = () => {
+    triggerHaptic('selection');
     const cardsToPass = filteredCandidates.length > 0 ? filteredCandidates : candidatePoolPreview;
 
     if (cardsToPass.length < 2) {
       addToast({
-        title: mode === 'CUSTOM' ? 'Add At Least 2 Options' : 'Add At Least 2 Spots',
-        message: 'Add at least 2 options above so everyone can vote.',
+        title: t('addAtLeastTwoTitle'),
+        message: t('addAtLeastTwoMsg'),
         type: 'warning',
       });
       return;
@@ -520,20 +523,20 @@ export default function RoomLobby() {
   return (
     <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none">
       {/* Solid Opaque Header */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={handleLeaveLobby}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)]"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] active:scale-[0.97]"
             aria-label="Leave Room"
           >
             <LogOut size={13} />
-            <span>Home</span>
+            <span>{t('home')}</span>
           </button>
 
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)] font-normal">Code</span>
+            <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
             <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
           </div>
 
@@ -603,18 +606,16 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl"
+              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl active:scale-[0.98] transition-transform"
             >
-              Start Voting • {Math.min(8, filteredCandidates.length)}{' '}
-              {mode === 'CUSTOM'
-                ? filteredCandidates.length === 1 ? 'Option' : 'Options'
-                : filteredCandidates.length === 1 ? 'Place' : 'Places'}
+              {t('startVoting')} • {Math.min(8, filteredCandidates.length)}{' '}
+              {mode === 'CUSTOM' ? t('optionsSuffix') : t('placesSuffix')}
             </Button>
           ) : (
             <div className="py-2.5 px-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-center flex items-center justify-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               <span className="text-xs font-semibold text-[var(--text-primary)]">
-                Waiting for host to start voting...
+                {t('waitingFriendsTitle')}
               </span>
             </div>
           )}

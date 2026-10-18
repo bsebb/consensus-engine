@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutGrid, MapPin, Loader2, Compass, Layers, Shield } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 import BrandLogo from '../ui/BrandLogo';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function LobbyLoadingView({
   topic = 'Where should we go?',
@@ -11,31 +12,48 @@ export default function LobbyLoadingView({
   isCustom = false,
   onCancel,
 }) {
+  const { t } = useLanguage();
+  const [stageIdx, setStageIdx] = useState(0);
+
+  const stages = [
+    t('stageGeo'),
+    t('stageFilter'),
+    t('stageRouting'),
+    t('stageDeck'),
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStageIdx((prev) => (prev + 1) % stages.length);
+    }, 1200);
+    return () => clearInterval(timer);
+  }, [stages.length]);
+
   return (
     <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none bg-[var(--bg-root)] animate-fade-in text-[var(--text-primary)]">
       {/* Header matching RoomLobby */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
           {onCancel ? (
             <button
               type="button"
               onClick={onCancel}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)]"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] active:scale-[0.96]"
               aria-label="Cancel and return home"
             >
-              <span>Back</span>
+              <span>{t('back')}</span>
             </button>
           ) : (
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
                 <BrandLogo size={18} />
               </div>
-              <span className="font-bold text-sm tracking-tight">NoYouPick</span>
+              <span className="font-bold text-sm tracking-tight">{t('brand')}</span>
             </div>
           )}
 
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)] font-normal">Code</span>
+            <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
             <span className="text-[var(--accent-bg)] tracking-widest animate-pulse font-mono font-bold">••••</span>
           </div>
 
@@ -53,7 +71,7 @@ export default function LobbyLoadingView({
             <div className="flex flex-col gap-1 min-w-0">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--accent-bg)]">
                 {isCustom ? <Layers size={13} /> : <Compass size={13} className="animate-spin" />}
-                <span>{isCustom ? 'Custom Poll' : category}</span>
+                <span>{isCustom ? t('catCustom') : category}</span>
               </span>
               <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight line-clamp-1">
                 {topic}
@@ -82,12 +100,12 @@ export default function LobbyLoadingView({
                 <span className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
                   <span>{userName}</span>
                   <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)]">
-                    Host
+                    {t('hostBadge')}
                   </span>
                 </span>
                 <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
-                  {isCustom ? 'Preparing room sync...' : 'Scanning 1km hex grid...'}
+                  <span>{stages[stageIdx]}</span>
                 </span>
               </div>
             </div>
@@ -101,7 +119,7 @@ export default function LobbyLoadingView({
           <div className="p-3.5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs">
             <div className="flex items-center gap-2">
               <Shield size={15} className="text-[var(--accent-bg)]" />
-              <span className="text-xs font-bold text-[var(--text-primary)]">Price Filter</span>
+              <span className="text-xs font-bold text-[var(--text-primary)]">{t('priceFilter')}</span>
             </div>
             <div className="h-6 w-32 rounded-full bg-[var(--bg-inset)] animate-pulse" />
           </div>
@@ -113,7 +131,7 @@ export default function LobbyLoadingView({
             <div className="flex items-center gap-2">
               <LayoutGrid size={16} className="text-[var(--accent-bg)]" />
               <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                {isCustom ? 'Options on the Table (Preparing...)' : 'Places on the Table (Finding spots...)'}
+                {isCustom ? `${t('optionsOnTable')}...` : `${t('placesOnTable')}...`}
               </h3>
             </div>
             <div className="h-5 w-16 rounded-full bg-[var(--bg-inset)] animate-pulse" />
@@ -150,12 +168,12 @@ export default function LobbyLoadingView({
         </section>
       </main>
 
-      {/* Fixed Bottom Action Bar Skeleton */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {/* Fixed Bottom Action Bar with Operational Labor Illusion */}
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-4 py-3 safe-pb-dock">
         <div className="max-w-md mx-auto">
-          <div className="w-full h-13 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center gap-2 text-sm font-semibold text-[var(--text-tertiary)] animate-pulse">
-            <Loader2 size={16} className="animate-spin text-[var(--accent-bg)]" />
-            <span>{isCustom ? 'Setting up Consensus Room...' : 'Finding local spots in 1km hex grid...'}</span>
+          <div className="w-full h-13 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text-secondary)] shadow-xs">
+            <Loader2 size={16} className="animate-spin text-[var(--accent-bg)] shrink-0" />
+            <span className="truncate">{stages[stageIdx]}</span>
           </div>
         </div>
       </div>

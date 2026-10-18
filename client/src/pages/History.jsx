@@ -198,7 +198,7 @@ export default function History() {
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 safe-pt-header pb-3">
         <div className="flex items-center justify-between">
           <button
             type="button"

@@ -5,6 +5,7 @@ import CustomOptionAutocomplete from './CustomOptionAutocomplete';
 import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { inferLibraryTabFromTopic, useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
+import { useLanguage } from '../../context/LanguageContext';
 
 function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   const { photo } = useCustomOptionPhoto(item.name, topic, item.photo_url);
@@ -92,6 +93,7 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
 }
 
 function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectDetails }) {
+  const { t } = useLanguage();
   const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
   const vibeSubtitle = getVenueVibe(item.name, item.category);
   const venueRating = getVenueRating(item.name, item.category);
@@ -116,7 +118,7 @@ function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectD
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onSelectDetails(item);
       }}
-      className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left"
+      className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/50 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98]"
     >
       {/* Curated Venue Image */}
       <div className="relative h-32 sm:h-36 w-full bg-[var(--bg-elevated)] overflow-hidden">
@@ -153,7 +155,7 @@ function CandidatePoolCard({ item, idx, topic, handleRemoveSuggestion, onSelectD
           </span>
           <span className="px-1.5 py-0.5 rounded-md bg-white/20 backdrop-blur-xs text-[10px] font-semibold text-white shrink-0 flex items-center gap-0.5">
             <Info size={10} />
-            <span>Details</span>
+            <span>{t('details')}</span>
           </span>
         </div>
       </div>
@@ -187,6 +189,7 @@ export default function CandidatePoolDeck({
   handleRemoveSuggestion,
   duplicateMatch,
 }) {
+  const { t } = useLanguage();
   const [showAddInput, setShowAddInput] = useState(mode === 'CUSTOM');
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [activeLibraryTab, setActiveLibraryTab] = useState(() => inferLibraryTabFromTopic(topic));
@@ -209,8 +212,8 @@ export default function CandidatePoolDeck({
           <LayoutGrid size={16} className="text-[var(--accent-bg)]" />
           <h3 className="text-sm font-bold text-[var(--text-primary)]">
             {mode === 'CUSTOM'
-              ? `Options on the Table (${displayedCandidates.length})`
-              : `Places on the Table (${displayedCandidates.length})`}
+              ? `${t('optionsOnTable')} (${displayedCandidates.length})`
+              : `${t('placesOnTable')} (${displayedCandidates.length})`}
           </h3>
         </div>
 
@@ -218,10 +221,10 @@ export default function CandidatePoolDeck({
           <button
             type="button"
             onClick={() => setShowAddInput((prev) => !prev)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.96]"
           >
             <Plus size={13} />
-            <span>{showAddInput ? 'Close' : 'Add Option'}</span>
+            <span>{showAddInput ? t('close') : t('addOption')}</span>
           </button>
         )}
       </div>
@@ -231,10 +234,10 @@ export default function CandidatePoolDeck({
         <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 font-medium">
           <div className="flex items-center gap-2">
             <ShieldCheck size={15} className="text-amber-500 shrink-0" />
-            <span>{prunedCount} pricier spot(s) above {budgetLimit} MDL hidden</span>
+            <span>{prunedCount} {t('spotsFilteredNotice')}</span>
           </div>
           <span className="text-[11px] font-semibold text-amber-500 bg-amber-500/15 px-2 py-0.5 rounded-full">
-            Filtered
+            {t('filteredBadge')}
           </span>
         </div>
       )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Layers, MapPin } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import ReviewModal from '../components/ui/ReviewModal';
@@ -29,6 +30,7 @@ export default function SwipeDeck() {
   const navigate = useNavigate();
   const { isConnected, participantId, emit, on, off } = useSocket();
   const { addToast } = useToast();
+  const { t } = useLanguage();
 
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
@@ -455,16 +457,16 @@ export default function SwipeDeck() {
       }`}
     >
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 pt-[max(env(safe-area-inset-top,0px),0.625rem)] pb-2.5 relative">
+      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 safe-pt-header pb-2.5 relative">
         <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
           <button
             type="button"
             onClick={() => navigate(`/lobby/${pin}`)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-[0.96]"
             aria-label="Back to Lobby"
           >
             <ArrowLeft size={14} />
-            <span>Lobby</span>
+            <span>{t('lobby')}</span>
           </button>
 
           {/* Segmented Tab Switcher (Discovery Only) or Option Counter (Custom Poll) */}
@@ -472,7 +474,7 @@ export default function SwipeDeck() {
             mode === 'CUSTOM' || activeCard?.isCustom ? (
               <div className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] tabular-nums">
                 <Layers size={12} className="text-[var(--accent-bg)]" />
-                <span>Option {Math.min(currentIndex + 1, cards.length)} of {cards.length}</span>
+                <span>{t('option')} {Math.min(currentIndex + 1, cards.length)} {t('ofWord')} {cards.length}</span>
               </div>
             ) : (
               <div className="flex items-center p-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
@@ -486,7 +488,7 @@ export default function SwipeDeck() {
                   }`}
                 >
                   <Layers size={12} />
-                  <span>Card {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
+                  <span>{t('card')} {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
                 </button>
                 <button
                   type="button"
@@ -498,13 +500,13 @@ export default function SwipeDeck() {
                   }`}
                 >
                   <MapPin size={12} />
-                  <span>Details & Route</span>
+                  <span>{t('detailsAndRoute')}</span>
                 </button>
               </div>
             )
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
-              <span className="text-[var(--text-tertiary)] font-normal">Room</span>
+              <span className="text-[var(--text-tertiary)] font-normal">{t('roomPrefix')}</span>
               <span className="text-[var(--accent-bg)] tabular-nums">#{pin}</span>
             </div>
           )}

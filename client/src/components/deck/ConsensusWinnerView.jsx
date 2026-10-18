@@ -21,6 +21,7 @@ import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueI
 import { formatTravelSummary } from '../../utils/location';
 import { apiUrl } from '../../utils/api';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
+import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../ui/Toast';
 
 export default function ConsensusWinnerView({
@@ -41,6 +42,7 @@ export default function ConsensusWinnerView({
   emit,
 }) {
   const { addToast } = useToast();
+  const { t } = useLanguage();
   const isCustomWinner = Boolean(mode === 'CUSTOM' || winner?.isCustom);
 
   const { primaryPhoto, isRealPhoto, fallbackPhoto } = useVenuePhotos(
@@ -198,7 +200,7 @@ export default function ConsensusWinnerView({
                 <span className="text-[11px] text-white/75 font-normal">({winnerRating.reviewCount})</span>
               </div>
               <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
-                Top Group Pick
+                {t('consensusWinner')}
               </span>
             </div>
 
@@ -220,10 +222,10 @@ export default function ConsensusWinnerView({
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-colors cursor-pointer"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.96]"
               >
                 <Info size={13} />
-                <span>Details & Map</span>
+                <span>{t('detailsAndRoute')}</span>
               </button>
             </div>
           </div>
@@ -511,9 +513,9 @@ export default function ConsensusWinnerView({
           size="md"
           onClick={handleStartAnother}
           icon={RotateCcw}
-          className="w-full rounded-2xl"
+          className="w-full rounded-2xl active:scale-[0.98] transition-transform"
         >
-          Start Another Group Decision
+          {t('startAnotherPick')}
         </Button>
       </div>
 
