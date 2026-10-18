@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, Share2, Smartphone } from 'lucide-react';
 import { useToast } from './Toast';
@@ -9,7 +9,7 @@ export default function QrCodeModal({
   pin,
   topic = 'Consensus Session',
 }) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
   const { addToast } = useToast();
 
   const inviteUrl = typeof window !== 'undefined'
