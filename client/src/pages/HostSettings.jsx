@@ -17,15 +17,12 @@ import {
   ChevronDown,
   Settings,
   Layers,
-  MapPin,
-  Navigation,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
-import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
 import HostCategoryPicker from '../components/host/HostCategoryPicker';

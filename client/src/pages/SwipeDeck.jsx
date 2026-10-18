@@ -1,31 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  ThumbsUp,
-  ThumbsDown,
-  Trophy,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  MapPin,
-  MessageSquarePlus,
-  X,
-  Flame,
-  Check,
-  Star,
-  ExternalLink,
   ArrowLeft,
-  Coins,
-  Navigation,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
-import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
-import MilledTray from '../components/ui/MilledTray';
 import ReviewModal from '../components/ui/ReviewModal';
 import ConsensusWinnerView from '../components/deck/ConsensusWinnerView';
 import SwipeCard from '../components/deck/SwipeCard';

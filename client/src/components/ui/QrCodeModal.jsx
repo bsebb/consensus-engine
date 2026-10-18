@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Copy, Check, Share2, Sparkles, Smartphone } from 'lucide-react';
+import { X, Copy, Check, Share2, Smartphone } from 'lucide-react';
 import { useToast } from './Toast';
 
 export default function QrCodeModal({

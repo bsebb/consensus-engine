@@ -1,6 +1,5 @@
 import React from 'react';
 import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Navigation } from 'lucide-react';
-import StatusBadge from '../ui/StatusBadge';
 import MilledTray from '../ui/MilledTray';
 import { getVenueImage, getVenueVibe } from '../../utils/venueImages';
 

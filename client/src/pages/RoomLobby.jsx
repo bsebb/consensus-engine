@@ -1,29 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Copy,
-  Check,
-  Users,
-  ShieldCheck,
-  Coins,
-  ArrowRight,
-  Plus,
-  Trash2,
-  Lock,
-  Sparkles,
-  Share2,
-  AlertTriangle,
-  Crown,
-  ArrowLeft,
   LogOut,
   Settings,
-  QrCode,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
-import RangeSlider from '../components/ui/RangeSlider';
 import StatusBadge from '../components/ui/StatusBadge';
 import SettingsModal from '../components/ui/SettingsModal';
 import QrCodeModal from '../components/ui/QrCodeModal';
