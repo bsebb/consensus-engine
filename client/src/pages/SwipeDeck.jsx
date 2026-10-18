@@ -53,14 +53,18 @@ export default function SwipeDeck() {
           return {
             id: `custom-${idx}`,
             name: item,
-            category: 'Group Suggestion',
+            category: 'Custom Poll Option',
             tags: ['Custom'],
             distance_km: null,
             price_level: 2,
-            address: 'Added by group',
+            address: '',
+            isCustom: true,
           };
         }
-        const liveDist = typeof item.distance_km === 'number'
+        const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
+        const liveDist = isCustomItem
+          ? null
+          : typeof item.distance_km === 'number'
           ? item.distance_km
           : savedGps && item.lat != null && item.lng != null
           ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
@@ -68,30 +72,32 @@ export default function SwipeDeck() {
         return {
           id: item.id || `option-${idx}`,
           name: item.name || `Option ${idx + 1}`,
-          category: item.category || 'Local Favorite',
+          category: isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite'),
           tags: item.tags || ['Top Pick'],
           distance_km: liveDist,
-          drive_minutes: item.drive_minutes ?? null,
-          walk_minutes: item.walk_minutes ?? null,
-          lat: item.lat ?? null,
-          lng: item.lng ?? null,
+          drive_minutes: isCustomItem ? null : (item.drive_minutes ?? null),
+          walk_minutes: isCustomItem ? null : (item.walk_minutes ?? null),
+          lat: isCustomItem ? null : (item.lat ?? null),
+          lng: isCustomItem ? null : (item.lng ?? null),
           price_level: typeof item.price_level === 'number' ? item.price_level : 2,
-          address: item.address || 'Local Venue',
+          address: isCustomItem ? '' : (item.address || 'Local Venue'),
+          isCustom: isCustomItem,
         };
       });
     }
 
     if (mode === 'CUSTOM') {
       return [
-        { id: 'c1', name: 'Downtown Bowling Lounge', category: 'Activities', tags: ['Fun', 'Social'], distance_km: null, price_level: 2, address: 'Main Street 44' },
-        { id: 'c2', name: 'Cozy Board Game Cafe', category: 'Coffee & Games', tags: ['Chill', 'Drinks'], distance_km: null, price_level: 1, address: 'Park Avenue 12' },
-        { id: 'c3', name: 'Rooftop Lounge', category: 'Nightlife', tags: ['Scenic', 'Vibes'], distance_km: null, price_level: 3, address: 'Skyline Plaza' },
+        { id: 'c1', name: 'Bowling Night', category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true },
+        { id: 'c2', name: 'Board Games Night', category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true },
+        { id: 'c3', name: 'Sci-Fi / Thriller Movie', category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true },
       ];
     }
 
     return (restaurantsMock || []).map((r) => ({
       ...r,
       distance_km: savedGps && r.lat != null && r.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng) : null,
+      isCustom: false,
     }));
   });
 
@@ -455,34 +461,41 @@ export default function SwipeDeck() {
             <span>Lobby</span>
           </button>
 
-          {/* Segmented Tab Switcher: Vote Card vs Details & Route */}
+          {/* Segmented Tab Switcher (Discovery Only) or Option Counter (Custom Poll) */}
           {!showWinner && currentIndex < cards.length ? (
-            <div className="flex items-center p-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-              <button
-                type="button"
-                onClick={() => setActiveTab('swipe')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer tabular-nums ${
-                  activeTab === 'swipe'
-                    ? 'bg-[var(--accent-bg)] text-white shadow-xs'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <Layers size={12} />
-                <span>Card {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('details')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'details'
-                    ? 'bg-[var(--accent-bg)] text-white shadow-xs'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <MapPin size={12} />
-                <span>Details & Route</span>
-              </button>
-            </div>
+            mode === 'CUSTOM' || activeCard?.isCustom ? (
+              <div className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] tabular-nums">
+                <Layers size={12} className="text-[var(--accent-bg)]" />
+                <span>Option {Math.min(currentIndex + 1, cards.length)} of {cards.length}</span>
+              </div>
+            ) : (
+              <div className="flex items-center p-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('swipe')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer tabular-nums ${
+                    activeTab === 'swipe'
+                      ? 'bg-[var(--accent-bg)] text-white shadow-xs'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <Layers size={12} />
+                  <span>Card {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('details')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'details'
+                      ? 'bg-[var(--accent-bg)] text-white shadow-xs'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <MapPin size={12} />
+                  <span>Details & Route</span>
+                </button>
+              </div>
+            )
           ) : (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
               <span className="text-[var(--text-tertiary)] font-normal">Room</span>
@@ -509,6 +522,8 @@ export default function SwipeDeck() {
       {/* WINNER REVEAL SCREEN */}
       {showWinner ? (
         <ConsensusWinnerView
+          mode={mode}
+          topic={topic}
           winner={consensusResult.winner}
           matchScore={consensusResult.matchScore}
           mapsDirUrl={mapsDirUrl}
@@ -529,7 +544,7 @@ export default function SwipeDeck() {
           quorumTotal={quorumTotal}
           handleHostForceReveal={handleHostForceReveal}
         />
-      ) : activeTab === 'details' ? (
+      ) : activeTab === 'details' && mode !== 'CUSTOM' && !activeCard?.isCustom ? (
         <main className="px-4 py-2 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
           <VenueDetailsModal
             venue={activeCard}
@@ -540,6 +555,10 @@ export default function SwipeDeck() {
         </main>
       ) : (
         <SwipeCard
+          mode={mode}
+          topic={topic}
+          cardIndex={currentIndex + 1}
+          totalCards={cards.length}
           activeCard={activeCard}
           dragOffset={dragOffset}
           exitDirection={exitDirection}
@@ -552,7 +571,7 @@ export default function SwipeDeck() {
           cardReviewCount={cardReviewCount}
           cardPriceDesc={cardPriceDesc}
           cardWalkDesc={cardWalkDesc}
-          onOpenDetails={() => setActiveTab('details')}
+          onOpenDetails={mode === 'CUSTOM' || activeCard?.isCustom ? null : () => setActiveTab('details')}
         />
       )}
 

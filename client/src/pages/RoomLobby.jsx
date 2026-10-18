@@ -373,6 +373,21 @@ export default function RoomLobby() {
     setSuggestion('');
   };
 
+  const handleQuickAddSuggestion = (ideaText) => {
+    const clean = String(ideaText || '').trim();
+    if (!clean) return;
+    if (groupPool.some((s) => s.toLowerCase() === clean.toLowerCase())) return;
+
+    emit('add_suggestion', {
+      pin,
+      suggestion: clean,
+      participant_id: participantId,
+      user_name: currentUserName,
+    });
+
+    setGroupPool((prev) => [...prev, clean]);
+  };
+
   const handleRemoveSuggestion = (idx) => {
     const target = groupPool[idx];
     if (target) {
@@ -396,7 +411,7 @@ export default function RoomLobby() {
 
     if (cardsToPass.length < 2) {
       addToast({
-        title: 'Add At Least 2 Spots',
+        title: mode === 'CUSTOM' ? 'Add At Least 2 Options' : 'Add At Least 2 Spots',
         message: 'Add at least 2 options above so everyone can vote.',
         type: 'warning',
       });
@@ -488,7 +503,7 @@ export default function RoomLobby() {
           />
         )}
 
-        {/* Curated Places on the Table */}
+        {/* Curated Places / Custom Options on the Table */}
         <CandidatePoolDeck
           mode={mode}
           candidates={filteredCandidates}
@@ -498,6 +513,7 @@ export default function RoomLobby() {
           suggestion={suggestion}
           setSuggestion={setSuggestion}
           handleAddSuggestion={handleAddSuggestion}
+          handleQuickAddSuggestion={handleQuickAddSuggestion}
           handleRemoveSuggestion={handleRemoveSuggestion}
           duplicateMatch={duplicateMatch}
         />
@@ -515,7 +531,10 @@ export default function RoomLobby() {
               icon={ArrowRight}
               className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl"
             >
-              Start Voting • {Math.min(8, filteredCandidates.length)} {filteredCandidates.length === 1 ? 'Place' : 'Places'}
+              Start Voting • {Math.min(8, filteredCandidates.length)}{' '}
+              {mode === 'CUSTOM'
+                ? filteredCandidates.length === 1 ? 'Option' : 'Options'
+                : filteredCandidates.length === 1 ? 'Place' : 'Places'}
             </Button>
           ) : (
             <div className="py-2.5 px-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-center flex items-center justify-center gap-2">

@@ -77,30 +77,19 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-/**
- * Generates Uber-style H3 hexagonal ring centers around (centerLat, centerLng).
- * Ring 0: [center]
- * Ring 1: 6 surrounding hex centers at distance sqrt(3) * hexRadiusMeters (~1.73 km for 1km hexes)
- */
 function generateHexRingCenters(centerLat, centerLng, ringIndex, hexRadiusMeters = 1000) {
-  if (ringIndex <= 0) {
-    return [{ lat: centerLat, lng: centerLng, cellRadius: hexRadiusMeters }];
-  }
+  if (ringIndex <= 0) return [{ lat: centerLat, lng: centerLng, cellRadius: hexRadiusMeters }];
   const distanceMeters = Math.sqrt(3) * hexRadiusMeters * ringIndex;
   const metersPerDegLat = 111320;
   const metersPerDegLng = 111320 * Math.cos((centerLat * Math.PI) / 180);
-  const centers = [];
-  for (let i = 0; i < 6; i++) {
+  return Array.from({ length: 6 }, (_, i) => {
     const angleRad = ((i * 60) * Math.PI) / 180;
-    const dLat = (distanceMeters * Math.cos(angleRad)) / metersPerDegLat;
-    const dLng = (distanceMeters * Math.sin(angleRad)) / Math.max(1, metersPerDegLng);
-    centers.push({
-      lat: Number((centerLat + dLat).toFixed(6)),
-      lng: Number((centerLng + dLng).toFixed(6)),
+    return {
+      lat: Number((centerLat + (distanceMeters * Math.cos(angleRad)) / metersPerDegLat).toFixed(6)),
+      lng: Number((centerLng + (distanceMeters * Math.sin(angleRad)) / Math.max(1, metersPerDegLng)).toFixed(6)),
       cellRadius: hexRadiusMeters,
-    });
-  }
-  return centers;
+    };
+  });
 }
 
 function getCategoryKey(theme = '') {
@@ -121,45 +110,62 @@ function getSearchQueryForTheme(theme = '') {
   return 'restaurant';
 }
 
-function isRelevantFoursquarePlace(place, categoryKey) {
-  const nameLower = String(place.name || '').toLowerCase();
+function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = false) {
+  const nameLower = String(place.name || '').toLowerCase().trim();
+  if (!nameLower) return false;
+
   const cats = Array.isArray(place.categories) ? place.categories : [];
-  const catNames = cats.map((c) => `${c.name || ''} ${c.short_name || ''} ${c.icon?.prefix || ''}`).join(' ').toLowerCase();
+  const catNames = cats.map((c) => `${c.name || ''} ${c.short_name || ''}`).join(' ').toLowerCase();
   const combined = `${nameLower} ${catNames}`;
 
-  const bannedKeywords = [
-    'supermarket', 'hypermarket', 'grocery', 'playground', 'loc de joacă',
-    'monument', 'memorial', 'cernobâl', 'fountain', 'havuz', 'bridge', 'podul',
-    'lake', 'lacul', 'beach', 'plaja', 'hotel', 'hostel', 'wedding', 'ballroom',
-    'pharmacy', 'hospital', 'clinic', 'bank', 'atm', 'gas station', 'petrol',
-    'school', 'university', 'kindergarten', 'cemetery', 'ruinele', 'scuarul'
+  const bannedPatterns = [
+    /\b(convenience store|grocery|supermarket|hypermarket|alimentara|magazin|minimarket|butic)\b/i,
+    /\b(gas station|petrol|fuel|peco|rompetrol|lukoil|petrom|bemol|vento|car wash|auto service|tire)\b/i,
+    /\b(pharmacy|farmacie|hospital|spital|clinic|clinica|dentist|bank|banca|atm|poșta|post office)\b/i,
+    /\b(school|școala|liceul|gimnaziul|university|kindergarten|grădinița|cemetery|cimitir)\b/i,
+    /\b(hotel|hostel|motel|apartments|residence|monument|memorial|cernobâl|fountain|havuz|bridge|podul|playground|loc de joacă|ruinele|scuarul)\b/i,
+    /\b(winery|vineyard|vinărie|crama|château|chateau)\b/i,
   ];
-  if (bannedKeywords.some((kw) => combined.includes(kw))) {
+
+  // Allow Chateau Vartely in Orhei only for restaurants/bars when close by, block industrial wineries for cafes/desserts
+  for (const pat of bannedPatterns) {
+    if (pat.test(combined)) {
+      if (pat.source.includes('winery') && (categoryKey === 'restaurants' || categoryKey === 'bars') && nameLower.includes('vartely')) {
+        continue;
+      }
+      return false;
+    }
+  }
+
+  // Also reject if Foursquare explicitly labels it a Store / Retail / Shop (and not a Coffee Shop / Pastry Shop / Ice Cream Shop)
+  if (
+    /\b(store|shop|market|dealer|repair|salon|barber|frizerie|laundry|spălătorie)\b/i.test(catNames) &&
+    !/\b(coffee|cafe|café|pastry|bakery|dessert|ice cream|gelato|sweet|donut|tea|bagel|sandwich|pizza|burger|pie|cake)\b/i.test(catNames)
+  ) {
     return false;
   }
 
   if (categoryKey === 'cinema') {
-    const cinemaKeywords = ['cinema', 'movie', 'theater', 'theatre', 'film', 'multiplex', 'cineplex', 'odeon', 'patria', 'movietheater', 'auto cinema'];
-    return cinemaKeywords.some((kw) => combined.includes(kw));
+    return /\b(cinema|movie|theater|theatre|film|multiplex|cineplex|odeon|patria)\b/i.test(combined);
+  }
+
+  if (allowTownHospitality) {
+    return /\b(restaurant|cafe|café|coffee|espresso|bakery|pastry|patisserie|bistro|dessert|pizza|pizzeria|grill|bar|pub|tavern|trattoria|kebab|fast food|plăcinte|placinte|diner|kitchen|lounge)\b/i.test(combined);
   }
 
   if (categoryKey === 'cafes') {
-    const cafeKeywords = ['cafe', 'café', 'coffee', 'espresso', 'bakery', 'pastry', 'patisserie', 'tea', 'bistro', 'dessert', 'tucano', 'crème', 'creme', 'rozmarin', 'sensi', 'propaganda', 'coffeemolka'];
-    return cafeKeywords.some((kw) => combined.includes(kw));
+    return /\b(cafe|café|coffee|espresso|bakery|pastry|patisserie|tea house|teahouse|bistro|dessert|cappuccino|latte|roastery|tucano|crème|creme|rozmarin|sensi|propaganda|coffeemolka|delice|délice)\b/i.test(combined);
   }
 
   if (categoryKey === 'bars') {
-    const barKeywords = ['bar', 'pub', 'beer', 'wine', 'brewery', 'taproom', 'cocktail', 'lounge', 'nightlife', 'tavern', 'pivnice', 'gastropub', 'kozlovna', 'draft', 'smokehouse', 'invino', 'pivko'];
-    return barKeywords.some((kw) => combined.includes(kw));
+    return /\b(bar|pub|beer|wine bar|brewery|taproom|cocktail|lounge|nightlife|tavern|pivnice|gastropub|kozlovna|draft|smokehouse|invino|pivko)\b/i.test(combined);
   }
 
   if (categoryKey === 'desserts') {
-    const dessertKeywords = ['dessert', 'bakery', 'pastry', 'patisserie', 'ice cream', 'icecream', 'gelato', 'cake', 'sweet', 'confectionery', 'cafe', 'café', 'crème', 'creme', 'delice', 'dulcinella', 'sandra', 'granier'];
-    return dessertKeywords.some((kw) => combined.includes(kw));
+    return /\b(dessert|bakery|pastry|patisserie|ice cream|icecream|gelato|cake|sweet|confectionery|cafe|café|crème|creme|delice|délice|dulcinella|sandra|granier|covrigo|cuptorul)\b/i.test(combined);
   }
 
-  const diningKeywords = ['restaurant', 'food/', 'pizza', 'pizzeria', 'steak', 'grill', 'sushi', 'burger', 'bistro', 'kitchen', 'trattoria', 'tavern', 'gastropub', 'bbq', 'diner', 'cafe', 'café', 'bar', 'pub', 'european', 'italian', 'romanian', 'moldovan', 'asian', 'fast food', 'plăcinte', 'placinte', 'kfc', 'mcdonald'];
-  return diningKeywords.some((kw) => combined.includes(kw));
+  return /\b(restaurant|pizza|pizzeria|steak|grill|sushi|burger|bistro|kitchen|trattoria|tavern|gastropub|bbq|diner|cafe|café|bar|pub|european|italian|romanian|moldovan|asian|fast food|plăcinte|placinte|kfc|mcdonald|mcdonald's|hanul)\b/i.test(combined);
 }
 
 function inferPriceLevel(place, categoryKey) {
@@ -254,82 +260,98 @@ async function queryFoursquarePlaces({ queryTerm, lat, lng, radius, cleanKey }) 
   return Array.isArray(data.results) ? data.results : [];
 }
 
+// Town-level OpenStreetMap hospitality cache so multiple searches in the same town never rate-limit Nominatim
+const osmTownCache = new Map();
+
 /**
- * Queries OpenStreetMap Nominatim within a bounded hexagonal bounding box around (lat, lng).
- * Crucial for smaller cities and towns where Foursquare coverage is sparse.
+ * Queries OpenStreetMap Nominatim within a 3.2 km town bounding box around (lat, lng).
+ * Uses at most 2 requests spaced by 700ms to strictly respect Nominatim's 1 req/sec policy.
  */
-async function queryNominatimBoundedPlaces({ categoryKey, lat, lng, radiusMeters }) {
+async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants') {
   if (lat == null || lng == null) return [];
+  const townKey = `osm_town_${Number(lat).toFixed(2)}_${Number(lng).toFixed(2)}_${categoryKey}`;
+  const cached = osmTownCache.get(townKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.places;
+  }
+
+  const radiusMeters = 3200;
   const dLat = radiusMeters / 111320;
   const dLng = radiusMeters / Math.max(1, 111320 * Math.cos((lat * Math.PI) / 180));
   const viewbox = `${(lng - dLng).toFixed(5)},${(lat + dLat).toFixed(5)},${(lng + dLng).toFixed(5)},${(lat - dLat).toFixed(5)}`;
 
-  const termsByCategory = {
-    restaurants: ['restaurant', 'pizza'],
-    cafes: ['cafe', 'coffee'],
-    bars: ['bar', 'pub'],
-    cinema: ['cinema'],
-    desserts: ['bakery', 'cafe'],
-  };
-  const terms = termsByCategory[categoryKey] || ['restaurant'];
-  const combinedResults = [];
+  const primaryTerm =
+    categoryKey === 'cafes' ? 'cafe' :
+    categoryKey === 'bars' ? 'bar' :
+    categoryKey === 'desserts' ? 'bakery' :
+    categoryKey === 'cinema' ? 'cinema' : 'restaurant';
 
-  for (const term of terms) {
+  const terms = primaryTerm === 'restaurant' ? ['restaurant', 'cafe'] : [primaryTerm, 'restaurant'];
+  const allPlaces = [];
+
+  const mapOsmTypeToLabel = (osmType, term) => {
+    if (osmType === 'cafe' || term === 'cafe') return 'Coffee & Café';
+    if (osmType === 'bakery' || term === 'bakery') return 'Bakery & Desserts';
+    if (osmType === 'bar' || osmType === 'pub' || term === 'bar') return 'Bar & Pub';
+    if (osmType === 'cinema' || term === 'cinema') return 'Movie Theater';
+    if (osmType === 'fast_food') return 'Casual Dining';
+    return 'Restaurant';
+  };
+
+  for (let i = 0; i < terms.length; i++) {
+    const term = terms[i];
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, 700));
+    }
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(term)}&viewbox=${viewbox}&bounded=1&limit=20&addressdetails=1&accept-language=en,ro`;
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(term)}&viewbox=${viewbox}&bounded=1&limit=25&addressdetails=1&accept-language=en,ro`;
       const res = await fetch(url, {
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'ConsensusEngine/1.0 (https://consensus-engine-mauve.vercel.app)',
+          'User-Agent': 'ConsensusEngine/2.0 (https://consensus-engine-mauve.vercel.app)',
         },
         signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
       });
-      if (res.ok) {
-        const items = await res.json();
-        if (Array.isArray(items)) {
-          for (const item of items) {
-            if (!item.name || item.lat == null || item.lon == null) continue;
-            const addrObj = item.address || {};
-            const locality = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || addrObj.suburb || '';
-            const street = [addrObj.road, addrObj.house_number].filter(Boolean).join(' ');
-            const formattedAddr = [street, locality].filter(Boolean).join(', ') || item.display_name?.split(',').slice(0, 2).join(', ') || 'Local Area';
-            const catLabel =
-              categoryKey === 'cinema' ? 'Movie Theater' :
-              categoryKey === 'cafes' ? 'Coffee & Café' :
-              categoryKey === 'bars' ? 'Bar & Pub' :
-              categoryKey === 'desserts' ? 'Bakery & Desserts' :
-              item.type === 'fast_food' ? 'Fast Food' : 'Restaurant';
+      if (!res.ok) continue;
+      const items = await res.json();
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        if (!item.name || item.lat == null || item.lon == null) continue;
+        const addrObj = item.address || {};
+        const locality = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || addrObj.suburb || '';
+        const street = [addrObj.road, addrObj.house_number].filter(Boolean).join(' ');
+        const formattedAddr = [street, locality].filter(Boolean).join(', ') || item.display_name?.split(',').slice(0, 2).join(', ') || 'Local Area';
+        const catLabel = mapOsmTypeToLabel(item.type, term);
 
-            combinedResults.push({
-              fsq_id: `osm_${item.place_id}`,
-              name: item.name,
-              latitude: parseFloat(item.lat),
-              longitude: parseFloat(item.lon),
-              categories: [{ name: catLabel, short_name: catLabel }],
-              location: {
-                address: formattedAddr,
-                locality,
-              },
-            });
-          }
-        }
+        allPlaces.push({
+          fsq_id: `osm_${item.place_id}`,
+          name: item.name,
+          latitude: parseFloat(item.lat),
+          longitude: parseFloat(item.lon),
+          categories: [{ name: catLabel, short_name: catLabel }],
+          location: {
+            address: formattedAddr,
+            locality,
+          },
+        });
       }
-    } catch (err) {
-      console.warn(`[OSM Hex Search] Warning for term "${term}":`, err.message);
+    } catch {
+      // Ignore individual term timeout
     }
   }
 
-  return combinedResults;
+  if (allPlaces.length > 0) {
+    osmTownCache.set(townKey, { places: allPlaces, timestamp: Date.now() });
+  }
+  return allPlaces;
 }
 
 /**
  * Uber-Style Expanding Hexagonal Spatial Search Engine:
- * - Ring 0: Center 1.0 km hexagon around (centerLat, centerLng)
- * - Ring 1: 6 surrounding 1.0 km hexagons (~2.5 km hex cluster)
- * - Ring 2: 5.0 km expanded regional ring
- * - Ring 3: 10.0 km town/suburban ring
- * Works in ANY city or town globally without clamping to Chișinău,
- * and always keeps the closest branch of any chain (e.g., McDonald's).
+ * - Ring 0: Center 1.2 km hexagon around (centerLat, centerLng)
+ * - Ring 1: 3.0 km town/neighborhood hex cluster (covers an entire town like Strășeni, Orhei, Soroca, Cahul)
+ * - Ring 2: 4.5 km expanded city ring (only used if < 4 local places exist in the 3.0 km town ring)
+ * Never jumps to highway stops (7km+) or neighboring villages (11km+) when in-town venues exist.
  */
 const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   let theme = "restaurant";
@@ -378,25 +400,20 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
 
   const cacheLat = centerLat.toFixed(3);
   const cacheLng = centerLng.toFixed(3);
-  const cacheKey = `hex_v4_${categoryKey}_${cacheLat}_${cacheLng}_${isExactGps}`;
+  const cacheKey = `hex_v8_${categoryKey}_${cacheLat}_${cacheLng}_${isExactGps}`;
 
   const cached = queryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.data;
   }
 
-  // Uber-style expanding hexagonal rings:
-  // Ring 0: 1.0 km center hex
-  // Ring 1: 2.5 km (covers 6 surrounding 1km hexagons at d = 1.73 km)
-  // Ring 2: 5.0 km
-  // Ring 3: 10.0 km (if in a smaller town or sparse category like Cinema)
   const TARGET_PLACES = 6;
-  const hexRingsMeters = [1000, 2500, 5000, 10000];
+  const hexRingsMeters = categoryKey === 'cinema' ? [2500, 6000, 15000] : [1200, 3000, 4500];
   const accumulatedVenues = new Map();
 
-  const ingestCandidates = (candidates, fallbackRadiusMeters) => {
+  const ingestCandidates = (candidates, maxRadiusMeters, allowTownHospitality = false) => {
     for (const place of candidates) {
-      if (!isRelevantFoursquarePlace(place, categoryKey)) continue;
+      if (!isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality)) continue;
 
       const id = place.fsq_place_id || place.fsq_id || place.id || `venue_${Math.random()}`;
       const normNameKey = String(place.name || '').toLowerCase().trim();
@@ -411,11 +428,11 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       } else if (place.distance != null) {
         distMeters = place.distance;
       } else {
-        distMeters = fallbackRadiusMeters;
+        distMeters = maxRadiusMeters;
       }
 
-      // Discard venues outside the current expansion ring + 20% tolerance
-      if (distMeters > fallbackRadiusMeters * 1.25) continue;
+      // Strictly enforce ring boundary so out-of-town highway stops (7km - 11km) are rejected
+      if (distMeters > maxRadiusMeters * 1.1) continue;
 
       // CLOSEST-BRANCH RULE: If a chain (e.g., McDonald's, Andy's Pizza) is already in the map,
       // only overwrite it if this branch is physically closer to the user's coordinates!
@@ -457,12 +474,16 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   };
 
   try {
+    const townOsmPromise = categoryKey !== 'cinema'
+      ? getTownOsmHospitalityPlaces(centerLat, centerLng, categoryKey).catch(() => [])
+      : Promise.resolve([]);
+
     for (let ringIdx = 0; ringIdx < hexRingsMeters.length; ringIdx++) {
       const ringRadius = hexRingsMeters[ringIdx];
 
-      // 1. Query Foursquare at the hex center sorted by DISTANCE
+      const tasks = [townOsmPromise];
       if (cleanKey) {
-        const [typedPlaces, broadPlaces] = await Promise.all([
+        tasks.push(
           queryFoursquarePlaces({
             queryTerm,
             lat: centerLat,
@@ -476,45 +497,24 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
             lng: centerLng,
             radius: ringRadius,
             cleanKey,
-          }).catch(() => []),
-        ]);
-
-        ingestCandidates([...typedPlaces, ...broadPlaces], ringRadius);
-
-        // If Ring 1 (6 neighbor hexagons at 1.73 km) still needs more spots, sample the 6 hex vertices
-        if (ringIdx === 1 && accumulatedVenues.size < TARGET_PLACES) {
-          const neighborHexes = generateHexRingCenters(centerLat, centerLng, 1, 1000);
-          const hexSamples = await Promise.all(
-            neighborHexes.map((hex) =>
-              queryFoursquarePlaces({
-                queryTerm,
-                lat: hex.lat,
-                lng: hex.lng,
-                radius: hex.cellRadius,
-                cleanKey,
-              }).catch(() => [])
-            )
-          );
-          for (const sample of hexSamples) {
-            ingestCandidates(sample, ringRadius);
-          }
-        }
+          }).catch(() => [])
+        );
       }
 
-      // 2. If fewer than TARGET_PLACES in this hex ring, also query OpenStreetMap Nominatim bounded hex box
-      // so smaller cities and towns get all their local restaurants/cafes/bars
-      if (accumulatedVenues.size < TARGET_PLACES && ringIdx >= 1) {
-        const osmPlaces = await queryNominatimBoundedPlaces({
-          categoryKey,
-          lat: centerLat,
-          lng: centerLng,
-          radiusMeters: ringRadius,
-        });
-        ingestCandidates(osmPlaces, ringRadius);
+      const results = await Promise.all(tasks);
+      const allRingCandidates = results.flat();
+      ingestCandidates(allRingCandidates, ringRadius, false);
+
+      // In Ring 1 (3.0 km town radius), if a smaller town (like Strășeni) has fewer than 6 strict matches
+      // for a sub-category (e.g. only 2 pure cafes), fill the remaining spots from the town's own local
+      // restaurants/bakeries/pubs within 3.2 km (from both Foursquare and OSM) rather than expanding
+      // 7-11 km out to highways or neighboring villages!
+      if (ringIdx === 1 && accumulatedVenues.size < TARGET_PLACES && categoryKey !== 'cinema') {
+        ingestCandidates(allRingCandidates, 3200, true);
       }
 
-      // Stop expanding outward as soon as we have enough local venues in the current hex ring!
-      if (accumulatedVenues.size >= TARGET_PLACES) {
+      // Stop expanding as soon as we have enough local venues (or at least 3 in-town venues within 3km)
+      if (accumulatedVenues.size >= TARGET_PLACES || (ringIdx >= 1 && accumulatedVenues.size >= 3)) {
         break;
       }
     }
@@ -522,22 +522,14 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
     if (accumulatedVenues.size > 0) {
       let candidatesList = Array.from(accumulatedVenues.values())
         .sort((a, b) => a.distance_meters - b.distance_meters)
-        .slice(0, 10);
+        .slice(0, 8);
 
-      // Compute true road/bridge network distances via OSRM so venues across rivers/railways
-      // reflect real street distance and travel duration rather than straight-line distance
+      // Compute true road/bridge network distances via OSRM
       candidatesList = await enrichVenuesWithRoadDistances(centerLat, centerLng, candidatesList, isExactGps);
 
       const sortedResults = candidatesList
         .sort((a, b) => a.distance_meters - b.distance_meters)
         .slice(0, 6);
-
-      // Warm real photo cache sequentially in the background for the top 6 venues
-      (async () => {
-        for (const v of sortedResults) {
-          await fetchRealVenuePhotos(v.name, v.address, v.category).catch(() => []);
-        }
-      })().catch(() => {});
 
       queryCache.set(cacheKey, { data: sortedResults, timestamp: Date.now() });
       return sortedResults;
@@ -549,66 +541,11 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   return resolveFallback(theme, centerLat, centerLng, isExactGps);
 };
 
-// In-memory cache & in-flight deduplication for real venue photos
-const venuePhotoCache = new Map();
-const inFlightPhotoRequests = new Map();
-
 /**
- * Fetches up to 4 real high-resolution CDN photos for a specific venue (name + city/address + category).
+ * Returns verified venue photos only (never scrapes random web search thumbnails).
  */
-async function fetchRealVenuePhotos(name = '', address = '', category = '') {
-  const cleanName = String(name || '').trim();
-  if (!cleanName) return [];
-
-  const cityPart = String(address || '').split(',').pop()?.trim() || '';
-  const cacheKey = `${cleanName.toLowerCase()}|${cityPart.toLowerCase()}`;
-  const cached = venuePhotoCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 12 * 60 * 60 * 1000) {
-    return cached.photos;
-  }
-
-  if (inFlightPhotoRequests.has(cacheKey)) {
-    return inFlightPhotoRequests.get(cacheKey);
-  }
-
-  const reqPromise = (async () => {
-    const query = [cleanName, cityPart, category || 'restaurant'].filter(Boolean).join(' ');
-    try {
-      const url = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&first=1`;
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml',
-        },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined,
-      });
-      if (!res.ok) return [];
-      const html = await res.text();
-      const matches = [...html.matchAll(/turl&quot;:&quot;(https:\/\/ts[0-9]\.mm\.bing\.net\/th\?id=OIP\.[^&]+?)&amp;/g)];
-      const uniquePhotos = [];
-      const seen = new Set();
-      for (const m of matches) {
-        const highResUrl = `${m[1]}&w=800&h=600&c=7`;
-        if (!seen.has(highResUrl)) {
-          seen.add(highResUrl);
-          uniquePhotos.push(highResUrl);
-        }
-        if (uniquePhotos.length >= 4) break;
-      }
-      if (uniquePhotos.length > 0) {
-        venuePhotoCache.set(cacheKey, { photos: uniquePhotos, timestamp: Date.now() });
-      }
-      return uniquePhotos;
-    } catch {
-      return [];
-    } finally {
-      inFlightPhotoRequests.delete(cacheKey);
-    }
-  })();
-
-  inFlightPhotoRequests.set(cacheKey, reqPromise);
-  return reqPromise;
+async function fetchRealVenuePhotos() {
+  return [];
 }
 
 /**
