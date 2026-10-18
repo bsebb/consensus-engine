@@ -6,29 +6,47 @@
 
 let audioCtx = null;
 
-function getAudioContext() {
+export function initAudioContext() {
   if (typeof window === 'undefined') return null;
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (AudioContextClass) {
-      audioCtx = new AudioContextClass();
+  try {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
     }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    if (audioCtx) {
+      const buffer = audioCtx.createBuffer(1, 1, 22050);
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
+    }
+  } catch {}
+  return audioCtx;
+}
+
+function getAudioContext() {
+  if (!audioCtx) {
+    return initAudioContext();
   }
-  if (audioCtx && audioCtx.state === 'suspended') {
+  if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(() => {});
   }
   return audioCtx;
 }
 
-// Automatically unlock AudioContext on first user interaction
+// Automatically unlock AudioContext on any user interaction
 if (typeof window !== 'undefined') {
-  const unlockAudio = () => {
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
+  const unlock = () => {
+    initAudioContext();
   };
-  window.addEventListener('pointerdown', unlockAudio, { passive: true, once: true });
-  window.addEventListener('keydown', unlockAudio, { passive: true, once: true });
+  ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'].forEach((evt) => {
+    window.addEventListener(evt, unlock, { passive: true });
+  });
 }
 
 function isHapticsEnabled() {
@@ -37,7 +55,7 @@ function isHapticsEnabled() {
 }
 
 /**
- * 1200Hz 8ms crisp acoustic micro-tick for subtle tap feedback
+ * 950Hz crisp acoustic micro-tick for subtle tap feedback
  */
 export function playTapTick() {
   const ctx = getAudioContext();
@@ -48,22 +66,22 @@ export function playTapTick() {
     const now = ctx.currentTime;
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(1200, now);
-    osc.frequency.exponentialRampToValueAtTime(400, now + 0.015);
+    osc.frequency.setValueAtTime(950, now);
+    osc.frequency.exponentialRampToValueAtTime(320, now + 0.02);
 
-    gain.gain.setValueAtTime(0.06, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.016);
+    osc.stop(now + 0.022);
   } catch {}
 }
 
 /**
- * Warm ascending two-tone chime for Like swipe (520Hz -> 780Hz)
+ * Warm ascending two-tone chime for Like swipe (480Hz -> 760Hz)
  */
 export function playSwipeRightSound() {
   const ctx = getAudioContext();
@@ -74,22 +92,22 @@ export function playSwipeRightSound() {
     const gain = ctx.createGain();
 
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(520, now);
-    osc.frequency.exponentialRampToValueAtTime(780, now + 0.11);
+    osc.frequency.setValueAtTime(480, now);
+    osc.frequency.exponentialRampToValueAtTime(760, now + 0.12);
 
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    gain.gain.setValueAtTime(0.24, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.12);
+    osc.stop(now + 0.14);
   } catch {}
 }
 
 /**
- * Soft damped pop for Pass swipe (240Hz -> 130Hz)
+ * Soft damped pop for Pass swipe (260Hz -> 130Hz)
  */
 export function playSwipeLeftSound() {
   const ctx = getAudioContext();
@@ -100,22 +118,22 @@ export function playSwipeLeftSound() {
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(240, now);
-    osc.frequency.exponentialRampToValueAtTime(130, now + 0.09);
+    osc.frequency.setValueAtTime(260, now);
+    osc.frequency.exponentialRampToValueAtTime(130, now + 0.10);
 
-    gain.gain.setValueAtTime(0.09, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.09);
+    osc.stop(now + 0.105);
   } catch {}
 }
 
 /**
- * Muted low thud for Veto action (160Hz -> 55Hz)
+ * Muted low thud for Veto action (180Hz -> 50Hz)
  */
 export function playVetoSound() {
   const ctx = getAudioContext();
@@ -125,18 +143,18 @@ export function playVetoSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.exponentialRampToValueAtTime(55, now + 0.14);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
 
-    gain.gain.setValueAtTime(0.14, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    gain.gain.setValueAtTime(0.22, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.14);
+    osc.stop(now + 0.16);
   } catch {}
 }
 

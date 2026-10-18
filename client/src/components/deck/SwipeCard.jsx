@@ -71,7 +71,7 @@ export default function SwipeCard({
         {dragOffset.x > 30 && (
           <div
             style={{ opacity: Math.min(1, dragOffset.x / 70) }}
-            className="absolute top-6 right-6 px-3.5 py-1.5 rounded-xl border-2 border-emerald-400 bg-emerald-950/60 text-emerald-300 font-black text-xs uppercase tracking-widest -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
+            className="absolute top-6 right-6 px-4 py-1.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/80 text-emerald-400 font-bold text-sm tracking-wide -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-lg"
           >
             <ThumbsUp size={16} strokeWidth={2.5} />
             <span>Like</span>
@@ -80,7 +80,7 @@ export default function SwipeCard({
         {dragOffset.x < -30 && (
           <div
             style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 70) }}
-            className="absolute top-6 left-6 px-3.5 py-1.5 rounded-xl border-2 border-rose-400 bg-rose-950/60 text-rose-300 font-black text-xs uppercase tracking-widest rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
+            className="absolute top-6 left-6 px-4 py-1.5 rounded-2xl border-2 border-rose-500 bg-rose-950/80 text-rose-400 font-bold text-sm tracking-wide rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-lg"
           >
             <ThumbsDown size={16} strokeWidth={2.5} />
             <span>Pass</span>
@@ -89,10 +89,10 @@ export default function SwipeCard({
         {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
           <div
             style={{ opacity: Math.min(1, dragOffset.y / 70) }}
-            className="absolute inset-x-10 top-7 py-2 rounded-xl border-2 border-amber-400 bg-amber-950/80 text-amber-300 font-black text-xs uppercase tracking-widest backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none"
+            className="absolute inset-x-12 top-7 py-2 rounded-2xl border-2 border-amber-500 bg-amber-950/85 text-amber-300 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-lg"
           >
             <Flame size={16} strokeWidth={2.5} />
-            <span>Veto</span>
+            <span>Veto Option</span>
           </div>
         )}
 
@@ -110,27 +110,18 @@ export default function SwipeCard({
             </div>
 
             <div className="my-auto py-8 px-2 flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-black tabular-nums shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs">
                 #{cardIndex}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words">
                 {activeCard?.name}
               </h2>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border-subtle)] text-[11px] font-bold">
-              <div className="py-2 px-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-rose-500 flex items-center justify-center gap-1">
-                <ThumbsDown size={12} />
-                <span>Pass</span>
-              </div>
-              <div className="py-2 px-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-amber-500 flex items-center justify-center gap-1">
-                <Flame size={12} />
-                <span>Veto</span>
-              </div>
-              <div className="py-2 px-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-emerald-500 flex items-center justify-center gap-1">
-                <ThumbsUp size={12} />
-                <span>Like</span>
-              </div>
+            <div className="pt-3 border-t border-[var(--border-subtle)] text-xs font-medium text-[var(--text-tertiary)] flex items-center justify-center gap-4">
+              <span>Swipe right to approve</span>
+              <span>•</span>
+              <span>Swipe left to decline</span>
             </div>
           </div>
         ) : (
@@ -149,7 +140,7 @@ export default function SwipeCard({
                   }
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
 
               {/* Multi-photo Story Indicator Bars */}
               {validPhotos.length > 1 && (
@@ -181,64 +172,47 @@ export default function SwipeCard({
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
                   <Star size={13} className="fill-amber-300 text-amber-300" />
                   <span>{cardRating}</span>
-                  <span className="text-[11px] text-white/70 font-normal">({cardReviewCount})</span>
+                  <span className="text-[11px] text-white/75 font-normal">({cardReviewCount})</span>
                 </div>
               </div>
 
-              {/* Bottom Photo Overlay: Venue Name, Address & Details Trigger */}
-              <div className="absolute bottom-3.5 inset-x-4 text-left flex items-end justify-between gap-2 z-10">
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight line-clamp-1 drop-shadow-xs">
-                    {activeCard.name}
-                  </h2>
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-200 font-medium">
-                    <MapPin size={13} className="text-amber-400 shrink-0" />
-                    <span className="truncate">{activeCard.address || 'Local Spot'}</span>
-                  </div>
+              {/* Bottom Photo Overlay: Venue Name & Address */}
+              <div className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-1">
+                  {activeCard.name}
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs text-zinc-200 font-medium">
+                  <MapPin size={13} className="text-amber-400 shrink-0" />
+                  <span className="truncate">{activeCard.address || 'Local Spot'}</span>
                 </div>
-
-                {onOpenDetails && (
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenDetails();
-                    }}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    <Info size={13} />
-                    <span>Details</span>
-                  </button>
-                )}
               </div>
             </div>
 
-            {/* Clean 2-Spec Card Footer: Price Range + Road Distance & Travel Time */}
-            <div className="p-3.5 bg-[var(--bg-elevated)] grid grid-cols-2 gap-2.5 text-left shrink-0">
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] min-w-0">
-                <Coins size={16} className="text-amber-500 shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Price Range</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">{cardPriceDesc}</span>
-                </div>
+            {/* Unified Human-Centric Metadata Footer */}
+            <div className="px-4 py-3 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-left shrink-0">
+              <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] min-w-0 truncate">
+                <span className="font-semibold text-[var(--text-primary)] tabular-nums">{cardPriceDesc}</span>
+                <span className="text-[var(--text-tertiary)]">•</span>
+                <span className="flex items-center gap-1 truncate tabular-nums text-[var(--text-secondary)]">
+                  <Route size={13} className="text-[var(--accent-bg)] shrink-0" />
+                  <span className="truncate">{cardWalkDesc}</span>
+                </span>
               </div>
 
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onOpenDetails) onOpenDetails();
-                }}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] min-w-0 text-left transition-colors cursor-pointer"
-              >
-                <Route size={16} className="text-[var(--accent-bg)] shrink-0" />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Road Route</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">{cardWalkDesc}</span>
-                </div>
-              </button>
+              {onOpenDetails && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenDetails();
+                  }}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Info size={13} className="text-[var(--text-secondary)]" />
+                  <span>Details</span>
+                </button>
+              )}
             </div>
           </>
         )}

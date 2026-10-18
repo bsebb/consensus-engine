@@ -251,11 +251,12 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
 }
 
 /**
- * Uber-Style Expanding Hexagonal Spatial Search Engine:
- * - Ring 0: Center 1.2 km hexagon around (centerLat, centerLng)
- * - Ring 1: 3.0 km town/neighborhood hex cluster (covers an entire town like Strășeni, Orhei, Soroca, Cahul)
- * - Ring 2: 4.5 km expanded city ring (only used if < 4 local places exist in the 3.0 km town ring)
- * Never jumps to highway stops (7km+) or neighboring villages (11km+) when in-town venues exist.
+ * Expanding Hexagonal Spatial Search Engine (1km Hex Grid Resolution):
+ * - Ring 0: Center 1.0 km hexagon cell around user coords
+ * - Ring 1: 2.6 km cluster covering 6 neighboring 1km hex cells (centroid dist ~1.73km)
+ * - Ring 2: 4.5 km ring of neighboring hex cells
+ * - Ring 3: 7.5 km ring
+ * - Ring 4: 12.5 km expanded regional metro reach
  */
 const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   const isObj = typeof param1 === 'object' && param1 !== null;
@@ -280,7 +281,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
 
   const cacheLat = centerLat.toFixed(3);
   const cacheLng = centerLng.toFixed(3);
-  const cacheKey = `hex_v8_${categoryKey}_${cacheLat}_${cacheLng}_${isExactGps}`;
+  const cacheKey = `hex_v9_${categoryKey}_${cacheLat}_${cacheLng}_${isExactGps}`;
 
   const cached = queryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -288,7 +289,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   }
 
   const TARGET_PLACES = 6;
-  const hexRingsMeters = categoryKey === 'cinema' ? [3000, 7500, 16000] : [1500, 3500, 7500, 14000];
+  const hexRingsMeters = categoryKey === 'cinema' ? [2500, 6000, 12000, 18000] : [1000, 2600, 4500, 7500, 12500];
   const accumulatedVenues = new Map();
 
   const getVenueQualityMetrics = (place, cKey = '') => {
@@ -435,34 +436,16 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
 
       if (cleanKey) {
         tasks.push(
-          queryFoursquarePlaces({
-            queryTerm,
-            lat: centerLat,
-            lng: centerLng,
-            radius: ringRadius,
-            cleanKey,
-          }).catch(() => []),
-          queryFoursquarePlaces({
-            queryTerm: '',
-            lat: centerLat,
-            lng: centerLng,
-            radius: ringRadius,
-            cleanKey,
-          }).catch(() => [])
+          queryFoursquarePlaces({ queryTerm, lat: centerLat, lng: centerLng, radius: ringRadius, cleanKey }).catch(() => []),
+          queryFoursquarePlaces({ queryTerm: '', lat: centerLat, lng: centerLng, radius: ringRadius, cleanKey }).catch(() => [])
         );
 
-        // In Ring 1 (3.5km hex cluster), also sample hex ring centroids if center yielded < 6
+        // In Ring 1 (1km neighbor hex ring), query neighbor centroids if center hex alone had < 6
         if (ringIdx === 1 && accumulatedVenues.size < TARGET_PLACES) {
-          const hexCentroids = generateHexRingCenters(centerLat, centerLng, 1, 1500);
-          for (let c = 0; c < Math.min(3, hexCentroids.length); c++) {
+          const hexCentroids = generateHexRingCenters(centerLat, centerLng, 1, 1000);
+          for (let c = 0; c < Math.min(6, hexCentroids.length); c++) {
             tasks.push(
-              queryFoursquarePlaces({
-                queryTerm,
-                lat: hexCentroids[c].lat,
-                lng: hexCentroids[c].lng,
-                radius: 1500,
-                cleanKey,
-              }).catch(() => [])
+              queryFoursquarePlaces({ queryTerm, lat: hexCentroids[c].lat, lng: hexCentroids[c].lng, radius: 1000, cleanKey }).catch(() => [])
             );
           }
         }
@@ -472,28 +455,42 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       const allRingCandidates = results.flat();
       ingestCandidates(allRingCandidates, ringRadius, false);
 
-      if (ringIdx === 1 && accumulatedVenues.size < TARGET_PLACES && categoryKey !== 'cinema') {
-        ingestCandidates(allRingCandidates, 3500, true);
+      if (accumulatedVenues.size < TARGET_PLACES && categoryKey !== 'cinema') {
+        ingestCandidates(allRingCandidates, ringRadius, true);
       }
 
-      // Stop expanding as soon as 6-8 venues are found (or at least 3 in-town spots in Ring 1)
-      if (accumulatedVenues.size >= TARGET_PLACES || (ringIdx >= 1 && accumulatedVenues.size >= 3)) {
+      // Stop expanding only once target deck size (6) is satisfied
+      if (accumulatedVenues.size >= TARGET_PLACES) {
         break;
       }
     }
 
+    // Seamlessly backfill remaining slots from regional verified hotspots if fewer than 6 found
+    if (accumulatedVenues.size < TARGET_PLACES) {
+      const fallbacks = await resolveRegionalFallback(theme, centerLat, centerLng, isExactGps);
+      for (const fb of fallbacks) {
+        if (accumulatedVenues.size >= TARGET_PLACES) break;
+        const fbCKey = getCanonicalVenueKey(fb.name);
+        const duplicate = Array.from(accumulatedVenues.values()).some((ex) => {
+          const exCKey = getCanonicalVenueKey(ex.name);
+          return (fbCKey && exCKey && fbCKey === exCKey) || ex.name.toLowerCase() === fb.name.toLowerCase();
+        });
+        if (!duplicate) {
+          accumulatedVenues.set(fbCKey || fb.name, fb);
+        }
+      }
+    }
+
     if (accumulatedVenues.size > 0) {
-      const activeRadius = hexRingsMeters[Math.min(hexRingsMeters.length - 1, 2)];
+      const activeRadius = hexRingsMeters[Math.min(hexRingsMeters.length - 1, 3)];
       let candidatesList = Array.from(accumulatedVenues.values())
         .map((v) => ({ ...v, composite_score: calculateCompositeScore(v, activeRadius) }))
         .sort((a, b) => b.composite_score - a.composite_score)
         .slice(0, 8);
 
-      // Compute true road/bridge network distances via OSRM
       candidatesList = await enrichVenuesWithRoadDistances(centerLat, centerLng, candidatesList, isExactGps);
       candidatesList = await resolveVenuePhotosBatch(candidatesList);
 
-      // Final rank by composite score (prioritizing high-rating, high-reviews, and road proximity)
       const sortedResults = candidatesList
         .map((v) => ({ ...v, composite_score: calculateCompositeScore(v, activeRadius) }))
         .sort((a, b) => b.composite_score - a.composite_score)
