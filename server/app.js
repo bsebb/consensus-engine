@@ -70,20 +70,21 @@ app.get('/api/v1/test-foursquare', async (req, res) => {
     const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ') ? cleanKey : `Bearer ${cleanKey}`;
     const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
 
-    let testRes = await fetch('https://api.foursquare.com/v3/places/search?near=Chisinau&limit=5', {
-      headers: {
-        accept: 'application/json',
-        Authorization: bearerAuth,
-      },
+    const testHeaders = {
+      accept: 'application/json',
+      Authorization: bearerAuth,
+      'X-Places-Api-Version': '2025-06-17',
+    };
+
+    let testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
+      headers: testHeaders,
     });
 
     let usedFormat = 'Bearer';
     if (testRes.status === 401) {
-      testRes = await fetch('https://api.foursquare.com/v3/places/search?near=Chisinau&limit=5', {
-        headers: {
-          accept: 'application/json',
-          Authorization: rawAuth,
-        },
+      testHeaders.Authorization = rawAuth;
+      testRes = await fetch('https://places-api.foursquare.com/places/search?near=Chisinau&limit=5', {
+        headers: testHeaders,
       });
       usedFormat = 'Raw';
     }

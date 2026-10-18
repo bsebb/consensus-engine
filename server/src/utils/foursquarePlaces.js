@@ -74,37 +74,38 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000, param
     return cached.data;
   }
 
-  // Foursquare Places API v3 requires 'Authorization: Bearer <key>'
+  // Foursquare Places API (FSQ OS Places) modern endpoint
   const bearerAuth = cleanKey.toLowerCase().startsWith('bearer ')
     ? cleanKey
     : `Bearer ${cleanKey}`;
   const rawAuth = cleanKey.replace(/^Bearer\s+/i, '');
 
   try {
-    let url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(theme)}&radius=${radius}&limit=12&fields=fsq_id,name,price`;
+    let url = `https://places-api.foursquare.com/places/search?query=${encodeURIComponent(theme)}&radius=${radius}&limit=12&fields=fsq_id,name,price`;
     if (latitude && longitude) {
       url += `&ll=${latitude},${longitude}`;
     } else {
       url += `&near=${encodeURIComponent(near)}`;
     }
 
+    const headers = {
+      accept: 'application/json',
+      Authorization: bearerAuth,
+      'X-Places-Api-Version': '2025-06-17',
+    };
+
     let response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: 'application/json',
-        Authorization: bearerAuth,
-      },
+      headers,
       signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
     });
 
     // If 401 with Bearer header, retry with raw key format
     if (response.status === 401) {
+      headers.Authorization = rawAuth;
       response = await fetch(url, {
         method: 'GET',
-        headers: {
-          accept: 'application/json',
-          Authorization: rawAuth,
-        },
+        headers,
         signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
       });
     }
