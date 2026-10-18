@@ -23,6 +23,9 @@ const CATEGORIZED_FALLBACKS = {
     { name: "Cinema Bistro Chișinău", fsq_id: "fsq_cinema_bistro", category: "Cinema & Bistro", priceLevel: 2, priceLabel: "$$ (~140-220 MDL / ticket)", lat: 47.0188, lng: 28.8485, address: "Bd. Dacia 23, Chișinău" },
   ],
   cafes: [
+    { name: "Cafeneaua Delice", fsq_id: "fsq_delice_straseni", category: "Café & Pastry", priceLevel: 1, priceLabel: "$ (~45-90 MDL)", lat: 47.1430, lng: 28.6110, address: "Str. Ștefan cel Mare 112, Strășeni" },
+    { name: "Coffee Like", fsq_id: "fsq_coffeelike_straseni", category: "Specialty Coffee Bar", priceLevel: 1, priceLabel: "$ (~40-80 MDL)", lat: 47.1415, lng: 28.6125, address: "Str. Mihai Eminescu 28, Strășeni" },
+    { name: "Panna Cotta Strășeni", fsq_id: "fsq_pannacotta_straseni", category: "Café & Bakery", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.1445, lng: 28.6105, address: "Str. Chișinăului 5, Strășeni" },
     { name: "Tucano Coffee", fsq_id: "fsq_tucano_1", category: "Specialty Coffee Shop", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.0225, lng: 28.8340, address: "Str. Aleksandr Pușkin 15, Chișinău" },
     { name: "Crème de la Crème", fsq_id: "fsq_creme_3", category: "French Patisserie & Café", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0238, lng: 28.8340, address: "Str. Alexandru cel Bun 98A, Chișinău" },
     { name: "Rozmarin Cafe", fsq_id: "fsq_rozmarin_5", category: "Brunch & Roastery", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0240, lng: 28.8320, address: "Bd. Ștefan cel Mare 202, Chișinău" },
@@ -59,6 +62,10 @@ const CATEGORIZED_FALLBACKS = {
     { name: "Dolce Dormire Gelato", fsq_id: "fsq_dolce_dormire", category: "Artisanal Gelato & Waffles", priceLevel: 2, priceLabel: "$$ (~65-130 MDL)", lat: 47.0410, lng: 28.8610, address: "Str. Kiev 16, Chișinău" },
   ],
   restaurants: [
+    { name: "Restaurant Alindor", fsq_id: "fsq_alindor_straseni", category: "Moldovan & European Restaurant", priceLevel: 2, priceLabel: "$$ (~140-280 MDL)", lat: 47.1420, lng: 28.6130, address: "Str. Ștefan cel Mare 75, Strășeni" },
+    { name: "Restaurant Struguraș", fsq_id: "fsq_struguras_straseni", category: "Traditional Restaurant & Terrace", priceLevel: 2, priceLabel: "$$ (~130-260 MDL)", lat: 47.1390, lng: 28.6180, address: "Șos. Chișinăului, Strășeni" },
+    { name: "Hanul Pescarului", fsq_id: "fsq_hanulpescarului_straseni", category: "Fish & Lakeside Grill", priceLevel: 2, priceLabel: "$$ (~150-300 MDL)", lat: 47.1520, lng: 28.5850, address: "Lacul Strășeni" },
+    { name: "Lacul Verde", fsq_id: "fsq_laculverde_straseni", category: "Resort & Terrace Dining", priceLevel: 3, priceLabel: "$$$ (~200-400 MDL)", lat: 47.1350, lng: 28.5920, address: "Zona de Agrement, Strășeni" },
     { name: "Fuior Gourmet", fsq_id: "fsq_fuior_gourmet", category: "Modern Moldovan Fine Dining", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 47.0235, lng: 28.8355, address: "Str. Aleksandr Pușkin 30, Chișinău" },
     { name: "Osho Bar & Kitchen", fsq_id: "56599eec498e89a644fa47ec", category: "Modern European & Steakhouse", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 47.0061, lng: 28.8602, address: "Bd. Decebal 7/1, Chișinău" },
     { name: "Trattoria della Nonna", fsq_id: "fsq_trattoria_nonna", category: "Italian Trattoria & Pasta", priceLevel: 2, priceLabel: "$$ (~150-300 MDL)", lat: 47.0182, lng: 28.8305, address: "Str. Mihail Kogălniceanu 62, Chișinău" },
@@ -183,8 +190,7 @@ async function resolveRegionalFallback(theme = '', centerLat = 47.0225, centerLn
     theme.toLowerCase().includes('dessert') ? 'desserts' : 'restaurants';
 
   const rawPlaces = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;
-  const places = rawPlaces.slice(0, targetCount);
-  const mapped = places.map((p) => {
+  const withDistance = rawPlaces.map((p) => {
     const distMeters = (centerLat != null && centerLng != null && p.lat && p.lng)
       ? calculateDistance(centerLat, centerLng, p.lat, p.lng)
       : 1500;
@@ -205,7 +211,11 @@ async function resolveRegionalFallback(theme = '', centerLat = 47.0225, centerLn
     };
   });
 
-  return await resolveVenuePhotosBatch(mapped);
+  // Sort by distance so spots closest to the user's location rank highest
+  withDistance.sort((a, b) => a.distance_meters - b.distance_meters);
+  const places = withDistance.slice(0, targetCount);
+
+  return await resolveVenuePhotosBatch(places);
 }
 
 module.exports = {

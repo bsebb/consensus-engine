@@ -107,6 +107,12 @@ export const TRANSLATIONS = {
     filteredBadge: 'Filtered',
     addAtLeastTwoTitle: 'Add At Least 2 Options',
     addAtLeastTwoMsg: 'Add at least 2 options above so everyone can vote.',
+    emptyCustomTitle: 'Pick at least 2 options or add your own',
+    emptyCustomDesc: 'Custom polls have no fake ratings or distances • just real group consensus.',
+    emptyFilterTitle: 'No spots match this price filter',
+    emptyFilterDesc: 'Tap a higher price tier above to see more places nearby.',
+    ideaLibraryTitle: 'Idea Library • Tap to Add',
+    selectedSuffix: 'selected',
 
     // Swipe Deck & Voting
     lobby: 'Lobby',
@@ -254,6 +260,12 @@ export const TRANSLATIONS = {
     filteredBadge: 'Filtrat',
     addAtLeastTwoTitle: 'Adaugă cel puțin 2 opțiuni',
     addAtLeastTwoMsg: 'Adaugă cel puțin 2 opțiuni pentru a începe votul.',
+    emptyCustomTitle: 'Alege cel puțin 2 opțiuni sau adaugă propriile idei',
+    emptyCustomDesc: 'Sondajele libere oferă vot direct între prieteni fără date fictive.',
+    emptyFilterTitle: 'Niciun local nu corespunde acestui filtru de preț',
+    emptyFilterDesc: 'Selectează un buget mai mare mai sus pentru a vedea mai multe locuri.',
+    ideaLibraryTitle: 'Biblioteca de idei • Apasă pentru a adăuga',
+    selectedSuffix: 'selectate',
 
     // Swipe Deck & Voting
     lobby: 'Cameră',
@@ -401,6 +413,12 @@ export const TRANSLATIONS = {
     filteredBadge: 'Отфильтровано',
     addAtLeastTwoTitle: 'Добавьте хотя бы 2 варианта',
     addAtLeastTwoMsg: 'Добавьте хотя бы 2 варианта, чтобы начать голосование.',
+    emptyCustomTitle: 'Выберите минимум 2 варианта или добавьте свои',
+    emptyCustomDesc: 'Свободные опросы обеспечивают прямое голосование группы.',
+    emptyFilterTitle: 'Нет мест, подходящих под этот ценовой фильтр',
+    emptyFilterDesc: 'Выберите бюджет выше, чтобы увидеть больше мест поблизости.',
+    ideaLibraryTitle: 'Библиотека идей • Нажмите, чтобы добавить',
+    selectedSuffix: 'выбрано',
 
     // Swipe Deck & Voting
     lobby: 'Лобби',

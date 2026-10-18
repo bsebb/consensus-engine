@@ -263,10 +263,10 @@ export default function CandidatePoolDeck({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
                   <Layers size={13} className="text-[var(--accent-bg)]" />
-                  <span>Idea Library • Tap to Add</span>
+                  <span>{t('ideaLibraryTitle')}</span>
                 </div>
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">
-                  {displayedCandidates.length}/8 selected
+                <span className="text-[10px] font-semibold text-[var(--text-tertiary)] tabular-nums">
+                  {displayedCandidates.length}/8 {t('selectedSuffix')}
                 </span>
               </div>
 
@@ -347,12 +347,10 @@ export default function CandidatePoolDeck({
           <div className="col-span-2 p-6 rounded-2xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-main)] text-center flex flex-col items-center gap-2">
             <PlusCircle size={24} className="text-[var(--text-tertiary)]" />
             <span className="text-xs font-semibold text-[var(--text-primary)]">
-              {mode === 'CUSTOM' ? 'Pick at least 2 options from the Idea Library or type your own' : 'No spots match this price filter'}
+              {mode === 'CUSTOM' ? t('emptyCustomTitle') : t('emptyFilterTitle')}
             </span>
             <span className="text-[11px] text-[var(--text-tertiary)] max-w-xs">
-              {mode === 'CUSTOM'
-                ? 'Custom polls have no fake ratings, distances, or prices • just pure group voting.'
-                : 'Tap a higher price tier below to see more places nearby.'}
+              {mode === 'CUSTOM' ? t('emptyCustomDesc') : t('emptyFilterDesc')}
             </span>
           </div>
         ) : (

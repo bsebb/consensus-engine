@@ -23,6 +23,11 @@ const SEED_CACHE = {
   "laculverde": "https://honeypot0.s3.amazonaws.com/1701624490479-gallery-VGHT7346.webp",
   "hanulpescarului": "https://www.visualbrand.ro/wp-content/uploads/2026/01/hanul-pescarilor1.jpg",
   "delice": "https://img.restaurantguru.com/w550/h367/r3f3-interior-Delice-2021-08.jpg",
+  "coffeelike": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=85",
+  "tucano": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85",
+  "cremedelacreme": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=85",
+  "coffeemolka": "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=85",
+  "dcdonuts": "https://images.unsplash.com/photo-1527515862127-a4fc05baf7a5?auto=format&fit=crop&w=900&q=85",
 
   // Chișinău verified venues
   "azasu": "https://qmzxbjlpwqkagcyhcglm.supabase.co/storage/v1/object/public/place-photos/places/google-1778416720729-i713zi6pcod.webp",
@@ -120,8 +125,14 @@ loadPersistentCache();
  * Searches the web for an authentic venue photo and validates the URL.
  */
 async function fetchOnlineVenuePhoto(name, locality = '', address = '') {
+  if (!name || typeof name !== 'string') return null;
+  const cleanName = name.trim();
+  // Never perform web image queries for street addresses or generic words
+  if (/^(strada|str\.|bd\.|bulevardul|b-dul|calea|șoseaua|soseaua|aleea|ул\.|улица)\b/i.test(cleanName)) {
+    return null;
+  }
   const loc = locality || (address ? address.split(',').slice(-2).join(' ').trim() : '');
-  const query = `${name} ${loc} venue interior photo`.trim();
+  const query = `${cleanName} ${loc} venue interior photo`.trim();
   try {
     const tokenRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },

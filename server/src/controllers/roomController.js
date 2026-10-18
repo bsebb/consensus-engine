@@ -21,6 +21,7 @@ const { generatePin, issueHostToken, verifyHostToken } = require('../utils/hostA
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 const { fetchGooglePlaces } = require('../utils/googlePlaces');
 const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
+const { resolveRegionalFallback } = require('../utils/fallbackVenues');
 const { reportClosedVenue, filterReportedVenues } = require('../utils/reportedVenues');
 
 // Helper to execute Schulze worker thread off the main event loop
@@ -127,6 +128,31 @@ const createNewRoom = async (req, res) => {
 
     // Ephemeral Crowd-Sourced Self-Healing: Purge reported closed spots (e.g. Casa Mare)
     places = filterReportedVenues(places || []);
+
+    if (!places || places.length < targetPlaces) {
+      try {
+        const fallbacks = await resolveRegionalFallback(
+          theme,
+          latitude,
+          longitude,
+          is_exact_gps,
+          targetPlaces
+        );
+        const existingNames = new Set((places || []).map((p) => (p.name || '').toLowerCase().trim()));
+        const merged = [...(places || [])];
+        for (const fb of (fallbacks || [])) {
+          if (merged.length >= targetPlaces) break;
+          const fbNorm = (fb.name || '').toLowerCase().trim();
+          if (fbNorm && !existingNames.has(fbNorm)) {
+            existingNames.add(fbNorm);
+            merged.push(fb);
+          }
+        }
+        places = merged;
+      } catch (fbErr) {
+        console.warn('[RoomController] Regional fallback backfill notice:', fbErr.message);
+      }
+    }
 
     let createdOptions = [];
     if (places && places.length > 0) {

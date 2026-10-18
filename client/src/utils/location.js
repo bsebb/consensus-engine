@@ -329,9 +329,9 @@ export function formatTravelSummary(item) {
   }
   const walkMin = item.walk_minutes || Math.max(2, Math.round(dist * 12.5));
   const driveMin = item.drive_minutes || Math.max(2, Math.round(dist * 2.2));
-  if (dist <= 1.8) {
-    return `${dist} km road • ~${walkMin} min walk`;
+  if (dist <= 1.5) {
+    return `${dist} km • ~${walkMin} min walk`;
   }
-  return `${dist} km road • ~${driveMin} min drive (${walkMin}m walk)`;
+  return `${dist} km • ~${driveMin} min drive`;
 }
 

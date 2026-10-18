@@ -1,5 +1,33 @@
 const { resolveVenuePhotosBatch, resolveVenuePhoto } = require('./venuePhotoService');
 const { filterReportedVenues } = require('./reportedVenues');
+const { resolveRegionalFallback } = require('./fallbackVenues');
+
+const STREET_OR_ADDRESS_REGEX = /^(strada|str\.|bulevardul|b-dul|bd\.|calea|șoseaua|soseaua|aleea|fundătura|fundatura|intrarea|piata|piața|drumul|pasajul|ул\.|улица|просп\.|проспект|пер\.|переулок|бул\.|бульвар|шоссе|проезд|тупик|наб\.|набережная|street|st\.|avenue|ave\.|boulevard|blvd\.|road|rd\.|lane|ln\.|drive|dr\.|highway|hwy\.)\b/i;
+const GENERIC_BUILDING_REGEX = /^(bloc|block|building|clădire|cladire|casa|house|apartament|locuință|locuinta|complex\s+locativ|ansamblu\s+rezidențial)\b/i;
+
+function isValidVenueName(name, properties = {}) {
+  if (!name || typeof name !== 'string') return false;
+  const clean = name.trim();
+  if (clean.length < 2) return false;
+
+  // Reject pure numbers or postal codes or house numbers (e.g. "12", "15A", "MD-3700")
+  if (/^(\d+|[A-Z]{2}-?\d+|\d+\s*[A-Za-z]?)$/.test(clean)) return false;
+
+  // Reject street indicators
+  if (STREET_OR_ADDRESS_REGEX.test(clean)) return false;
+
+  // Reject generic residential / building labels
+  if (GENERIC_BUILDING_REGEX.test(clean)) return false;
+
+  // Reject if name matches street or address lines
+  const street = (properties.street || '').trim().toLowerCase();
+  const addr1 = (properties.address_line1 || '').trim().toLowerCase();
+  const lower = clean.toLowerCase();
+  if (street && (lower === street || lower.startsWith(street))) return false;
+  if (addr1 && (lower === addr1 || lower.startsWith(addr1))) return false;
+
+  return true;
+}
 
 const geoapifyCache = new Map();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -97,8 +125,8 @@ async function fetchGeoapifyPlaces({
     const venues = [];
     for (const f of features) {
       const p = f.properties || {};
-      const name = p.name || p.address_line1 || '';
-      if (!name) continue;
+      const name = (p.name || '').trim();
+      if (!isValidVenueName(name, p)) continue;
 
       const vLat = p.lat || (f.geometry && f.geometry.coordinates && f.geometry.coordinates[1]);
       const vLng = p.lon || (f.geometry && f.geometry.coordinates && f.geometry.coordinates[0]);
@@ -130,17 +158,43 @@ async function fetchGeoapifyPlaces({
     }
 
     // Filter out user-reported closed spots
-    const activeVenues = filterReportedVenues(venues);
+    let activeVenues = filterReportedVenues(venues);
+
+    // If Geoapify returns fewer than targetPlaces valid commercial venues,
+    // seamlessly backfill with verified regional hotspots from resolveRegionalFallback
+    if (activeVenues.length < targetPlaces) {
+      try {
+        const fallbackVenues = await resolveRegionalFallback(
+          theme,
+          latNum,
+          lngNum,
+          isExactGps,
+          targetPlaces
+        );
+        const existingNames = new Set(activeVenues.map((v) => v.name.toLowerCase().trim()));
+        for (const fb of (fallbackVenues || [])) {
+          if (activeVenues.length >= targetPlaces) break;
+          const fbNorm = (fb.name || '').toLowerCase().trim();
+          if (fbNorm && !existingNames.has(fbNorm)) {
+            existingNames.add(fbNorm);
+            activeVenues.push(fb);
+          }
+        }
+      } catch (err) {
+        console.warn('[Geoapify] Regional fallback backfill notice:', err.message);
+      }
+    }
+
     if (!activeVenues.length) return null;
 
     // Sort by proximity
     activeVenues.sort((a, b) => (a.distance_km || 999) - (b.distance_km || 999));
 
     // Resolve high-resolution photography batch
-    const enrichedVenues = await resolveVenuePhotosBatch(activeVenues);
+    const enrichedVenues = await resolveVenuePhotosBatch(activeVenues.slice(0, targetPlaces));
 
     geoapifyCache.set(cacheKey, { timestamp: Date.now(), data: enrichedVenues });
-    return enrichedVenues.slice(0, targetPlaces);
+    return enrichedVenues;
   } catch (err) {
     console.warn('[Geoapify Fetch Error]:', err.message);
     return null;

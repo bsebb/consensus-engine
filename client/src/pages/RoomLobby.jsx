@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import {
-  LogOut,
-  Settings,
-  ArrowRight,
-} from 'lucide-react';
+import { LogOut, Settings, ArrowRight, Copy, Check } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
@@ -190,18 +186,10 @@ export default function RoomLobby() {
       await navigator.clipboard.writeText(pin);
       triggerHaptic('tap');
       setCopied(true);
-      addToast({
-        title: 'Room Code Copied',
-        message: `Code #${pin} copied to clipboard`,
-        type: 'success',
-      });
+      addToast({ title: 'Room Code Copied', message: `Code #${pin} copied to clipboard`, type: 'success' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      addToast({
-        title: 'Room Code',
-        message: `Share code ${pin} with your friends`,
-        type: 'info',
-      });
+      addToast({ title: 'Room Code', message: `Share code ${pin} with your friends`, type: 'info' });
     }
   };
 
@@ -498,10 +486,26 @@ export default function RoomLobby() {
             <span>{t('home')}</span>
           </button>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
-            <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
-          </div>
+          <button
+            type="button"
+            onClick={handleCopyPin}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.97]"
+            title={t('shareLink')}
+            aria-label={t('shareLink')}
+          >
+            {copied ? (
+              <>
+                <Check size={12} className="text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400">{t('copied')}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
+                <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
+                <Copy size={11} className="text-[var(--text-tertiary)] ml-0.5" />
+              </>
+            )}
+          </button>
 
           <div className="flex items-center gap-1.5">
             <button
@@ -522,12 +526,8 @@ export default function RoomLobby() {
       <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
         {/* Compact Room Header & Roster */}
         <LobbyRoster
-          pin={pin}
           topic={topic}
           participants={participants}
-          groupSize={groupSize}
-          copied={copied}
-          handleCopyPin={handleCopyPin}
           handleShareInvite={handleShareInvite}
           setQrModalOpen={setQrModalOpen}
         />
