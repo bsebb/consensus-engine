@@ -136,8 +136,9 @@ const getRoom = async (req, res) => {
     const room = await getRoomByPin(pin);
 
     const isCustom = Boolean(room.theme && room.theme.startsWith('custom'));
+    const rawThemeTopic = room.theme ? room.theme.replace(/^custom:/, '').trim() : '';
     const resolvedTopic = isCustom
-      ? (room.theme ? room.theme.replace(/^custom:/, '') : 'What should we do?')
+      ? (rawThemeTopic && rawThemeTopic !== 'custom' && rawThemeTopic !== 'poll' ? rawThemeTopic : 'What should we do?')
       : (room.theme || 'Places Nearby');
 
     return res.status(200).json({

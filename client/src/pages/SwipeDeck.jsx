@@ -16,6 +16,7 @@ import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
 import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
+import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from '../utils/customOptionService';
 
 const DEFAULT_WINNER = {
   id: 'winner_default', name: 'Consensus Spot', category: 'Local Favorites',
@@ -46,7 +47,17 @@ export default function SwipeDeck() {
     if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
       const initialCards = location.state.customCards.map((item, idx) => {
         if (typeof item === 'string') {
-          return { id: `custom-${idx}`, name: item, category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true };
+          return {
+            id: `custom-${idx}`,
+            name: item,
+            category: 'Custom Poll Option',
+            tags: ['Custom'],
+            distance_km: null,
+            price_level: 2,
+            address: '',
+            photo_url: resolveCuratedOptionPhoto(item),
+            isCustom: true,
+          };
         }
         const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
         const liveDist = isCustomItem ? null : typeof item.distance_km === 'number' ? item.distance_km : savedGps && item.lat != null && item.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng) : null;
@@ -62,7 +73,7 @@ export default function SwipeDeck() {
           lng: isCustomItem ? null : (item.lng ?? null),
           price_level: typeof item.price_level === 'number' ? item.price_level : 2,
           address: isCustomItem ? '' : (item.address || 'Local Venue'),
-          photo_url: isCustomItem ? null : (item.photo_url || null),
+          photo_url: item.photo_url || (isCustomItem ? resolveCuratedOptionPhoto(item.name) : null),
           isCustom: isCustomItem,
         };
       });
@@ -70,11 +81,18 @@ export default function SwipeDeck() {
     }
 
     if (mode === 'CUSTOM') {
-      return [
-        { id: 'c1', name: 'Bowling Night', category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true },
-        { id: 'c2', name: 'Board Games Night', category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true },
-        { id: 'c3', name: 'Sci-Fi / Thriller Movie', category: 'Custom Poll Option', tags: ['Custom'], distance_km: null, price_level: 2, address: '', isCustom: true },
-      ];
+      const defaultSeeds = getDefaultSeedOptions(topic);
+      return defaultSeeds.map((name, idx) => ({
+        id: `c${idx + 1}`,
+        name,
+        category: 'Custom Poll Option',
+        tags: ['Custom'],
+        distance_km: null,
+        price_level: 2,
+        address: '',
+        photo_url: resolveCuratedOptionPhoto(name),
+        isCustom: true,
+      }));
     }
 
     return (restaurantsMock || []).map((r) => ({

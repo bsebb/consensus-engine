@@ -5,10 +5,12 @@ import { apiUrl } from './api';
 export const KNOWN_CUSTOM_POSTERS = {
   // Video Games
   'counter-strike': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg',
+  'counter-strike 2': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg',
   'cs2': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg',
   'cs:go': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg',
   'shooter night': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/header.jpg',
   'fifa': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
+  'fifa / ea fc': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
   'ea fc': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
   'ea sports fc': 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2195250/header.jpg',
   'minecraft': 'https://images.unsplash.com/photo-1627856013091-fed6e4e30025?w=800&auto=format&fit=crop&q=80',
@@ -104,20 +106,44 @@ function savePersistentPoster(name, url) {
 
 /**
  * Automatically detects the most relevant Idea Library tab based on the room's custom topic.
- * E.g. "What game are we playing?" -> 'gaming'
+ * E.g. "What game are we playing?", "what are we playin tonight" -> 'gaming'
  */
 export function inferLibraryTabFromTopic(topic = '') {
   const norm = String(topic || '').toLowerCase();
-  if (/\b(game|gaming|games|play|steam|ps5|xbox|pc|lan|esport|coop|co-op)\b/i.test(norm)) {
+
+  // Gaming: covers "play", "playing", "playin", "playin'", "games", "gaming", "gamer", video games, steam, consoles, etc.
+  if (/\b(gam(e|es|ing|ers?)|play(ing|in|s|ed)?|steam|ps[45]|playstation|xbox|nintendo|switch|lan|esports?|co-?op|multiplayer|boardgames?|videogames?|rpg|fps|mmo)\b/i.test(norm)) {
     return 'gaming';
   }
-  if (/\b(movie|film|cinema|watch|netflix|show|series|hbo|tv)\b/i.test(norm)) {
+
+  // Movies & TV: covers "movie", "movies", "film", "films", "cinema", "watch", "watching", "netflix", "series", "shows", "anime"
+  if (/\b(movi(e|es)?|films?|cinema|watch(ing)?|stream(ing)?|netflix|hulu|disney|hbo|series|shows?|anime|binge)\b/i.test(norm)) {
     return 'movies';
   }
-  if (/\b(food|eat|dinner|lunch|breakfast|cook|order|takeout|pizza|sushi|burger|kebab)\b/i.test(norm)) {
+
+  // Food & Dining: covers "food", "eat", "eating", "dinner", "lunch", "breakfast", "brunch", "cook", "cooking", "order", "ordering", "takeout", "pizza", "sushi", "burgers", "kebab", "shawarma", "tacos"
+  if (/\b(food|eat(ing)?|eats?|dinner|lunch|breakfast|brunch|cook(ing)?|order(ing)?|takeout|delivery|pizza|sushi|burgers?|kebab|shawarma|tacos?|restaurants?|bistros?|cafes?|coffee|drinks?)\b/i.test(norm)) {
     return 'food_ideas';
   }
+
   return 'activities';
+}
+
+/**
+ * Provides 4 seed options tailored to the detected topic so the poll is immediately populated with rich poster cards.
+ */
+export function getDefaultSeedOptions(topic = '') {
+  const tab = inferLibraryTabFromTopic(topic);
+  if (tab === 'gaming') {
+    return ['Counter-Strike 2', 'Minecraft', 'FIFA / EA FC', 'Jackbox Party Pack'];
+  }
+  if (tab === 'movies') {
+    return ['Sci-Fi / Thriller Movie', 'Comedy Movie Night', 'Action Blockbuster', 'Horror Movie Night'];
+  }
+  if (tab === 'food_ideas') {
+    return ['Order Wood-Fired Pizza', 'Sushi & Rolls Platter', 'Smash Burgers & Fries', 'Shawarma / Kebab Run'];
+  }
+  return ['Bowling Night', 'Escape Room', 'Board Games Night', 'Billiards & Pool'];
 }
 
 /**

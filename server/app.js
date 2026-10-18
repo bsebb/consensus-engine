@@ -423,17 +423,26 @@ io.on('connection', (socket) => {
 
       if (!activeLobbies.has(pin)) {
         const map = new Map();
-        map.suggestions = [];
-        map.mode = data?.mode || 'DISCOVERY';
-        map.topic = data?.topic || 'Where should we go?';
+        map.suggestions = Array.isArray(data?.initial_suggestions) ? [...data.initial_suggestions] : [];
+        map.mode = data?.mode || (room?.theme?.startsWith('custom') ? 'CUSTOM' : 'DISCOVERY');
+        map.topic = data?.topic || (room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : 'Where should we go?');
         map.groupSize = data?.group_size || 4;
         activeLobbies.set(pin, map);
       }
       const lobby = activeLobbies.get(pin);
       if (data?.mode) lobby.mode = data.mode;
-      if (data?.topic) lobby.topic = data.topic;
+      const cleanDataTopic = data?.topic && data.topic !== 'custom' && data.topic !== 'poll' ? data.topic : null;
+      const cleanRoomTopic = room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : null;
+      if (cleanDataTopic) {
+        lobby.topic = cleanDataTopic;
+      } else if (cleanRoomTopic && cleanRoomTopic !== 'custom' && cleanRoomTopic !== 'poll' && (!lobby.topic || lobby.topic === 'Where should we go?' || lobby.topic === 'custom')) {
+        lobby.topic = cleanRoomTopic;
+      }
       if (data?.group_size) lobby.groupSize = data.group_size;
       if (!lobby.suggestions) lobby.suggestions = [];
+      if (lobby.suggestions.length === 0 && Array.isArray(data?.initial_suggestions) && data.initial_suggestions.length > 0) {
+        lobby.suggestions = [...data.initial_suggestions];
+      }
 
       const isHost = (room && room.hostId === participant_id) || lobby.size === 0;
 
@@ -637,6 +646,7 @@ io.on('connection', (socket) => {
             distance_km: 1.2,
             category: 'Group Suggestion',
             tags: ['Custom'],
+            photo_url: null,
           };
         }
         return {
@@ -647,6 +657,7 @@ io.on('connection', (socket) => {
           category: opt.category || 'Local Venue',
           tags: Array.isArray(opt.tags) ? opt.tags : ['Top Pick'],
           address: opt.address || 'Central District',
+          photo_url: opt.photo_url || null,
         };
       });
 

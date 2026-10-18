@@ -8,6 +8,7 @@ export function useLobbySync({
   setIsHost,
   onTransitionToDeck,
   locationState,
+  initialSuggestions,
   lockedConstraint,
   budgetLimit,
   setMode,
@@ -32,6 +33,7 @@ export function useLobbySync({
         mode: locationState?.mode,
         topic: locationState?.topic,
         group_size: locationState?.groupSize,
+        initial_suggestions: initialSuggestions,
       });
     };
 
@@ -40,9 +42,9 @@ export function useLobbySync({
 
     const handleParticipantJoined = (data) => {
       if (data?.mode) setMode(data.mode);
-      if (data?.topic) setTopic(data.topic);
+      if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') setTopic(data.topic);
       if (data?.group_size) setGroupSize(data.group_size);
-      if (Array.isArray(data?.suggestions)) {
+      if (Array.isArray(data?.suggestions) && data.suggestions.length > 0) {
         setGroupPool(data.suggestions);
       }
       if (data?.participants && Array.isArray(data.participants)) {
@@ -199,5 +201,5 @@ export function useLobbySync({
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, isHost, setIsHost, onTransitionToDeck, locationState, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants]);
+  }, [pin, participantId, currentUserName, isHost, setIsHost, onTransitionToDeck, locationState, initialSuggestions, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants]);
 }

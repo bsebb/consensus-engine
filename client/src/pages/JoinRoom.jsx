@@ -197,7 +197,7 @@ export default function JoinRoom() {
         body: JSON.stringify({
           host_id: participantId,
           mode: roomMode,
-          theme: isCustomMode ? 'custom' : selectedCategory.toLowerCase(),
+          theme: isCustomMode ? topicTitle : selectedCategory.toLowerCase(),
           radius: 5000,
           latitude: lat,
           longitude: lng,

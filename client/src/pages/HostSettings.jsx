@@ -170,7 +170,7 @@ export default function HostSettings() {
         body: JSON.stringify({
           host_id: participantId,
           mode,
-          theme: mode === 'DISCOVERY' ? category.toLowerCase() : undefined,
+          theme: mode === 'CUSTOM' ? (topic.trim() || 'What should we do?') : category.toLowerCase(),
           radius: radiusKm * 1000,
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
