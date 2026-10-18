@@ -27,7 +27,7 @@ import SettingsModal from '../components/ui/SettingsModal';
 import HostCategoryPicker from '../components/host/HostCategoryPicker';
 import HostConstraints from '../components/host/HostConstraints';
 import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
-import HexagonLoadingOverlay from '../components/lobby/HexagonLoadingOverlay';
+import LobbyLoadingView from '../components/lobby/LobbyLoadingView';
 import { apiUrl } from '../utils/api';
 import { getSavedExactGps, saveUserLocation, detectUserGps } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
@@ -227,6 +227,19 @@ export default function HostSettings() {
   };
 
   const progressPercent = calculateProgress();
+
+  if (loading) {
+    return (
+      <LobbyLoadingView
+        topic={topic}
+        category={category}
+        userName={userName || 'Host'}
+        locationLabel={userLocation?.label || 'Current Location'}
+        isCustom={mode === 'CUSTOM'}
+        onCancel={() => setLoading(false)}
+      />
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-screen pb-44 select-none">
@@ -560,13 +573,6 @@ export default function HostSettings() {
             label: loc.label,
           });
         }}
-      />
-
-      <HexagonLoadingOverlay
-        isOpen={loading}
-        category={category}
-        locationLabel={userLocation?.label || 'Current Location'}
-        isCustom={mode === 'CUSTOM'}
       />
     </div>
   );

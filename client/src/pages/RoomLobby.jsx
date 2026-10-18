@@ -73,6 +73,12 @@ export default function RoomLobby() {
   const [realOptions, setRealOptions] = useState(() => {
     return location.state?.roomData?.options || [];
   });
+  const [loadingOptions, setLoadingOptions] = useState(() => {
+    return (
+      (location.state?.mode || 'DISCOVERY') !== 'CUSTOM' &&
+      (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0)
+    );
+  });
   const [userGps, setUserGps] = useState(() => getSavedExactGps());
   const [roadRoutes, setRoadRoutes] = useState({});
 
@@ -90,6 +96,9 @@ export default function RoomLobby() {
 
   useEffect(() => {
     if (pin) {
+      if (!location.state?.roomData?.options || location.state?.roomData?.options.length === 0) {
+        setLoadingOptions(true);
+      }
       fetch(apiUrl(`/api/v1/rooms/${pin}`))
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
@@ -97,7 +106,8 @@ export default function RoomLobby() {
             setRealOptions(data.options);
           }
         })
-        .catch((err) => console.warn('[RoomLobby] Room options fetch notice:', err));
+        .catch((err) => console.warn('[RoomLobby] Room options fetch notice:', err))
+        .finally(() => setLoadingOptions(false));
     }
   }, [pin]);
 
@@ -512,6 +522,7 @@ export default function RoomLobby() {
         {/* Curated Places / Custom Options on the Table */}
         <CandidatePoolDeck
           mode={mode}
+          isLoading={loadingOptions}
           candidates={filteredCandidates}
           lockedConstraint={lockedConstraint}
           prunedCount={prunedCount}

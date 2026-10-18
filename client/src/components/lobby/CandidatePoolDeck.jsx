@@ -118,6 +118,7 @@ function CandidatePoolCard({ item, idx, handleRemoveSuggestion, onSelectDetails 
 export default function CandidatePoolDeck({
   mode,
   candidates = [],
+  isLoading = false,
   lockedConstraint,
   prunedCount,
   budgetLimit,
@@ -259,7 +260,30 @@ export default function CandidatePoolDeck({
 
       {/* Candidate Grid (1-col or 2-col for Custom Options, 2-col for Places) */}
       <div className="grid grid-cols-2 gap-3">
-        {displayedCandidates.length === 0 ? (
+        {isLoading ? (
+          [0, 1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={`skel-${i}`}
+              className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between shadow-2xs text-left animate-pulse"
+              style={{ animationDelay: `${i * 100}ms` }}
+            >
+              <div className="relative h-32 sm:h-36 w-full bg-zinc-200/60 dark:bg-zinc-800/60 flex flex-col justify-between p-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-12 rounded-full bg-white/40 dark:bg-white/10" />
+                  <div className="h-4 w-7 rounded-full bg-white/40 dark:bg-white/10" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-3.5 bg-white/60 dark:bg-white/20 rounded-md w-3/4" />
+                  <div className="h-2.5 bg-white/40 dark:bg-white/10 rounded-md w-1/2" />
+                </div>
+              </div>
+              <div className="p-2.5 flex flex-col gap-1.5">
+                <div className="h-2.5 bg-zinc-300/70 dark:bg-zinc-700/60 rounded-md w-2/3" />
+                <div className="h-2 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-4/5" />
+              </div>
+            </div>
+          ))
+        ) : displayedCandidates.length === 0 ? (
           <div className="col-span-2 p-6 rounded-2xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-main)] text-center flex flex-col items-center gap-2">
             <Sparkles size={22} className="text-[var(--accent-bg)]" />
             <span className="text-xs font-semibold text-[var(--text-primary)]">

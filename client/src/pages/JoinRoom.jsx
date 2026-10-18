@@ -25,7 +25,7 @@ import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
-import HexagonLoadingOverlay from '../components/lobby/HexagonLoadingOverlay';
+import LobbyLoadingView from '../components/lobby/LobbyLoadingView';
 import { apiUrl } from '../utils/api';
 import {
   detectUserGps,
@@ -227,6 +227,18 @@ export default function JoinRoom() {
 
   const isCustomMode = selectedCategory === 'Custom';
   const activeCatObj = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
+
+  if (loading) {
+    return (
+      <LobbyLoadingView
+        topic={isCustomMode ? (customTopic.trim() || 'What should we do?') : activeCatObj.topic}
+        category={selectedCategory}
+        userName={name.trim() || 'Host'}
+        locationLabel={gpsState?.label || 'Current Location'}
+        isCustom={isCustomMode}
+      />
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-[100dvh]">
@@ -500,13 +512,6 @@ export default function JoinRoom() {
           saveUserLocation(loc);
           setGpsState(loc);
         }}
-      />
-
-      <HexagonLoadingOverlay
-        isOpen={loading}
-        category={selectedCategory}
-        locationLabel={gpsState?.label || 'Current Location'}
-        isCustom={isCustomMode}
       />
     </div>
   );
