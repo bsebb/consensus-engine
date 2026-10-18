@@ -77,7 +77,7 @@ const createNewRoom = async (req, res) => {
 
   // Fetch places from Google Places (New) or fallback spatial engine and save to DB
   if (mode === 'DISCOVERY') {
-    const targetPlaces = Math.max(3, Math.min(12, parseInt(deckSize || deck_size, 10) || 6));
+    const targetPlaces = Math.max(3, Math.min(12, parseInt(deckSize || deck_size, 10) || 10));
     const hasGoogleKey = Boolean(
       (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
     );

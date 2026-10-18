@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutGrid, PlusCircle, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star, Info, Check, Layers } from 'lucide-react';
+import {
+  LayoutGrid,
+  PlusCircle,
+  ShieldCheck,
+  Plus,
+  AlertTriangle,
+  Trash2,
+  MapPin,
+  Star,
+  Info,
+  Check,
+  Layers,
+  Shuffle,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
 import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { inferLibraryTabFromTopic, useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 import { useLanguage } from '../../context/LanguageContext';
+import { triggerHaptic } from '../../utils/haptics';
 
 function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   const { photo } = useCustomOptionPhoto(item.name, topic, item.photo_url);
@@ -187,10 +203,12 @@ export default function CandidatePoolDeck({
   handleQuickAddSuggestion,
   handleRemoveSuggestion,
   duplicateMatch,
+  onShuffle,
 }) {
   const { t } = useLanguage();
   const [showAddInput, setShowAddInput] = useState(mode === 'CUSTOM');
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [activeLibraryTab, setActiveLibraryTab] = useState(() => inferLibraryTabFromTopic(topic));
 
   useEffect(() => {
@@ -199,33 +217,48 @@ export default function CandidatePoolDeck({
     }
   }, [topic]);
 
-  // Display up to 12 options in pool deck
-  const displayedCandidates = candidates.slice(0, 12);
+  // Display up to 6 initially, or up to 16 when expanded
+  const displayedCandidates = expanded ? candidates.slice(0, 16) : candidates.slice(0, 6);
   const existingNamesLower = new Set(candidates.map((c) => String(c.name || '').toLowerCase().trim()));
   const currentLibraryCategory = CUSTOM_POLL_LIBRARY.find((cat) => cat.id === activeLibraryTab) || CUSTOM_POLL_LIBRARY[0];
 
   return (
     <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <LayoutGrid size={16} className="text-[var(--accent-bg)]" />
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <LayoutGrid size={16} className="text-[var(--accent-bg)] shrink-0" />
+          <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">
             {mode === 'CUSTOM'
-              ? `${t('optionsOnTable')} (${displayedCandidates.length})`
-              : `${t('placesOnTable')} (${displayedCandidates.length})`}
+              ? `${t('optionsOnTable')} (${candidates.length})`
+              : `${t('placesOnTable')} (${candidates.length})`}
           </h3>
         </div>
 
-        {mode !== 'CUSTOM' && (
-          <button
-            type="button"
-            onClick={() => setShowAddInput((prev) => !prev)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.96]"
-          >
-            <Plus size={13} />
-            <span>{showAddInput ? t('close') : t('addOption')}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onShuffle && candidates.length > 1 && (
+            <button
+              type="button"
+              onClick={onShuffle}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.96]"
+              title={t('findDifferent')}
+              aria-label={t('findDifferent')}
+            >
+              <Shuffle size={12} className="text-[var(--accent-bg)] shrink-0" />
+              <span>{t('findDifferent')}</span>
+            </button>
+          )}
+
+          {mode !== 'CUSTOM' && (
+            <button
+              type="button"
+              onClick={() => setShowAddInput((prev) => !prev)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.96]"
+            >
+              <Plus size={13} />
+              <span>{showAddInput ? t('close') : t('addOption')}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Group Spending Filter Notice */}
@@ -253,7 +286,7 @@ export default function CandidatePoolDeck({
             existingNames={candidates.map((c) => c.name)}
             duplicateMatch={duplicateMatch}
             mode={mode}
-            disabled={displayedCandidates.length >= 8}
+            disabled={candidates.length >= 12}
           />
 
           {/* Quick-Add Idea Library for Custom Polls */}
@@ -265,7 +298,7 @@ export default function CandidatePoolDeck({
                   <span>{t('ideaLibraryTitle')}</span>
                 </div>
                 <span className="text-[10px] font-semibold text-[var(--text-tertiary)] tabular-nums">
-                  {displayedCandidates.length}/8 {t('selectedSuffix')}
+                  {candidates.length}/12 {t('selectedSuffix')}
                 </span>
               </div>
 
@@ -298,7 +331,7 @@ export default function CandidatePoolDeck({
                     <button
                       key={idea}
                       type="button"
-                      disabled={isAdded || displayedCandidates.length >= 8}
+                      disabled={isAdded || candidates.length >= 12}
                       onClick={() => handleQuickAddSuggestion(idea)}
                       className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         isAdded
@@ -365,6 +398,30 @@ export default function CandidatePoolDeck({
           ))
         )}
       </div>
+
+      {/* Expand / Collapse Toggle for Pools with > 6 Candidates */}
+      {candidates.length > 6 && (
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('tap');
+            setExpanded((prev) => !prev);
+          }}
+          className="w-full py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-[0.98]"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp size={14} />
+              <span>{t('showLessPlaces')}</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown size={14} />
+              <span>{t('showMorePlaces')} ({candidates.length})</span>
+            </>
+          )}
+        </button>
+      )}
 
       {/* Venue Details & Road Route Modal (Discovery Places Only) */}
       <VenueDetailsModal

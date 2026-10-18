@@ -417,6 +417,34 @@ export default function RoomLobby() {
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleShuffleCandidates = () => {
+    triggerHaptic('selection');
+    if (realOptions && realOptions.length > 0) {
+      setRealOptions((prev) => {
+        const copy = [...prev];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      });
+    } else if (groupPool && groupPool.length > 0) {
+      setGroupPool((prev) => {
+        const copy = [...prev];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      });
+    }
+    addToast({
+      title: t('placesShuffledTitle'),
+      message: t('placesShuffledDesc'),
+      type: 'info',
+    });
+  };
+
   const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
   const filteredCandidates = useMemo(() => {
     if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
@@ -556,6 +584,7 @@ export default function RoomLobby() {
           handleQuickAddSuggestion={handleQuickAddSuggestion}
           handleRemoveSuggestion={handleRemoveSuggestion}
           duplicateMatch={duplicateMatch}
+          onShuffle={handleShuffleCandidates}
         />
       </main>
 
@@ -571,7 +600,7 @@ export default function RoomLobby() {
               icon={ArrowRight}
               className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl active:scale-[0.98] transition-transform"
             >
-              {t('startVoting')} • {Math.min(8, filteredCandidates.length)}{' '}
+              {t('startVoting')} • {filteredCandidates.length}{' '}
               {mode === 'CUSTOM' ? t('optionsSuffix') : t('placesSuffix')}
             </Button>
           ) : (

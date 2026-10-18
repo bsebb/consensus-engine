@@ -76,7 +76,12 @@ export function ThemeProvider({ children }) {
       }
     };
 
-    if (typeof document !== 'undefined' && document.startViewTransition) {
+    const hasActiveModal = typeof document !== 'undefined' && Boolean(
+      document.querySelector('[role="dialog"]') ||
+      document.querySelector('.modal-backdrop-ios')
+    );
+
+    if (!hasActiveModal && typeof document !== 'undefined' && document.startViewTransition) {
       const transition = document.startViewTransition(() => {
         flushSync(updateDOM);
       });

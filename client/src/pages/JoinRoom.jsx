@@ -213,6 +213,7 @@ export default function JoinRoom() {
           latitude: lat,
           longitude: lng,
           is_exact_gps: isExactGps,
+          deck_size: 10,
         }),
       });
 
