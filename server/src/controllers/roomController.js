@@ -18,6 +18,7 @@ const {
 // Lilia: access Socket.io for live vote progress updates
 const { getIO } = require('../utils/socket');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
+const { fetchGooglePlaces } = require('../utils/googlePlaces');
 
 const generatePin = () => Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -72,19 +73,40 @@ const createNewRoom = async (req, res) => {
   const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
   const room = await createRoom(host_id, pin, roomTheme, radius);
 
-  // Sprint 2 Logic: Fetch Foursquare data and save to DB
+  // Fetch places from Google Places (New) or fallback spatial engine and save to DB
   if (mode === 'DISCOVERY') {
-    const fetchFn = searchRestaurants || fetchFoursquarePlaces;
     const targetPlaces = Math.max(3, Math.min(12, parseInt(deckSize || deck_size, 10) || 6));
+    const hasGoogleKey = Boolean(
+      (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
+    );
 
-    const places = await fetchFn({
-      theme,
-      latitude,
-      longitude,
-      radius,
-      is_exact_gps,
-      targetPlaces,
-    });
+    let places = [];
+    if (hasGoogleKey) {
+      try {
+        places = await fetchGooglePlaces({
+          theme,
+          latitude,
+          longitude,
+          radius,
+          targetPlaces,
+          isExactGps: is_exact_gps,
+        });
+      } catch (err) {
+        console.warn('[Google Places Error, falling back to spatial engine]:', err.message);
+      }
+    }
+
+    if (!places || places.length === 0) {
+      const fetchFn = searchRestaurants || fetchFoursquarePlaces;
+      places = await fetchFn({
+        theme,
+        latitude,
+        longitude,
+        radius,
+        is_exact_gps,
+        targetPlaces,
+      });
+    }
 
     let createdOptions = [];
     if (places && places.length > 0) {

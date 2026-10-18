@@ -116,15 +116,14 @@ export default function CleanStreetMiniMap({
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
-        const sub = subdomains[Math.abs(tx + ty) % subdomains.length];
-        const primaryUrl = `https://${sub}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tx}/${ty}.png`;
+        const primaryUrl = `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
         const left = Math.round(tx * 256 - viewportLeft);
         const top = Math.round(ty * 256 - viewportTop);
 
         tileList.push({
           key: `${zoom}-${tx}-${ty}`,
           url: primaryUrl,
-          backupUrl: `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`,
+          backupUrl: `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${zoom}/${ty}/${tx}`,
           left,
           top,
         });
@@ -241,7 +240,7 @@ export default function CleanStreetMiniMap({
 
       {/* Clean Unobtrusive Attribution Floor (Strictly >= 10px typography) */}
       <div className="absolute bottom-1 right-1.5 z-10 pointer-events-none px-1.5 py-0.5 rounded bg-black/55 backdrop-blur-xs text-[10px] text-white/70 font-sans">
-        © OpenStreetMap, CartoDB
+        © OpenStreetMap contributors
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
 const { resolveGamePoster } = require('./src/utils/gamePosterService');
 const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteService');
+const { resolveGooglePhotoMedia } = require('./src/utils/googlePlaces');
 const roomRoutes = require('./routes/roomRoutes');
 //Lilia: access the shared Socket.io instance from other server modules
 const { setIO } = require('./src/utils/socket');
@@ -69,6 +70,24 @@ app.get('/api/v1/venue-photos', async (req, res) => {
     return res.json({ success: true, photos });
   } catch {
     return res.json({ success: false, photos: [] });
+  }
+});
+
+// Google Places photo proxy with 7-day browser caching
+app.get('/api/v1/places/photo', async (req, res) => {
+  try {
+    const photoRef = req.query.ref;
+    if (!photoRef) {
+      return res.status(400).json({ error: 'Photo reference is required' });
+    }
+    const cdnUrl = await resolveGooglePhotoMedia(photoRef);
+    if (!cdnUrl) {
+      return res.status(404).json({ error: 'Photo not found' });
+    }
+    res.set('Cache-Control', 'public, max-age=604800');
+    return res.redirect(302, cdnUrl);
+  } catch {
+    return res.status(500).json({ error: 'Failed to resolve photo' });
   }
 });
 
