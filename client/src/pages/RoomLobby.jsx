@@ -97,6 +97,24 @@ export default function RoomLobby() {
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
 
+  // Real room venue options loaded from database/Foursquare
+  const [realOptions, setRealOptions] = useState(() => {
+    return location.state?.roomData?.options || [];
+  });
+
+  useEffect(() => {
+    if (pin) {
+      fetch(apiUrl(`/api/v1/rooms/${pin}`))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && Array.isArray(data.options) && data.options.length > 0) {
+            setRealOptions(data.options);
+          }
+        })
+        .catch((err) => console.warn('[RoomLobby] Room options fetch notice:', err));
+    }
+  }, [pin]);
+
   // Track active PIN in localStorage for mobile navigation dock
   useEffect(() => {
     if (pin) {
@@ -423,7 +441,7 @@ export default function RoomLobby() {
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Candidate pool resolution
+  // Candidate pool resolution from live database options or custom suggestions
   const candidatePoolPreview = useMemo(() => {
     if (mode === 'CUSTOM') {
       return groupPool.map((name, idx) => ({
@@ -435,6 +453,19 @@ export default function RoomLobby() {
         tags: ['Custom'],
       }));
     }
+
+    if (realOptions && realOptions.length > 0) {
+      return realOptions.map((opt, idx) => ({
+        id: opt.id,
+        name: opt.name,
+        category: location.state?.category || 'Discovery',
+        price_level: opt.priceLevel || 2,
+        distance_km: Number((0.6 + ((idx * 0.4) % 3)).toFixed(1)),
+        tags: [location.state?.category || 'Top Pick'],
+        address: 'Chișinău, Moldova',
+      }));
+    }
+
     let pool = restaurantsMock || [];
     const category = location.state?.category;
     if (category && category !== 'Restaurants') {
@@ -447,7 +478,7 @@ export default function RoomLobby() {
       if (matched.length > 0) pool = matched;
     }
     return pool;
-  }, [mode, groupPool, location.state?.category]);
+  }, [mode, groupPool, realOptions, location.state?.category]);
 
   const maxBudgetLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
   const filteredCandidates = useMemo(() => {
@@ -473,23 +504,7 @@ export default function RoomLobby() {
         return;
       }
     } else {
-      let pool = restaurantsMock || [];
-      const category = location.state?.category;
-      if (category && category !== 'Restaurants') {
-        const catLower = category.toLowerCase();
-        const matched = pool.filter(
-          (r) =>
-            r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
-            r.name?.toLowerCase().includes(catLower)
-        );
-        if (matched.length > 0) pool = matched;
-      }
-
-      const maxLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
-      const budgetFiltered = pool.filter((r) => (r.price_level || 1) <= maxLevel);
-      if (budgetFiltered.length > 0) pool = budgetFiltered;
-
-      cardsToPass = pool;
+      cardsToPass = filteredCandidates.length > 0 ? filteredCandidates : candidatePoolPreview;
     }
 
     emit('host_start_voting', {

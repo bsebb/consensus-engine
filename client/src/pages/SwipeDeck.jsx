@@ -120,7 +120,15 @@ export default function SwipeDeck() {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
-            setCards(data.options);
+            setCards(data.options.map((opt, idx) => ({
+              id: opt.id,
+              name: opt.name,
+              category: location.state?.category || 'Discovery',
+              price_level: opt.priceLevel || 2,
+              distance_km: Number((0.6 + ((idx * 0.4) % 3)).toFixed(1)),
+              tags: [location.state?.category || 'Top Pick'],
+              address: 'Chișinău, Moldova',
+            })));
           }
         })
         .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));
