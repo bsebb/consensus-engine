@@ -9,7 +9,7 @@
  Slide Deck File   : Consensus_Engine_Final_Presentation.pptx (16 Slides, 16:9 Widescreen)
  Speakers & Timing :
    [00:00 - 02:30] Part 1: Problem Inception & Product Vision    -> Sebastian Bahnă (Seb)
-   [02:30 - 05:00] Part 2: Frontend Ergonomics & UI Design-Craft -> Gabriel Oarza (Gabi)
+   [02:30 - 05:00] Part 2: Frontend Ergonomics & UI/UX Design     -> Gabriel Oarza (Gabi)
    [05:00 - 07:30] Part 3: Algorithmic Rigor & Concurrency      -> Team 2 (Afina & Lilia)
    [07:30 - 10:00] Part 4: Live 4-Device Multiplayer Demo & Wrap -> Full Team (Seb leading)
    [10:00 - 15:00] Part 5: Mentor Panel Q&A & Technical Defense  -> All Team Members
@@ -321,14 +321,14 @@
 ```
 +----------------------------------------------------------------------------------------------------+
 | SLIDE VISUAL ON SCREEN:                                                                            |
-| [100 / 100] Argon UI/UX Craft Score          [0.000 CLS] Zero Layout Shift Across Gestures         |
+| [100 / 100] UI/UX Accessibility Score         [0.000 CLS] Zero Layout Shift Across Gestures         |
 | [100% WCAG AA] Color Contrast Compliance     [388 KB] Production JS Bundle (117 KB gzipped)        |
 | [100% Unit Tests Passed] Schulze + Levenshtein suites with edge-case tie resolution                |
 +----------------------------------------------------------------------------------------------------+
 ```
 
 #### Speaking Bullets
-- **Argon Design Audit**: Achieved a verified 100/100 score for touch hit areas (>= 48px), contrast ratios, and typography scale.
+- **UI/UX & Accessibility Audit**: Achieved a verified 100/100 score for touch hit areas (>= 48px), contrast ratios, and typography scale.
 - **Zero Raw Emojis**: Every interface icon is an optical Lucide vector SVG, ensuring platform-consistent rendering.
 - **Automated Algorithmic Tests**: Unit test suites prove that the Schulze matrix correctly handles ties, cyclical defeats, and single-candidate rooms.
 

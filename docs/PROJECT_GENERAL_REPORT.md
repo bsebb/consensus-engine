@@ -18,7 +18,7 @@
  Project Timeline  : 01.09.2026 - 17.10.2026 (7 Sprints / 210 Engineering Hours)
  Student Authors   :
    1. Bahnă Sebastian   (Team Leader & Lead Frontend Architect)      [FCIM-25-016-PR-1]
-   2. Oarza Gabriel     (Frontend UI/UX & Design-Craft Engineer)      [FCIM-25-016-PR-2]
+   2. Oarza Gabriel     (Frontend UI/UX Engineer)                     [FCIM-25-016-PR-2]
    3. Fahed Maxim       (Backend Software Engineer)                   [FCIM-25-72413-PR-1]
    4. Martîn Lilia      (Backend Filtering & Real-Time Sockets)       [FCIM-25-243-PR-1]
    5. Dolinskaia Afina  (Algorithm & Data Analytics Engineer)         [FCIM-25-139-PR-1]
@@ -100,7 +100,7 @@ The Consensus Engine is structured as a cohesive full-stack monorepo:
 consensus-engine/
 ├── client/                      # Team 1: Frontend Architecture & UX
 │   ├── src/
-│   │   ├── components/          # Reusable UI Primitives (Design-Craft)
+│   │   ├── components/          # Reusable UI Primitives (Component Library)
 │   │   ├── context/             # SocketContext, ThemeContext, ToastContext
 │   │   ├── pages/               # JoinRoom, HostSettings, RoomLobby, SwipeDeck, History
 │   │   ├── utils/               # Client-side Condorcet fallback & audio triggers
@@ -184,7 +184,7 @@ To eliminate event loop blockage:
 
 ---
 
-## CHAPTER IV: FRONTEND ENGINEERING & DESIGN-CRAFT (TEAM 1)
+## CHAPTER IV: FRONTEND ENGINEERING & UI/UX ARCHITECTURE (TEAM 1)
 
 ### 4.1 Domain-Native PWA Chassis (`App.jsx`, `index.css`)
 Rather than rendering an unconstrained desktop website that reflows unpredictably on mobile, Team 1 engineered a dedicated mobile chassis:
@@ -298,7 +298,7 @@ Conducted live stress tests simulating multi-user environments:
 
 ### 6.3 Automated UI/UX Craft & Accessibility Audit
 The user interface was subjected to automated verification:
-- **Argon Design-Craft Verifier**: Score **100 / 100**.
+- **Automated UI/UX & Accessibility Audit**: Score **100 / 100** (WCAG 2.1 AA Compliant).
 - **Touch Target Verification**: Every button, slider thumb, and navigation link exceeds the minimum $48 \times 48\text{px}$ ergonomic hit area.
 - **Color Contrast**: All light and dark mode text styles exceed WCAG AA standards (minimum 4.5:1 for body copy, 3:1 for large headers).
 - **Zero Raw Emojis**: 100% of interface icons are rendered as vector Lucide SVG glyphs with semantic labels.

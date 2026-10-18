@@ -101,19 +101,7 @@ activity/
 # IDEs and Visual Studio
 .vs/
 
-# AI & Agent instruction files and session memory
-*GEMINI.md
-*gemini.md
-HANDOFF.md
-*.handoff.md
-.gemini/
-.claude/
-.cursor/
-.cursorrules
-agent/
-docs/agents/
-brain/
-.system_generated/
+# Data exports
 *.xlsx
 *.csv
 

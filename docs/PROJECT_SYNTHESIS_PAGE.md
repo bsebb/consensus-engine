@@ -34,14 +34,14 @@
 
 ```
 ========================================================================================================
- TEAM 1: FRONTEND ARCHITECTURE & UX DESIGN-CRAFT
+ TEAM 1: FRONTEND ARCHITECTURE & UI/UX
 ========================================================================================================
  Bahnă Sebastian (Lead Architect & Team Leader) | Contract: FCIM-25-016-PR-1 | Eval: 10x Exc, 1x VG
  - Monorepo architecture, Vite 8 PWA configuration, Service Worker cache-first offline infrastructure.
  - Unified pointer capture gesture engine (3-way swipe mechanics: Approve, Pass, VETO).
  - SocketContext singleton lifecycle, reconnection state restoration, client-side Condorcet fallback.
 
- Oarza Gabriel (UI/UX & Design-Craft Engineer)   | Contract: FCIM-25-016-PR-2 | Eval: 10x Exc, 1x VG
+ Oarza Gabriel (Frontend UI/UX Engineer)         | Contract: FCIM-25-016-PR-2 | Eval: 10x Exc, 1x VG
  - Apple Material HIG tokens, dual-layer surface physics (Liquid Glass header, Acrylic content cards).
  - Kowalski spring bezier transitions (cubic-bezier(0.16, 1, 0.3, 1)), 60-120 FPS GPU compositing.
  - Accessible UI controls: SegmentedControl, SpringToggle, ReviewModal, Step Zero budget slider.
@@ -106,7 +106,7 @@
 | **Schulze Resolution Latency** | < 250 ms for 20 candidates | **18 ms (8 voters, 12 venues)** | Node.js `process.hrtime.bigint()` worker |
 | **Socket Reconnect Recovery** | Immediate / Uninterrupted | **< 30s Grace Period (State Restored)** | Multi-Client Sleep/Wake Testing |
 | **Offline Fallback Execution** | Instant without crash | **100% Client-side Condorcet fallback** | Service Worker Offline Simulation |
-| **Accessibility & Design Score** | >= 90 / 100 | **100 / 100 (Argon Design-Craft Audit)** | Automated a11y & Contrast Validator |
+| **Accessibility & Design Score** | >= 90 / 100 | **100 / 100 (Automated UI/UX Audit)** | Automated a11y & Contrast Validator |
 
 ---
 
