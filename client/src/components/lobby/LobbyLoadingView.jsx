@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, MapPin, Loader2, Compass, Layers, Shield } from 'lucide-react';
+import { LayoutGrid, MapPin, Loader2, Compass, Layers, Shield } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
 export default function LobbyLoadingView({
@@ -27,7 +27,7 @@ export default function LobbyLoadingView({
           ) : (
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-xs">
-                <Sparkles size={15} />
+                <Compass size={15} />
               </div>
               <span className="font-bold text-sm tracking-tight">Consensus</span>
             </div>
@@ -110,7 +110,7 @@ export default function LobbyLoadingView({
         <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-[var(--accent-bg)]" />
+              <LayoutGrid size={16} className="text-[var(--accent-bg)]" />
               <h3 className="text-sm font-bold text-[var(--text-primary)]">
                 {isCustom ? 'Options on the Table (Preparing...)' : 'Places on the Table (Finding spots...)'}
               </h3>

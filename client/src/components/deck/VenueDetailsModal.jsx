@@ -8,7 +8,7 @@ import {
   Footprints,
   ExternalLink,
   Camera,
-  Sparkles,
+  BookOpen,
 } from 'lucide-react';
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 
@@ -234,7 +234,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-bold hover:border-[var(--accent-bg)] transition-colors"
           >
-            <Sparkles size={13} className="text-[var(--accent-bg)]" />
+            <BookOpen size={13} className="text-[var(--accent-bg)]" />
             <span>Menu & Reviews</span>
             <ExternalLink size={11} className="text-[var(--text-tertiary)]" />
           </a>

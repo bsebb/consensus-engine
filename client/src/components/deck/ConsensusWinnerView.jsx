@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Navigation,
   ExternalLink,
-  Sparkles,
+  BarChart3,
   ChevronUp,
   ChevronDown,
   CheckCircle2,
@@ -314,7 +314,7 @@ export default function ConsensusWinnerView({
             >
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center">
-                  <Sparkles size={14} />
+                  <BarChart3 size={14} />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-[var(--text-primary)]">

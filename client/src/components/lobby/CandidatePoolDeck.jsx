@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star, Info, Check, Layers } from 'lucide-react';
+import { LayoutGrid, PlusCircle, ShieldCheck, Plus, AlertTriangle, Trash2, MapPin, Star, Info, Check, Layers } from 'lucide-react';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
 import { getVenueVibe, getVenueRating, useVenuePhotos, CUSTOM_POLL_LIBRARY } from '../../utils/venueImages';
@@ -206,7 +206,7 @@ export default function CandidatePoolDeck({
     <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-[var(--accent-bg)]" />
+          <LayoutGrid size={16} className="text-[var(--accent-bg)]" />
           <h3 className="text-sm font-bold text-[var(--text-primary)]">
             {mode === 'CUSTOM'
               ? `Options on the Table (${displayedCandidates.length})`
@@ -342,7 +342,7 @@ export default function CandidatePoolDeck({
           ))
         ) : displayedCandidates.length === 0 ? (
           <div className="col-span-2 p-6 rounded-2xl bg-[var(--bg-inset)] border border-dashed border-[var(--border-main)] text-center flex flex-col items-center gap-2">
-            <Sparkles size={22} className="text-[var(--accent-bg)]" />
+            <PlusCircle size={24} className="text-[var(--text-tertiary)]" />
             <span className="text-xs font-semibold text-[var(--text-primary)]">
               {mode === 'CUSTOM' ? 'Pick at least 2 options from the Idea Library or type your own' : 'No spots match this price filter'}
             </span>

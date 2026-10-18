@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Sparkles,
+  Compass,
   ArrowRight,
   Clock,
   Utensils,
@@ -245,7 +245,7 @@ export default function JoinRoom() {
       <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm">
-            <Sparkles size={16} />
+            <Compass size={16} />
           </div>
           <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">Consensus</span>
         </div>

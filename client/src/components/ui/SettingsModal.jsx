@@ -4,7 +4,6 @@ import {
   X,
   User,
   Sliders,
-  Sparkles,
   Moon,
   Sun,
   Laptop,
@@ -206,7 +205,7 @@ export default function SettingsModal({ isOpen, onClose }) {
         {/* Section 2: Motion & Interaction */}
         <section className="flex flex-col gap-2.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
-            <Sparkles size={12} />
+            <Activity size={12} />
             <span>Ergonomics & Motion</span>
           </span>
           <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-3">

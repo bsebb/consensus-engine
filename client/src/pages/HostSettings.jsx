@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Compass,
-  Sparkles,
   Utensils,
   Coffee,
   Wine,
@@ -332,7 +331,7 @@ export default function HostSettings() {
               <SegmentedControl
                 options={[
                   { value: 'DISCOVERY', label: 'Local Venues', icon: Compass },
-                  { value: 'CUSTOM', label: 'Custom Topics', icon: Sparkles },
+                  { value: 'CUSTOM', label: 'Custom Topics', icon: Layers },
                 ]}
                 value={mode}
                 onChange={handleSelectMode}

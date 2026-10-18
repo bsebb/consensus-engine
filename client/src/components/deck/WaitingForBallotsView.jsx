@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import Button from '../ui/Button';
 
 export default function WaitingForBallotsView({
@@ -12,7 +12,7 @@ export default function WaitingForBallotsView({
     <main className="px-4 py-8 flex flex-col items-center justify-center text-center flex-1 my-auto animate-[modalSpring_0.35s_var(--spring-smooth)]">
       <div className="w-full rounded-2xl bg-[var(--bg-elevated)] p-8 border border-[var(--border-main)] flex flex-col items-center gap-5">
         <div className="w-16 h-16 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shadow-[0_8px_24px_var(--accent-glow)] animate-pulse">
-          <Sparkles size={32} />
+          <CheckCircle2 size={32} />
         </div>
 
         <div className="flex flex-col gap-1">

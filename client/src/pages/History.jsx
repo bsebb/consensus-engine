@@ -5,7 +5,7 @@ import {
   Clock,
   Trophy,
   Calendar,
-  Sparkles,
+  PlusCircle,
   Trash2,
   ChevronDown,
   ChevronUp,
@@ -272,7 +272,7 @@ export default function History() {
               variant="primary"
               size="md"
               onClick={() => navigate('/host')}
-              icon={Sparkles}
+              icon={PlusCircle}
             >
               Host First Decision
             </Button>
@@ -429,7 +429,7 @@ export default function History() {
                       {s.pairwiseDuels && s.pairwiseDuels.length > 0 && (
                         <div className="flex flex-col gap-1.5">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1 px-0.5">
-                            <Sparkles size={12} />
+                            <Flame size={12} className="text-amber-500" />
                             <span>Pairwise Condorcet Head-to-Head Duels</span>
                           </span>
                           <div className="grid grid-cols-1 gap-1">

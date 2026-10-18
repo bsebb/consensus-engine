@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Plus, X, Gamepad2, Trophy, Film, Utensils, Compass, Sparkles, Check, AlertTriangle } from 'lucide-react';
+import { Search, Plus, X, Gamepad2, Trophy, Film, Utensils, Compass, Check, AlertTriangle } from 'lucide-react';
 import Button from '../ui/Button';
 import { searchCustomSuggestions, CATEGORY_META } from '../../utils/customAutocompleteDatabase';
 import { triggerHaptic } from '../../utils/haptics';
@@ -158,7 +158,7 @@ export default function CustomOptionAutocomplete({
         <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-[var(--bg-elevated)]/95 backdrop-blur-md border border-[var(--border-main)] rounded-2xl shadow-xl overflow-hidden max-h-72 flex flex-col animate-[fadeIn_0.15s_ease-out]">
           <div className="p-2 border-b border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider bg-[var(--bg-inset)]/50">
             <span className="flex items-center gap-1">
-              <Sparkles size={11} className="text-[var(--accent-bg)]" />
+              <Search size={11} className="text-[var(--accent-bg)]" />
               <span>{cleanQuery ? 'Suggested Matches' : 'Popular Ideas'}</span>
             </span>
             <span className="text-[10px] lowercase font-normal">tap to add</span>
