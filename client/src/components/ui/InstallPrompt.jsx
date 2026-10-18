@@ -63,7 +63,7 @@ export default function InstallPrompt() {
 
   return (
     <aside aria-label="Install App" className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-[1900] select-none">
-      <div className="glass-surface rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)] border border-[var(--border-glass)] flex flex-col gap-3">
+      <div className="glass-surface rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)] border border-[var(--border-glass)] flex flex-col gap-3 animate-sheet-up">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm shrink-0">

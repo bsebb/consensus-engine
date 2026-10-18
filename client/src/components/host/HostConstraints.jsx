@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin, Navigation, Minus, Plus, ArrowRight } from 'lucide-react';
 import RangeSlider from '../ui/RangeSlider';
+import SegmentedControl from '../ui/SegmentedControl';
 
 export default function HostConstraints({
   mode,
@@ -32,25 +33,15 @@ export default function HostConstraints({
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {radiusPresets.map((preset) => {
-                const isPresetActive = radiusKm === preset;
-                return (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setRadiusKm(preset)}
-                    className={`flex-1 py-1 px-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer ${
-                      isPresetActive
-                        ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-sm'
-                        : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
-                    }`}
-                  >
-                    {preset} km
-                  </button>
-                );
-              })}
-            </div>
+            <SegmentedControl
+              options={radiusPresets.map((preset) => ({
+                value: preset,
+                label: `${preset} km`,
+              }))}
+              value={radiusKm}
+              onChange={setRadiusKm}
+              size="sm"
+            />
 
             <RangeSlider
               min={1}
@@ -72,26 +63,17 @@ export default function HostConstraints({
               </span>
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5">
-              {priceTiers.map((tier) => {
-                const isActive = priceTier === tier.value;
-                return (
-                  <button
-                    key={tier.value}
-                    type="button"
-                    onClick={() => setPriceTier(tier.value)}
-                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                      isActive
-                        ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-sm'
-                        : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
-                    }`}
-                  >
-                    <span className="font-mono text-xs font-black">{tier.label}</span>
-                    <span className="text-[10px] opacity-80 mt-0.5">{tier.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <SegmentedControl
+              options={priceTiers.map((tier) => ({
+                value: tier.value,
+                label: tier.label,
+                sub: tier.desc,
+              }))}
+              value={priceTier}
+              onChange={setPriceTier}
+              size="md"
+              variant="accent"
+            />
           </div>
 
           {/* Voting Deck Size Selector */}
@@ -103,31 +85,18 @@ export default function HostConstraints({
               </span>
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5">
-              {[
-                { count: 4, label: '4', desc: 'Fast Vote' },
-                { count: 6, label: '6', desc: 'Standard' },
-                { count: 8, label: '8', desc: 'Expanded' },
-                { count: 10, label: '10', desc: 'Wide Choice' },
-              ].map((opt) => {
-                const isActive = deckSize === opt.count;
-                return (
-                  <button
-                    key={opt.count}
-                    type="button"
-                    onClick={() => setDeckSize?.(opt.count)}
-                    className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                      isActive
-                        ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-sm'
-                        : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
-                    }`}
-                  >
-                    <span className="font-mono text-xs font-black">{opt.label}</span>
-                    <span className="text-[10px] opacity-80 mt-0.5">{opt.desc}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <SegmentedControl
+              options={[
+                { value: 4, label: '4', sub: 'Fast' },
+                { value: 6, label: '6', sub: 'Standard' },
+                { value: 8, label: '8', sub: 'Expanded' },
+                { value: 10, label: '10', sub: 'Wide' },
+              ]}
+              value={deckSize}
+              onChange={setDeckSize}
+              size="md"
+              variant="accent"
+            />
           </div>
 
           {/* Location & Hexagonal Grid Indicator */}

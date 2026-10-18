@@ -1,4 +1,5 @@
 import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from 'react';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function SegmentedControl({
   options = [],
@@ -6,6 +7,7 @@ export default function SegmentedControl({
   onChange,
   className = '',
   size = 'md',
+  variant = 'default', // 'default' (surface thumb) | 'accent' (accent thumb)
 }) {
   const containerRef = useRef(null);
   const buttonRefs = useRef(new Map());
@@ -43,7 +45,7 @@ export default function SegmentedControl({
 
   useLayoutEffect(() => {
     updateThumbMetrics();
-  }, [updateThumbMetrics, options]);
+  }, [updateThumbMetrics, options, value]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setIsMounted(true));
@@ -66,35 +68,61 @@ export default function SegmentedControl({
     return () => ro.disconnect();
   }, [updateThumbMetrics]);
 
-  const sizeClasses = {
-    sm: 'p-0.5 text-xs',
-    md: 'p-1 text-sm',
-    lg: 'p-1 text-sm sm:p-1.5 sm:text-base',
-  }[size] || 'p-1 text-sm';
+  // Strict Concentric Radii: R_inner = R_outer - padding
+  // sm: outer rounded-lg (8px), padding 2px (p-0.5) -> inner rounded-md (6px)
+  // md: outer rounded-xl (12px), padding 4px (p-1) -> inner rounded-lg (8px)
+  // lg: outer rounded-2xl (16px), padding 6px (p-1.5) -> inner rounded-[10px] (10px)
+  const sizeConfig = {
+    sm: {
+      container: 'rounded-lg p-0.5 text-xs',
+      thumb: 'rounded-md',
+      btn: 'py-1 px-2 min-h-[30px] rounded-md text-xs',
+    },
+    md: {
+      container: 'rounded-xl p-1 text-sm',
+      thumb: 'rounded-lg',
+      btn: 'py-1.5 px-3 min-h-[36px] rounded-lg text-xs sm:text-sm',
+    },
+    lg: {
+      container: 'rounded-2xl p-1.5 text-sm sm:text-base',
+      thumb: 'rounded-[10px]',
+      btn: 'py-2 px-3.5 min-h-[42px] rounded-[10px] text-sm',
+    },
+  }[size] || {
+    container: 'rounded-xl p-1 text-sm',
+    thumb: 'rounded-lg',
+    btn: 'py-1.5 px-3 min-h-[36px] rounded-lg text-xs sm:text-sm',
+  };
 
-  const btnPadding = {
-    sm: 'py-1 px-2.5 min-h-[32px]',
-    md: 'py-1.5 px-3.5 min-h-[36px]',
-    lg: 'py-2 px-4 min-h-[40px]',
-  }[size] || 'py-1.5 px-3.5 min-h-[36px]';
+  const handleSelect = (newVal) => {
+    if (newVal !== value) {
+      triggerHaptic('selection');
+      onChange?.(newVal);
+    }
+  };
+
+  const isAccent = variant === 'accent';
 
   return (
     <div
       ref={containerRef}
       role="tablist"
-      className={`relative inline-flex items-center w-full bg-black/[0.04] dark:bg-white/[0.06] border border-[var(--border-subtle)] rounded-lg ${sizeClasses} select-none ${className}`}
+      className={`relative inline-flex items-center w-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] ${sizeConfig.container} select-none ${className}`}
     >
-      {/* 60fps GPU Sliding Indicator Thumb (INV-03) */}
+      {/* 60fps GPU Sliding Indicator Thumb (Strict Concentric & Borderless) */}
       <div
         aria-hidden="true"
-        className={`seg-thumb absolute top-0 left-0 m-0 rounded-md bg-white dark:bg-[var(--bg-elevated)] shadow-[0_1px_4px_rgba(0,0,0,0.12),0_1px_1px_rgba(0,0,0,0.06)] border border-black/[0.04] dark:border-white/[0.08] pointer-events-none z-10 ${
-          !isMounted || !thumbMetrics.ready ? 'opacity-0' : 'opacity-100'
-        }`}
+        className={`seg-thumb absolute top-0 left-0 m-0 ${sizeConfig.thumb} pointer-events-none z-10 ${
+          isAccent
+            ? 'bg-[var(--accent-bg)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)]'
+            : 'bg-white dark:bg-[var(--bg-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.06)]'
+        } ${!isMounted || !thumbMetrics.ready ? 'opacity-0' : 'opacity-100'}`}
         style={{
           top: 0,
           left: 0,
           bottom: 'auto',
           margin: 0,
+          border: 'none',
           transform: `translate3d(${thumbMetrics.left}px, ${thumbMetrics.top}px, 0)`,
           width: thumbMetrics.width > 0 ? `${thumbMetrics.width}px` : undefined,
           height: thumbMetrics.height > 0 ? `${thumbMetrics.height}px` : undefined,
@@ -118,15 +146,22 @@ export default function SegmentedControl({
             role="tab"
             type="button"
             aria-selected={isSelected}
-            onClick={() => onChange(opt.value)}
-            className={`relative z-20 flex-1 flex items-center justify-center gap-1.5 ${btnPadding} rounded-md font-medium cursor-pointer transition-colors duration-150 ${
+            onClick={() => handleSelect(opt.value)}
+            className={`relative z-20 flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 ${sizeConfig.btn} font-bold cursor-pointer transition-colors duration-150 active:scale-[0.98] ${
               isSelected
-                ? 'text-[var(--text-primary)] font-semibold'
+                ? isAccent
+                  ? 'text-white'
+                  : 'text-[var(--text-primary)] font-bold'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            {Icon && <Icon size={15} className="shrink-0" />}
-            <span>{opt.label}</span>
+            {Icon && <Icon size={14} className="shrink-0" />}
+            <span className="tabular-nums tracking-tight">{opt.label}</span>
+            {opt.sub && (
+              <span className={`text-[10px] tabular-nums font-normal ${isSelected && isAccent ? 'text-white/80' : 'text-[var(--text-tertiary)]'}`}>
+                {opt.sub}
+              </span>
+            )}
           </button>
         );
       })}

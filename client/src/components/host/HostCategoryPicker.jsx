@@ -29,9 +29,9 @@ export default function HostCategoryPicker({
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center mb-1 transition-colors ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1 transition-all ${
                     isSelected
-                      ? 'bg-[var(--accent-bg)] text-white shadow-sm'
+                      ? 'bg-[var(--accent-bg)] text-white shadow-sm scale-105'
                       : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)]'
                   }`}
                 >
@@ -41,6 +41,9 @@ export default function HostCategoryPicker({
                 <span className="text-[10px] text-[var(--text-tertiary)] mt-0.5">
                   {cat.desc}
                 </span>
+                {isSelected && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--accent-bg)] animate-checkmark-pop" />
+                )}
               </button>
             );
           })}

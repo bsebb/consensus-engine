@@ -212,7 +212,7 @@ export default function CustomOptionAutocomplete({
 
       {/* Autocomplete Dropdown Popover */}
       {isOpen && !disabled && (suggestions.length > 0 || (cleanQuery && !hasExactMatch)) && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-[var(--bg-elevated)]/95 backdrop-blur-md border border-[var(--border-main)] rounded-2xl shadow-xl overflow-hidden max-h-72 flex flex-col animate-[fadeIn_0.15s_ease-out]">
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-[var(--bg-elevated)]/95 backdrop-blur-md border border-[var(--border-main)] rounded-2xl shadow-xl overflow-hidden max-h-72 flex flex-col animate-popover">
           <div className="p-2 border-b border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider bg-[var(--bg-inset)]/50">
             <span className="flex items-center gap-1.5">
               {isSearchingLive ? (

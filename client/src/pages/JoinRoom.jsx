@@ -363,18 +363,21 @@ export default function JoinRoom() {
                         }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                             isSelected
-                              ? 'bg-[var(--accent-bg)] text-white'
+                              ? 'bg-[var(--accent-bg)] text-white shadow-xs scale-105'
                               : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
                           }`}
                         >
                           <Icon size={16} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold text-[var(--text-primary)] leading-snug">{cat.title}</div>
                           <div className="text-[11px] text-[var(--text-tertiary)] truncate">{cat.desc}</div>
                         </div>
+                        {isSelected && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-bg)] shrink-0 animate-checkmark-pop" />
+                        )}
                       </button>
                     );
                   })}

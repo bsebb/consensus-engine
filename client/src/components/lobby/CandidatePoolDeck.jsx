@@ -61,7 +61,7 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   return (
     <div className="rounded-2xl p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between min-h-[140px] shadow-2xs text-left">
       <div className="flex items-center justify-between gap-2">
-        <div className="w-6 h-6 rounded-lg bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
+        <div className="w-6 h-6 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-xs font-black flex items-center justify-center shrink-0 tabular-nums">
           #{idx + 1}
         </div>
         <button
@@ -300,7 +300,7 @@ export default function CandidatePoolDeck({
                       type="button"
                       disabled={isAdded || displayedCandidates.length >= 8}
                       onClick={() => handleQuickAddSuggestion(idea)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         isAdded
                           ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 cursor-default'
                           : 'bg-[var(--bg-elevated)] hover:border-[var(--accent-bg)] text-[var(--text-primary)] border border-[var(--border-subtle)] active:scale-95'

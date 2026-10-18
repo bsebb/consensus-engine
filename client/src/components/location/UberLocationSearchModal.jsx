@@ -50,14 +50,25 @@ export default function UberLocationSearchModal({
     };
   }, [query]);
 
-  if (!isOpen) return null;
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 180);
+  };
+
+  if (!isOpen && !isClosing) return null;
 
   const handleUseGps = async () => {
     setIsDetectingGps(true);
     try {
       const gpsRes = await detectUserGps({ forceRefresh: true });
       onSelectLocation(gpsRes);
-      onClose();
+      handleClose();
     } catch (err) {
       console.warn('[Location] GPS detection error:', err);
     } finally {
@@ -77,19 +88,23 @@ export default function UberLocationSearchModal({
       ts: Date.now(),
     };
     onSelectLocation(payload);
-    onClose();
+    handleClose();
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-[fadeIn_0.2s_ease-out]"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop-ios ${
+        isClosing ? 'animate-fade-out' : 'animate-fade-in'
+      }`}
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-label="Location Search"
     >
       <div
-        className="w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-main)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-[modalSpring_0.3s_var(--spring-smooth)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:pb-0"
+        className={`w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-main)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:pb-0 ${
+          isClosing ? 'animate-sheet-down sm:animate-scale-down' : 'animate-sheet-up sm:animate-modal-spring'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Search Input */}
@@ -101,8 +116,8 @@ export default function UberLocationSearchModal({
             </span>
             <button
               type="button"
-              onClick={onClose}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              onClick={handleClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X size={16} />

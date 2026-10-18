@@ -19,11 +19,13 @@ import { useSocket } from '../../context/SocketContext';
 import { useToast } from './Toast';
 import SpringToggle from './SpringToggle';
 import { triggerHaptic } from '../../utils/haptics';
+import SegmentedControl from './SegmentedControl';
 
 export default function SettingsModal({ isOpen, onClose }) {
   const { theme, setTheme, accent, setAccent, ACCENTS } = useTheme();
   const { lang, setLang, t } = useLanguage();
   const { addToast } = useToast();
+  const [isClosing, setIsClosing] = useState(false);
 
   const [userName, setUserName] = useState(() => {
     return localStorage.getItem('consensus_user_name') || 'Guest';
@@ -33,16 +35,25 @@ export default function SettingsModal({ isOpen, onClose }) {
     return localStorage.getItem('consensus_haptics_enabled') !== 'false';
   });
 
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 180);
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const handleNameSave = (e) => {
     const val = e.target.value;
@@ -80,18 +91,22 @@ export default function SettingsModal({ isOpen, onClose }) {
     });
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isClosing) return null;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] bg-black/60 backdrop-blur-md animate-[fadeBackdrop_0.2s_ease-out]"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] modal-backdrop-ios ${
+        isClosing ? 'animate-fade-out' : 'animate-fade-in'
+      }`}
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-label="Application Settings"
     >
       <div
-        className="w-full max-w-md max-h-[85vh] overflow-y-auto glass-surface rounded-3xl p-5 border border-[var(--border-glass)] shadow-[0_24px_64px_rgba(0,0,0,0.4)] flex flex-col gap-4 animate-[modalSpring_0.25s_var(--spring-smooth)] select-none text-[var(--text-primary)]"
+        className={`w-full max-w-md max-h-[85vh] overflow-y-auto glass-surface rounded-3xl p-5 border border-[var(--border-glass)] shadow-[0_24px_64px_rgba(0,0,0,0.4)] flex flex-col gap-4 select-none text-[var(--text-primary)] ${
+          isClosing ? 'animate-scale-down' : 'animate-modal-spring'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -108,8 +123,8 @@ export default function SettingsModal({ isOpen, onClose }) {
 
           <button
             type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer min-h-[36px]"
+            onClick={handleClose}
+            className="w-8 h-8 rounded-full bg-[var(--bg-inset)] hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer min-h-[36px]"
             aria-label="Close Settings"
           >
             <X size={16} />
@@ -122,33 +137,16 @@ export default function SettingsModal({ isOpen, onClose }) {
             <Globe size={12} />
             <span>{t('langTitle')}</span>
           </span>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'en', flag: '🇺🇸', label: 'English' },
-              { id: 'ro', flag: '🇲🇩', label: 'Română' },
-              { id: 'ru', flag: '🇷🇺', label: 'Русский' },
-            ].map((item) => {
-              const isSelected = lang === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setLang(item.id);
-                    triggerHaptic('tap');
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-[0_2px_8px_var(--accent-glow)]'
-                      : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
-                  }`}
-                >
-                  <span>{item.flag}</span>
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'en', label: '🇺🇸 English' },
+              { value: 'ro', label: '🇲🇩 Română' },
+              { value: 'ru', label: '🇷🇺 Русский' },
+            ]}
+            value={lang}
+            onChange={setLang}
+            size="sm"
+          />
         </section>
 
         {/* Section 2: Accent Theme Color */}
@@ -226,31 +224,16 @@ export default function SettingsModal({ isOpen, onClose }) {
           <span className="text-xs font-semibold text-[var(--text-secondary)]">
             {t('themeTitle')}
           </span>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'dark', label: t('themeDark'), icon: Moon },
-              { id: 'light', label: t('themeLight'), icon: Sun },
-              { id: 'system', label: t('themeSystem'), icon: Laptop },
-            ].map((item) => {
-              const isCurrent = theme === item.id;
-              const IconComp = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTheme(item.id)}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    isCurrent
-                      ? 'bg-[var(--accent-bg)] text-white border-[var(--accent-bg)] shadow-[0_2px_8px_var(--accent-glow)]'
-                      : 'bg-[var(--bg-inset)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--text-tertiary)]'
-                  }`}
-                >
-                  <IconComp size={13} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            options={[
+              { value: 'dark', label: t('themeDark'), icon: Moon },
+              { value: 'light', label: t('themeLight'), icon: Sun },
+              { value: 'system', label: t('themeSystem'), icon: Laptop },
+            ]}
+            value={theme}
+            onChange={setTheme}
+            size="sm"
+          />
         </section>
 
         {/* Section 6: Data Reset Actions */}

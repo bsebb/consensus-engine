@@ -29,6 +29,16 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
 
   const [reported, setReported] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose?.();
+    }, 180);
+  };
 
   useEffect(() => {
     setActivePhotoIdx(0);
@@ -127,7 +137,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
             {!inline && onClose && (
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-8 h-8 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white flex items-center justify-center hover:bg-black/85 transition-colors cursor-pointer"
                 aria-label="Close Details"
               >
@@ -287,17 +297,25 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
     </div>
   );
 
+  if (!isOpen && !isClosing && !inline) return null;
+
   if (inline) {
     return <div className="flex-1 flex flex-col justify-center px-4 py-2 max-w-md mx-auto w-full">{content}</div>;
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(1rem,env(safe-area-inset-top,0px))] sm:p-4 animate-[fadeIn_0.15s_ease-out]"
-      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      className={`fixed inset-0 z-50 modal-backdrop-ios flex items-end sm:items-center justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(1rem,env(safe-area-inset-top,0px))] sm:p-4 ${
+        isClosing ? 'animate-fade-out' : 'animate-fade-in'
+      }`}
+      onClick={handleClose}
     >
       <div
-        className="w-full max-w-md animate-[modalSpring_0.25s_var(--spring-smooth)]"
+        className={`w-full max-w-md ${
+          isClosing ? 'animate-sheet-down sm:animate-scale-down' : 'animate-sheet-up sm:animate-modal-spring'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {content}

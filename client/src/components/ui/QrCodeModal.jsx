@@ -10,7 +10,17 @@ export default function QrCodeModal({
   topic = 'Consensus Session',
 }) {
   const [copied, setCopied] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const { addToast } = useToast();
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose?.();
+    }, 180);
+  };
 
   const inviteUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/?pin=${pin}`
@@ -18,7 +28,7 @@ export default function QrCodeModal({
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) onClose?.();
+      if (e.key === 'Escape' && isOpen) handleClose();
     };
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -28,9 +38,9 @@ export default function QrCodeModal({
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isClosing) return null;
 
   const handleCopy = async () => {
     try {
@@ -72,17 +82,21 @@ export default function QrCodeModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="qr-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] bg-black/60 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] modal-backdrop-ios ${
+        isClosing ? 'animate-fade-out' : 'animate-fade-in'
+      }`}
+      onClick={handleClose}
     >
       <div
-        className="relative w-full max-w-sm rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] p-6 shadow-2xl flex flex-col items-center gap-5 text-center animate-scale-up"
+        className={`relative w-full max-w-sm rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] p-6 shadow-2xl flex flex-col items-center gap-5 text-center ${
+          isClosing ? 'animate-scale-down' : 'animate-modal-spring'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Close QR Modal"
           className="absolute top-4 right-4 p-2 rounded-full text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
         >

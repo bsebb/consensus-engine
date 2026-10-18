@@ -2,6 +2,7 @@ import React from 'react';
 import { ShieldCheck, Check } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
+import SegmentedControl from '../ui/SegmentedControl';
 
 export default function StepZeroVault({
   lockedConstraint,
@@ -53,26 +54,22 @@ export default function StepZeroVault({
         )}
       </div>
 
-      {/* Modern iOS Sliding Segmented Track */}
-      <div className="p-1 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] grid grid-cols-4 gap-1">
-        {tiers.map((tier, idx) => {
-          const isActive = activeTierIndex === idx;
-          return (
-            <button
-              key={tier.id}
-              type="button"
-              onClick={() => handleTierClick(tier.limit, tier.isFiltered)}
-              className={`py-2 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center min-h-[38px] active:scale-[0.96] ${
-                isActive
-                  ? 'bg-[var(--accent-bg)] text-white shadow-2xs'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
-              <span className="tabular-nums">{tier.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* 60fps GPU Sliding Segmented Track with Concentric Radii */}
+      <SegmentedControl
+        options={tiers.map((tier) => ({
+          value: tier.id,
+          label: tier.label,
+        }))}
+        value={activeTier.id}
+        onChange={(tierId) => {
+          const selected = tiers.find((t) => t.id === tierId);
+          if (selected) {
+            onSelectTier?.(selected.limit, selected.isFiltered);
+          }
+        }}
+        variant="accent"
+        size="md"
+      />
 
       {/* Human Explanatory Subtitle */}
       <div className="px-1 text-[11px] text-[var(--text-tertiary)] flex items-center justify-between">

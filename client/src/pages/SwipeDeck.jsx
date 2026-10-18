@@ -11,6 +11,7 @@ import SwipeCard from '../components/deck/SwipeCard';
 import SwipeControls from '../components/deck/SwipeControls';
 import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
 import VenueDetailsModal from '../components/deck/VenueDetailsModal';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
@@ -468,31 +469,17 @@ export default function SwipeDeck() {
                 <span>{t('option')} {Math.min(currentIndex + 1, cards.length)} {t('ofWord')} {cards.length}</span>
               </div>
             ) : (
-              <div className="flex items-center p-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('swipe')}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer tabular-nums ${
-                    activeTab === 'swipe'
-                      ? 'bg-[var(--accent-bg)] text-white shadow-xs'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <Layers size={12} />
-                  <span>{t('card')} {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('details')}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'details'
-                      ? 'bg-[var(--accent-bg)] text-white shadow-xs'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <MapPin size={12} />
-                  <span>{t('detailsAndRoute')}</span>
-                </button>
+              <div className="w-56 sm:w-64">
+                <SegmentedControl
+                  options={[
+                    { value: 'swipe', label: `${t('card')} ${Math.min(currentIndex + 1, cards.length)}/${cards.length}`, icon: Layers },
+                    { value: 'details', label: t('detailsAndRoute'), icon: MapPin },
+                  ]}
+                  value={activeTab}
+                  onChange={setActiveTab}
+                  size="sm"
+                  variant="accent"
+                />
               </div>
             )
           ) : (

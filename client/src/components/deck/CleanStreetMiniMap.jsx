@@ -219,7 +219,7 @@ export default function CleanStreetMiniMap({
             type="button"
             onClick={handleRecenter}
             aria-label="Recenter Map"
-            className="w-7 h-7 rounded-lg bg-[var(--accent-bg)] text-white border border-white/30 flex items-center justify-center text-xs font-bold hover:opacity-90 transition-all shadow-xs cursor-pointer active:scale-95 animate-fadeIn"
+            className="w-7 h-7 rounded-lg bg-[var(--accent-bg)] text-white border border-white/30 flex items-center justify-center text-xs font-bold hover:opacity-90 transition-all shadow-xs cursor-pointer active:scale-95 animate-fade-in"
           >
             <RotateCcw size={12} />
           </button>

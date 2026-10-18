@@ -16,8 +16,18 @@ export default function ReviewModal({
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 180);
+  };
+
+  if (!isOpen && !isClosing) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,20 +69,31 @@ export default function ReviewModal({
     setLoading(false);
     setSubmitted(true);
     setTimeout(() => {
-      onClose();
+      handleClose();
     }, 1800);
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Session Feedback"
+      className="fixed inset-0 z-[2000] flex items-center justify-center p-4"
+    >
       {/* Backdrop */}
       <div
-        onClick={onClose}
-        className="fixed inset-0 bg-black/55 backdrop-blur-md animate-[fadeBackdrop_0.25s_ease-out]"
+        onClick={handleClose}
+        className={`fixed inset-0 modal-backdrop-ios ${
+          isClosing ? 'animate-fade-out' : 'animate-fade-in'
+        }`}
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-md glass-surface rounded-2xl p-6 shadow-[0_24px_64px_rgba(0,0,0,0.35)] border border-[var(--border-glass)] animate-[modalSpring_0.35s_var(--spring-smooth)] z-10 select-none">
+      <div
+        className={`relative w-full max-w-md glass-surface rounded-2xl p-6 shadow-[0_24px_64px_rgba(0,0,0,0.35)] border border-[var(--border-glass)] z-10 select-none ${
+          isClosing ? 'animate-scale-down' : 'animate-modal-spring'
+        }`}
+      >
         
         {/* Header */}
         <div className="grid grid-cols-[40px_1fr_40px] items-center pb-4 border-b border-[var(--border-subtle)] mb-5">
@@ -83,7 +104,7 @@ export default function ReviewModal({
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1.5 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X size={18} />
@@ -186,7 +207,7 @@ export default function ReviewModal({
               <Button
                 variant="secondary"
                 size="md"
-                onClick={onClose}
+                onClick={handleClose}
                 className="flex-1"
               >
                 Skip
