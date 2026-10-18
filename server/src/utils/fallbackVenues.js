@@ -1,4 +1,5 @@
 const { resolveVenuePhotosBatch } = require('./venuePhotoService');
+const { CATEGORIZED_FALLBACKS, CHISINAU_CENTER, STRASENI_CENTER } = require('../data/curatedVenues');
 
 function formatPriceLabel(price) {
   const map = {
@@ -9,75 +10,6 @@ function formatPriceLabel(price) {
   };
   return map[price] || "$$ (Moderate: ~150-300 MDL)";
 }
-
-// Curated Moldovan hotspots (only used when user coordinates are actually inside Moldova)
-const CATEGORIZED_FALLBACKS = {
-  cinema: [
-    { name: "Cineplex MallDova", fsq_id: "fsq_cineplex_malldova", category: "Multiplex Cinema", priceLevel: 2, priceLabel: "$$ (~140-200 MDL / ticket)", lat: 46.9972, lng: 28.8510, address: "Str. Arborilor 21, Chișinău" },
-    { name: "Cineplex Loteanu", fsq_id: "fsq_cineplex_loteanu", category: "Movie Theater", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0252, lng: 28.8315, address: "Bd. Ștefan cel Mare 103, Chișinău" },
-    { name: "AutoCinema Chișinău", fsq_id: "fsq_autocinema_chisinau", category: "Drive-In Movie Theater", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0713, lng: 28.8888, address: "Str. Mihail Sadoveanu 42/6, Chișinău" },
-    { name: "Private Cinema Lounge", fsq_id: "fsq_private_cinema_lounge", category: "VIP Screening Lounge", priceLevel: 3, priceLabel: "$$$ (~250-450 MDL / screening)", lat: 47.0155, lng: 28.8439, address: "Str. Ismail 31, Chișinău" },
-    { name: "Cinematograful în Aer Liber", fsq_id: "fsq_cinema_aer_liber", category: "Open-Air Cinema", priceLevel: 1, priceLabel: "$ (~50-100 MDL / ticket)", lat: 47.0397, lng: 28.7802, address: "Str. Onisifor Ghibu 1 (Parcul Butoiaș), Chișinău" },
-    { name: "Movie Hall Chișinău", fsq_id: "fsq_movie_hall_chisinau", category: "Boutique Cinema", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0395, lng: 28.8262, address: "Str. Mihai Viteazul 15A, Chișinău" },
-    { name: "Cineplex VIP Lounge", fsq_id: "fsq_cineplex_vip", category: "VIP Cinema", priceLevel: 3, priceLabel: "$$$ (~220-380 MDL / ticket)", lat: 46.9975, lng: 28.8515, address: "Str. Arborilor 21 (MallDova), Chișinău" },
-    { name: "Cinema Bistro Chișinău", fsq_id: "fsq_cinema_bistro", category: "Cinema & Bistro", priceLevel: 2, priceLabel: "$$ (~140-220 MDL / ticket)", lat: 47.0188, lng: 28.8485, address: "Bd. Dacia 23, Chișinău" },
-  ],
-  cafes: [
-    { name: "Cafeneaua Delice", fsq_id: "fsq_delice_straseni", category: "Café & Pastry", priceLevel: 1, priceLabel: "$ (~45-90 MDL)", lat: 47.1430, lng: 28.6110, address: "Str. Ștefan cel Mare 112, Strășeni" },
-    { name: "Coffee Like", fsq_id: "fsq_coffeelike_straseni", category: "Specialty Coffee Bar", priceLevel: 1, priceLabel: "$ (~40-80 MDL)", lat: 47.1415, lng: 28.6125, address: "Str. Mihai Eminescu 28, Strășeni" },
-    { name: "Panna Cotta Strășeni", fsq_id: "fsq_pannacotta_straseni", category: "Café & Bakery", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.1445, lng: 28.6105, address: "Str. Chișinăului 5, Strășeni" },
-    { name: "Tucano Coffee", fsq_id: "fsq_tucano_1", category: "Specialty Coffee Shop", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.0225, lng: 28.8340, address: "Str. Aleksandr Pușkin 15, Chișinău" },
-    { name: "Crème de la Crème", fsq_id: "fsq_creme_3", category: "French Patisserie & Café", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0238, lng: 28.8340, address: "Str. Alexandru cel Bun 98A, Chișinău" },
-    { name: "Rozmarin Cafe", fsq_id: "fsq_rozmarin_5", category: "Brunch & Roastery", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0240, lng: 28.8320, address: "Bd. Ștefan cel Mare 202, Chișinău" },
-    { name: "Sensi Bar & Cafe", fsq_id: "fsq_sensi_2", category: "Espresso & Lounge", priceLevel: 2, priceLabel: "$$ (~80-150 MDL)", lat: 47.0145, lng: 28.8525, address: "Bd. Dimitrie Cantemir 3/2, Chișinău" },
-    { name: "Coffeemolka", fsq_id: "fsq_coffeemolka_1", category: "Specialty Espresso Bar", priceLevel: 1, priceLabel: "$ (~50-90 MDL)", lat: 47.0210, lng: 28.8375, address: "Str. 31 August 1989, nr. 78/3, Chișinău" },
-    { name: "DC Donuts & Coffee", fsq_id: "fsq_dcdonuts_1", category: "Artisanal Coffee & Bakery", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.0220, lng: 28.8375, address: "Str. Pușkin 16, Chișinău" },
-    { name: "Morpho Cafe & Pastry", fsq_id: "fsq_morpho_cafe", category: "Artisanal Cafe", priceLevel: 2, priceLabel: "$$ (~70-130 MDL)", lat: 47.0215, lng: 28.8310, address: "Str. București 60, Chișinău" },
-    { name: "Sweet Caffe", fsq_id: "fsq_sweet_caffe", category: "Specialty Coffee", priceLevel: 2, priceLabel: "$$ (~60-110 MDL)", lat: 47.0320, lng: 28.8250, address: "Bd. Ștefan cel Mare 182, Chișinău" },
-    { name: "Granier Cafe", fsq_id: "fsq_granier_cafe", category: "European Bakery & Coffee", priceLevel: 1, priceLabel: "$ (~50-95 MDL)", lat: 47.0232, lng: 28.8335, address: "Bd. Ștefan cel Mare 132, Chișinău" },
-    { name: "Coffee Drive Botanica", fsq_id: "fsq_coffeedrive_botanica", category: "Drive-Through Specialty Coffee", priceLevel: 1, priceLabel: "$ (~45-85 MDL)", lat: 47.0010, lng: 28.8650, address: "Bd. Dacia 30/1, Chișinău" },
-  ],
-  bars: [
-    { name: "Marlène Cocktail Bar", fsq_id: "fsq_marlene_bar", category: "Craft Cocktail Lounge", priceLevel: 3, priceLabel: "$$$ (~180-360 MDL)", lat: 47.0228, lng: 28.8315, address: "Str. București 75, Chișinău" },
-    { name: "Taproom 27 Craft Beer", fsq_id: "fsq_taproom_bar_5", category: "Craft Taproom", priceLevel: 2, priceLabel: "$$ (~110-200 MDL)", lat: 47.0205, lng: 28.8390, address: "Str. Vasile Alecsandri 117, Chișinău" },
-    { name: "Kozlovna Ceska Pivnice", fsq_id: "fsq_kozlovna_bar_1", category: "Czech Beer Hall", priceLevel: 2, priceLabel: "$$ (~120-220 MDL)", lat: 47.0218, lng: 28.8360, address: "Str. Pușkin 24, Chișinău" },
-    { name: "Invino Enoteca", fsq_id: "fsq_invino_bar_4", category: "Wine Bar", priceLevel: 3, priceLabel: "$$$ (~200-400 MDL)", lat: 47.0230, lng: 28.8330, address: "Str. Bănulescu-Bodoni 41, Chișinău" },
-    { name: "Covor Bar", fsq_id: "fsq_covor_bar", category: "Cocktail Bar & Patio", priceLevel: 3, priceLabel: "$$$ (~160-320 MDL)", lat: 47.0208, lng: 28.8380, address: "Str. 31 August 1989, nr. 78, Chișinău" },
-    { name: "Draft Arena", fsq_id: "fsq_draft_pub_1", category: "Craft Beer Pub & Grill", priceLevel: 2, priceLabel: "$$ (~120-220 MDL)", lat: 47.0185, lng: 28.8480, address: "Bd. Dacia 35, Chișinău" },
-    { name: "Gastrobar Chișinău", fsq_id: "fsq_gastrobar_chisinau", category: "Gastropub & Wine", priceLevel: 3, priceLabel: "$$$ (~200-380 MDL)", lat: 47.0165, lng: 28.8320, address: "Str. Bernardazzi 66, Chișinău" },
-    { name: "Beer House", fsq_id: "fsq_beerhouse_chisinau", category: "Microbrewery & Pub", priceLevel: 2, priceLabel: "$$ (~140-260 MDL)", lat: 47.0135, lng: 28.8510, address: "Bd. Constantin Negruzzi 6/2, Chișinău" },
-    { name: "Kira's Club & Patio", fsq_id: "fsq_kiras_club", category: "Alternative Bar & Lounge", priceLevel: 2, priceLabel: "$$ (~110-210 MDL)", lat: 47.0210, lng: 28.8340, address: "Str. Veronica Micle 7, Chișinău" },
-    { name: "Pivzavod Taproom", fsq_id: "fsq_pivzavod_taproom", category: "Artisanal Craft Beer Bar", priceLevel: 2, priceLabel: "$$ (~120-230 MDL)", lat: 47.0345, lng: 28.8210, address: "Str. Columna 170, Chișinău" },
-  ],
-  desserts: [
-    { name: "Gioelia Cremeria", fsq_id: "fsq_gioelia_cremeria", category: "Artisanal Italian Gelateria", priceLevel: 2, priceLabel: "$$ (~70-140 MDL)", lat: 47.0285, lng: 28.8365, address: "Str. Constantin Tănase 9, Chișinău" },
-    { name: "Crème de la Crème", fsq_id: "fsq_creme_dessert", category: "French Patisserie", priceLevel: 2, priceLabel: "$$ (~90-180 MDL)", lat: 47.0238, lng: 28.8340, address: "Str. Alexandru cel Bun 98A, Chișinău" },
-    { name: "Delice d'Ange", fsq_id: "fsq_delice_dange", category: "Artisanal Cakes & Pastries", priceLevel: 2, priceLabel: "$$ (~80-160 MDL)", lat: 47.0202, lng: 28.8342, address: "Str. 31 August 1989, nr. 117, Chișinău" },
-    { name: "Granier Bakery", fsq_id: "fsq_granier", category: "Bakery & Sweet Treats", priceLevel: 1, priceLabel: "$ (~40-90 MDL)", lat: 47.0232, lng: 28.8335, address: "Bd. Ștefan cel Mare 132, Chișinău" },
-    { name: "Dulcinella Boutique", fsq_id: "fsq_dulcinella", category: "Confectionery & Desserts", priceLevel: 1, priceLabel: "$ (~50-110 MDL)", lat: 47.0195, lng: 28.8410, address: "Str. Tighina 49, Chișinău" },
-    { name: "Panna Cotta Cafe", fsq_id: "fsq_pannacotta_cafe", category: "Dessert Parlor & Pastry", priceLevel: 2, priceLabel: "$$ (~70-150 MDL)", lat: 47.0260, lng: 28.8315, address: "Str. Bănulescu-Bodoni 22, Chișinău" },
-    { name: "Cuptorul Fermecat", fsq_id: "fsq_cuptorul_fermecat", category: "Artisanal Bakery & Cakes", priceLevel: 1, priceLabel: "$ (~45-95 MDL)", lat: 47.0540, lng: 28.8750, address: "Bd. Mircea cel Bătrân 14, Chișinău" },
-    { name: "French Bakery Chișinău", fsq_id: "fsq_french_bakery", category: "Croissants & Patisserie", priceLevel: 2, priceLabel: "$$ (~75-145 MDL)", lat: 47.0220, lng: 28.8350, address: "Str. Pușkin 22, Chișinău" },
-    { name: "Moroshka Patisserie", fsq_id: "fsq_moroshka_patisserie", category: "Boutique Cakes & Macarons", priceLevel: 2, priceLabel: "$$ (~85-165 MDL)", lat: 47.0215, lng: 28.8335, address: "Str. Veronica Micle 10, Chișinău" },
-    { name: "Dolce Dormire Gelato", fsq_id: "fsq_dolce_dormire", category: "Artisanal Gelato & Waffles", priceLevel: 2, priceLabel: "$$ (~65-130 MDL)", lat: 47.0410, lng: 28.8610, address: "Str. Kiev 16, Chișinău" },
-  ],
-  restaurants: [
-    { name: "Restaurant Alindor", fsq_id: "fsq_alindor_straseni", category: "Moldovan & European Restaurant", priceLevel: 2, priceLabel: "$$ (~140-280 MDL)", lat: 47.1420, lng: 28.6130, address: "Str. Ștefan cel Mare 75, Strășeni" },
-    { name: "Restaurant Struguraș", fsq_id: "fsq_struguras_straseni", category: "Traditional Restaurant & Terrace", priceLevel: 2, priceLabel: "$$ (~130-260 MDL)", lat: 47.1390, lng: 28.6180, address: "Șos. Chișinăului, Strășeni" },
-    { name: "Hanul Pescarului", fsq_id: "fsq_hanulpescarului_straseni", category: "Fish & Lakeside Grill", priceLevel: 2, priceLabel: "$$ (~150-300 MDL)", lat: 47.1520, lng: 28.5850, address: "Lacul Strășeni" },
-    { name: "Lacul Verde", fsq_id: "fsq_laculverde_straseni", category: "Resort & Terrace Dining", priceLevel: 3, priceLabel: "$$$ (~200-400 MDL)", lat: 47.1350, lng: 28.5920, address: "Zona de Agrement, Strășeni" },
-    { name: "Fuior Gourmet", fsq_id: "fsq_fuior_gourmet", category: "Modern Moldovan Fine Dining", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 47.0235, lng: 28.8355, address: "Str. Aleksandr Pușkin 30, Chișinău" },
-    { name: "Osho Bar & Kitchen", fsq_id: "56599eec498e89a644fa47ec", category: "Modern European & Steakhouse", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 47.0061, lng: 28.8602, address: "Bd. Decebal 7/1, Chișinău" },
-    { name: "Trattoria della Nonna", fsq_id: "fsq_trattoria_nonna", category: "Italian Trattoria & Pasta", priceLevel: 2, priceLabel: "$$ (~150-300 MDL)", lat: 47.0182, lng: 28.8305, address: "Str. Mihail Kogălniceanu 62, Chișinău" },
-    { name: "Mi Piace", fsq_id: "51d1c578498e66d548d97c58", category: "Italian Restaurant & Terrace", priceLevel: 3, priceLabel: "$$$ (~250-500 MDL)", lat: 46.9987, lng: 28.8578, address: "Str. Trandafirilor 4, Chișinău" },
-    { name: "Pegas Restaurant", fsq_id: "fsq_pegas_10", category: "24/7 Grill & Terrace", priceLevel: 3, priceLabel: "$$$ (~250-450 MDL)", lat: 47.0315, lng: 28.8510, address: "Str. Albișoara 20/1, Chișinău" },
-    { name: "La Taifas", fsq_id: "fsq_taifas_9", category: "Traditional Moldovan", priceLevel: 2, priceLabel: "$$ (~150-300 MDL)", lat: 47.0235, lng: 28.8335, address: "Str. București 67, Chișinău" },
-    { name: "Kiku Steak & Wine", fsq_id: "fsq_kiku_steak", category: "Steakhouse & Wine", priceLevel: 3, priceLabel: "$$$ (~280-550 MDL)", lat: 47.0050, lng: 28.8615, address: "Bd. Decebal 72/1, Chișinău" },
-    { name: "Jeraffe Modern Cuisine", fsq_id: "fsq_jeraffe_cuisine", category: "Fusion & Continental", priceLevel: 3, priceLabel: "$$$ (~260-480 MDL)", lat: 47.0245, lng: 28.8360, address: "Str. Pușkin 18, Chișinău" },
-    { name: "Saperavi Georgian Kitchen", fsq_id: "fsq_saperavi_georgian", category: "Authentic Georgian Dining", priceLevel: 2, priceLabel: "$$ (~180-340 MDL)", lat: 47.0190, lng: 28.8310, address: "Str. Mihail Kogălniceanu 75, Chișinău" },
-    { name: "Andy's Bistro", fsq_id: "fsq_andys_bistro", category: "Casual Dining & Pizza", priceLevel: 2, priceLabel: "$$ (~130-240 MDL)", lat: 47.0240, lng: 28.8310, address: "Bd. Ștefan cel Mare 202, Chișinău" },
-  ],
-};
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
@@ -97,8 +29,8 @@ function isInsideMoldovaRegion(lat, lng) {
 }
 
 /**
- * Searches OpenStreetMap in an expanded 12-25 km radius when a user selects a suburban
- * or state centroid (such as New Jersey, USA) where the initial 3km radius has 0 venues.
+ * Searches OpenStreetMap in an expanded radius when a user selects a suburban
+ * or regional centroid where initial radius yields 0 venues.
  */
 async function searchExpandedOsmVenues(lat, lng, theme = 'restaurant', isExactGps = false, targetCount = 6) {
   if (lat == null || lng == null) return [];
@@ -113,17 +45,17 @@ async function searchExpandedOsmVenues(lat, lng, theme = 'restaurant', isExactGp
     ? 'cinema'
     : 'restaurant';
 
-  for (const radiusMeters of [12000, 24000]) {
+  for (const radiusMeters of [8000, 16000, 24000]) {
     try {
       const dLat = radiusMeters / 111320;
       const dLng = radiusMeters / Math.max(1, 111320 * Math.cos((lat * Math.PI) / 180));
       const viewbox = `${(lng - dLng).toFixed(5)},${(lat + dLat).toFixed(5)},${(lng + dLng).toFixed(5)},${(lat - dLat).toFixed(5)}`;
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(term)}&viewbox=${viewbox}&bounded=1&limit=20&addressdetails=1&accept-language=en,ro`;
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(term)}&viewbox=${viewbox}&bounded=1&limit=30&addressdetails=1&accept-language=en,ro`;
 
       const res = await fetch(url, {
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)',
+          'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org; contact@noyoupick.org)',
         },
         signal: AbortSignal.timeout ? AbortSignal.timeout(4000) : undefined,
       });
@@ -171,10 +103,17 @@ async function searchExpandedOsmVenues(lat, lng, theme = 'restaurant', isExactGp
 }
 
 /**
- * Resolves fallback venues, strictly enforcing that locations outside Moldova
- * never fall back to Chișinău restaurants thousands of kilometers away.
+ * Resolves fallback venues with strict spatial radius enforcement.
+ * Ensures searches in Chișinău never return venues from Strășeni or vice-versa.
  */
-async function resolveRegionalFallback(theme = '', centerLat = 47.0225, centerLng = 28.8340, isExactGps = false, targetCount = 6) {
+async function resolveRegionalFallback(
+  theme = '',
+  centerLat = 47.0225,
+  centerLng = 28.8340,
+  isExactGps = false,
+  targetCount = 30,
+  radius = 5000
+) {
   // If coordinates are outside Moldova, resolve genuine regional venues via expanded radius search
   if (!isInsideMoldovaRegion(centerLat, centerLng)) {
     const regionalVenues = await searchExpandedOsmVenues(centerLat, centerLng, theme, isExactGps, targetCount);
@@ -183,13 +122,17 @@ async function resolveRegionalFallback(theme = '', centerLat = 47.0225, centerLn
     }
   }
 
-  // Inside Moldova or default coordinates: return verified Moldovan hotspots
   const key = theme.toLowerCase().includes('cinema') ? 'cinema' :
     theme.toLowerCase().includes('cafe') ? 'cafes' :
     theme.toLowerCase().includes('bar') ? 'bars' :
     theme.toLowerCase().includes('dessert') ? 'desserts' : 'restaurants';
 
   const rawPlaces = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;
+  const searchRadiusMeters = Math.max(Number(radius) || 5000, 1500);
+
+  const distToChisinau = calculateDistance(centerLat, centerLng, CHISINAU_CENTER.lat, CHISINAU_CENTER.lng);
+  const distToStraseni = calculateDistance(centerLat, centerLng, STRASENI_CENTER.lat, STRASENI_CENTER.lng);
+
   const withDistance = rawPlaces.map((p) => {
     const distMeters = (centerLat != null && centerLng != null && p.lat && p.lng)
       ? calculateDistance(centerLat, centerLng, p.lat, p.lng)
@@ -206,14 +149,41 @@ async function resolveRegionalFallback(theme = '', centerLat = 47.0225, centerLn
       distance_km: distKm,
       distance_meters: Math.round(distMeters),
       address: p.address,
+      locality: p.locality,
       lat: p.lat,
       lng: p.lng,
     };
   });
 
-  // Sort by distance so spots closest to the user's location rank highest
-  withDistance.sort((a, b) => a.distance_meters - b.distance_meters);
-  const places = withDistance.slice(0, targetCount);
+  // Strict radius & locality boundaries:
+  // 1. If searching in/around Chișinău (within 15km of Chișinău center), exclude Strășeni venues
+  // 2. If searching in Strășeni (within 10km of Strășeni center), exclude Chișinău venues
+  // 3. Distance must not exceed maximum sensible radius for the search
+  const maxAllowedDistance = Math.min(Math.max(searchRadiusMeters * 1.5, 6000), 12000);
+
+  let filtered = withDistance.filter((p) => {
+    if (distToChisinau <= 15000 && p.locality === 'Strășeni') {
+      return false;
+    }
+    if (distToStraseni <= 10000 && p.locality === 'Chișinău') {
+      return false;
+    }
+    return p.distance_meters <= maxAllowedDistance;
+  });
+
+  // If filtered pool is empty (e.g. searching in Bălți, Cahul, or other towns), query OSM
+  if (filtered.length === 0) {
+    const osmCandidates = await searchExpandedOsmVenues(centerLat, centerLng, theme, isExactGps, targetCount);
+    if (osmCandidates.length > 0) {
+      return osmCandidates.slice(0, targetCount);
+    }
+    // Absolute fallback: sort by raw distance
+    filtered = [...withDistance];
+  }
+
+  // Sort strictly by distance ascending
+  filtered.sort((a, b) => a.distance_meters - b.distance_meters);
+  const places = filtered.slice(0, targetCount);
 
   return await resolveVenuePhotosBatch(places);
 }
@@ -224,4 +194,5 @@ module.exports = {
   isInsideMoldovaRegion,
   searchExpandedOsmVenues,
   formatPriceLabel,
+  calculateDistance,
 };

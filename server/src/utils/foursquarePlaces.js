@@ -484,9 +484,9 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       }
     }
 
-    // Seamlessly backfill remaining slots from regional verified hotspots if fewer than 6 found
+    // Seamlessly backfill remaining slots from regional verified hotspots if fewer than TARGET_PLACES found
     if (accumulatedVenues.size < TARGET_PLACES) {
-      const fallbacks = await resolveRegionalFallback(theme, centerLat, centerLng, isExactGps);
+      const fallbacks = await resolveRegionalFallback(theme, centerLat, centerLng, isExactGps, TARGET_PLACES, radius);
       for (const fb of fallbacks) {
         if (accumulatedVenues.size >= TARGET_PLACES) break;
         const fbCKey = getCanonicalVenueKey(fb.name);

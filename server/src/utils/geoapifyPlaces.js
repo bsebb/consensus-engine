@@ -19,12 +19,14 @@ function isValidVenueName(name, properties = {}) {
   // Reject generic residential / building labels
   if (GENERIC_BUILDING_REGEX.test(clean)) return false;
 
-  // Reject if name matches street or address lines
+  // Reject if name matches street
   const street = (properties.street || '').trim().toLowerCase();
-  const addr1 = (properties.address_line1 || '').trim().toLowerCase();
   const lower = clean.toLowerCase();
   if (street && (lower === street || lower.startsWith(street))) return false;
-  if (addr1 && (lower === addr1 || lower.startsWith(addr1))) return false;
+
+  // Only reject address_line1 if address_line1 is itself a street/building and matches
+  const addr1 = (properties.address_line1 || '').trim().toLowerCase();
+  if (addr1 && STREET_OR_ADDRESS_REGEX.test(addr1) && (lower === addr1 || lower.startsWith(addr1))) return false;
 
   return true;
 }
@@ -100,7 +102,8 @@ async function fetchGeoapifyPlaces({
   }
 
   const categories = mapThemeToGeoapifyCategories(theme);
-  const url = `https://api.geoapify.com/v2/places?categories=${categories}&filter=circle:${lngNum},${latNum},${radiusNum}&bias=proximity:${lngNum},${latNum}&limit=35&apiKey=${apiKey}`;
+  const queryLimit = Math.min(50, Math.max(35, targetPlaces + 5));
+  const url = `https://api.geoapify.com/v2/places?categories=${categories}&filter=circle:${lngNum},${latNum},${radiusNum}&bias=proximity:${lngNum},${latNum}&limit=${queryLimit}&apiKey=${apiKey}`;
 
   try {
     const res = await fetch(url, {
@@ -169,7 +172,8 @@ async function fetchGeoapifyPlaces({
           latNum,
           lngNum,
           isExactGps,
-          targetPlaces
+          targetPlaces,
+          radiusNum
         );
         const existingNames = new Set(activeVenues.map((v) => v.name.toLowerCase().trim()));
         for (const fb of (fallbackVenues || [])) {

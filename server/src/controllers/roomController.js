@@ -18,11 +18,8 @@ const {
 // Lilia: access Socket.io for live vote progress updates
 const { getIO } = require('../utils/socket');
 const { generatePin, issueHostToken, verifyHostToken } = require('../utils/hostAuth');
-const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
-const { fetchGooglePlaces } = require('../utils/googlePlaces');
-const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
-const { resolveRegionalFallback } = require('../utils/fallbackVenues');
-const { reportClosedVenue, filterReportedVenues } = require('../utils/reportedVenues');
+const { buildOptionRecords, discoverDiscoveryVenues, expandRoomVenues } = require('../services/venueDiscoveryService');
+const { reportClosedVenue } = require('../utils/reportedVenues');
 
 // Helper to execute Schulze worker thread off the main event loop
 const runSchulzeWorker = (submissions) => {
@@ -75,107 +72,20 @@ const createNewRoom = async (req, res) => {
   const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
   const room = await createRoom(host_id, pin, roomTheme, radius);
 
-  // Fetch places from Google Places (New) or fallback spatial engine and save to DB
+  // Fetch places from Google, Geoapify, or spatial fallback engine
   if (mode === 'DISCOVERY') {
-    const targetPlaces = 30; // One query pre-caches up to 30 locations for the room
-    const hasGoogleKey = Boolean(
-      (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
-    );
-
-    let places = [];
-    if (hasGoogleKey) {
-      try {
-        places = await fetchGooglePlaces({
-          theme,
-          latitude,
-          longitude,
-          radius,
-          targetPlaces,
-          isExactGps: is_exact_gps,
-        });
-      } catch (err) {
-        console.warn('[Google Places Error, falling back to spatial engine]:', err.message);
-      }
-    }
-
-    // Zero-Cost Open Core: Query Geoapify (3,000 req/day free, no credit card) if configured
-    if (!places || places.length === 0) {
-      try {
-        places = await fetchGeoapifyPlaces({
-          theme,
-          latitude,
-          longitude,
-          radius,
-          targetPlaces,
-          isExactGps: is_exact_gps,
-        });
-      } catch (err) {
-        console.warn('[Geoapify Places Error, falling back]:', err.message);
-      }
-    }
-
-    if (!places || places.length === 0) {
-      const fetchFn = searchRestaurants || fetchFoursquarePlaces;
-      places = await fetchFn({
-        theme,
-        latitude,
-        longitude,
-        radius,
-        is_exact_gps,
-        targetPlaces,
-      });
-    }
-
-    // Ephemeral Crowd-Sourced Self-Healing: Purge reported closed spots (e.g. Casa Mare)
-    places = filterReportedVenues(places || []);
-
-    if (!places || places.length < targetPlaces) {
-      try {
-        const fallbacks = await resolveRegionalFallback(
-          theme,
-          latitude,
-          longitude,
-          is_exact_gps,
-          targetPlaces
-        );
-        const existingNames = new Set((places || []).map((p) => (p.name || '').toLowerCase().trim()));
-        const merged = [...(places || [])];
-        for (const fb of (fallbacks || [])) {
-          if (merged.length >= targetPlaces) break;
-          const fbNorm = (fb.name || '').toLowerCase().trim();
-          if (fbNorm && !existingNames.has(fbNorm)) {
-            existingNames.add(fbNorm);
-            merged.push(fb);
-          }
-        }
-        places = merged;
-      } catch (fbErr) {
-        console.warn('[RoomController] Regional fallback backfill notice:', fbErr.message);
-      }
-    }
+    const places = await discoverDiscoveryVenues({
+      theme,
+      latitude,
+      longitude,
+      radius,
+      is_exact_gps,
+      targetPlaces: 30,
+    });
 
     let createdOptions = [];
     if (places && places.length > 0) {
-      const optionsData = places.map((place) => {
-        const placeId = place.fsq_place_id || place.fsq_id || 'fsq_live';
-        const distKm = place.distance_km != null ? String(place.distance_km) : '';
-        const addr = String(place.address || '').replace(/\|/g, ' ');
-        const catLabel = String(place.category || '').replace(/\|/g, ' ');
-        const coordPair = place.lat != null && place.lng != null ? `${place.lat},${place.lng}` : '';
-        const rawPhoto = typeof place.photo_url === 'string'
-          ? place.photo_url
-          : (place.photo_url && typeof place.photo_url.photo_url === 'string' ? place.photo_url.photo_url : '');
-        const photoUrl = String(rawPhoto || '').replace(/\|/g, '');
-        const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}|${photoUrl}`;
-
-        return {
-          roomId: room.id,
-          name: place.name,
-          source: "GOOGLE_API",
-          googlePlaceId: compositeId,
-          priceLevel: place.priceLevel ?? 2,
-        };
-      });
+      const optionsData = buildOptionRecords(places, room.id);
       createdOptions = await createOptionsBulk(optionsData);
     }
 
@@ -561,41 +471,20 @@ const getMorePlaces = async (req, res) => {
     }
 
     const theme = room.theme || 'restaurant';
-    const existingOptions = room.options || [];
-    const existingNames = new Set(existingOptions.map((o) => (o.name || '').toLowerCase().trim()));
-
-    // Resolve up to 40 candidates and pick 10 not already in the room
-    const candidatePlaces = await resolveRegionalFallback(theme, latitude, longitude, is_exact_gps, 40);
-    const newPlaces = (candidatePlaces || []).filter((p) => {
-      const nameNorm = (p.name || '').toLowerCase().trim();
-      return nameNorm && !existingNames.has(nameNorm);
-    }).slice(0, 10);
+    const newPlaces = await expandRoomVenues({
+      room,
+      latitude,
+      longitude,
+      radius,
+      is_exact_gps,
+      targetCount: 10,
+    });
 
     if (newPlaces.length === 0) {
       return res.status(200).json({ success: true, count: 0, options: [] });
     }
 
-    const optionsData = newPlaces.map((place) => {
-      const placeId = place.fsq_place_id || place.fsq_id || 'fsq_live';
-      const distKm = place.distance_km != null ? String(place.distance_km) : '';
-      const addr = String(place.address || '').replace(/\|/g, ' ');
-      const catLabel = String(place.category || '').replace(/\|/g, ' ');
-      const coordPair = place.lat != null && place.lng != null ? `${place.lat},${place.lng}` : '';
-      const rawPhoto = typeof place.photo_url === 'string'
-        ? place.photo_url
-        : (place.photo_url && typeof place.photo_url.photo_url === 'string' ? place.photo_url.photo_url : '');
-      const photoUrl = String(rawPhoto || '').replace(/\|/g, '');
-      const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}|${coordPair}|${photoUrl}`;
-
-      return {
-        roomId: room.id,
-        name: place.name,
-        source: 'GOOGLE_API',
-        googlePlaceId: compositeId,
-        priceLevel: place.priceLevel ?? 2,
-      };
-    });
-
+    const optionsData = buildOptionRecords(newPlaces, room.id);
     const created = await createOptionsBulk(optionsData);
     invalidateRoomCache(pin);
 
