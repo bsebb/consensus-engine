@@ -15,10 +15,10 @@ const CATEGORIZED_FALLBACKS = {
   cinema: [
     { name: "Cineplex MallDova", fsq_id: "fsq_cineplex_malldova", category: "Multiplex Cinema", priceLevel: 2, priceLabel: "$$ (~140-200 MDL / ticket)", lat: 46.9972, lng: 28.8510, address: "Str. Arborilor 21, Chișinău" },
     { name: "Cineplex Loteanu", fsq_id: "fsq_cineplex_loteanu", category: "Movie Theater", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0252, lng: 28.8315, address: "Bd. Ștefan cel Mare 103, Chișinău" },
-    { name: "Odeon Cinema", fsq_id: "fsq_odeon_cinema", category: "Indie & Cultural Cinema", priceLevel: 1, priceLabel: "$ (~80-120 MDL / ticket)", lat: 47.0215, lng: 28.8350, address: "Str. Mihai Eminescu 55, Chișinău" },
-    { name: "Patria Multiplex", fsq_id: "fsq_patria_riscani", category: "Cinema & Entertainment", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0410, lng: 28.8620, address: "Str. Kiev 16/1, Chișinău" },
-    { name: "Auto Cinema Chișinău", fsq_id: "fsq_autocinema_chisinau", category: "Drive-in Cinema", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0512, lng: 28.8780, address: "Str. Mihai Sadoveanu 42/6, Chișinău" },
-    { name: "Cinema Flacăra", fsq_id: "fsq_cinema_flacara", category: "Community Cinema", priceLevel: 1, priceLabel: "$ (~60-100 MDL / ticket)", lat: 47.0345, lng: 28.7890, address: "Str. Ion Creangă 49, Chișinău" },
+    { name: "AutoCinema Chișinău", fsq_id: "fsq_autocinema_chisinau", category: "Drive-In Movie Theater", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0713, lng: 28.8888, address: "Str. Mihail Sadoveanu 42/6, Chișinău" },
+    { name: "Private Cinema Lounge", fsq_id: "fsq_private_cinema_lounge", category: "VIP Screening Lounge", priceLevel: 3, priceLabel: "$$$ (~250-450 MDL / screening)", lat: 47.0155, lng: 28.8439, address: "Str. Ismail 31, Chișinău" },
+    { name: "Cinematograful în Aer Liber", fsq_id: "fsq_cinema_aer_liber", category: "Open-Air Cinema", priceLevel: 1, priceLabel: "$ (~50-100 MDL / ticket)", lat: 47.0397, lng: 28.7802, address: "Str. Onisifor Ghibu 1 (Parcul Butoiaș), Chișinău" },
+    { name: "Movie Hall Chișinău", fsq_id: "fsq_movie_hall_chisinau", category: "Boutique Cinema", priceLevel: 2, priceLabel: "$$ (~120-180 MDL / ticket)", lat: 47.0395, lng: 28.8262, address: "Str. Mihai Viteazul 15A, Chișinău" },
   ],
   cafes: [
     { name: "Tucano Coffee", fsq_id: "fsq_tucano_1", category: "Specialty Coffee Shop", priceLevel: 2, priceLabel: "$$ (~60-120 MDL)", lat: 47.0225, lng: 28.8340, address: "Str. Aleksandr Pușkin 15, Chișinău" },

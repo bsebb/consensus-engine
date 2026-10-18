@@ -94,7 +94,10 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
   }
 
   if (categoryKey === 'cinema') {
-    return /\b(cinema|movie|theater|theatre|film|multiplex|cineplex|odeon|patria)\b/i.test(combined);
+    if (/\b(odeon|flac[aă]ra|gaudeamus|moscova|patria r[iî][sș]cani)\b/i.test(combined)) {
+      return false;
+    }
+    return /\b(cinema|movie|theater|theatre|film|multiplex|cineplex|autocinema|cinematograf)\b/i.test(combined);
   }
 
   if (allowTownHospitality) {
@@ -118,7 +121,7 @@ function inferPriceLevel(place, categoryKey) {
   const nameLower = String(place.name || '').toLowerCase();
   const catNames = (place.categories || []).map((c) => (c.name || '').toLowerCase()).join(' ');
   if (nameLower.includes('osho') || nameLower.includes('mi piace') || nameLower.includes('pegas') || nameLower.includes('invino') || nameLower.includes('chateau') || nameLower.includes('nobil') || catNames.includes('steakhouse') || catNames.includes('fine dining') || catNames.includes('modern european')) return 3;
-  if (nameLower.includes('mania') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('odeon') || nameLower.includes('coffeemolka') || nameLower.includes('granier') || catNames.includes('fast food') || catNames.includes('bakery') || catNames.includes('ice cream')) return 1;
+  if (nameLower.includes('mania') || nameLower.includes('mcdonald') || nameLower.includes('kfc') || nameLower.includes('coffeemolka') || nameLower.includes('granier') || catNames.includes('fast food') || catNames.includes('bakery') || catNames.includes('ice cream')) return 1;
   return 2;
 }
 
@@ -307,7 +310,8 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       kozlovna: { rating: 4.5, reviews: 1930 }, pegas: { rating: 4.7, reviews: 3890 },
       tucano: { rating: 4.6, reviews: 2800 }, smokehouse: { rating: 4.6, reviews: 1650 },
       rozmarin: { rating: 4.6, reviews: 1230 }, invino: { rating: 4.8, reviews: 750 },
-      cineplex: { rating: 4.6, reviews: 4200 }, odeon: { rating: 4.4, reviews: 1100 },
+      cineplex: { rating: 4.6, reviews: 4200 }, loteanu: { rating: 4.6, reviews: 3100 },
+      autocinema: { rating: 4.5, reviews: 850 }, privatecinema: { rating: 4.7, reviews: 420 },
       alindor: { rating: 4.5, reviews: 410 }, struguras: { rating: 4.4, reviews: 320 },
       laculverde: { rating: 4.6, reviews: 540 }, hanul: { rating: 4.5, reviews: 480 },
       delice: { rating: 4.6, reviews: 280 }, azasu: { rating: 4.8, reviews: 520 },

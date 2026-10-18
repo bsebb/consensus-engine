@@ -173,9 +173,12 @@ const VENUE_RATINGS_MAP = {
   "cineplex loteanu": { rating: "4.5", reviewCount: "3.2k", rawReviews: 3200 },
   "cineplex malldova": { rating: "4.6", reviewCount: "4.8k", rawReviews: 4800 },
   "cineplex": { rating: "4.6", reviewCount: "4.2k", rawReviews: 4200 },
-  "odeon": { rating: "4.4", reviewCount: "1.1k", rawReviews: 1100 },
-  "auto cinema": { rating: "4.3", reviewCount: "850", rawReviews: 850 },
-  "patria": { rating: "4.4", reviewCount: "1.6k", rawReviews: 1600 },
+  "auto cinema": { rating: "4.4", reviewCount: "850", rawReviews: 850 },
+  "autocinema": { rating: "4.4", reviewCount: "850", rawReviews: 850 },
+  "private cinema": { rating: "4.7", reviewCount: "420", rawReviews: 420 },
+  "cinematograful in aer liber": { rating: "4.6", reviewCount: "560", rawReviews: 560 },
+  "aer liber": { rating: "4.6", reviewCount: "560", rawReviews: 560 },
+  "movie hall": { rating: "4.5", reviewCount: "340", rawReviews: 340 },
   "taproom": { rating: "4.6", reviewCount: "780", rawReviews: 780 },
   "barbar": { rating: "4.5", reviewCount: "910", rawReviews: 910 },
   "alindor": { rating: "4.5", reviewCount: "410", rawReviews: 410 },
@@ -267,9 +270,14 @@ const VENUE_IMAGE_MAP = {
   "cineplex malldova": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
   "cineplex": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
   "loteanu": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
-  "odeon": "https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&w=900&q=85",
   "auto cinema": "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&w=900&q=85",
-  "patria": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
+  "autocinema": "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&w=900&q=85",
+  "private cinema": "https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?auto=format&fit=crop&w=900&q=85",
+  "private cinema lounge": "https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?auto=format&fit=crop&w=900&q=85",
+  "cinematograful in aer liber": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?auto=format&fit=crop&w=900&q=85",
+  "aer liber": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?auto=format&fit=crop&w=900&q=85",
+  "movie hall": "https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=900&q=85",
+  "movie hall chisinau": "https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=900&q=85",
   "taproom": "https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=900&q=85",
   "barbar": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
   // Chișinău & Regional Hotspots
@@ -409,11 +417,12 @@ export function getVenueVibe(name = '', category = '') {
   if (cName.includes('chibox') || cName.includes('box')) return 'Street Food & Smash Burgers';
   if (cName.includes('pannicott')) return 'Italian Patisserie & Artisanal Café';
 
-  if (normName.includes('auto cinema')) return 'Drive-In Movie Theater';
+  if (normName.includes('auto cinema') || normName.includes('autocinema')) return 'Drive-In Movie Theater';
   if (normName.includes('malldova')) return 'Multiplex Cinema & IMAX';
   if (normName.includes('loteanu')) return 'Downtown Multiplex Cinema';
-  if (normName.includes('odeon')) return 'Indie & Cultural Cinema';
-  if (normName.includes('patria')) return 'Multiplex Movie Theater';
+  if (normName.includes('private cinema')) return 'VIP Screening Lounge';
+  if (normName.includes('aer liber')) return 'Open-Air Cinema';
+  if (normName.includes('movie hall')) return 'Boutique Screening Cinema';
   if (normName.includes('osho')) return 'Steakhouse & Modern Kitchen';
   if (normName.includes('mi piace') || normName.includes('dolce vita')) return 'Italian Trattoria & Pizza';
   if (normName.includes('andy')) return 'Casual Dining & Pizzeria';

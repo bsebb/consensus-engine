@@ -1,15 +1,5 @@
 [
   {
-    "id": "cineplex_loteanu",
-    "name": "Cineplex Loteanu",
-    "price_level": 2,
-    "distance_km": null,
-    "lat": 47.0252,
-    "lng": 28.8315,
-    "address": "Bd. Ștefan cel Mare 103, Centru",
-    "tags": ["Cinema", "Movies", "Films"]
-  },
-  {
     "id": "cineplex_malldova",
     "name": "Cineplex MallDova",
     "price_level": 2,
@@ -20,34 +10,54 @@
     "tags": ["Cinema", "Movies", "IMAX"]
   },
   {
-    "id": "odeon_cinema",
-    "name": "Odeon Cinema",
-    "price_level": 1,
+    "id": "cineplex_loteanu",
+    "name": "Cineplex Loteanu",
+    "price_level": 2,
     "distance_km": null,
-    "lat": 47.0215,
-    "lng": 28.8350,
-    "address": "Str. Mihai Eminescu 55, Centru",
-    "tags": ["Cinema", "Movies", "Indie"]
+    "lat": 47.0252,
+    "lng": 28.8315,
+    "address": "Bd. Ștefan cel Mare 103, Centru",
+    "tags": ["Cinema", "Movies", "Films"]
   },
   {
     "id": "auto_cinema",
-    "name": "Auto Cinema",
+    "name": "AutoCinema Chișinău",
     "price_level": 2,
     "distance_km": null,
-    "lat": 47.0450,
-    "lng": 28.8050,
-    "address": "Calea Ieșilor, Buiucani",
+    "lat": 47.0713,
+    "lng": 28.8888,
+    "address": "Str. Mihail Sadoveanu 42/6, Ciocana",
     "tags": ["Cinema", "Movies", "Drive-in"]
   },
   {
-    "id": "patria_cinema",
-    "name": "Patria Multiplex",
+    "id": "private_cinema",
+    "name": "Private Cinema Lounge",
+    "price_level": 3,
+    "distance_km": null,
+    "lat": 47.0155,
+    "lng": 28.8439,
+    "address": "Str. Ismail 31, Centru",
+    "tags": ["Cinema", "Movies", "VIP Lounge"]
+  },
+  {
+    "id": "cinema_aer_liber",
+    "name": "Cinematograful în Aer Liber",
+    "price_level": 1,
+    "distance_km": null,
+    "lat": 47.0397,
+    "lng": 28.7802,
+    "address": "Str. Onisifor Ghibu 1, Parcul Butoiaș",
+    "tags": ["Cinema", "Movies", "Open-Air"]
+  },
+  {
+    "id": "movie_hall",
+    "name": "Movie Hall Chișinău",
     "price_level": 2,
     "distance_km": null,
-    "lat": 47.0410,
-    "lng": 28.8620,
-    "address": "Str. Kiev 16/1, Rîșcani",
-    "tags": ["Cinema", "Movies"]
+    "lat": 47.0395,
+    "lng": 28.8262,
+    "address": "Str. Mihai Viteazul 15A",
+    "tags": ["Cinema", "Movies", "Screenings"]
   },
   {
     "id": "tucano_1",
