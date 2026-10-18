@@ -620,6 +620,7 @@ io.on('connection', (socket) => {
         options: roomOptions,
         topic,
         mode,
+        total_participants: expectedCount,
       });
 
       console.log(

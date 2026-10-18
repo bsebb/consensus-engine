@@ -4,16 +4,16 @@ import {
   Sparkles,
   ArrowRight,
   Clock,
-  Users,
   Utensils,
   Coffee,
   Wine,
   Film,
-  Plus,
-  Minus,
+  IceCream,
+  ListPlus,
   Check,
   User,
   Settings,
+  History,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
@@ -23,21 +23,32 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
 import { apiUrl } from '../utils/api';
 
+const CATEGORIES = [
+  { id: 'Restaurants', title: 'Restaurants', desc: 'Dinner & lunch spots', icon: Utensils, topic: 'Where are we eating?' },
+  { id: 'Cafes', title: 'Coffee & Cafes', desc: 'Espresso, brunch & tea', icon: Coffee, topic: 'Where are we grabbing coffee?' },
+  { id: 'Bars & Pubs', title: 'Bars & Pubs', desc: 'Craft beer, wine & drinks', icon: Wine, topic: 'Where are we getting drinks?' },
+  { id: 'Cinema', title: 'Cinema', desc: 'Movie theaters & shows', icon: Film, topic: 'Which cinema are we going to?' },
+  { id: 'Desserts', title: 'Desserts', desc: 'Gelato, pastries & sweets', icon: IceCream, topic: 'Where to for dessert?' },
+  { id: 'Custom', title: 'Custom Poll', desc: 'Add your own options', icon: ListPlus, topic: 'What should we do?' },
+];
+
 export default function JoinRoom() {
+  const [searchParams] = useSearchParams();
+  const hasUrlPin = Boolean(searchParams.get('pin') && /^\d{4}$/.test(searchParams.get('pin')));
+
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('join'); // 'join' | 'create'
+  const [activeTab, setActiveTab] = useState(hasUrlPin ? 'join' : 'create');
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [name, setName] = useState(() => localStorage.getItem('consensus_user_name') || '');
   const [loading, setLoading] = useState(false);
   const [recentSession, setRecentSession] = useState(null);
 
-  // Host quick setup states
-  const [quickCategory, setQuickCategory] = useState('Restaurants');
-  const [groupSize, setGroupSize] = useState(4);
+  // Quick setup states
+  const [selectedCategory, setSelectedCategory] = useState('Restaurants');
+  const [customTopic, setCustomTopic] = useState('');
 
   const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { participantId, emit } = useSocket();
   const { addToast } = useToast();
 
@@ -46,12 +57,13 @@ export default function JoinRoom() {
     const pinParam = searchParams.get('pin');
     if (pinParam && /^\d{4}$/.test(pinParam)) {
       setPinDigits(pinParam.split(''));
+      setActiveTab('join');
     }
   }, [searchParams]);
 
   const pin = pinDigits.join('');
 
-  // Load recent session from history
+  // Load recent session from history & wake up backend
   useEffect(() => {
     try {
       const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
@@ -62,7 +74,6 @@ export default function JoinRoom() {
       console.warn('[JoinRoom] Local history check:', err);
     }
 
-    // Silent background wake-up ping for sleeping cloud containers
     fetch(apiUrl('/health')).catch(() => {});
   }, []);
 
@@ -100,9 +111,9 @@ export default function JoinRoom() {
   const handleJoin = async (e) => {
     if (e) e.preventDefault();
     const cleanPin = pin.trim();
-    const cleanName = name.trim();
+    const cleanName = name.trim() || 'Friend';
 
-    if (cleanPin.length !== 4 || !cleanName) return;
+    if (cleanPin.length !== 4) return;
 
     localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
@@ -115,12 +126,6 @@ export default function JoinRoom() {
           pin: cleanPin,
           participant_id: participantId,
           user_name: cleanName,
-        });
-
-        addToast({
-          title: 'Connected to Room',
-          message: `Joined session #${cleanPin}`,
-          type: 'success',
         });
 
         navigate(`/lobby/${cleanPin}`, {
@@ -138,7 +143,7 @@ export default function JoinRoom() {
         const errData = await response.json().catch(() => ({}));
         addToast({
           title: 'Room Not Found',
-          message: errData.error || `Room #${cleanPin} does not exist or has expired.`,
+          message: errData.message || `Room #${cleanPin} wasn't found. Double-check the code with your host.`,
           type: 'error',
         });
         setLoading(false);
@@ -148,29 +153,35 @@ export default function JoinRoom() {
       console.warn('[JoinRoom] Server connection error joining room:', err);
       addToast({
         title: 'Connection Error',
-        message: 'Could not connect to the room server. Please check your internet connection.',
+        message: 'Could not reach the server. Please check your internet connection.',
         type: 'error',
       });
       setLoading(false);
-      return;
     }
   };
 
-  const handleQuickHost = async () => {
+  const handleStartRoom = async () => {
     const cleanName = name.trim() || 'Host';
     localStorage.setItem('consensus_user_name', cleanName);
     setLoading(true);
 
+    const isCustomMode = selectedCategory === 'Custom';
+    const roomMode = isCustomMode ? 'CUSTOM' : 'DISCOVERY';
+    const catConfig = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
+    const topicTitle = isCustomMode
+      ? (customTopic.trim() || 'What should we do?')
+      : catConfig.topic;
+
     let lat = null;
     let lng = null;
 
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    if (!isCustomMode && typeof navigator !== 'undefined' && navigator.geolocation) {
       try {
         const pos = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
-            timeout: 3000,
-            maximumAge: 60000,
+            timeout: 2500,
+            maximumAge: 120000,
           });
         });
         lat = pos.coords.latitude;
@@ -184,8 +195,8 @@ export default function JoinRoom() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           host_id: participantId,
-          mode: 'DISCOVERY',
-          theme: quickCategory.toLowerCase(),
+          mode: roomMode,
+          theme: isCustomMode ? 'custom' : selectedCategory.toLowerCase(),
           radius: 5000,
           latitude: lat,
           longitude: lng,
@@ -196,23 +207,15 @@ export default function JoinRoom() {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
-
-        const topicTitle = quickCategory === 'Cinema'
-          ? 'Which cinema are we going to?'
-          : quickCategory === 'Cafes'
-          ? 'Where are we grabbing coffee?'
-          : quickCategory === 'Bars & Pubs'
-          ? 'Where are we getting drinks?'
-          : 'Where are we eating tonight?';
+        localStorage.setItem('consensus_active_pin', generatedPin);
 
         setLoading(false);
         navigate(`/lobby/${generatedPin}`, {
           state: {
-            mode: 'DISCOVERY',
+            mode: roomMode,
             isHost: true,
             userName: cleanName,
-            groupSize,
-            category: quickCategory,
+            category: selectedCategory,
             topic: topicTitle,
             radiusKm: 5,
             roomData: realRoom,
@@ -222,8 +225,8 @@ export default function JoinRoom() {
       } else {
         const errData = await response.json().catch(() => ({}));
         addToast({
-          title: 'Creation Failed',
-          message: errData.error || 'Failed to initialize session room.',
+          title: 'Could Not Create Room',
+          message: errData.message || 'Please try again in a moment.',
           type: 'error',
         });
       }
@@ -231,7 +234,7 @@ export default function JoinRoom() {
       console.warn('[JoinRoom] Server connection error creating room:', err);
       addToast({
         title: 'Connection Error',
-        message: 'Could not reach server to create room. Please verify your connection.',
+        message: 'Could not reach server to create room. Please check your connection.',
         type: 'error',
       });
     }
@@ -239,72 +242,76 @@ export default function JoinRoom() {
     setLoading(false);
   };
 
-  const quickCategories = [
-    { label: 'Restaurants', title: 'Dinner', icon: Utensils, desc: 'Dining & Bistros' },
-    { label: 'Cafes', title: 'Coffee', icon: Coffee, desc: 'Espresso & Sweets' },
-    { label: 'Bars & Pubs', title: 'Drinks', icon: Wine, desc: 'Beer & Cocktails' },
-    { label: 'Cinema', title: 'Movies', icon: Film, desc: 'Films & Shows' },
-  ];
+  const activeCatObj = CATEGORIES.find((c) => c.id === selectedCategory) || CATEGORIES[0];
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 pb-28">
+    <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 min-h-[100dvh]">
       {/* Top Application Bar */}
-      <header className="w-full flex items-center justify-between pb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-[0_2px_10px_var(--accent-glow)]">
+      <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm">
             <Sparkles size={16} />
           </div>
-          <div>
-            <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
-              Consensus
-            </span>
-          </div>
+          <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
+            Consensus
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => navigate('/history')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
+            title="Past Group Picks"
+          >
+            <History size={14} />
+            <span>History</span>
+          </button>
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
             aria-label="Open Settings"
             title="Preferences"
           >
-            <Settings size={17} />
+            <Settings size={16} />
           </button>
           <ThemeToggle />
         </div>
       </header>
 
-      {/* Main Form Content */}
-      <main className="w-full my-auto flex flex-col items-center max-w-sm mx-auto">
-        {/* Hero Branding */}
-        <div className="text-center mb-6 space-y-1.5">
+      {/* Main Content */}
+      <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
+        {/* Hero Headline */}
+        <div className="text-center mb-5 space-y-1">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
-            Where are we eating?
+            {activeTab === 'create' ? activeCatObj.topic : 'Join your group'}
           </h1>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
-            Vote on dinner with friends. Fast, democratic, and zero endless group chat debates.
+            {activeTab === 'create'
+              ? 'Pick a category, share the code with friends, and swipe to find a spot everyone loves.'
+              : 'Enter the 4-digit room code from your friend to start voting.'}
           </p>
         </div>
 
-        {/* Tactical Card */}
-        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.08)] p-6 sm:p-7 flex flex-col gap-5">
-          {/* Segmented Control Pill */}
+        {/* Main Card */}
+        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-5 sm:p-6 flex flex-col gap-4">
+          {/* Mode Switcher */}
           <SegmentedControl
             options={[
-              { value: 'join', label: 'Join Room' },
-              { value: 'create', label: 'New Room' },
+              { value: 'create', label: 'Start a Pick' },
+              { value: 'join', label: 'Join with Code' },
             ]}
             value={activeTab}
             onChange={setActiveTab}
             size="md"
           />
 
-          {/* User Nickname Input */}
+          {/* User Name Input */}
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="userName"
-              className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1"
+              className="text-xs font-semibold text-[var(--text-secondary)] px-1"
             >
               Your Name
             </label>
@@ -313,14 +320,13 @@ export default function JoinRoom() {
                 id="userName"
                 name="userName"
                 type="text"
-                placeholder="What should friends call you?"
+                placeholder="e.g. Alex (optional)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full min-h-[46px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
-                required
+                className="w-full min-h-[44px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
               />
               {name.trim() ? (
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none shadow-sm">
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">
                   {name.trim().slice(0, 2).toUpperCase()}
                 </div>
               ) : (
@@ -329,20 +335,98 @@ export default function JoinRoom() {
             </div>
           </div>
 
-          {/* TAB 1: JOIN WITH 4-BOX OTP PASSKEY */}
-          {activeTab === 'join' ? (
+          {activeTab === 'create' ? (
+            /* TAB 1: START A GROUP PICK */
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">
+                  What are you picking?
+                </span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {CATEGORIES.map((cat) => {
+                    const Icon = cat.icon;
+                    const isSelected = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer min-h-[54px] ${
+                          isSelected
+                            ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs'
+                            : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
+                        }`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-[var(--accent-bg)] text-white'
+                              : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
+                          }`}
+                        >
+                          <Icon size={16} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-[var(--text-primary)] truncate">
+                            {cat.title}
+                          </div>
+                          <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+                            {cat.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Optional Custom Question Input when Custom Poll is selected */}
+              {selectedCategory === 'Custom' && (
+                <div className="flex flex-col gap-1.5 animate-[modalSpring_0.25s_var(--spring-smooth)]">
+                  <label
+                    htmlFor="customTopicInput"
+                    className="text-xs font-semibold text-[var(--text-secondary)] px-1"
+                  >
+                    Question or Topic
+                  </label>
+                  <input
+                    id="customTopicInput"
+                    type="text"
+                    value={customTopic}
+                    onChange={(e) => setCustomTopic(e.target.value)}
+                    placeholder="e.g. What board game should we play?"
+                    className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
+                  />
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={handleStartRoom}
+                disabled={loading}
+                loading={loading}
+                icon={ArrowRight}
+                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
+              >
+                Create Room
+              </Button>
+            </div>
+          ) : (
+            /* TAB 2: JOIN WITH 4-DIGIT PIN */
             <form onSubmit={handleJoin} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between px-1">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                    4-Digit Room PIN
+                  <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                    4-Digit Room Code
                   </label>
-                  <span className="text-[11px] text-[var(--text-tertiary)] font-medium">
-                    Ask the room host
+                  <span className="text-[11px] text-[var(--text-tertiary)]">
+                    Shared by your host
                   </span>
                 </div>
 
-                {/* 4 Clean PIN Cells */}
+                {/* 4 PIN Input Boxes */}
                 <div className="grid grid-cols-4 gap-2.5" onPaste={handlePaste}>
                   {pinDigits.map((digit, index) => (
                     <input
@@ -366,14 +450,15 @@ export default function JoinRoom() {
                 </div>
               </div>
 
-              {/* Real-time Room Resolution Card */}
               {pin.length === 4 && (
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                   <div className="flex items-center gap-1.5">
                     <Check size={15} className="shrink-0 text-emerald-500" />
-                    <span>PIN #{pin} ready to join</span>
+                    <span>Room #{pin} ready to join</span>
                   </div>
-                  <span className="text-[10px] uppercase font-bold text-emerald-500 bg-emerald-500/20 px-2 py-0.5 rounded-full">Ready</span>
+                  <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
+                    Ready
+                  </span>
                 </div>
               )}
 
@@ -381,135 +466,45 @@ export default function JoinRoom() {
                 type="submit"
                 variant="primary"
                 size="md"
-                disabled={pin.length !== 4 || !name.trim() || loading}
+                disabled={pin.length !== 4 || loading}
                 loading={loading}
                 icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_8px_24px_var(--accent-glow)]"
+                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
               >
                 Join Room
               </Button>
             </form>
-          ) : (
-            /* TAB 2: QUICK HOST */
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-1">
-                  What are we doing?
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {quickCategories.map((cat) => {
-                    const Icon = cat.icon;
-                    const isSelected = quickCategory === cat.label;
-                    return (
-                      <button
-                        key={cat.label}
-                        type="button"
-                        onClick={() => setQuickCategory(cat.label)}
-                        className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all cursor-pointer min-h-[44px] ${
-                          isSelected
-                            ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] shadow-[0_2px_8px_var(--accent-glow-subtle)]'
-                            : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        <div className={`p-1.5 rounded-md ${isSelected ? 'bg-[var(--accent-bg)] text-white' : 'bg-black/5 dark:bg-white/10 text-[var(--text-tertiary)]'}`}>
-                          <Icon size={14} />
-                        </div>
-                        <div>
-                          <div className="text-xs font-semibold leading-tight">{cat.title}</div>
-                          <div className="text-[10px] text-[var(--text-tertiary)]">{cat.label}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Group Size Stepper */}
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-[var(--text-tertiary)]" />
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">Group Size</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setGroupSize(Math.max(2, groupSize - 1))}
-                    disabled={groupSize <= 2}
-                    aria-label="Decrease group size"
-                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-md bg-white dark:bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
-                  >
-                    <Minus size={15} />
-                  </button>
-                  <span className="font-mono text-sm font-bold w-6 text-center text-[var(--text-primary)]">
-                    {groupSize}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setGroupSize(Math.min(12, groupSize + 1))}
-                    disabled={groupSize >= 12}
-                    aria-label="Increase group size"
-                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-md bg-white dark:bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] disabled:opacity-30 cursor-pointer active:scale-95 transition-transform"
-                  >
-                    <Plus size={15} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  onClick={handleQuickHost}
-                  disabled={!name.trim() || loading}
-                  loading={loading}
-                  icon={ArrowRight}
-                  className="w-full h-12 rounded-2xl font-black text-base shadow-[0_8px_24px_var(--accent-glow)]"
-                >
-                  Start Group Pick
-                </Button>
-
-                <button
-                  type="button"
-                  onClick={() => navigate('/host')}
-                  className="text-xs font-semibold text-[var(--text-tertiary)] hover:text-[var(--accent-bg)] hover:underline text-center py-1 cursor-pointer transition-colors"
-                >
-                  Custom topics & options
-                </button>
-              </div>
-            </div>
           )}
         </div>
 
-        {/* Past Decisions Fast Recovery */}
+        {/* Recent Decision Shortcut */}
         {recentSession && (
-          <div className="w-full mt-4 p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-[var(--text-tertiary)]" />
-              <div className="text-xs">
-                <span className="text-[var(--text-tertiary)]">Recent Pick: </span>
-                <span className="font-semibold text-[var(--text-primary)]">{recentSession.winner || 'Past Venue'}</span>
+          <div className="w-full mt-4 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <Clock size={15} className="text-[var(--text-tertiary)] shrink-0" />
+              <div className="text-xs truncate">
+                <span className="text-[var(--text-tertiary)]">Last winner: </span>
+                <span className="font-bold text-[var(--text-primary)]">{recentSession.winner || 'Recent Spot'}</span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => navigate('/history')}
-              className="text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer"
+              className="text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer shrink-0 ml-2"
             >
-              View History
+              See All
             </button>
           </div>
         )}
       </main>
 
-      {/* Footer Branding */}
-      <footer className="text-center pt-4">
-        <p className="text-[11px] text-[var(--text-tertiary)] font-medium">
-          Fast, democratic picks for groups of friends
+      {/* Footer */}
+      <footer className="text-center pt-2 pb-1">
+        <p className="text-xs text-[var(--text-tertiary)]">
+          Decide where to go in 30 seconds
         </p>
       </footer>
 
-      {/* Global Settings Modal */}
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}

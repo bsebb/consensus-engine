@@ -169,19 +169,51 @@ export function getVenueRating(name = '', category = '') {
  * Returns a human-friendly cuisine/vibe subtitle.
  */
 export function getVenueVibe(name = '', category = '') {
-  const norm = (name + ' ' + category).toLowerCase();
-  if (norm.includes('auto cinema')) return 'Open-Air Drive-In Movies';
-  if (norm.includes('cinema') || norm.includes('movie') || norm.includes('film') || norm.includes('loteanu') || norm.includes('malldova') || norm.includes('odeon') || norm.includes('patria')) return 'Blockbusters, IMAX & Screenings';
-  if (norm.includes('pizza')) return 'Wood-Fired Neapolitan Pizza';
-  if (norm.includes('burger')) return 'Artisan Smash Burgers & Fries';
-  if (norm.includes('sushi') || norm.includes('sakura')) return 'Fresh Sashimi & Modern Rolls';
-  if (norm.includes('steak') || norm.includes('osho') || norm.includes('pegas') || norm.includes('london')) return 'Prime Dry-Aged Steaks & Wine';
-  if (norm.includes('coffee') || norm.includes('sensi') || norm.includes('tucano')) return 'Specialty Espresso & Brunch';
-  if (norm.includes('wine') || norm.includes('asti') || norm.includes('invino')) return 'Selected Wines & Tasting Bites';
-  if (norm.includes('bar') || norm.includes('pub') || norm.includes('draft') || norm.includes('beer')) return 'Craft Beer & Cocktails';
-  if (norm.includes('vatra') || norm.includes('taifas') || norm.includes('moldovan')) return 'Traditional Moldovan Feasts';
-  if (norm.includes('patisserie') || norm.includes('dessert') || norm.includes('creme') || norm.includes('bakery')) return 'Handcrafted Pastries & Sweets';
-  if (norm.includes('smokehouse') || norm.includes('bbq')) return 'Slow-Smoked Texas BBQ';
-  if (norm.includes('pasta') || norm.includes('italian') || norm.includes('mi piace')) return 'Handmade Pasta & Trattoria Classics';
-  return 'Casual Dining & Ambience';
+  const normName = String(name || '').toLowerCase();
+  const normCat = String(category || '').toLowerCase();
+  const norm = `${normName} ${normCat}`;
+
+  if (normName.includes('auto cinema')) return 'Drive-In Movie Theater';
+  if (normName.includes('malldova')) return 'Multiplex Cinema & IMAX';
+  if (normName.includes('loteanu')) return 'Downtown Multiplex Cinema';
+  if (normName.includes('odeon')) return 'Indie & Cultural Cinema';
+  if (normName.includes('patria')) return 'Multiplex Movie Theater';
+  if (normName.includes('osho')) return 'Steakhouse & Modern Kitchen';
+  if (normName.includes('mi piace')) return 'Italian Trattoria & Wine';
+  if (normName.includes('andy')) return 'Casual Dining & Pizzeria';
+  if (normName.includes('pizza mania')) return 'Wood-Fired Thin Crust Pizza';
+  if (normName.includes('la taifas') || normName.includes('vatra')) return 'Traditional Moldovan Cuisine';
+  if (normName.includes('pegas')) return '24/7 Grill & Terrace';
+  if (normName.includes('crème') || normName.includes('creme') || normName.includes('delice')) return 'French Patisserie & Brunch';
+  if (normName.includes('kozlovna')) return 'Czech Beer Hall & Grill';
+  if (normName.includes('propaganda')) return 'Vintage Café & Bistro';
+  if (normName.includes('rozmarin')) return 'Artisanal Brunch & Roastery';
+  if (normName.includes('tucano')) return 'Specialty Coffee & Cheesecake';
+  if (normName.includes('sensi')) return 'Espresso Bar & Lounge';
+  if (normName.includes('coffeemolka')) return 'Cozy Artisanal Coffee House';
+  if (normName.includes('smokehouse')) return 'Texas BBQ & Craft Beer';
+  if (normName.includes('taproom') || normName.includes('pivko')) return 'Craft Beer Taproom & Pub';
+  if (normName.includes('invino') || normName.includes('asti')) return 'Wine Enoteca & Tapas';
+  if (normName.includes('draft')) return 'Gastropub & Live Sports';
+  if (normName.includes('barbar')) return 'Cocktail Bar & Lounge';
+  if (normName.includes('sandra') || normName.includes('morpho')) return 'Artisanal Gelato & Ice Cream';
+  if (normName.includes('dulcinella') || normName.includes('granier')) return 'Bakery & Sweet Pastries';
+
+  // If Foursquare provided a specific category name, use it directly
+  const genericCategories = ['discovery', 'restaurants', 'restaurant', 'cafes', 'bars & pubs', 'cinema', 'desserts', 'local venue', 'top pick', 'custom', 'suggestion'];
+  if (category && !genericCategories.includes(normCat)) {
+    return category;
+  }
+
+  if (norm.includes('cinema') || norm.includes('movie') || norm.includes('film')) return 'Movie Theater & Screenings';
+  if (norm.includes('pizza')) return 'Wood-Fired Pizzeria';
+  if (norm.includes('burger')) return 'Smash Burgers & Fries';
+  if (norm.includes('sushi') || norm.includes('sakura')) return 'Sushi & Japanese Kitchen';
+  if (norm.includes('steak')) return 'Steakhouse & Grill';
+  if (norm.includes('coffee') || norm.includes('cafe') || norm.includes('café')) return 'Specialty Coffee & Café';
+  if (norm.includes('wine')) return 'Wine Bar & Tasting';
+  if (norm.includes('bar') || norm.includes('pub') || norm.includes('beer')) return 'Craft Beer & Cocktails';
+  if (norm.includes('dessert') || norm.includes('bakery') || norm.includes('gelato')) return 'Bakery & Desserts';
+  return 'Local Favorite';
 }
+

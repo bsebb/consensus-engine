@@ -134,7 +134,7 @@ export function useLobbySync({
           mode: sessionMode,
           topic: sessionTopic,
           isHost: Boolean(isHost),
-          totalParticipants: locationState?.groupSize,
+          totalParticipants: data?.total_participants || 1,
           customCards: options.length > 0 ? options : undefined,
           budgetLimit: lockedConstraint ? budgetLimit : undefined,
         },

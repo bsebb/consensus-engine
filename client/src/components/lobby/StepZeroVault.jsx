@@ -1,100 +1,71 @@
 import React from 'react';
-import { Coins, ShieldCheck, Lock, Check } from 'lucide-react';
-import RangeSlider from '../ui/RangeSlider';
-import Button from '../ui/Button';
+import { Coins, Check } from 'lucide-react';
+
+const BUDGET_TIERS = [
+  { label: 'Any Price', sub: 'All spots', limit: 600, isFiltered: false },
+  { label: '$', sub: '< 150 MDL', limit: 150, isFiltered: true },
+  { label: '$$', sub: '< 300 MDL', limit: 300, isFiltered: true },
+  { label: '$$$', sub: '< 500 MDL', limit: 450, isFiltered: true },
+];
 
 export default function StepZeroVault({
   lockedConstraint,
   budgetLimit,
-  setBudgetLimit,
-  handleLockBudget,
-  handleUnlockBudget,
-  lockingBudget,
-  hasPendingBudgetChange,
-  setHasPendingBudgetChange,
+  onSelectTier,
 }) {
+  const activeTierIndex = !lockedConstraint
+    ? 0
+    : budgetLimit <= 180
+    ? 1
+    : budgetLimit <= 350
+    ? 2
+    : 3;
+
   return (
-    <section className="p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-sm">
-      <div className="flex items-center justify-between">
+    <section className="p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
+      <div className="flex items-center justify-between px-0.5">
         <div className="flex items-center gap-2">
-          <Coins size={16} className="text-amber-500" />
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">
-            Spending Comfort
+          <Coins size={15} className="text-amber-500" />
+          <h3 className="text-xs font-bold text-[var(--text-primary)]">
+            Price Filter
           </h3>
-        </div>
-        {lockedConstraint ? (
-          <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-500 bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 rounded-full">
-            <Lock size={12} className="text-emerald-500" />
-            <span>Comfort Set</span>
+          <span className="text-[11px] text-[var(--text-tertiary)]">
+            (Anonymous)
           </span>
-        ) : (
-          <span className="text-xs font-medium text-[var(--text-tertiary)]">
-            Private & Optional
+        </div>
+
+        {lockedConstraint && (
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+            <Check size={12} className="text-emerald-500" />
+            <span>Max {budgetLimit} MDL</span>
           </span>
         )}
       </div>
 
-      {/* Clear Privacy Explanation */}
-      <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] leading-relaxed">
-        <span className="font-semibold text-[var(--text-primary)]">No awkward bill split:</span> Set your comfortable ceiling. Venues above anyone's limit are quietly filtered out without revealing anyone's number.
-      </div>
-
-      <RangeSlider
-        min={100}
-        max={600}
-        step={25}
-        value={budgetLimit}
-        onChange={(val) => {
-          setBudgetLimit(val);
-          if (lockedConstraint) setHasPendingBudgetChange(true);
-        }}
-        label="Maximum per Person"
-        valueDisplay={`${budgetLimit} MDL`}
-      />
-
-      {!lockedConstraint ? (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={handleLockBudget}
-          loading={lockingBudget}
-          icon={Check}
-          className="mt-1 shadow-sm rounded-full"
-        >
-          Save Limit Preference
-        </Button>
-      ) : (
-        <div className="flex flex-col gap-2 pt-1">
-          <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-            <div className="flex items-center gap-2 min-w-0">
-              <Check size={15} className="shrink-0 text-emerald-500" />
-              <span className="truncate">Capped at {budgetLimit} MDL / person</span>
-            </div>
+      <div className="grid grid-cols-4 gap-2">
+        {BUDGET_TIERS.map((tier, idx) => {
+          const isActive = activeTierIndex === idx;
+          return (
             <button
+              key={tier.label}
               type="button"
-              onClick={handleUnlockBudget}
-              className="text-xs font-bold text-[var(--accent-bg)] hover:underline cursor-pointer ml-2 shrink-0 py-1 px-2 rounded-full hover:bg-[var(--accent-bg)]/10"
+              onClick={() => onSelectTier(tier.limit, tier.isFiltered)}
+              className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-2xl border text-center transition-all cursor-pointer min-h-[48px] ${
+                isActive
+                  ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-2xs'
+                  : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
             >
-              Adjust
+              <span className={`text-xs font-bold leading-tight ${isActive ? 'text-[var(--accent-bg)]' : 'text-[var(--text-primary)]'}`}>
+                {tier.label}
+              </span>
+              <span className="text-[10px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">
+                {tier.sub}
+              </span>
             </button>
-          </div>
-
-          {hasPendingBudgetChange && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleLockBudget}
-              loading={lockingBudget}
-              icon={Check}
-              className="shadow-sm rounded-full animate-[fadeIn_0.2s_var(--spring-smooth)]"
-            >
-              Update to {budgetLimit} MDL
-            </Button>
-          )}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </section>
   );
 }

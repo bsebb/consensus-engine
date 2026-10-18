@@ -79,29 +79,43 @@ const createNewRoom = async (req, res) => {
       radius
     });
 
+    let createdOptions = [];
     if (places && places.length > 0) {
       const optionsData = places.map((place) => {
-        const placeId = place.fsq_place_id || place.fsq_id || '';
+        const placeId = place.fsq_place_id || place.fsq_id || 'fsq_live';
         const distKm = place.distance_km != null ? place.distance_km : '';
         const addr = (place.address || '').replace(/\|/g, ' ');
-        const compositeId = placeId ? `${placeId}|${distKm}|${addr}` : null;
+        const catLabel = (place.category || '').replace(/\|/g, ' ');
+        const compositeId = `${placeId}|${distKm}|${addr}|${catLabel}`;
 
         return {
           roomId: room.id,
           name: place.name,
           source: "GOOGLE_API",
           googlePlaceId: compositeId,
-          priceLevel: place.priceLevel ?? null,
+          priceLevel: place.priceLevel ?? 2,
         };
       });
       await createOptionsBulk(optionsData);
+      try {
+        const hydratedRoom = await getRoomByPin(room.pin);
+        createdOptions = hydratedRoom?.options || [];
+      } catch {}
     }
+
+    return res.status(201).json({
+      room_id: room.id,
+      pin: room.pin,
+      status: room.status,
+      options: createdOptions,
+    });
   }
 
   return res.status(201).json({
     room_id: room.id,
     pin: room.pin,
     status: room.status,
+    options: [],
   });
 };
 

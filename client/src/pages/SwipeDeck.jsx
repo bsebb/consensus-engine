@@ -35,7 +35,7 @@ export default function SwipeDeck() {
 
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
-  const totalParticipants = location.state?.totalParticipants || 4;
+  const totalParticipants = location.state?.totalParticipants || 1;
   const isHost = Boolean(
     location.state?.isHost ||
     (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
@@ -57,20 +57,20 @@ export default function SwipeDeck() {
             id: `custom-${idx}`,
             name: item,
             category: 'Group Suggestion',
-            tags: ['Custom', 'Community'],
-            distance_km: 1.0,
-            price_level: 1,
-            address: 'Central District',
+            tags: ['Custom'],
+            distance_km: null,
+            price_level: 2,
+            address: 'Added by group',
           };
         }
         return {
           id: item.id || `option-${idx}`,
           name: item.name || `Option ${idx + 1}`,
-          category: item.category || 'Local Venue',
+          category: item.category || 'Local Favorite',
           tags: item.tags || ['Top Pick'],
-          distance_km: typeof item.distance_km === 'number' ? item.distance_km : 1.5,
+          distance_km: typeof item.distance_km === 'number' ? item.distance_km : null,
           price_level: typeof item.price_level === 'number' ? item.price_level : 2,
-          address: item.address || 'Center District',
+          address: item.address || 'Centru, Chișinău',
         };
       });
     }
@@ -93,22 +93,24 @@ export default function SwipeDeck() {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && Array.isArray(data.options) && data.options.length > 0) {
-            setCards(data.options.slice(0, 6).map((opt) => {
+            setCards(data.options.slice(0, 8).map((opt) => {
               let dist = null;
               let addr = 'Centru, Chișinău';
+              let catLabel = location.state?.category || 'Local Favorite';
               if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
                 const parts = opt.googlePlaceId.split('|');
                 const parsedDist = parseFloat(parts[1]);
                 if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
                 if (parts[2]) addr = parts[2];
+                if (parts[3]) catLabel = parts[3];
               }
               return {
                 id: opt.id,
                 name: opt.name,
-                category: location.state?.category || 'Discovery',
+                category: catLabel,
                 price_level: opt.priceLevel || 2,
                 distance_km: dist,
-                tags: [location.state?.category || 'Top Pick'],
+                tags: [catLabel],
                 address: addr,
               };
             }));
@@ -138,7 +140,18 @@ export default function SwipeDeck() {
   const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [userRating, setUserRating] = useState(0);
-  const [condorcetOpen, setCondorcetOpen] = useState(true);
+  const [condorcetOpen, setCondorcetOpen] = useState(false);
+
+  // If only 1 participant is in the room (solo run), automatically reveal the winner once all cards are swiped
+  useEffect(() => {
+    if (currentIndex >= cards.length && !showWinner && quorumTotal <= 1 && cards.length > 0) {
+      const timer = setTimeout(() => {
+        setShowWinner(true);
+      }, 450);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, cards.length, showWinner, quorumTotal]);
+
 
   // Manage swiping active state to hide MobileNav dock
   const isSwiping = !showWinner && currentIndex < cards.length;

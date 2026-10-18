@@ -20,7 +20,7 @@ export default function SwipeCard({
   const vibeSubtitle = getVenueVibe(activeCard.name, activeCard.category);
 
   return (
-    <main className="px-4 py-2 flex flex-col justify-center flex-1 max-w-md mx-auto w-full">
+    <main className="px-4 py-2 flex flex-col justify-center flex-1 min-h-0 max-w-md mx-auto w-full">
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -28,125 +28,104 @@ export default function SwipeCard({
         onPointerCancel={handlePointerCancel}
         style={{
           transform: exitDirection === 'right'
-            ? 'translate3d(120%, 0, 0) rotate(15deg)'
+            ? 'translate3d(120%, 0, 0) rotate(14deg)'
             : exitDirection === 'left'
-            ? 'translate3d(-120%, 0, 0) rotate(-15deg)'
+            ? 'translate3d(-120%, 0, 0) rotate(-14deg)'
             : exitDirection === 'down'
-            ? 'translate3d(0, 120%, 0) scale(0.9)'
-            : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.08}deg)`,
+            ? 'translate3d(0, 120%, 0) scale(0.92)'
+            : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.06}deg)`,
           transition: exitDirection
             ? 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s'
             : isDragging
             ? 'none'
-            : 'transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1)',
+            : 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
           opacity: exitDirection ? 0 : 1,
           touchAction: 'none',
           willChange: isDragging ? 'transform' : 'auto',
         }}
-        className="w-full h-[62vh] max-h-[560px] min-h-[460px] rounded-3xl bg-[var(--bg-elevated)] shadow-[0_24px_64px_rgba(0,0,0,0.18)] border border-[var(--border-main)] flex flex-col select-none relative overflow-hidden cursor-grab active:cursor-grabbing"
+        className="w-full flex-1 max-h-[520px] min-h-[340px] rounded-3xl bg-[var(--bg-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.14)] border border-[var(--border-main)] flex flex-col select-none relative overflow-hidden cursor-grab active:cursor-grabbing my-auto"
       >
         {/* Dynamic On-Drag Optical Stamps */}
         {dragOffset.x > 30 && (
           <div
             style={{ opacity: Math.min(1, dragOffset.x / 70) }}
-            className="absolute top-6 right-6 px-4 py-2 rounded-2xl border-[3px] border-emerald-500 bg-emerald-500/20 text-emerald-400 font-black text-sm uppercase tracking-widest -rotate-12 shadow-[0_0_28px_rgba(16,185,129,0.45)] backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
+            className="absolute top-6 right-6 px-4 py-2 rounded-2xl border-2 border-emerald-500 bg-emerald-500/20 text-emerald-300 font-black text-sm uppercase tracking-wider -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
           >
             <ThumbsUp size={18} strokeWidth={2.5} />
-            <span>LIKE</span>
+            <span>Like</span>
           </div>
         )}
         {dragOffset.x < -30 && (
           <div
             style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 70) }}
-            className="absolute top-6 left-6 px-4 py-2 rounded-2xl border-[3px] border-rose-500 bg-rose-500/20 text-rose-400 font-black text-sm uppercase tracking-widest rotate-12 shadow-[0_0_28px_rgba(244,63,94,0.45)] backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
+            className="absolute top-6 left-6 px-4 py-2 rounded-2xl border-2 border-rose-500 bg-rose-500/20 text-rose-300 font-black text-sm uppercase tracking-wider rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none"
           >
             <ThumbsDown size={18} strokeWidth={2.5} />
-            <span>PASS</span>
+            <span>Pass</span>
           </div>
         )}
         {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
           <div
             style={{ opacity: Math.min(1, dragOffset.y / 70) }}
-            className="absolute inset-x-8 top-8 py-2.5 rounded-2xl border-[3px] border-amber-400 bg-gradient-to-r from-red-600 to-rose-600 text-amber-200 font-black text-sm uppercase tracking-widest shadow-[0_0_36px_rgba(239,68,68,0.7)] backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none animate-pulse"
+            className="absolute inset-x-8 top-8 py-2.5 rounded-2xl border-2 border-amber-400 bg-rose-600/90 text-white font-black text-sm uppercase tracking-wider backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none"
           >
-            <Flame size={20} strokeWidth={2.5} />
-            <span>VETO PLACE</span>
+            <Flame size={18} strokeWidth={2.5} />
+            <span>Veto Spot</span>
           </div>
         )}
 
-        {/* Cinematic Dominant Culinary Photography (Takes 65% of Card) */}
-        <div className="relative flex-1 w-full bg-[var(--bg-inset)] overflow-hidden">
+        {/* Dominant Venue Photography */}
+        <div className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden">
           <img
             src={imageUrl}
             alt={activeCard.name}
             className="w-full h-full object-cover"
             draggable="false"
           />
-          {/* Deep Cinematic Scrim */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
 
-          {/* Top Floating Pills: Cuisine Badge & Star Rating */}
+          {/* Top Floating Pills: Category & Verified Rating */}
           <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
-            <span className="px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 shadow-sm">
-              {activeCard.tags?.[0] || activeCard.category || 'Dining'}
+            <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10">
+              {vibeSubtitle}
             </span>
 
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 shadow-sm">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
               <Star size={13} className="fill-amber-300 text-amber-300" />
               <span>{cardRating}</span>
-              <span className="text-[11px] text-white/70 font-normal">({cardReviewCount})</span>
+              <span className="text-[11px] text-white/75 font-normal">({cardReviewCount})</span>
             </div>
           </div>
 
-          {/* Bottom Photo Overlay: Headline, Vibe & Neighborhood */}
+          {/* Bottom Photo Overlay: Venue Name & Address */}
           <div className="absolute bottom-4 inset-x-4 text-left flex flex-col gap-1 z-10">
-            <span className="text-xs font-semibold text-rose-300 tracking-wide">
-              {vibeSubtitle}
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight line-clamp-1 drop-shadow-sm">
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight line-clamp-1 drop-shadow-xs">
               {activeCard.name}
             </h2>
             <div className="flex items-center gap-1.5 text-xs text-zinc-200 font-medium">
-              <MapPin size={13} className="text-rose-400 shrink-0" />
+              <MapPin size={13} className="text-amber-400 shrink-0" />
               <span className="truncate">{activeCard.address || 'Centru, Chișinău'}</span>
             </div>
           </div>
         </div>
 
-        {/* Card Details Tray: Clean, Proportional Specs (Zero Box Clutter) */}
-        <div className="p-4 bg-[var(--bg-elevated)] flex flex-col gap-3 text-left">
-          {/* Price & Walk Time Row */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-              <Coins size={15} className="text-amber-500 shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Estimated Price</span>
-                <span className="text-xs font-bold text-[var(--text-primary)] truncate">{cardPriceDesc}</span>
-              </div>
-            </div>
-
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-              <Navigation size={15} className="text-[var(--accent-bg)] shrink-0" />
-              <div className="flex flex-col min-w-0">
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">Distance</span>
-                <span className="text-xs font-bold text-[var(--text-primary)] truncate">{cardWalkDesc}</span>
-              </div>
+        {/* Clean 2-Spec Card Footer */}
+        <div className="p-3.5 bg-[var(--bg-elevated)] grid grid-cols-2 gap-2.5 text-left shrink-0">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] min-w-0">
+            <Coins size={16} className="text-amber-500 shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Price Range</span>
+              <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">{cardPriceDesc}</span>
             </div>
           </div>
 
-          {/* Quick Cuisine Tags */}
-          {activeCard.tags && activeCard.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {activeCard.tags.slice(0, 3).map((tag, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 rounded-lg bg-[var(--bg-inset)] text-[11px] font-medium text-[var(--text-secondary)] border border-[var(--border-subtle)]"
-                >
-                  {tag}
-                </span>
-              ))}
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] min-w-0">
+            <Navigation size={16} className="text-[var(--accent-bg)] shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Location</span>
+              <span className="text-xs font-bold text-[var(--text-primary)] truncate tabular-nums">{cardWalkDesc}</span>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </main>

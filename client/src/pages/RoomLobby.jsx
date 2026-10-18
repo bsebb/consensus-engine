@@ -19,7 +19,6 @@ import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
 import restaurantsMock from '../mocks/restaurants.json';
 
-// Client-side Levenshtein distance for fuzzy duplicate detection
 function levenshteinDistance(a, b) {
   const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
   for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
@@ -40,21 +39,6 @@ function levenshteinDistance(a, b) {
   return matrix[b.length][a.length];
 }
 
-function deduplicateSuggestions(list) {
-  const result = [];
-  list.forEach((item) => {
-    const isDup = result.some((existing) => {
-      const dist = levenshteinDistance(
-        existing.toLowerCase().trim(),
-        item.toLowerCase().trim()
-      );
-      return dist <= 2;
-    });
-    if (!isDup) result.push(item);
-  });
-  return result;
-}
-
 export default function RoomLobby() {
   const { pin } = useParams();
   const location = useLocation();
@@ -64,23 +48,20 @@ export default function RoomLobby() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isHost = location.state?.isHost ?? (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true');
-  const currentUserName = location.state?.userName || (isHost ? 'Host' : 'Guest');
-  const [groupSize, setGroupSize] = useState(location.state?.groupSize || 4);
+  const currentUserName = location.state?.userName || localStorage.getItem('consensus_user_name') || (isHost ? 'Host' : 'Friend');
+  const [groupSize, setGroupSize] = useState(location.state?.groupSize || 2);
   const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
   const [topic, setTopic] = useState(location.state?.topic || 'Where should we go?');
 
-  // Live participant state with budgetSealed tracking
   const [participants, setParticipants] = useState(() => [
     { id: participantId || 'host_1', name: currentUserName, isHost, budgetSealed: false },
   ]);
 
-  // Step Zero Budget Constraint State
-  const [budgetLimit, setBudgetLimit] = useState(250);
+  // Instant 1-tap Budget Filter State
+  const [budgetLimit, setBudgetLimit] = useState(600);
   const [lockedConstraint, setLockedConstraint] = useState(false);
-  const [lockingBudget, setLockingBudget] = useState(false);
-  const [hasPendingBudgetChange, setHasPendingBudgetChange] = useState(false);
 
-  // Suggestions state (for custom mode - clean start without hardcoded dummy options)
+  // Custom Suggestions State
   const [suggestion, setSuggestion] = useState('');
   const [groupPool, setGroupPool] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -104,7 +85,6 @@ export default function RoomLobby() {
     }
   }, [pin]);
 
-  // Track active PIN in localStorage for mobile navigation dock
   useEffect(() => {
     if (pin) {
       localStorage.setItem('consensus_active_pin', pin);
@@ -120,21 +100,10 @@ export default function RoomLobby() {
       });
       localStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem('consensus_active_pin');
-      addToast({
-        title: 'Left Lobby',
-        message: `Exited room #${pin}`,
-        type: 'info',
-      });
     }
     navigate('/');
   };
 
-  // Check for real-time duplicate warning as user types
-  const duplicateMatch = suggestion.trim().length >= 3
-    ? groupPool.find((item) => levenshteinDistance(item.toLowerCase(), suggestion.toLowerCase().trim()) <= 2)
-    : null;
-
-  // Handle Socket.io synchronization
   useLobbySync({
     pin,
     participantId,
@@ -160,16 +129,16 @@ export default function RoomLobby() {
       await navigator.clipboard.writeText(pin);
       setCopied(true);
       addToast({
-        title: 'PIN Copied',
-        message: `Room code #${pin} copied to clipboard`,
+        title: 'Room Code Copied',
+        message: `Code #${pin} copied to clipboard`,
         type: 'success',
       });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       addToast({
-        title: 'Copy Failed',
-        message: `PIN code is ${pin}`,
-        type: 'warning',
+        title: 'Room Code',
+        message: `Share code ${pin} with your friends`,
+        type: 'info',
       });
     }
   };
@@ -179,81 +148,134 @@ export default function RoomLobby() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join Consensus Room #${pin}`,
-          text: `Join our consensus session: "${topic}"!`,
+          title: `Join Room #${pin}`,
+          text: `Vote on "${topic}" with me!`,
           url: inviteUrl,
         });
       } catch {
         handleCopyPin();
       }
     } else {
-      handleCopyPin();
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        setCopied(true);
+        addToast({
+          title: 'Invite Link Copied',
+          message: 'Paste the link in your group chat!',
+          type: 'success',
+        });
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        handleCopyPin();
+      }
     }
   };
 
-  const handleLockBudget = async () => {
-    setLockingBudget(true);
-    const max_price_level = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
-    try {
-      await fetch(apiUrl(`/api/v1/rooms/${pin}/constraints`), {
+  // Instant 1-tap budget tier handler
+  const handleSelectBudgetTier = async (newLimit, shouldFilter) => {
+    setBudgetLimit(newLimit);
+    setLockedConstraint(shouldFilter);
+
+    const max_price_level = !shouldFilter ? 4 : newLimit <= 180 ? 1 : newLimit <= 350 ? 2 : 3;
+
+    if (shouldFilter) {
+      fetch(apiUrl(`/api/v1/rooms/${pin}/constraints`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participant_id: participantId,
           max_price_level,
-          max_budget: budgetLimit,
+          max_budget: newLimit,
         }),
-      });
-    } catch (err) {
-      console.warn('[RoomLobby] Backend constraint offline, saved locally:', err);
+      }).catch(() => {});
     }
 
     emit('update_budget', {
       pin,
       participant_id: participantId,
-      budgetSealed: true,
-      budgetLimit,
+      budgetSealed: shouldFilter,
+      budgetLimit: newLimit,
     });
 
-    setLockingBudget(false);
-    setLockedConstraint(true);
-    setHasPendingBudgetChange(false);
     setParticipants((prev) =>
       prev.map((p) =>
         p.name === currentUserName || p.id === participantId
-          ? { ...p, budgetSealed: true }
+          ? { ...p, budgetSealed: shouldFilter }
           : p
       )
     );
-    addToast({
-      title: 'Budget Sealed in Vault',
-      message: `Max ${budgetLimit} MDL applied anonymously`,
-      type: 'success',
-    });
   };
 
-  const handleUnlockBudget = () => {
-    setLockedConstraint(false);
-    setHasPendingBudgetChange(true);
-    emit('update_budget', {
-      pin,
-      participant_id: participantId,
-      budgetSealed: false,
-      budgetLimit,
-    });
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.name === currentUserName || p.id === participantId
-          ? { ...p, budgetSealed: false }
-          : p
-      )
+  // Candidate pool resolution from live database options + custom suggestions
+  const candidatePoolPreview = useMemo(() => {
+    const customItems = groupPool.map((name, idx) => ({
+      id: `custom-${idx}-${name}`,
+      name,
+      category: 'Group Suggestion',
+      price_level: 2,
+      distance_km: null,
+      address: 'Added by group',
+      tags: ['Custom'],
+      isCustom: true,
+      customIndex: idx,
+    }));
+
+    if (mode === 'CUSTOM') {
+      return customItems;
+    }
+
+    let baseList = [];
+    if (realOptions && realOptions.length > 0) {
+      baseList = realOptions.map((opt) => {
+        let dist = null;
+        let addr = 'Centru, Chișinău';
+        let catLabel = location.state?.category || 'Local Favorite';
+        if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
+          const parts = opt.googlePlaceId.split('|');
+          const parsedDist = parseFloat(parts[1]);
+          if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
+          if (parts[2]) addr = parts[2];
+          if (parts[3]) catLabel = parts[3];
+        }
+        return {
+          id: opt.id,
+          name: opt.name,
+          category: catLabel,
+          price_level: opt.priceLevel || 2,
+          distance_km: dist,
+          tags: [catLabel],
+          address: addr,
+          isCustom: false,
+        };
+      });
+    } else {
+      let pool = restaurantsMock || [];
+      const category = location.state?.category;
+      if (category && category !== 'Restaurants') {
+        const catLower = category.toLowerCase();
+        const matched = pool.filter(
+          (r) =>
+            r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
+            r.category?.toLowerCase().includes(catLower) ||
+            r.name?.toLowerCase().includes(catLower)
+        );
+        if (matched.length > 0) pool = matched;
+      }
+      baseList = pool;
+    }
+
+    return [...customItems, ...baseList];
+  }, [mode, groupPool, realOptions, location.state?.category]);
+
+  // Duplicate check across both custom and discovery options
+  const duplicateMatch = useMemo(() => {
+    const clean = suggestion.trim().toLowerCase();
+    if (clean.length < 3) return null;
+    const match = candidatePoolPreview.find(
+      (item) => levenshteinDistance(item.name.toLowerCase(), clean) <= 2
     );
-    addToast({
-      title: 'Budget Unlocked',
-      message: 'Slide to adjust your personal ceiling, then re-seal when ready.',
-      type: 'info',
-    });
-  };
+    return match ? match.name : null;
+  }, [suggestion, candidatePoolPreview]);
 
   const handleAddSuggestion = (e) => {
     e.preventDefault();
@@ -262,8 +284,8 @@ export default function RoomLobby() {
 
     if (duplicateMatch) {
       addToast({
-        title: 'Duplicate Detected',
-        message: `Similar to existing candidate "${duplicateMatch}"`,
+        title: 'Already Listed',
+        message: `"${duplicateMatch}" is already on the table.`,
         type: 'warning',
       });
       return;
@@ -278,11 +300,6 @@ export default function RoomLobby() {
 
     setGroupPool((prev) => (prev.some((s) => s.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean]));
     setSuggestion('');
-    addToast({
-      title: 'Suggestion Added',
-      message: `"${clean}" added to pool`,
-      type: 'info',
-    });
   };
 
   const handleRemoveSuggestion = (idx) => {
@@ -293,59 +310,10 @@ export default function RoomLobby() {
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Candidate pool resolution from live database options or custom suggestions
-  const candidatePoolPreview = useMemo(() => {
-    if (mode === 'CUSTOM') {
-      return groupPool.map((name, idx) => ({
-        id: `c-${idx}`,
-        name,
-        category: 'Suggestion',
-        price_level: 2,
-        distance_km: 1.2,
-        tags: ['Custom'],
-      }));
-    }
-
-    if (realOptions && realOptions.length > 0) {
-      return realOptions.map((opt) => {
-        let dist = null;
-        let addr = 'Centru, Chișinău';
-        if (opt.googlePlaceId && opt.googlePlaceId.includes('|')) {
-          const parts = opt.googlePlaceId.split('|');
-          const parsedDist = parseFloat(parts[1]);
-          if (!isNaN(parsedDist) && parsedDist > 0) dist = parsedDist;
-          if (parts[2]) addr = parts[2];
-        }
-        return {
-          id: opt.id,
-          name: opt.name,
-          category: location.state?.category || 'Discovery',
-          price_level: opt.priceLevel || 2,
-          distance_km: dist,
-          tags: [location.state?.category || 'Top Pick'],
-          address: addr,
-        };
-      });
-    }
-
-    let pool = restaurantsMock || [];
-    const category = location.state?.category;
-    if (category && category !== 'Restaurants') {
-      const catLower = category.toLowerCase();
-      const matched = pool.filter(
-        (r) =>
-          r.tags?.some((t) => t.toLowerCase().includes(catLower)) ||
-          r.name?.toLowerCase().includes(catLower)
-      );
-      if (matched.length > 0) pool = matched;
-    }
-    return pool;
-  }, [mode, groupPool, realOptions, location.state?.category]);
-
-  const maxBudgetLevel = budgetLimit <= 200 ? 1 : budgetLimit <= 350 ? 2 : budgetLimit <= 500 ? 3 : 4;
+  const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
   const filteredCandidates = useMemo(() => {
     if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
-    return candidatePoolPreview.filter((item) => (item.price_level || 1) <= maxBudgetLevel);
+    return candidatePoolPreview.filter((item) => item.isCustom || (item.price_level || 2) <= maxBudgetLevel);
   }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
 
   const prunedCount = lockedConstraint && mode !== 'CUSTOM'
@@ -353,26 +321,25 @@ export default function RoomLobby() {
     : 0;
 
   const handleStartVoting = () => {
-    let cardsToPass = [];
+    const cardsToPass = filteredCandidates.length > 0 ? filteredCandidates : candidatePoolPreview;
 
-    if (mode === 'CUSTOM') {
-      cardsToPass = deduplicateSuggestions(groupPool);
-      if (cardsToPass.length < 2) {
-        addToast({
-          title: 'Add More Options',
-          message: 'Please add at least 2 custom options so participants have choices to vote on.',
-          type: 'warning',
-        });
-        return;
-      }
-    } else {
-      cardsToPass = filteredCandidates.length > 0 ? filteredCandidates : candidatePoolPreview;
+    if (cardsToPass.length < 2) {
+      addToast({
+        title: 'Add At Least 2 Spots',
+        message: 'Add at least 2 options above so everyone can vote.',
+        type: 'warning',
+      });
+      return;
     }
+
+    const activeParticipantCount = Math.max(1, participants.length);
 
     emit('host_start_voting', {
       pin,
       host_id: participantId,
       options: cardsToPass,
+      topic,
+      mode,
     });
 
     sessionStorage.setItem(`consensus_host_${pin}`, 'true');
@@ -381,40 +348,38 @@ export default function RoomLobby() {
         mode,
         topic,
         isHost: true,
-        totalParticipants: groupSize,
+        totalParticipants: activeParticipantCount,
         customCards: cardsToPass,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
       },
     });
   };
 
-  const sealedCount = participants.filter((p) => p.budgetSealed).length;
-
   if (!pin) {
     return <NoActiveLobbyView navigate={navigate} setSettingsOpen={setSettingsOpen} />;
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-36 select-none">
-      {/* Consumer Mobile Header - Solid Opaque Ground to Prevent Ghost Text */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 py-3 shadow-xs">
+    <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none">
+      {/* Solid Opaque Header */}
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 py-3">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={handleLeaveLobby}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
-            aria-label="Leave Lobby"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)]"
+            aria-label="Leave Room"
           >
             <LogOut size={13} />
-            <span>Leave</span>
+            <span>Home</span>
           </button>
 
-          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)] font-normal">Room</span>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
+            <span className="text-[var(--text-tertiary)] font-normal">Code</span>
             <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -429,22 +394,30 @@ export default function RoomLobby() {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="px-4 pt-4 flex flex-col gap-4 flex-1 max-w-md mx-auto w-full">
-        {/* Hero PIN, Target Banner & Roll-Call Roster */}
+      {/* Main Content */}
+      <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+        {/* Compact Room Header & Roster */}
         <LobbyRoster
           pin={pin}
           topic={topic}
           participants={participants}
           groupSize={groupSize}
-          sealedCount={sealedCount}
           copied={copied}
           handleCopyPin={handleCopyPin}
           handleShareInvite={handleShareInvite}
           setQrModalOpen={setQrModalOpen}
         />
 
-        {/* Curated Places on the Table (Front and Center) */}
+        {/* 1-Tap Anonymous Price Filter (Hidden in Custom Poll mode) */}
+        {mode !== 'CUSTOM' && (
+          <StepZeroVault
+            lockedConstraint={lockedConstraint}
+            budgetLimit={budgetLimit}
+            onSelectTier={handleSelectBudgetTier}
+          />
+        )}
+
+        {/* Curated Places on the Table */}
         <CandidatePoolDeck
           mode={mode}
           candidates={filteredCandidates}
@@ -457,21 +430,11 @@ export default function RoomLobby() {
           handleRemoveSuggestion={handleRemoveSuggestion}
           duplicateMatch={duplicateMatch}
         />
+      </main>
 
-        {/* Step Zero: Anonymous Spending Comfort (Optional) */}
-        <StepZeroVault
-          lockedConstraint={lockedConstraint}
-          budgetLimit={budgetLimit}
-          setBudgetLimit={setBudgetLimit}
-          handleLockBudget={handleLockBudget}
-          handleUnlockBudget={handleUnlockBudget}
-          lockingBudget={lockingBudget}
-          hasPendingBudgetChange={hasPendingBudgetChange}
-          setHasPendingBudgetChange={setHasPendingBudgetChange}
-        />
-
-        {/* Primary Action Dock */}
-        <div className="sticky bottom-4 z-20 pt-2 pb-2 flex flex-col gap-2">
+      {/* Fixed Bottom Start Action Bar */}
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-md mx-auto">
           {isHost ? (
             <Button
               type="button"
@@ -479,40 +442,26 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="w-full h-14 shadow-[0_12px_32px_var(--accent-glow)] font-black text-base rounded-2xl"
+              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl"
             >
-              Start Swiping ({participants.length} {participants.length === 1 ? 'person' : 'friends'} ready)
+              Start Voting • {Math.min(8, filteredCandidates.length)} {filteredCandidates.length === 1 ? 'Place' : 'Places'}
             </Button>
           ) : (
-            <div className="p-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-center flex flex-col items-center gap-1 shadow-lg">
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                Waiting for Host to Start
-              </span>
-              <span className="text-[11px] text-[var(--text-secondary)]">
-                Swiping will launch automatically as soon as the host taps start.
+            <div className="py-2.5 px-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-center flex items-center justify-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span className="text-xs font-semibold text-[var(--text-primary)]">
+                Waiting for host to start voting...
               </span>
             </div>
           )}
-
-          {/* Secondary Leave Lobby Action */}
-          <button
-            type="button"
-            onClick={handleLeaveLobby}
-            className="w-full text-xs font-semibold text-[var(--text-tertiary)] hover:text-[var(--status-danger)] transition-colors text-center py-1.5 flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px]"
-          >
-            <LogOut size={13} />
-            <span>Leave Lobby #{pin}</span>
-          </button>
         </div>
-      </main>
+      </div>
 
-      {/* Global Settings Modal */}
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
 
-      {/* QR Code Ingress Modal */}
       <QrCodeModal
         isOpen={qrModalOpen}
         onClose={() => setQrModalOpen(false)}
