@@ -1,4 +1,4 @@
-const CACHE_NAME = 'consensus-pwa-v16';
+const CACHE_NAME = 'consensus-pwa-v17';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -84,7 +84,7 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(event.request);
         if (cached) return cached;
         if (event.request.mode === 'navigate') {
-          const fallback = await caches.match('/');
+          const fallback = (await caches.match('/index.html')) || (await caches.match('/'));
           if (fallback) return fallback;
         }
         return new Response('Network unavailable', { status: 503, statusText: 'Offline' });

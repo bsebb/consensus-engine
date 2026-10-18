@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { apiUrl } from './api';
 
 export function getCanonicalVenueKey(name = '') {
