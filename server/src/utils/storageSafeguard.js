@@ -146,7 +146,11 @@ async function dispatchActivityNotification(eventType, data = {}) {
     let payload = null;
 
     if (eventType === 'room_created') {
-      const { pin, topic, mode, optionCount, hostId } = data;
+      const { pin, topic, mode, optionCount, initialTableCount, hostId } = data;
+      const optionsDesc = mode === 'CUSTOM'
+        ? `${optionCount || 0} custom choices`
+        : `${initialTableCount || 6} on table (${optionCount || 30} in discovery pool)`;
+
       payload = {
         content: `🎉 **Room Created:** Room was created with ID **#${pin}**`,
         embeds: [
@@ -157,10 +161,29 @@ async function dispatchActivityNotification(eventType, data = {}) {
               { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
               { name: 'Mode', value: mode === 'CUSTOM' ? 'Custom Poll' : 'Discovery', inline: true },
               { name: 'Topic / Category', value: topic || 'Places Nearby', inline: true },
-              { name: 'Options Loaded', value: `${optionCount || 0} choices`, inline: true },
+              { name: 'Options', value: optionsDesc, inline: true },
               { name: 'Host ID', value: hostId ? `\`${hostId}\`` : 'Unknown', inline: true },
             ],
             footer: { text: 'Consensus Engine • Live Activity' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    } else if (eventType === 'voting_started') {
+      const { pin, topic, mode, optionCount, voterCount } = data;
+      payload = {
+        content: `🗳️ **Voting Started:** Room with ID **#${pin}** started voting!`,
+        embeds: [
+          {
+            title: `Ballots Open for #${pin}`,
+            color: 3447003, // Blue (0x3498DB)
+            fields: [
+              { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
+              { name: 'Options to Swipe', value: `${optionCount || 6} choices`, inline: true },
+              { name: 'Voters', value: `${voterCount || 1} participant(s)`, inline: true },
+              { name: 'Topic', value: topic || 'Where should we go?', inline: false },
+            ],
+            footer: { text: 'Consensus Engine • Voting Phase' },
             timestamp: new Date().toISOString(),
           },
         ],
@@ -181,6 +204,27 @@ async function dispatchActivityNotification(eventType, data = {}) {
               { name: 'Address / Location', value: winnerAddress || 'Local Venue', inline: false },
             ],
             footer: { text: 'Consensus Engine • Decision Announced' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    } else if (eventType === 'lobby_closed') {
+      const { pin, topic, mode, reason, durationMinutes, voterCount } = data;
+      payload = {
+        content: `🚪 **Lobby Closed:** Room with ID **#${pin}** has disbanded`,
+        embeds: [
+          {
+            title: `Room #${pin} Closed`,
+            color: 15158332, // Coral/Amber-red (0xE74C3C)
+            fields: [
+              { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
+              { name: 'Reason', value: reason || 'All participants left', inline: true },
+              { name: 'Active Duration', value: `${durationMinutes || 1} min(s)`, inline: true },
+              { name: 'Topic', value: topic || 'Decision Room', inline: true },
+              { name: 'Mode', value: mode === 'CUSTOM' ? 'Custom Poll' : 'Discovery', inline: true },
+              { name: 'Ballots Cast', value: `${voterCount || 0}`, inline: true },
+            ],
+            footer: { text: 'Consensus Engine • Room Lifecycle' },
             timestamp: new Date().toISOString(),
           },
         ],

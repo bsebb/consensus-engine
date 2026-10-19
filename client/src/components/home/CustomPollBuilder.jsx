@@ -63,18 +63,18 @@ export default function CustomPollBuilder({
   const handleAddOption = (text) => {
     const clean = String(text || '').trim();
     if (!clean) return;
-    if (customOptions.some((o) => o.toLowerCase() === clean.toLowerCase())) {
-      setNewOptionText('');
-      return;
-    }
     triggerHaptic('tap');
-    setCustomOptions([...customOptions, clean]);
+    setCustomOptions((prev) => {
+      const arr = Array.isArray(prev) ? prev : [];
+      if (arr.some((o) => o.toLowerCase() === clean.toLowerCase())) return arr;
+      return [...arr, clean];
+    });
     setNewOptionText('');
   };
 
   const handleRemoveOption = (index) => {
     triggerHaptic('tap');
-    setCustomOptions(customOptions.filter((_, i) => i !== index));
+    setCustomOptions((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== index) : []));
   };
 
   const hasTopic = Boolean(topic && topic.trim().length >= 2);

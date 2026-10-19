@@ -324,7 +324,15 @@ export default function SwipeDeck() {
   const handleReturnToLobby = () => {
     sessionStorage.setItem(`consensus_pause_voting_${pin}`, 'true');
     setLeaveModalOpen(false);
-    navigate(`/lobby/${pin}`);
+    navigate(`/lobby/${pin}`, {
+      state: {
+        pausedVoting: true,
+        isHost: Boolean(isHost),
+        userName: location.state?.userName,
+        mode,
+        topic,
+      },
+    });
   };
 
   const handleLeaveRoom = () => {
@@ -466,7 +474,9 @@ export default function SwipeDeck() {
     <div
       className={`flex-1 flex flex-col select-none ${
         !showWinner && currentIndex < cards.length
-          ? 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-none'
+          ? activeTab === 'details'
+            ? 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-pan-y'
+            : 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-none'
           : 'min-h-screen pb-16 overflow-y-auto'
       }`}
     >
@@ -512,7 +522,7 @@ export default function SwipeDeck() {
           handleHostForceReveal={handleHostForceReveal}
         />
       ) : activeTab === 'details' && mode !== 'CUSTOM' && !activeCard?.isCustom ? (
-        <main className="px-4 py-2 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
+        <main className="px-3.5 py-1 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
           <VenueDetailsModal
             key={activeCard?.id || activeCard?.name || 'swipedeck-venue-modal'}
             venue={activeCard}

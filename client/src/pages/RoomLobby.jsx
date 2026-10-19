@@ -68,7 +68,8 @@ export default function RoomLobby() {
   const [visiblePlacesCount, setVisiblePlacesCount] = useState(() => location.state?.deckSize || 12);
   const [removedPlaceIds, setRemovedPlaceIds] = useState(() => new Set());
   const [isVotingActive, setIsVotingActive] = useState(() => (
-    typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true'
+    Boolean(location.state?.pausedVoting) ||
+    (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true')
   ));
 
   useEffect(() => {
@@ -106,7 +107,10 @@ export default function RoomLobby() {
               ? data.theme.replace(/^custom:/, '').trim()
               : null);
           if (safeTopic && safeTopic !== 'custom' && safeTopic !== 'poll') {
-            setTopic(safeTopic);
+            setTopic((prev) => {
+              const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts'].includes(String(safeTopic).toLowerCase().trim());
+              return (isBare && prev && prev !== 'Where should we go?') ? prev : safeTopic;
+            });
           }
           if (Array.isArray(data.options) && data.options.length > 0) {
             setRealOptions(data.options);
@@ -143,15 +147,6 @@ export default function RoomLobby() {
     return () => {
       window.removeEventListener('pagehide', handleBeforeUnload);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-
-      if (!isTransitioningToDeckRef.current && pin) {
-        emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
-        emit('leave_room', { pin, participant_id: participantId });
-        localStorage.removeItem('consensus_active_pin');
-        sessionStorage.removeItem('consensus_active_pin');
-        sessionStorage.removeItem(`consensus_host_${pin}`);
-        sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
-      }
     };
   }, [pin, participantId, currentUserName, emit]);
 

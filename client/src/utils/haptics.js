@@ -1,11 +1,13 @@
 /**
- * Universal Haptics and Acoustic Feedback Engine
- * Combines navigator.vibrate (Android) with low-latency Web Audio API synthesis (iOS Safari, Mac, Desktop).
+ * Universal Haptics and Natural Acoustic Feedback Engine
+ * Combines hardware vibration (Android/Chrome) and native WebKit Taptic Engine (iOS)
+ * with organic, physical acoustic UI transients (low-frequency mechanical clicks, wooden taps, and warm bell harmonics).
  * Works offline, requires zero external audio assets, and respects user preference toggle.
  */
 
 let audioCtx = null;
 let silentAudioEl = null;
+let persistentSwitchInput = null;
 
 function unlockIosAudioSession() {
   if (typeof window === 'undefined') return;
@@ -19,22 +21,43 @@ function unlockIosAudioSession() {
   } catch {}
 }
 
+/**
+ * Native iOS Taptic Engine trigger via persistent off-screen WebKit switch input.
+ * Avoids display:none which disables WebKit accessibility/taptic pipeline.
+ */
+function getPersistentSwitchInput() {
+  if (typeof document === 'undefined') return null;
+  if (!persistentSwitchInput || !persistentSwitchInput.isConnected) {
+    try {
+      const container = document.createElement('div');
+      container.setAttribute('aria-hidden', 'true');
+      container.style.cssText = 'position:fixed;top:-200px;left:-200px;width:2px;height:2px;opacity:0.001;pointer-events:none;overflow:hidden;z-index:-999;';
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.setAttribute('switch', '');
+      label.appendChild(input);
+      container.appendChild(label);
+      const parent = document.body || document.documentElement;
+      if (parent) {
+        parent.appendChild(container);
+        persistentSwitchInput = input;
+      }
+    } catch {}
+  }
+  return persistentSwitchInput;
+}
+
 function triggerIosTaptic() {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   try {
     const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
     if (!isTouch) return;
-    const label = document.createElement('label');
-    label.setAttribute('aria-hidden', 'true');
-    label.style.display = 'none';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.setAttribute('switch', '');
-    label.appendChild(input);
-    const parent = document.body || document.documentElement;
-    parent.appendChild(label);
-    label.click();
-    parent.removeChild(label);
+    const input = getPersistentSwitchInput();
+    if (input) {
+      input.checked = !input.checked;
+      input.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    }
   } catch {}
 }
 
@@ -50,13 +73,6 @@ export function initAudioContext() {
     }
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {});
-    }
-    if (audioCtx) {
-      const buffer = audioCtx.createBuffer(1, 1, 22050);
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioCtx.destination);
-      source.start(0);
     }
   } catch {}
   return audioCtx;
@@ -89,7 +105,8 @@ function isHapticsEnabled() {
 }
 
 /**
- * 1200Hz -> 420Hz crisp acoustic micro-tick for selection / segmented controls
+ * Organic mechanical micro-click (140Hz -> 50Hz in 9ms)
+ * Simulates a high-end physical rotary wheel tick or camera shutter click.
  */
 export function playSelectionTick() {
   const ctx = getAudioContext();
@@ -100,48 +117,50 @@ export function playSelectionTick() {
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(1200, now);
-    osc.frequency.exponentialRampToValueAtTime(420, now + 0.014);
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(50, now + 0.009);
 
-    gain.gain.setValueAtTime(0.16, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.014);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.009);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.016);
+    osc.stop(now + 0.011);
   } catch {}
 }
 
 /**
- * 950Hz crisp acoustic micro-tick for subtle tap feedback
+ * Tactile acoustic tap (180Hz -> 80Hz in 12ms)
+ * Subdued, pleasant bubble pop for button presses.
  */
 export function playTapTick() {
   const ctx = getAudioContext();
   if (!ctx || !isHapticsEnabled()) return;
   try {
+    const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    const now = ctx.currentTime;
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(950, now);
-    osc.frequency.exponentialRampToValueAtTime(320, now + 0.02);
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.012);
 
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.022);
+    osc.stop(now + 0.014);
   } catch {}
 }
 
 /**
- * Warm ascending two-tone chime for Like swipe (480Hz -> 760Hz)
+ * Warm physical card slide flick for Like swipe
+ * Dual-tone soft wooden slide (220Hz / 170Hz), 30ms decay.
  */
 export function playSwipeRightSound() {
   const ctx = getAudioContext();
@@ -151,23 +170,24 @@ export function playSwipeRightSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(480, now);
-    osc.frequency.exponentialRampToValueAtTime(760, now + 0.12);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(170, now + 0.03);
 
-    gain.gain.setValueAtTime(0.24, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.14);
+    osc.stop(now + 0.04);
   } catch {}
 }
 
 /**
- * Soft damped pop for Pass swipe (260Hz -> 130Hz)
+ * Soft felt thumb flick for Pass swipe (105Hz -> 55Hz, 16ms)
+ * Warm, non-intrusive muted thud.
  */
 export function playSwipeLeftSound() {
   const ctx = getAudioContext();
@@ -178,77 +198,82 @@ export function playSwipeLeftSound() {
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(260, now);
-    osc.frequency.exponentialRampToValueAtTime(130, now + 0.10);
+    osc.frequency.setValueAtTime(105, now);
+    osc.frequency.exponentialRampToValueAtTime(55, now + 0.016);
 
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.018);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.105);
+    osc.stop(now + 0.02);
   } catch {}
 }
 
 /**
- * Muted low thud for Veto action (180Hz -> 50Hz)
+ * Muted wooden double-knock for Veto action (75Hz & 58Hz knocks)
+ * Organic acoustic wood knock instead of harsh electronic buzzers.
  */
 export function playVetoSound() {
   const ctx = getAudioContext();
   if (!ctx || !isHapticsEnabled()) return;
   try {
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    [0, 0.045].forEach((offset, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const start = now + offset;
+      const freq = idx === 0 ? 75 : 58;
 
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(180, now);
-    osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(35, start + 0.018);
 
-    gain.gain.setValueAtTime(0.22, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      gain.gain.setValueAtTime(0.16, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.02);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc.start(now);
-    osc.stop(now + 0.16);
+      osc.start(start);
+      osc.stop(start + 0.022);
+    });
   } catch {}
 }
 
 /**
- * Bright harmonic triad for Superlike / Favorite
+ * Warm harmonic pair for Superlike / Favorite (587Hz & 880Hz pure sines)
  */
 export function playSuperlikeSound() {
   const ctx = getAudioContext();
   if (!ctx || !isHapticsEnabled()) return;
   try {
     const now = ctx.currentTime;
-    const notes = [440, 660, 880];
-    notes.forEach((freq, idx) => {
+    [587, 880].forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const start = now + idx * 0.04;
+      const start = now + idx * 0.035;
 
-      osc.type = 'triangle';
+      osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, start);
 
       gain.gain.setValueAtTime(0.08, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.14);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(start);
-      osc.stop(start + 0.13);
+      osc.stop(start + 0.15);
     });
   } catch {}
 }
 
 /**
- * Euphoric multi-note fanfare for Consensus Winner reveal
+ * Natural acoustic Rhodes / celesta bell chord for Consensus Winner reveal
+ * C5 + E5 + G5 + C6 pure sines with soft 15ms acoustic attack and gentle 380ms decay.
  */
 export function playMatchChime() {
   const ctx = getAudioContext();
@@ -259,19 +284,20 @@ export function playMatchChime() {
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const start = now + idx * 0.07;
+      const start = now + idx * 0.06;
 
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, start);
 
-      gain.gain.setValueAtTime(0.12, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.linearRampToValueAtTime(0.09, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.38);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(start);
-      osc.stop(start + 0.36);
+      osc.stop(start + 0.4);
     });
   } catch {}
 }
@@ -280,7 +306,7 @@ let lastHapticTime = 0;
 let lastHapticType = '';
 
 /**
- * Universal haptic trigger combining vibration and synthesized acoustic feedback
+ * Universal haptic trigger combining vibration, native iOS Taptic switch, and physical acoustic feedback
  * @param {'tap'|'selection'|'light'|'like'|'pass'|'veto'|'superlike'|'match'} type
  */
 export function triggerHaptic(type = 'tap') {
@@ -293,39 +319,34 @@ export function triggerHaptic(type = 'tap') {
   lastHapticTime = now;
   lastHapticType = type;
 
-  // Ensure AudioContext is active synchronously in the user gesture event loop
+  // 1. Native iOS Taptic Engine trigger
   unlockIosAudioSession();
   triggerIosTaptic();
   if (type === 'like' || type === 'superlike') {
-    setTimeout(triggerIosTaptic, 100);
-  } else if (type === 'veto') {
     setTimeout(triggerIosTaptic, 90);
-    setTimeout(triggerIosTaptic, 190);
-  } else if (type === 'match') {
+  } else if (type === 'veto') {
     setTimeout(triggerIosTaptic, 80);
-    setTimeout(triggerIosTaptic, 170);
-    setTimeout(triggerIosTaptic, 270);
+    setTimeout(triggerIosTaptic, 160);
+  } else if (type === 'match') {
+    setTimeout(triggerIosTaptic, 70);
+    setTimeout(triggerIosTaptic, 150);
+    setTimeout(triggerIosTaptic, 240);
   }
 
-  const ctx = getAudioContext();
-  if (ctx && ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-
-  // 1. Hardware vibration for Android / supported mobile devices
+  // 2. Hardware vibration for Android / supported mobile devices
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     try {
       if (type === 'selection' || type === 'light') navigator.vibrate(8);
       else if (type === 'tap') navigator.vibrate(12);
-      else if (type === 'like') navigator.vibrate([15, 30, 20]);
-      else if (type === 'pass') navigator.vibrate(22);
-      else if (type === 'veto') navigator.vibrate([35, 30, 35]);
-      else if (type === 'superlike') navigator.vibrate([25, 35, 45]);
-      else if (type === 'match') navigator.vibrate([45, 50, 70, 50, 110]);
+      else if (type === 'like') navigator.vibrate([15, 25, 20]);
+      else if (type === 'pass') navigator.vibrate(18);
+      else if (type === 'veto') navigator.vibrate([30, 25, 30]);
+      else if (type === 'superlike') navigator.vibrate([20, 30, 40]);
+      else if (type === 'match') navigator.vibrate([40, 45, 60, 45, 100]);
     } catch {}
   }
 
-  // 2. Synthesized acoustic feedback for iOS Safari, macOS, and Desktop
+  // 3. Natural physical acoustic UI feedback
   if (type === 'selection') playSelectionTick();
   else if (type === 'tap' || type === 'light') playTapTick();
   else if (type === 'like') playSwipeRightSound();

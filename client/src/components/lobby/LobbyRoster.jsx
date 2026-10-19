@@ -6,12 +6,12 @@ import { triggerHaptic } from '../../utils/haptics';
 function getLocalizedTopic(rawTopic, t) {
   if (!rawTopic) return t('catCustomTopic');
   const lower = String(rawTopic).toLowerCase().trim();
-  if (lower === 'cafes' || lower === 'cafe' || lower === 'coffee') return t('catCafesTopic');
-  if (lower === 'restaurants' || lower === 'restaurant') return t('catRestaurantsTopic');
-  if (lower === 'bars' || lower === 'bar') return t('catBarsTopic');
-  if (lower === 'cinema' || lower === 'movies') return t('catCinemaTopic');
-  if (lower === 'desserts' || lower === 'dessert') return t('catDessertsTopic');
-  if (lower === 'custom' || lower === 'poll' || lower === 'places nearby') return t('catCustomTopic');
+  if (lower.includes('cafe') || lower.includes('coffee') || lower.includes('cafes')) return t('catCafesTopic');
+  if (lower.includes('restaurant') || lower.includes('dining') || lower.includes('mâncăm')) return t('catRestaurantsTopic');
+  if (lower.includes('bar') || lower.includes('pub') || lower.includes('drink') || lower.includes('pahar') || lower.includes('băutură')) return t('catBarsTopic');
+  if (lower.includes('cinema') || lower.includes('movie') || lower.includes('film')) return t('catCinemaTopic');
+  if (lower.includes('dessert') || lower.includes('gelato') || lower.includes('sweet') || lower.includes('dulciuri') || lower.includes('desert')) return t('catDessertsTopic');
+  if (lower === 'custom' || lower === 'poll' || lower === 'places nearby' || lower.includes('what should we do')) return t('catCustomTopic');
   return rawTopic;
 }
 

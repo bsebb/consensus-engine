@@ -18,7 +18,7 @@ import { useLanguage } from '../../context/LanguageContext';
 
 function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   return (
-    <div className="rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px]">
+    <div data-testid="candidate-card" className="relative rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px]">
       <div className="flex items-center justify-between gap-2">
         <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
           #{idx + 1}
@@ -62,6 +62,7 @@ function CandidatePoolCard({ item, onSelectDetails, onRemoveVenue }) {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') onSelectDetails(item);
       }}
+      data-testid="candidate-card"
       className="rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98]"
     >
       {/* Photo with Rating and Price Badge */}

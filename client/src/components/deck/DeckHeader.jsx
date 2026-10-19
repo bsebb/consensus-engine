@@ -42,11 +42,11 @@ export default function DeckHeader({
               </span>
             </div>
           ) : (
-            <div className="w-56 sm:w-64">
+            <div className="w-44 sm:w-52 max-w-[210px]">
               <SegmentedControl
                 options={[
                   { value: 'swipe', label: `${t('card')} ${Math.min(currentIndex + 1, cardsLength)}/${cardsLength}`, icon: Layers },
-                  { value: 'details', label: t('detailsAndRoute'), icon: MapPin },
+                  { value: 'details', label: t('details'), icon: MapPin },
                 ]}
                 value={activeTab}
                 onChange={setActiveTab}

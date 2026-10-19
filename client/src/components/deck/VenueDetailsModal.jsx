@@ -95,9 +95,9 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
   const activePhotoUrl = photos[activePhotoIdx] || photos[0] || fallbackPhoto;
 
   const content = (
-    <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col max-h-[84dvh]">
+    <div className={`w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col ${inline ? 'h-full max-h-full min-h-0' : 'max-h-[84dvh]'}`}>
       {/* Top Hero Photo + Gallery Strip */}
-      <div className="relative h-52 sm:h-60 w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden">
+      <div className={`relative ${inline ? 'h-36 sm:h-44' : 'h-52 sm:h-60'} w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden`}>
         <img
           src={activePhotoUrl}
           alt={venue.name}
@@ -295,7 +295,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
   if (!isOpen && !isClosing && !inline) return null;
 
   if (inline) {
-    return <div className="flex-1 flex flex-col justify-center px-4 py-2 max-w-md mx-auto w-full">{content}</div>;
+    return <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">{content}</div>;
   }
 
   return (

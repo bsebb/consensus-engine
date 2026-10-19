@@ -39,6 +39,7 @@ export function useLobbySync({
         topic: locationState?.topic,
         group_size: locationState?.groupSize,
         deck_size: locationState?.deckSize,
+        initial_suggestions: locationState?.initialCustomOptions,
       });
     };
 
@@ -47,7 +48,10 @@ export function useLobbySync({
 
     const handleParticipantJoined = (data) => {
       if (data?.mode) setMode(data.mode);
-      if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') setTopic(data.topic);
+      if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') {
+        const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts'].includes(String(data.topic).toLowerCase().trim());
+        setTopic((prev) => ((isBare && prev && prev !== 'Where should we go?') ? prev : data.topic));
+      }
       if (data?.group_size) setGroupSize(data.group_size);
       if (typeof data?.visible_places_count === 'number' && setVisiblePlacesCount) {
         setVisiblePlacesCount(data.visible_places_count);
@@ -59,7 +63,9 @@ export function useLobbySync({
         setRemovedPlaceIds(new Set(data.removedOptionIds.map(String)));
       }
       if (Array.isArray(data?.suggestions)) {
-        setGroupPool(data.suggestions);
+        if (data.suggestions.length > 0 || !locationState?.initialCustomOptions?.length) {
+          setGroupPool(data.suggestions);
+        }
       }
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
@@ -160,7 +166,8 @@ export function useLobbySync({
     };
 
     const handleVotingStarted = (data) => {
-      if (sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true') {
+      if (locationState?.pausedVoting || sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true') {
+        sessionStorage.setItem(`consensus_pause_voting_${pin}`, 'true');
         console.log('[RoomLobby] User paused voting deck redirect; remaining in lobby.');
         if (setIsVotingActive) setIsVotingActive(true);
         return;

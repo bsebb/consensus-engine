@@ -376,14 +376,76 @@ async function resolveAndBroadcastWinner(pin) {
     winner: winningOption,
   });
 
-  // Evict resolved session and lobby after 30 minutes to prevent server memory leaks
+  // Evict resolved session and disband lobby after 30 minutes
   const evictionTimer = setTimeout(() => {
-    activeVotingSessions.delete(pin);
-    activeLobbies.delete(pin);
-    console.log(`[Socket] Evicted resolved session and lobby for room ${pin}`);
+    disbandLobby(pin, 'Session completed and archived after 30 minutes').catch(() => {});
   }, 30 * 60 * 1000);
   if (evictionTimer.unref) evictionTimer.unref();
 }
+
+/**
+ * Cleanly disbands a lobby/room, notifies connected sockets, updates DB, and alerts Discord webhook
+ */
+async function disbandLobby(pin, reason = 'All participants left the room') {
+  if (!pin) return;
+  const lobby = activeLobbies.get(pin);
+  const session = activeVotingSessions.get(pin);
+  if (!lobby && !session) return;
+
+  const durationMinutes = lobby?.createdAt
+    ? Math.max(1, Math.round((Date.now() - lobby.createdAt) / 60000))
+    : 1;
+
+  io.to(pin).emit('lobby_closed', {
+    pin,
+    reason,
+    message: `Room #${pin} has disbanded.`,
+  });
+
+  const topic = lobby?.topic || session?.topic || 'Places Nearby';
+  const mode = lobby?.mode || session?.mode || 'DISCOVERY';
+  const voterCount = session ? session.submissions.size : 0;
+
+  activeLobbies.delete(pin);
+  activeVotingSessions.delete(pin);
+  roomSummaryCache.delete(pin);
+
+  try {
+    if (prisma?.room) {
+      await prisma.room.update({
+        where: { pin },
+        data: { status: 'CLOSED' },
+      }).catch(() => {});
+    }
+  } catch {}
+
+  console.log(`[Socket] Room #${pin} disbanded: "${reason}" after ${durationMinutes}m`);
+
+  dispatchActivityNotification('lobby_closed', {
+    pin,
+    topic,
+    mode,
+    reason,
+    durationMinutes,
+    voterCount,
+  }).catch(() => {});
+}
+
+// Background TTL sweep every 60s for abandoned or empty lobbies
+setInterval(() => {
+  const now = Date.now();
+  for (const [pin, lobby] of activeLobbies.entries()) {
+    const lastActivity = lobby.lastActivityAt || lobby.createdAt || now;
+    // Empty lobby with 0 participants for > 3 minutes
+    if (lobby.size === 0 && !activeVotingSessions.has(pin) && (now - lastActivity > 3 * 60 * 1000)) {
+      disbandLobby(pin, 'Empty lobby timeout (3 minutes with 0 participants)').catch(() => {});
+    }
+    // Inactive lobby for > 2 hours
+    else if (now - lastActivity > 2 * 60 * 60 * 1000) {
+      disbandLobby(pin, 'Inactive lobby timeout (2 hours without activity)').catch(() => {});
+    }
+  }
+}, 60 * 1000).unref();
 
 //Lilia: handle Socket.io room joining for real-time lobby updates
 io.on('connection', (socket) => {
@@ -479,15 +541,18 @@ io.on('connection', (socket) => {
 
       if (!activeLobbies.has(pin)) {
         const map = new Map();
-        map.suggestions = [];
+        map.suggestions = Array.isArray(data?.initial_suggestions) ? [...data.initial_suggestions] : [];
         map.persistedParticipants = new Set();
         map.mode = data?.mode || (room?.theme?.startsWith('custom') ? 'CUSTOM' : 'DISCOVERY');
         map.topic = data?.topic || (room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : 'Where should we go?');
         map.groupSize = data?.group_size || 4;
         map.visiblePlacesCount = data?.visible_places_count || 6;
+        map.createdAt = Date.now();
+        map.lastActivityAt = Date.now();
         activeLobbies.set(pin, map);
       }
       const lobby = activeLobbies.get(pin);
+      lobby.lastActivityAt = Date.now();
       if (!lobby.visiblePlacesCount) lobby.visiblePlacesCount = 6;
       if (data?.visible_places_count && data.visible_places_count > lobby.visiblePlacesCount) {
         lobby.visiblePlacesCount = data.visible_places_count;
@@ -513,6 +578,9 @@ io.on('connection', (socket) => {
         lobby.visiblePlacesCount = Math.max(4, Math.min(50, parseInt(data.deck_size, 10) || 12));
       }
       if (!lobby.suggestions) lobby.suggestions = [];
+      if (lobby.suggestions.length === 0 && Array.isArray(data?.initial_suggestions) && data.initial_suggestions.length > 0) {
+        lobby.suggestions = [...data.initial_suggestions];
+      }
 
       // Cryptographically verify host privilege via token
       const hasVerifiedHostToken = Boolean(host_token && verifyHostToken(pin, participant_id, host_token));
@@ -810,6 +878,14 @@ io.on('connection', (socket) => {
       console.log(
         `[Socket] Voting started in room ${pin} with ${roomOptions.length} options for ${io.sockets.adapter.rooms.get(pin)?.size || 0} clients (expected quorum: ${expectedCount})`
       );
+
+      dispatchActivityNotification('voting_started', {
+        pin,
+        topic,
+        mode,
+        optionCount: roomOptions.length,
+        voterCount: expectedCount,
+      }).catch(() => {});
     } catch (error) {
       console.error('[Socket] Failed to start voting:', error.message);
       socket.emit('room_error', { message: 'Failed to start voting.' });
@@ -972,6 +1048,10 @@ io.on('connection', (socket) => {
       });
 
       console.log(`[Socket] ${userName} left room ${pin} via leave_lobby/leave_room`);
+
+      if (lobby && lobby.size === 0 && !activeVotingSessions.has(pin)) {
+        disbandLobby(pin, 'All participants left the room').catch(() => {});
+      }
     }
   };
 
@@ -1006,7 +1086,7 @@ io.on('connection', (socket) => {
           currentLobby.delete(participantId);
 
           if (currentLobby.size === 0 && !activeVotingSessions.has(pin)) {
-            activeLobbies.delete(pin);
+            disbandLobby(pin, 'All participants disconnected').catch(() => {});
           } else if (wasHost && currentLobby.size > 0) {
             const remaining = Array.from(currentLobby.values());
             if (!remaining.some((p) => p.isHost)) {

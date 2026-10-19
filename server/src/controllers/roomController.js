@@ -125,7 +125,7 @@ const createNewRoom = async (req, res) => {
     }
 
     dispatchActivityNotification('room_created', {
-      pin: room.pin, topic: theme || 'Places Nearby', mode: 'DISCOVERY', optionCount: createdOptions.length, hostId: host_id,
+      pin: room.pin, topic: theme || 'Places Nearby', mode: 'DISCOVERY', optionCount: createdOptions.length, initialTableCount: 6, hostId: host_id,
     }).catch(() => {});
 
     return res.status(201).json({
