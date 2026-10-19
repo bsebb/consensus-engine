@@ -35,7 +35,7 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
       </div>
 
       <div className="py-1">
-        <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug" title={item.name}>
+        <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
           {item.name}
         </h4>
       </div>
@@ -252,7 +252,7 @@ export default function CandidatePoolDeck({
               className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between shadow-2xs text-left animate-pulse"
               style={{ animationDelay: `${i * 100}ms` }}
             >
-              <div className="relative h-32 sm:h-36 w-full bg-zinc-200/60 dark:bg-zinc-800/60 flex flex-col justify-between p-2.5">
+              <div className="relative aspect-[4/3] w-full bg-zinc-200/60 dark:bg-zinc-800/60 flex flex-col justify-between p-2.5">
                 <div className="flex items-center justify-between">
                   <div className="h-4 w-12 rounded-full bg-white/40 dark:bg-white/10" />
                   <div className="h-4 w-7 rounded-full bg-white/40 dark:bg-white/10" />
@@ -262,9 +262,15 @@ export default function CandidatePoolDeck({
                   <div className="h-2.5 bg-white/40 dark:bg-white/10 rounded-md w-1/2" />
                 </div>
               </div>
-              <div className="p-2.5 flex flex-col gap-1.5">
-                <div className="h-2.5 bg-zinc-300/70 dark:bg-zinc-700/60 rounded-md w-2/3" />
-                <div className="h-2 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-4/5" />
+              <div className="p-3 flex flex-col gap-1.5 flex-1 justify-between min-h-[96px]">
+                <div className="space-y-1.5">
+                  <div className="h-3 bg-zinc-300/70 dark:bg-zinc-700/60 rounded-md w-4/5" />
+                  <div className="h-2.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-1/2" />
+                </div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border-subtle)]">
+                  <div className="h-2.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-1/3" />
+                  <div className="h-2.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-8" />
+                </div>
               </div>
             </div>
           ))

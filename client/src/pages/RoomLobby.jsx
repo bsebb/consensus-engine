@@ -71,6 +71,16 @@ export default function RoomLobby() {
     Boolean(location.state?.pausedVoting) ||
     (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true')
   ));
+  const [showReconnecting, setShowReconnecting] = useState(false);
+
+  useEffect(() => {
+    if (isConnected) {
+      setShowReconnecting(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowReconnecting(true), 1200);
+    return () => clearTimeout(timer);
+  }, [isConnected]);
 
   useEffect(() => {
     let mounted = true;
@@ -473,8 +483,8 @@ export default function RoomLobby() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      {!isConnected && (
-        <div className="bg-amber-500/15 border-b border-amber-500/25 px-4 py-1.5 text-center flex items-center justify-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+      {showReconnecting && (
+        <div className="bg-amber-500/15 border-b border-amber-500/25 px-4 py-1.5 text-center flex items-center justify-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400 animate-[fadeIn_0.2s_ease-out]">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
           <span>{t('reconnecting')}</span>
         </div>

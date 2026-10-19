@@ -6,12 +6,12 @@ import { triggerHaptic } from '../../utils/haptics';
 function getLocalizedTopic(rawTopic, t) {
   if (!rawTopic) return t('catCustomTopic');
   const lower = String(rawTopic).toLowerCase().trim();
-  if (lower.includes('cafe') || lower.includes('coffee') || lower.includes('cafes')) return t('catCafesTopic');
-  if (lower.includes('restaurant') || lower.includes('dining') || lower.includes('mâncăm')) return t('catRestaurantsTopic');
-  if (lower.includes('bar') || lower.includes('pub') || lower.includes('drink') || lower.includes('pahar') || lower.includes('băutură')) return t('catBarsTopic');
-  if (lower.includes('cinema') || lower.includes('movie') || lower.includes('film')) return t('catCinemaTopic');
-  if (lower.includes('dessert') || lower.includes('gelato') || lower.includes('sweet') || lower.includes('dulciuri') || lower.includes('desert')) return t('catDessertsTopic');
-  if (lower === 'custom' || lower === 'poll' || lower === 'places nearby' || lower.includes('what should we do')) return t('catCustomTopic');
+  if (lower.includes('cafe') || lower.includes('coffee') || lower.includes('cafes') || lower.includes('кофе') || lower.includes('кафе')) return t('catCafesTopic');
+  if (lower.includes('restaurant') || lower.includes('dining') || lower.includes('mâncăm') || lower.includes('поедим') || lower.includes('ресторан')) return t('catRestaurantsTopic');
+  if (lower.includes('bar') || lower.includes('pub') || lower.includes('drink') || lower.includes('pahar') || lower.includes('băutură') || lower.includes('выпить') || lower.includes('бар')) return t('catBarsTopic');
+  if (lower.includes('cinema') || lower.includes('movie') || lower.includes('film') || lower.includes('кино')) return t('catCinemaTopic');
+  if (lower.includes('dessert') || lower.includes('gelato') || lower.includes('sweet') || lower.includes('dulciuri') || lower.includes('dulce') || lower.includes('desert') || lower.includes('сладк') || lower.includes('десерт')) return t('catDessertsTopic');
+  if (lower === 'custom' || lower === 'poll' || lower === 'places nearby' || lower.includes('what should we do') || lower.includes('ce facem') || lower.includes('что будем делать')) return t('catCustomTopic');
   return rawTopic;
 }
 
@@ -38,9 +38,9 @@ export default function LobbyRoster({
   return (
     <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
       {/* Topic & Invite Bar */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--border-subtle)]">
-        <div className="flex flex-col text-left min-w-0">
-          <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-snug">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--border-subtle)] min-h-[4.25rem]">
+        <div className="flex flex-col text-left min-w-0 flex-1">
+          <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-snug min-h-[3.25rem] flex items-center">
             {displayTopic}
           </h2>
         </div>

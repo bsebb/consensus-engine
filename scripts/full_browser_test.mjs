@@ -133,10 +133,14 @@ async function runFullBrowserAudit() {
     })()`);
     await cdp.sleep(300);
 
-    // Click Create Room
+    // Click Create Room Submit Button (pick the bottom form button, not the top tab)
     await cdp.evaluate(`(() => {
-      const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Create Room') || b.innerText.includes('Creează') || b.innerText.includes('Создать'));
-      if (btn) btn.click();
+      const btns = Array.from(document.querySelectorAll('button')).filter(b => 
+        b.innerText.includes('Create Room') || b.innerText.includes('Creează cameră') || b.innerText.includes('Создать комнату') ||
+        ((b.innerText.includes('Create') || b.innerText.includes('Creează') || b.innerText.includes('Создать')) && b.className.includes('w-full'))
+      );
+      const submitBtn = btns.pop();
+      if (submitBtn) submitBtn.click();
     })()`);
 
     // Wait for navigation to /lobby/:pin
