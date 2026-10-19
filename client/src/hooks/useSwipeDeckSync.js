@@ -35,11 +35,26 @@ export function useSwipeDeckSync({
     };
   }, [pin, participantId, isHost, emit, on, off]);
 
+  const propsRef = useRef({});
+  propsRef.current = {
+    cards,
+    locationState,
+    setCards,
+    setVotesReceived,
+    setQuorumTotal,
+    setServerWinner,
+    setServerMatchScore,
+    setServerPairwise,
+    setShowWinner,
+    onAlreadyVoted,
+  };
+
   // Global room resolution and real-time progress listeners
   useEffect(() => {
     if (!pin) return;
 
     const handleVoteProgress = (data) => {
+      const { setVotesReceived, setQuorumTotal } = propsRef.current;
       if (data?.voted_participants || data?.votes_received) {
         setVotesReceived(data.voted_participants || data.votes_received);
       }
@@ -50,11 +65,12 @@ export function useSwipeDeckSync({
 
     const handleWinner = (data) => {
       console.log('[SwipeDeck] Received winner from server:', data);
+      const { setServerWinner, setServerMatchScore, setServerPairwise, setShowWinner, cards: currentCards } = propsRef.current;
       const won = data?.winning_option || data?.winner;
       if (won) {
         setServerWinner(won);
       } else if (data?.winningOptionId) {
-        const found = cards.find((c) => c.id === data.winningOptionId);
+        const found = currentCards.find((c) => c.id === data.winningOptionId);
         setServerWinner(found || { name: 'Consensus Winner', id: data.winningOptionId });
       }
       if (data?.matchScore || data?.match_score) {
@@ -68,6 +84,7 @@ export function useSwipeDeckSync({
 
     const handleStateRestore = (data) => {
       console.log('[SwipeDeck] State restore received:', data);
+      const { setCards, setVotesReceived, setQuorumTotal, onAlreadyVoted, locationState } = propsRef.current;
       if (Array.isArray(data?.options) && data.options.length > 0 && !locationState?.customCards) {
         setCards(data.options);
       }
@@ -83,6 +100,7 @@ export function useSwipeDeckSync({
     };
 
     const handleVotingStarted = (data) => {
+      const { setCards, locationState } = propsRef.current;
       if (Array.isArray(data?.options) && data.options.length > 0 && !locationState?.customCards) {
         setCards(data.options);
       }
@@ -103,7 +121,7 @@ export function useSwipeDeckSync({
       off('state_restore', handleStateRestore);
       off('voting_started', handleVotingStarted);
     };
-  }, [pin, on, off, cards, locationState, setVotesReceived, setQuorumTotal, setServerWinner, setServerMatchScore, setServerPairwise, setShowWinner, setCards, onAlreadyVoted]);
+  }, [pin, on, off]);
 
   const hasSubmittedRef = useRef(false);
 

@@ -1,14 +1,31 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const recentMapRef = useRef(new Map());
 
   const addToast = useCallback(({ title, message, type = 'success', duration = 3500 }) => {
+    const key = `${title || ''}:${message || ''}:${type}`;
+    const now = Date.now();
+    const lastSeen = recentMapRef.current.get(key) || 0;
+    if (now - lastSeen < 2500) {
+      return;
+    }
+    recentMapRef.current.set(key, now);
+    if (recentMapRef.current.size > 25) {
+      for (const [k, ts] of recentMapRef.current.entries()) {
+        if (now - ts > 6000) recentMapRef.current.delete(k);
+      }
+    }
+
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, title, message, type }]);
+    setToasts((prev) => {
+      const trimmed = prev.length >= 3 ? prev.slice(prev.length - 2) : prev;
+      return [...trimmed, { id, title, message, type }];
+    });
 
     if (duration > 0) {
       setTimeout(() => {

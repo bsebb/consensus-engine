@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useLobbySync({
   pin,
@@ -25,21 +25,52 @@ export function useLobbySync({
   off,
   addToast,
 }) {
+  const propsRef = useRef({});
+  propsRef.current = {
+    pin,
+    participantId,
+    currentUserName,
+    isHost,
+    setIsHost,
+    setIsVotingActive,
+    onTransitionToDeck,
+    locationState,
+    lockedConstraint,
+    budgetLimit,
+    setMode,
+    setTopic,
+    setGroupSize,
+    setGroupPool,
+    setParticipants,
+    setVisiblePlacesCount,
+    setRemovedPlaceIds,
+    setRealOptions,
+    navigate,
+    emit,
+    on,
+    off,
+    addToast,
+  };
+
+  const hasNavigatedToDeckRef = useRef(false);
+
   useEffect(() => {
     if (!pin) return;
+    hasNavigatedToDeckRef.current = false;
 
     const sendJoin = () => {
+      const { currentUserName: uName, locationState: lState } = propsRef.current;
       const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
       emit('join_lobby', {
         pin,
         participant_id: participantId,
-        user_name: currentUserName,
+        user_name: uName,
         host_token: hostToken || undefined,
-        mode: locationState?.mode,
-        topic: locationState?.topic,
-        group_size: locationState?.groupSize,
-        deck_size: locationState?.deckSize,
-        initial_suggestions: locationState?.initialCustomOptions,
+        mode: lState?.mode,
+        topic: lState?.topic,
+        group_size: lState?.groupSize,
+        deck_size: lState?.deckSize,
+        initial_suggestions: lState?.initialCustomOptions,
       });
     };
 
@@ -47,6 +78,18 @@ export function useLobbySync({
     on('connect', sendJoin);
 
     const handleParticipantJoined = (data) => {
+      const {
+        setMode,
+        setTopic,
+        setGroupSize,
+        setVisiblePlacesCount,
+        setRemovedPlaceIds,
+        setGroupPool,
+        setParticipants,
+        setIsHost,
+        locationState,
+      } = propsRef.current;
+
       if (data?.mode) setMode(data.mode);
       if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') {
         const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts'].includes(String(data.topic).toLowerCase().trim());
@@ -93,10 +136,11 @@ export function useLobbySync({
     };
 
     const handleSuggestionsUpdated = (data) => {
+      const { setGroupPool, addToast, currentUserName: uName } = propsRef.current;
       if (Array.isArray(data?.suggestions)) {
         setGroupPool(data.suggestions);
       }
-      if (data?.added && data.user_name && data.user_name !== currentUserName) {
+      if (data?.added && data.user_name && data.user_name !== uName) {
         addToast({
           title: 'Option Added',
           message: `${data.user_name} suggested "${data.added}"`,
@@ -106,6 +150,7 @@ export function useLobbySync({
     };
 
     const handleBudgetUpdated = (data) => {
+      const { setParticipants } = propsRef.current;
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
           data.participants.map((p) => ({
@@ -127,6 +172,7 @@ export function useLobbySync({
     };
 
     const handleParticipantLeft = (data) => {
+      const { setParticipants, setIsHost, addToast } = propsRef.current;
       if (data?.participants && Array.isArray(data.participants)) {
         setParticipants(
           data.participants.map((p) => ({
@@ -166,12 +212,26 @@ export function useLobbySync({
     };
 
     const handleVotingStarted = (data) => {
+      if (hasNavigatedToDeckRef.current) return;
+      const {
+        locationState,
+        setIsVotingActive,
+        onTransitionToDeck,
+        addToast,
+        isHost,
+        navigate,
+        lockedConstraint,
+        budgetLimit,
+      } = propsRef.current;
+
       if (locationState?.pausedVoting || sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true') {
         sessionStorage.setItem(`consensus_pause_voting_${pin}`, 'true');
         console.log('[RoomLobby] User paused voting deck redirect; remaining in lobby.');
         if (setIsVotingActive) setIsVotingActive(true);
         return;
       }
+
+      hasNavigatedToDeckRef.current = true;
 
       if (onTransitionToDeck) {
         onTransitionToDeck();
@@ -202,6 +262,7 @@ export function useLobbySync({
     };
 
     const handleRoomError = (data) => {
+      const { addToast } = propsRef.current;
       console.warn('[RoomLobby] Room notice from server:', data?.message);
       addToast({
         title: 'Room Notice',
@@ -211,6 +272,7 @@ export function useLobbySync({
     };
 
     const handleTablePlacesUpdated = (data) => {
+      const { setVisiblePlacesCount, setRemovedPlaceIds } = propsRef.current;
       if (typeof data?.visiblePlacesCount === 'number' && setVisiblePlacesCount) {
         setVisiblePlacesCount(data.visiblePlacesCount);
       }
@@ -222,6 +284,7 @@ export function useLobbySync({
     };
 
     const handleOptionsExpanded = (data) => {
+      const { setRealOptions } = propsRef.current;
       const incoming = Array.isArray(data?.newOptions)
         ? data.newOptions
         : Array.isArray(data?.options)
@@ -258,5 +321,5 @@ export function useLobbySync({
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, currentUserName, isHost, setIsHost, onTransitionToDeck, locationState, lockedConstraint, budgetLimit, navigate, emit, on, off, addToast, setMode, setTopic, setGroupSize, setGroupPool, setParticipants, setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions]);
+  }, [pin, participantId, emit, on, off]);
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
@@ -188,6 +188,10 @@ export default function RoomLobby() {
     });
   };
 
+  const handleTransitionToDeck = useCallback(() => {
+    isTransitioningToDeckRef.current = true;
+  }, []);
+
   useLobbySync({
     pin,
     participantId,
@@ -195,9 +199,7 @@ export default function RoomLobby() {
     isHost,
     setIsHost,
     setIsVotingActive,
-    onTransitionToDeck: () => {
-      isTransitioningToDeckRef.current = true;
-    },
+    onTransitionToDeck: handleTransitionToDeck,
     locationState: location.state,
     lockedConstraint,
     budgetLimit,
