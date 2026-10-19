@@ -229,15 +229,15 @@ export default function SwipeDeck() {
 
   const handleVote = useCallback((score) => {
     if (currentIndex >= cards.length || exitDirection) return;
-    const dir = score === 1 ? 'right' : score === -100 ? 'down' : 'left';
+    const dir = score === 1 ? 'right' : score === -100 ? 'down' : score === 2 ? 'up' : 'left';
     setExitDirection(dir);
     setIsDragging(false);
     setActiveTab('swipe');
-    triggerHaptic(score === 1 ? 'like' : score === -100 ? 'veto' : 'pass');
+    triggerHaptic(score === 1 ? 'like' : score === -100 ? 'veto' : score === 2 ? 'superlike' : 'pass');
 
     setTimeout(() => {
       const current = cards[currentIndex];
-      setMyVotes((prev) => [...prev, { option_id: current.id, score }]);
+      setMyVotes((prev) => [...prev, { option_id: current.id, name: current.name, score }]);
       setCurrentIndex((prev) => prev + 1);
       setExitDirection(null);
       setDragOffset({ x: 0, y: 0 });
@@ -255,8 +255,7 @@ export default function SwipeDeck() {
   const handlePointerMove = (e) => {
     if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
     const diffX = e.clientX - pointerStart.current.x;
-    const rawDiffY = e.clientY - pointerStart.current.y;
-    const diffY = rawDiffY < 0 ? rawDiffY * 0.25 : rawDiffY;
+    const diffY = e.clientY - pointerStart.current.y;
     if (rafId.current) cancelAnimationFrame(rafId.current);
     rafId.current = requestAnimationFrame(() => setDragOffset({ x: diffX, y: diffY }));
   };
@@ -276,6 +275,8 @@ export default function SwipeDeck() {
       handleVote(-1);
     } else if (diffY > 80 && Math.abs(diffY) > Math.abs(diffX)) {
       handleVote(-100);
+    } else if (diffY < -80 && Math.abs(diffY) > Math.abs(diffX)) {
+      handleVote(2);
     } else {
       setDragOffset({ x: 0, y: 0 });
     }
@@ -295,6 +296,7 @@ export default function SwipeDeck() {
       if (e.key === 'ArrowRight') { e.preventDefault(); handleVote(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); handleVote(-1); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); handleVote(-100); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); handleVote(2); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);

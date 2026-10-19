@@ -104,7 +104,7 @@ async function dispatchSafeguardAlert(title, message, metrics) {
   if (webhookUrl && typeof webhookUrl === 'string' && webhookUrl.startsWith('http')) {
     try {
       const payload = {
-        content: `⚠️ **Consensus Engine Resource Safeguard Alert**\n**${title}**\n${message}`,
+        content: `[ALERT] **Consensus Engine Resource Safeguard Alert**\n**${title}**\n${message}`,
         embeds: [
           {
             title: 'System Telemetry & Free-Tier Quota',
@@ -152,7 +152,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
         : `${initialTableCount || 6} on table (${optionCount || 30} in discovery pool)`;
 
       payload = {
-        content: `🎉 **Room Created:** Room was created with ID **#${pin}**`,
+        content: `[ROOM CREATED] **Room Created:** Room was created with ID **#${pin}**`,
         embeds: [
           {
             title: `Session #${pin} is Ready`,
@@ -172,7 +172,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'voting_started') {
       const { pin, topic, mode, optionCount, voterCount } = data;
       payload = {
-        content: `🗳️ **Voting Started:** Room with ID **#${pin}** started voting!`,
+        content: `[VOTING STARTED] **Voting Started:** Room with ID **#${pin}** started voting!`,
         embeds: [
           {
             title: `Ballots Open for #${pin}`,
@@ -191,7 +191,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'decision_reached') {
       const { pin, winnerName, winnerCategory, winnerAddress, voterCount, matchScore } = data;
       payload = {
-        content: `🏆 **Decision Reached:** Room with ID **#${pin}** have reached a decision!`,
+        content: `[DECISION REACHED] **Decision Reached:** Room with ID **#${pin}** have reached a decision!`,
         embeds: [
           {
             title: `Winner: ${winnerName || 'Consensus Winner'}`,
@@ -211,7 +211,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'lobby_closed') {
       const { pin, topic, mode, reason, durationMinutes, voterCount } = data;
       payload = {
-        content: `🚪 **Lobby Closed:** Room with ID **#${pin}** has disbanded`,
+        content: `[LOBBY CLOSED] **Lobby Closed:** Room with ID **#${pin}** has disbanded`,
         embeds: [
           {
             title: `Room #${pin} Closed`,

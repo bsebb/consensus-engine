@@ -153,6 +153,7 @@ export const ru = {
   ofWord: 'из',
   likeAction: 'Нравится',
   passAction: 'Пропустить',
+  superlikeAction: 'Суперлайк',
   swipeRightHint: 'Смахните вправо, если нравится',
   swipeLeftHint: 'Смахните влево, чтобы пропустить',
   waitingFriendsTitle: 'Ждём остальных...',

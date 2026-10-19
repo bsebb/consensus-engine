@@ -10,6 +10,18 @@ let silentAudioEl = null;
 let persistentSwitchLabel = null;
 let persistentSwitchInput = null;
 
+function unlockIosAudioSession() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!silentAudioEl) {
+      silentAudioEl = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+      silentAudioEl.volume = 0.001;
+      silentAudioEl.setAttribute('playsinline', 'true');
+    }
+    silentAudioEl.play().catch(() => {});
+  } catch {}
+}
+
 /**
  * Native iOS Taptic Engine trigger via persistent off-screen WebKit switch input label.
  * WebKit routes label.click() directly to UIKit UIImpactFeedbackGenerator on iOS 17.4+.
@@ -52,7 +64,9 @@ function triggerIosTaptic() {
 
 export function initAudioContext() {
   if (typeof window === 'undefined') return null;
-  unlockIosAudioSession();
+  try {
+    unlockIosAudioSession();
+  } catch {}
   try {
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -328,18 +342,20 @@ export function triggerHaptic(type = 'tap') {
   lastHapticType = type;
 
   // 1. Native iOS Taptic Engine trigger
-  unlockIosAudioSession();
-  triggerIosTaptic();
-  if (type === 'like' || type === 'superlike') {
-    setTimeout(triggerIosTaptic, 90);
-  } else if (type === 'veto') {
-    setTimeout(triggerIosTaptic, 80);
-    setTimeout(triggerIosTaptic, 160);
-  } else if (type === 'match') {
-    setTimeout(triggerIosTaptic, 70);
-    setTimeout(triggerIosTaptic, 150);
-    setTimeout(triggerIosTaptic, 240);
-  }
+  try {
+    unlockIosAudioSession();
+    triggerIosTaptic();
+    if (type === 'like' || type === 'superlike') {
+      setTimeout(triggerIosTaptic, 90);
+    } else if (type === 'veto') {
+      setTimeout(triggerIosTaptic, 80);
+      setTimeout(triggerIosTaptic, 160);
+    } else if (type === 'match') {
+      setTimeout(triggerIosTaptic, 70);
+      setTimeout(triggerIosTaptic, 150);
+      setTimeout(triggerIosTaptic, 240);
+    }
+  } catch {}
 
   // 2. Hardware vibration for Android / supported mobile devices
   if (typeof navigator !== 'undefined' && navigator.vibrate) {

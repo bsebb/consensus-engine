@@ -115,8 +115,8 @@ function calculateSchulzeWinner(submissions) {
             if (!v.option_id || typeof v.score !== 'number') {
                 throw new TypeError('Vote objects must contain a valid option_id and numeric score');
             }
-            if (v.score !== 1 && v.score !== -1 && v.score !== -100) {
-                throw new RangeError(`Illegal score value: ${v.score}. Expected 1, -1, or -100`);
+            if (v.score !== 1 && v.score !== -1 && v.score !== -100 && v.score !== 2) {
+                throw new RangeError(`Illegal score value: ${v.score}. Expected 1, -1, -100, or 2`);
             }
         }
     }
@@ -128,15 +128,56 @@ function calculateSchulzeWinner(submissions) {
     // Finding strongest paths (Floyd-Warshall)
     const strongest = calculateStrongestPaths(validOptions, pairwise);
 
-    // Resolving Condorcet winner
-    // A candidate wins if their path strength against ALL opponents is >= the opponent's path strength back
-    const winner = validOptions.find(candidate =>
+    // Resolving Condorcet winner with deterministic tie-breaking
+    // Step 1: Check pure Condorcet candidates who beat or tie every opponent
+    const condorcetCandidates = validOptions.filter(candidate =>
         validOptions.every(opponent =>
             candidate === opponent || strongest[candidate][opponent] >= strongest[opponent][candidate]
         )
     );
 
-    return winner || null;
+    const candidatesToRank = condorcetCandidates.length > 0 ? condorcetCandidates : validOptions;
+
+    // Step 2: Rank candidates deterministically by pairwise wins, path margin, and Borda score
+    const scoredCandidates = candidatesToRank.map(candidate => {
+        let pairwiseWins = 0;
+        let netMargin = 0;
+
+        for (const opponent of validOptions) {
+            if (candidate === opponent) continue;
+            const diff = (strongest[candidate]?.[opponent] || 0) - (strongest[opponent]?.[candidate] || 0);
+            if (diff > 0) pairwiseWins++;
+            netMargin += diff;
+        }
+
+        let totalBorda = 0;
+        let superlikes = 0;
+        for (const sub of submissions) {
+            for (const v of sub.votes) {
+                if (v.option_id === candidate) {
+                    totalBorda += v.score;
+                    if (v.score === 2) superlikes++;
+                }
+            }
+        }
+
+        return {
+            candidate,
+            pairwiseWins,
+            netMargin,
+            totalBorda,
+            superlikes,
+        };
+    });
+
+    scoredCandidates.sort((a, b) =>
+        b.pairwiseWins - a.pairwiseWins ||
+        b.netMargin - a.netMargin ||
+        b.totalBorda - a.totalBorda ||
+        b.superlikes - a.superlikes
+    );
+
+    return scoredCandidates[0]?.candidate || null;
 }
 
 module.exports = {

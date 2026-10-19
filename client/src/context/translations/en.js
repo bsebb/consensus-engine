@@ -153,6 +153,7 @@ export const en = {
   ofWord: 'of',
   likeAction: 'Like',
   passAction: 'Pass',
+  superlikeAction: 'Superlike',
   swipeRightHint: 'Swipe right to like',
   swipeLeftHint: 'Swipe left to pass',
   waitingFriendsTitle: 'Waiting for friends...',

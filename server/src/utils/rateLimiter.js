@@ -3,6 +3,18 @@
  * Each limiter instance maintains an isolated state map to prevent cross-route budget sharing.
  */
 const defaultStore = new Map();
+const MAX_RATE_LIMITER_ENTRIES = 5000;
+
+function pruneStoreIfFull(map) {
+  if (map.size > MAX_RATE_LIMITER_ENTRIES) {
+    const iter = map.keys();
+    for (let i = 0; i < 500; i++) {
+      const nextKey = iter.next().value;
+      if (nextKey) map.delete(nextKey);
+      else break;
+    }
+  }
+}
 
 function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many requests, please try again shortly.' } = {}) {
   const store = new Map();
@@ -12,6 +24,11 @@ function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many req
     for (const [key, entry] of store.entries()) {
       if (now - entry.resetTime > windowMs * 2) {
         store.delete(key);
+      }
+    }
+    for (const [key, entry] of defaultStore.entries()) {
+      if (now - entry.resetTime > windowMs * 2) {
+        defaultStore.delete(key);
       }
     }
   }, Math.max(windowMs, 60000));
@@ -26,6 +43,8 @@ function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many req
     let entry = store.get(ip);
 
     if (!entry || now > entry.resetTime) {
+      pruneStoreIfFull(store);
+      pruneStoreIfFull(defaultStore);
       entry = { count: 1, resetTime: now + windowMs };
       store.set(ip, entry);
       defaultStore.set(ip, entry); // Sync for test inspections

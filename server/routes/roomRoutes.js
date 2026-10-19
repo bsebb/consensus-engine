@@ -34,18 +34,42 @@ const reportClosedLimiter = createRateLimiter({
   message: 'Too many reports submitted. Please wait a moment.',
 });
 
+const voteLimiter = createRateLimiter({
+  windowMs: 60000,
+  max: 30,
+  message: 'Too many vote submissions. Please slow down.',
+});
+
+const constraintLimiter = createRateLimiter({
+  windowMs: 60000,
+  max: 20,
+  message: 'Too many constraint updates. Please slow down.',
+});
+
+const feedbackLimiter = createRateLimiter({
+  windowMs: 60000,
+  max: 15,
+  message: 'Too many feedback submissions. Please slow down.',
+});
+
+const configLimiter = createRateLimiter({
+  windowMs: 60000,
+  max: 20,
+  message: 'Too many configuration updates. Please slow down.',
+});
+
 router.post('/', roomCreateLimiter, asyncHandler(roomController.createNewRoom));
 // Ephemeral Crowd-Sourced Self-Healing: report closed/outdated venue
 router.post('/report-closed', reportClosedLimiter, asyncHandler(roomController.reportClosedVenueHandler));
 // added batched votes endpoint for Sprint 3
-router.post('/:pin/votes', asyncHandler(roomController.submitVotes));
+router.post('/:pin/votes', voteLimiter, asyncHandler(roomController.submitVotes));
 router.get('/:pin', pinLookupLimiter, asyncHandler(roomController.getRoom));
-router.patch('/:id/config', asyncHandler(roomController.updateConfig));
+router.patch('/:id/config', configLimiter, asyncHandler(roomController.updateConfig));
 // Lilia: added Step Zero budget constraints endpoint
-router.post('/:pin/constraints', asyncHandler(roomController.submitConstraints));
+router.post('/:pin/constraints', constraintLimiter, asyncHandler(roomController.submitConstraints));
 router.post('/:pin/more-places', morePlacesLimiter, asyncHandler(roomController.getMorePlaces));
 router.post('/:pin/finalize', finalizeLimiter, asyncHandler(roomController.finalizeVoting));
 // Afina: endpoint for Post-Event Feedback Loop
-router.post('/:pin/feedback', asyncHandler(roomController.submitFeedback));
+router.post('/:pin/feedback', feedbackLimiter, asyncHandler(roomController.submitFeedback));
 
 module.exports = router;

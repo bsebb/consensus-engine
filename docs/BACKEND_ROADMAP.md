@@ -2,7 +2,7 @@
 
 Hey Afina, Max, and Lilia! 
 
-To keep everyone moving fast, we are using a **Contract-Driven** architecture. You do not need to ask the Frontend team how the UI works—just build your API endpoints to output the exact JSON formats listed in [`API_CONTRACT.md`](./API_CONTRACT.md). 
+To keep everyone moving fast, we are using a **Contract-Driven** architecture. You do not need to ask the Frontend team how the UI works - just build your API endpoints to output the exact JSON formats listed in [`API_CONTRACT.md`](./API_CONTRACT.md). 
 
 Here is your exact timeline for the entire semester.
 
@@ -11,7 +11,7 @@ Here is your exact timeline for the entire semester.
 ## 🛠️ Sprint 1: Architecture & Prototyping
 **Goal:** Get the database running and the basic REST API working.
 *   **Afina (Database Master):** Open `DATABASE_SCHEMA.md` and copy the models into `server/prisma/schema.prisma`. Run `npx prisma db push` to create the Postgres tables. Write simple helper functions (e.g., `createUser()`).
-*   **Max (API Architect):** Build the basic Express server. Create the `POST /api/v1/rooms` endpoint. Don't worry about Google Places yet—just successfully create a room and save it to Afina's database.
+*   **Max (API Architect):** Build the basic Express server. Create the `POST /api/v1/rooms` endpoint. Don't worry about Google Places yet - just successfully create a room and save it to Afina's database.
 *   **Lilia (Real-Time Engineer):** Install Socket.io. Just get it to log "A user connected" when a browser connects. 
 
 ---

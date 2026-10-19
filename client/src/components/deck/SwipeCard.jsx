@@ -63,6 +63,8 @@ export default function SwipeCard({
             ? 'translate3d(-120%, 0, 0) rotate(-14deg)'
             : exitDirection === 'down'
             ? 'translate3d(0, 120%, 0) scale(0.92)'
+            : exitDirection === 'up'
+            ? 'translate3d(0, -120%, 0) scale(0.92)'
             : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.06}deg)`,
           transition: exitDirection
             ? 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s'
@@ -101,6 +103,15 @@ export default function SwipeCard({
           >
             <Flame size={16} strokeWidth={2.5} />
             <span>{t('vetoAction')}</span>
+          </div>
+        )}
+        {dragOffset.y < -40 && Math.abs(dragOffset.x) < 55 && (
+          <div
+            style={{ opacity: Math.min(1, Math.abs(dragOffset.y) / 70) }}
+            className="absolute inset-x-12 bottom-7 py-2 rounded-2xl border-2 border-indigo-500 bg-indigo-950/85 text-indigo-300 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-lg"
+          >
+            <Star size={16} strokeWidth={2.5} className="fill-indigo-300" />
+            <span>{t('superlikeAction') || 'SUPERLIKE'}</span>
           </div>
         )}
 

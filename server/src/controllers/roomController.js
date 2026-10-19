@@ -146,6 +146,15 @@ const createNewRoom = async (req, res) => {
 
 // Short in-memory cache (15s TTL) for room lookups to reduce PostgreSQL connection pressure
 const roomResponseCache = new Map();
+const MAX_ROOM_CACHE = 500;
+
+function setBoundedRoomCache(pin, payload, ttlMs = 15000) {
+  if (roomResponseCache.size >= MAX_ROOM_CACHE) {
+    const oldest = roomResponseCache.keys().next().value;
+    if (oldest) roomResponseCache.delete(oldest);
+  }
+  roomResponseCache.set(String(pin), { payload, expiresAt: Date.now() + ttlMs });
+}
 
 function invalidateRoomCache(pin) {
   if (pin) roomResponseCache.delete(String(pin));
@@ -178,7 +187,7 @@ const getRoom = async (req, res) => {
       options: room.options,
     };
 
-    roomResponseCache.set(pin, { payload, expiresAt: Date.now() + 15000 });
+    setBoundedRoomCache(pin, payload);
     return res.status(200).json(payload);
   } catch (error) {
     return res.status(404).json({
@@ -312,8 +321,8 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  // Lilia: validate every ranking before writing anything to the database
-  const validScores = new Set([1, -1, -100]);
+  // Validate every ranking before writing anything to the database
+  const validScores = new Set([1, -1, -100, 2]);
 
   const rankingsAreValid = rankings.every(
     (ranking) =>
@@ -330,7 +339,7 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  // Lilia: verify that the participant belongs to this room
+  // Verify that the participant belongs to this room
   const room = await getRoomByPin(pin);
 
   const participantExists = room.participants.some(
@@ -345,31 +354,29 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  // Lilia: make sure every submitted option belongs to this room
-  const roomOptionIds = new Set(
-    room.options.map((option) => option.id)
-  );
+  // Map submitted options to registered room options by ID or name
+  const roomOptionIds = new Set(room.options.map((option) => option.id));
+  const optionByName = new Map(room.options.map((option) => [option.name.toLowerCase().trim(), option.id]));
 
-  // Ensure options exist or are created dynamically if custom
-  for (const ranking of rankings) {
-    if (!roomOptionIds.has(ranking.option_id)) {
-      try {
-        const newOpt = await createOption(room.id, ranking.name || `Option ${ranking.option_id}`, 'USER_CUSTOM', null, null);
-        roomOptionIds.add(newOpt.id);
-      } catch (optErr) {
-        console.warn('[roomController] Auto-create option notice:', optErr.message);
-      }
-    }
-  }
-
-  // Lilia: save all submitted rankings in a single bulk operation
   const validRankings = rankings
-    .filter((r) => roomOptionIds.has(r.option_id))
-    .map((r) => ({
-      participantId: participant_id,
-      optionId: r.option_id,
-      score: r.score,
-    }));
+    .map((r) => {
+      if (!r) return null;
+      let targetId = null;
+      if (roomOptionIds.has(r.option_id)) {
+        targetId = r.option_id;
+      } else if (r.name && optionByName.has(String(r.name).toLowerCase().trim())) {
+        targetId = optionByName.get(String(r.name).toLowerCase().trim());
+      } else if (optionByName.has(String(r.option_id).toLowerCase().trim())) {
+        targetId = optionByName.get(String(r.option_id).toLowerCase().trim());
+      }
+      if (!targetId) return null;
+      return {
+        participantId: participant_id,
+        optionId: targetId,
+        score: r.score,
+      };
+    })
+    .filter(Boolean);
 
   if (validRankings.length > 0) {
     try {
@@ -582,13 +589,9 @@ module.exports = {
   getRoom,
   getMorePlaces,
   updateConfig,
-  //Lilia: export Step Zero constraints handler
   submitConstraints,
-  //export voting finalizer
   finalizeVoting,
-  //export batched voting handler
   submitVotes,
-  // Afina: export feedback handler
   submitFeedback,
   reportClosedVenueHandler,
 };

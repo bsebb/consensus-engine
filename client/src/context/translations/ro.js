@@ -153,6 +153,7 @@ export const ro = {
   ofWord: 'din',
   likeAction: 'Vreau',
   passAction: 'Pas',
+  superlikeAction: 'Super-apreciere',
   swipeRightHint: 'Glisează spre dreapta dacă vrei',
   swipeLeftHint: 'Glisează spre stânga dacă nu',
   waitingFriendsTitle: 'Așteptăm prietenii...',

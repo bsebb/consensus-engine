@@ -1,4 +1,4 @@
-# THE CONSENSUS ENGINE — PRESENTATION DOSSIER & DEFENSE PLAYBOOK
+# THE CONSENSUS ENGINE - PRESENTATION DOSSIER & DEFENSE PLAYBOOK
 **An Executive, Slide-by-Slide Speaking Guide and Architecture Defense Blueprint**
 
 ```

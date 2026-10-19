@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Flame, Heart } from 'lucide-react';
+import { X, Flame, Star, Heart } from 'lucide-react';
 
 export default function SwipeControls({ handleVote }) {
   return (
@@ -23,6 +23,17 @@ export default function SwipeControls({ handleVote }) {
         className="w-11 h-11 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] hover:border-amber-500/50 hover:bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
       >
         <Flame size={20} strokeWidth={2.2} />
+      </button>
+
+      {/* Superlike Button */}
+      <button
+        type="button"
+        onClick={() => handleVote(2)}
+        aria-label="Superlike option"
+        title="Favorite / Strong preference"
+        className="w-11 h-11 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] hover:border-indigo-500/50 hover:bg-indigo-500/10 text-indigo-400 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+      >
+        <Star size={20} strokeWidth={2.2} className="fill-indigo-400/20" />
       </button>
 
       {/* Like Button */}

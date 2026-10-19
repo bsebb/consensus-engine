@@ -106,6 +106,7 @@ function isPrivateIp(ip) {
     if (cleanIp === '::1' || cleanIp === '::') return true;
     if (/^f[cd][0-9a-f]{2}:/i.test(cleanIp)) return true; // ULA fc00::/7
     if (/^fe[89ab][0-9a-f]:/i.test(cleanIp)) return true; // Link-local fe80::/10
+    if (/^::ffff:(?:127|10|169\.254|172\.(?:1[6-9]|2\d|3[01])|192\.168)/i.test(cleanIp)) return true;
     return false;
   }
 
@@ -123,7 +124,8 @@ async function isSafeExternalUrl(rawUrl) {
       host.endsWith('.local') ||
       host.endsWith('.internal') ||
       host.endsWith('.corp') ||
-      host.endsWith('.home')
+      host.endsWith('.home') ||
+      host.endsWith('.onion')
     ) {
       return false;
     }
@@ -132,10 +134,10 @@ async function isSafeExternalUrl(rawUrl) {
       return !isPrivateIp(host);
     }
 
-    const addresses = await dns.resolve(host).catch(() => []);
-    if (!addresses || addresses.length === 0) return false;
-    for (const addr of addresses) {
-      if (isPrivateIp(addr)) return false;
+    const records = await dns.lookup(host, { all: true }).catch(() => []);
+    if (!records || records.length === 0) return false;
+    for (const rec of records) {
+      if (isPrivateIp(rec.address)) return false;
     }
 
     return true;
