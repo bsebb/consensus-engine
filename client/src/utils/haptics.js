@@ -7,56 +7,45 @@
 
 let audioCtx = null;
 let silentAudioEl = null;
+let persistentSwitchLabel = null;
 let persistentSwitchInput = null;
 
-function unlockIosAudioSession() {
-  if (typeof window === 'undefined') return;
-  try {
-    if (!silentAudioEl) {
-      silentAudioEl = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
-      silentAudioEl.volume = 0.001;
-      silentAudioEl.setAttribute('playsinline', 'true');
-    }
-    silentAudioEl.play().catch(() => {});
-  } catch {}
-}
-
 /**
- * Native iOS Taptic Engine trigger via persistent off-screen WebKit switch input.
- * Avoids display:none which disables WebKit accessibility/taptic pipeline.
+ * Native iOS Taptic Engine trigger via persistent off-screen WebKit switch input label.
+ * WebKit routes label.click() directly to UIKit UIImpactFeedbackGenerator on iOS 17.4+.
  */
-function getPersistentSwitchInput() {
+function getPersistentSwitchElements() {
   if (typeof document === 'undefined') return null;
-  if (!persistentSwitchInput || !persistentSwitchInput.isConnected) {
+  if (!persistentSwitchLabel || !persistentSwitchLabel.isConnected) {
     try {
       const container = document.createElement('div');
       container.setAttribute('aria-hidden', 'true');
-      container.style.cssText = 'position:fixed;top:-200px;left:-200px;width:2px;height:2px;opacity:0.001;pointer-events:none;overflow:hidden;z-index:-999;';
+      container.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.01;overflow:hidden;pointer-events:auto;z-index:99999;';
       const label = document.createElement('label');
+      label.style.cssText = 'display:block;width:100%;height:100%;cursor:pointer;pointer-events:auto;';
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.setAttribute('switch', '');
+      input.style.cssText = 'opacity:0.01;width:100%;height:100%;cursor:pointer;pointer-events:auto;';
       label.appendChild(input);
       container.appendChild(label);
       const parent = document.body || document.documentElement;
       if (parent) {
         parent.appendChild(container);
+        persistentSwitchLabel = label;
         persistentSwitchInput = input;
       }
     } catch {}
   }
-  return persistentSwitchInput;
+  return { label: persistentSwitchLabel, input: persistentSwitchInput };
 }
 
 function triggerIosTaptic() {
-  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  if (typeof document === 'undefined') return;
   try {
-    const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    if (!isTouch) return;
-    const input = getPersistentSwitchInput();
-    if (input) {
-      input.checked = !input.checked;
-      input.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    const els = getPersistentSwitchElements();
+    if (els?.label) {
+      els.label.click();
     }
   } catch {}
 }
@@ -105,7 +94,7 @@ function isHapticsEnabled() {
 }
 
 /**
- * Organic mechanical micro-click (140Hz -> 50Hz in 9ms)
+ * Organic mechanical micro-click
  * Simulates a high-end physical rotary wheel tick or camera shutter click.
  */
 export function playSelectionTick() {
@@ -115,25 +104,29 @@ export function playSelectionTick() {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(140, now);
-    osc.frequency.exponentialRampToValueAtTime(50, now + 0.009);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(450, now);
 
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.009);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(220, now);
 
-    osc.connect(gain);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.005);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.011);
+    osc.stop(now + 0.007);
   } catch {}
 }
 
 /**
- * Tactile acoustic tap (180Hz -> 80Hz in 12ms)
- * Subdued, pleasant bubble pop for button presses.
+ * Tactile acoustic tap
+ * Subtle, pleasant physical button tap.
  */
 export function playTapTick() {
   const ctx = getAudioContext();
@@ -142,25 +135,29 @@ export function playTapTick() {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(320, now);
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(180, now);
-    osc.frequency.exponentialRampToValueAtTime(80, now + 0.012);
+    osc.frequency.setValueAtTime(160, now);
 
-    gain.gain.setValueAtTime(0.14, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.012);
+    gain.gain.setValueAtTime(0.07, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.006);
 
-    osc.connect(gain);
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.014);
+    osc.stop(now + 0.008);
   } catch {}
 }
 
 /**
  * Warm physical card slide flick for Like swipe
- * Dual-tone soft wooden slide (220Hz / 170Hz), 30ms decay.
+ * Soft felt friction slide, 16ms decay.
  */
 export function playSwipeRightSound() {
   const ctx = getAudioContext();
@@ -169,24 +166,28 @@ export function playSwipeRightSound() {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(170, now + 0.03);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(380, now);
 
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(190, now);
 
-    osc.connect(gain);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.016);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.04);
+    osc.stop(now + 0.02);
   } catch {}
 }
 
 /**
- * Soft felt thumb flick for Pass swipe (105Hz -> 55Hz, 16ms)
+ * Soft felt thumb flick for Pass swipe
  * Warm, non-intrusive muted thud.
  */
 export function playSwipeLeftSound() {
@@ -196,49 +197,56 @@ export function playSwipeLeftSound() {
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(260, now);
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(105, now);
-    osc.frequency.exponentialRampToValueAtTime(55, now + 0.016);
+    osc.frequency.setValueAtTime(95, now);
 
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.018);
+    gain.gain.setValueAtTime(0.06, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.009);
 
-    osc.connect(gain);
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.02);
+    osc.stop(now + 0.012);
   } catch {}
 }
 
 /**
- * Muted wooden double-knock for Veto action (75Hz & 58Hz knocks)
- * Organic acoustic wood knock instead of harsh electronic buzzers.
+ * Muted wooden double-knock for Veto action
+ * Organic acoustic wood knock.
  */
 export function playVetoSound() {
   const ctx = getAudioContext();
   if (!ctx || !isHapticsEnabled()) return;
   try {
     const now = ctx.currentTime;
-    [0, 0.045].forEach((offset, idx) => {
+    [0, 0.038].forEach((offset, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
       const start = now + offset;
-      const freq = idx === 0 ? 75 : 58;
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(280, start);
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, start);
-      osc.frequency.exponentialRampToValueAtTime(35, start + 0.018);
+      osc.frequency.setValueAtTime(idx === 0 ? 80 : 64, start);
 
-      gain.gain.setValueAtTime(0.16, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.02);
+      gain.gain.setValueAtTime(0.08, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.01);
 
-      osc.connect(gain);
+      osc.connect(filter);
+      filter.connect(gain);
       gain.connect(ctx.destination);
 
       osc.start(start);
-      osc.stop(start + 0.022);
+      osc.stop(start + 0.012);
     });
   } catch {}
 }
