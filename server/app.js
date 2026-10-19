@@ -908,8 +908,8 @@ io.on('connection', (socket) => {
   socket.on('host_force_reveal', handleForceResolve);
   socket.on('host_force_resolve', handleForceResolve);
 
-  // Handle explicit participant leaving lobby
-  socket.on('leave_lobby', (data) => {
+  // Handle explicit participant leaving lobby or active room
+  const handleParticipantLeave = (data) => {
     const pin = data?.pin || socket.data.pin;
     const participantId = data?.participant_id || socket.data.participantId;
     const userName = data?.user_name || socket.data.userName || 'Guest';
@@ -942,6 +942,23 @@ io.on('connection', (socket) => {
         }
       }
 
+      const session = activeVotingSessions.get(pin);
+      if (session && !session.isResolved) {
+        if (!session.submissions.has(participantId)) {
+          session.expectedCount = Math.max(session.submissions.size, Math.max(1, session.expectedCount - 1));
+        }
+        if (session.submissions.size > 0 && session.submissions.size >= session.expectedCount) {
+          resolveAndBroadcastWinner(pin).catch(() => {});
+        } else {
+          io.to(pin).emit('vote_progress', {
+            pin,
+            voted_participants: session.submissions.size,
+            total_participants: session.expectedCount,
+            votes_received: session.submissions.size,
+          });
+        }
+      }
+
       const remainingParticipants = lobby ? Array.from(lobby.values()) : [];
       const newHost = remainingParticipants.find((p) => p.isHost);
 
@@ -954,9 +971,12 @@ io.on('connection', (socket) => {
         participants: remainingParticipants,
       });
 
-      console.log(`[Socket] ${userName} left room ${pin} via leave_lobby`);
+      console.log(`[Socket] ${userName} left room ${pin} via leave_lobby/leave_room`);
     }
-  });
+  };
+
+  socket.on('leave_lobby', handleParticipantLeave);
+  socket.on('leave_room', handleParticipantLeave);
 
   // Notify the room when a participant disconnects with a 10s grace period for rejoining
   socket.on('disconnect', () => {

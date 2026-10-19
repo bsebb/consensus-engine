@@ -6,6 +6,7 @@ export function useLobbySync({
   currentUserName,
   isHost,
   setIsHost,
+  setIsVotingActive,
   onTransitionToDeck,
   locationState,
   lockedConstraint,
@@ -159,6 +160,12 @@ export function useLobbySync({
     };
 
     const handleVotingStarted = (data) => {
+      if (sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true') {
+        console.log('[RoomLobby] User paused voting deck redirect; remaining in lobby.');
+        if (setIsVotingActive) setIsVotingActive(true);
+        return;
+      }
+
       if (onTransitionToDeck) {
         onTransitionToDeck();
       }

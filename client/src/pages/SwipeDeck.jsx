@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Layers, MapPin } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
-import ThemeToggle from '../components/ThemeToggle';
 import ReviewModal from '../components/ui/ReviewModal';
 import ConsensusWinnerView from '../components/deck/ConsensusWinnerView';
 import SwipeCard from '../components/deck/SwipeCard';
 import SwipeControls from '../components/deck/SwipeControls';
 import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
 import VenueDetailsModal from '../components/deck/VenueDetailsModal';
-import SegmentedControl from '../components/ui/SegmentedControl';
+import DeckHeader from '../components/deck/DeckHeader';
+import LeaveDeckModal from '../components/deck/LeaveDeckModal';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
@@ -320,6 +319,35 @@ export default function SwipeDeck() {
     if (!isConnected) setShowWinner(true);
   };
 
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+
+  const handleReturnToLobby = () => {
+    sessionStorage.setItem(`consensus_pause_voting_${pin}`, 'true');
+    setLeaveModalOpen(false);
+    navigate(`/lobby/${pin}`);
+  };
+
+  const handleLeaveRoom = () => {
+    setLeaveModalOpen(false);
+    if (pin) {
+      emit('leave_lobby', { pin, participant_id: participantId, user_name: location.state?.userName });
+      emit('leave_room', { pin, participant_id: participantId });
+      localStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem('consensus_active_pin');
+      sessionStorage.removeItem(`consensus_host_${pin}`);
+      sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
+    }
+    navigate('/');
+  };
+
+  const handleBackClick = () => {
+    if (showWinner) {
+      navigate(`/lobby/${pin}`);
+    } else {
+      setLeaveModalOpen(true);
+    }
+  };
+
   const consensusResult = useMemo(() => {
     if (serverWinner) {
       const matchedCard = cards.find((c) => c.id === serverWinner.id || c.name === serverWinner.name);
@@ -443,69 +471,19 @@ export default function SwipeDeck() {
       }`}
     >
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-2.5 relative">
-        <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
-          <button
-            type="button"
-            onClick={() => navigate(`/lobby/${pin}`)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-[0.96]"
-            aria-label="Back to Lobby"
-          >
-            <ArrowLeft size={14} />
-            <span>{t('lobby')}</span>
-          </button>
-
-          {/* Segmented Tab Switcher (Discovery Only) or Option Counter (Custom Poll) */}
-          {!showWinner && currentIndex < cards.length ? (
-            mode === 'CUSTOM' || activeCard?.isCustom ? (
-              <div className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] tabular-nums">
-                <Layers size={12} className="text-[var(--accent-bg)]" />
-                <span>{t('option')} {Math.min(currentIndex + 1, cards.length)} {t('ofWord')} {cards.length}</span>
-              </div>
-            ) : (
-              <div className="w-56 sm:w-64">
-                <SegmentedControl
-                  options={[
-                    { value: 'swipe', label: `${t('card')} ${Math.min(currentIndex + 1, cards.length)}/${cards.length}`, icon: Layers },
-                    { value: 'details', label: t('detailsAndRoute'), icon: MapPin },
-                  ]}
-                  value={activeTab}
-                  onChange={setActiveTab}
-                  size="sm"
-                  variant="accent"
-                />
-              </div>
-            )
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
-              <span className="text-[var(--text-tertiary)] font-normal">{t('roomPrefix')}</span>
-              <span className="text-[var(--accent-bg)] tabular-nums">#{pin}</span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 shrink-0">
-            <ThemeToggle />
-          </div>
-        </div>
-
-        {/* Reconnection notification */}
-        {!isConnected && (
-          <div className="bg-amber-500/15 border border-amber-500/25 rounded-xl px-3 py-1 text-center flex items-center justify-center gap-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-2 max-w-md mx-auto">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-            <span>{t('reconnecting')}</span>
-          </div>
-        )}
-
-        {/* Flush Hairline Progress Edge */}
-        {!showWinner && currentIndex < cards.length && (
-          <div className="absolute bottom-0 inset-x-0 h-[2px] bg-transparent overflow-hidden pointer-events-none">
-            <div
-              className="h-full bg-[var(--accent-bg)] transition-all duration-300 shadow-[0_0_8px_var(--accent-glow)]"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        )}
-      </header>
+      <DeckHeader
+        pin={pin}
+        showWinner={showWinner}
+        currentIndex={currentIndex}
+        cardsLength={cards.length}
+        mode={mode}
+        activeCard={activeCard}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isConnected={isConnected}
+        progressPercent={progressPercent}
+        onBackClick={handleBackClick}
+      />
 
       {/* WINNER REVEAL SCREEN */}
       {showWinner ? (
@@ -579,6 +557,14 @@ export default function SwipeDeck() {
         winnerName={consensusResult.winner?.name}
         optionId={consensusResult.winner?.id}
         participantId={participantId}
+      />
+
+      {/* Leave Deck Confirmation Action Sheet */}
+      <LeaveDeckModal
+        isOpen={leaveModalOpen}
+        onClose={() => setLeaveModalOpen(false)}
+        onReturnToLobby={handleReturnToLobby}
+        onLeaveRoom={handleLeaveRoom}
       />
     </div>
   );

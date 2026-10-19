@@ -159,6 +159,18 @@ export const ru = {
   waitingFriendsDesc: 'Подождите, пока все участники проголосуют.',
   calculatingConsensus: 'Вычисляем победителя...',
 
+  // Leave & Pause Voting
+  leaveSessionTitle: 'Покинуть голосование?',
+  leaveSessionDesc: 'Голосование продолжается. Что вы хотите сделать?',
+  returnToLobby: 'Вернуться в лобби',
+  returnToLobbyDesc: 'Приостановить голосование и открыть лобби комнаты',
+  leaveRoomAction: 'Выйти из комнаты',
+  leaveRoomDesc: 'Полностью покинуть комнату и вернуться на главную',
+  keepSwiping: 'Продолжить',
+  votingInProgress: 'Идет голосование',
+  resumeVoting: 'Возобновить голосование',
+  resume: 'Возобновить',
+
   // Winner View
   consensusWinner: 'Победитель выбора',
   everyoneAgreed: 'Группа выбрала это место!',

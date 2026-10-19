@@ -159,6 +159,18 @@ export const en = {
   waitingFriendsDesc: 'Hold tight while everyone casts their ranked votes.',
   calculatingConsensus: 'Calculating Schulze Consensus...',
 
+  // Leave & Pause Voting
+  leaveSessionTitle: 'Leave Voting Session?',
+  leaveSessionDesc: 'Voting is currently in progress. Where would you like to go?',
+  returnToLobby: 'Return to Lobby',
+  returnToLobbyDesc: 'Pause voting and view the room lobby',
+  leaveRoomAction: 'Leave Room',
+  leaveRoomDesc: 'Exit the room completely and return home',
+  keepSwiping: 'Keep Swiping',
+  votingInProgress: 'Voting in progress',
+  resumeVoting: 'Resume Voting',
+  resume: 'Resume',
+
   // Winner View
   consensusWinner: 'Consensus Winner',
   everyoneAgreed: 'Your group agreed on this pick!',

@@ -67,6 +67,9 @@ export default function RoomLobby() {
   const [roadRoutes, setRoadRoutes] = useState({});
   const [visiblePlacesCount, setVisiblePlacesCount] = useState(() => location.state?.deckSize || 12);
   const [removedPlaceIds, setRemovedPlaceIds] = useState(() => new Set());
+  const [isVotingActive, setIsVotingActive] = useState(() => (
+    typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_pause_voting_${pin}`) === 'true'
+  ));
 
   useEffect(() => {
     let mounted = true;
@@ -143,9 +146,11 @@ export default function RoomLobby() {
 
       if (!isTransitioningToDeckRef.current && pin) {
         emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
+        emit('leave_room', { pin, participant_id: participantId });
         localStorage.removeItem('consensus_active_pin');
         sessionStorage.removeItem('consensus_active_pin');
         sessionStorage.removeItem(`consensus_host_${pin}`);
+        sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
       }
     };
   }, [pin, participantId, currentUserName, emit]);
@@ -154,11 +159,28 @@ export default function RoomLobby() {
     isTransitioningToDeckRef.current = false;
     if (pin) {
       emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
+      emit('leave_room', { pin, participant_id: participantId });
       localStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem(`consensus_host_${pin}`);
+      sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
     }
     navigate('/');
+  };
+
+  const handleResumeVoting = () => {
+    sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
+    isTransitioningToDeckRef.current = true;
+    navigate(`/deck/${pin}`, {
+      state: {
+        mode,
+        topic,
+        isHost: Boolean(isHost),
+        totalParticipants: Math.max(1, participants.length),
+        customCards: displayedCandidates.length > 0 ? displayedCandidates : undefined,
+        budgetLimit: lockedConstraint ? budgetLimit : undefined,
+      },
+    });
   };
 
   useLobbySync({
@@ -167,6 +189,7 @@ export default function RoomLobby() {
     currentUserName,
     isHost,
     setIsHost,
+    setIsVotingActive,
     onTransitionToDeck: () => {
       isTransitioningToDeckRef.current = true;
     },
@@ -224,34 +247,17 @@ export default function RoomLobby() {
   const handleSelectBudgetTier = async (newLimit, shouldFilter) => {
     setBudgetLimit(newLimit);
     setLockedConstraint(shouldFilter);
-
     const max_price_level = !shouldFilter ? 4 : newLimit <= 180 ? 1 : newLimit <= 350 ? 2 : 3;
-
     if (shouldFilter) {
       fetch(apiUrl(`/api/v1/rooms/${pin}/constraints`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          participant_id: participantId,
-          max_price_level,
-          max_budget: newLimit,
-        }),
+        body: JSON.stringify({ participant_id: participantId, max_price_level, max_budget: newLimit }),
       }).catch(() => {});
     }
-
-    emit('update_budget', {
-      pin,
-      participant_id: participantId,
-      budgetSealed: shouldFilter,
-      budgetLimit: newLimit,
-    });
-
+    emit('update_budget', { pin, participant_id: participantId, budgetSealed: shouldFilter, budgetLimit: newLimit });
     setParticipants((prev) =>
-      prev.map((p) =>
-        p.name === currentUserName || p.id === participantId
-          ? { ...p, budgetSealed: shouldFilter }
-          : p
-      )
+      prev.map((p) => (p.name === currentUserName || p.id === participantId ? { ...p, budgetSealed: shouldFilter } : p))
     );
   };
 
@@ -322,64 +328,37 @@ export default function RoomLobby() {
 
   const handleQuickAddSuggestion = (ideaText) => {
     const clean = String(ideaText || '').trim();
-    if (!clean) return;
-    if (groupPool.some((s) => s.toLowerCase() === clean.toLowerCase())) return;
-
-    emit('add_suggestion', {
-      pin,
-      suggestion: clean,
-      participant_id: participantId,
-      user_name: currentUserName,
-    });
-
+    if (!clean || groupPool.some((s) => s.toLowerCase() === clean.toLowerCase())) return;
+    emit('add_suggestion', { pin, suggestion: clean, participant_id: participantId, user_name: currentUserName });
     setGroupPool((prev) => [...prev, clean]);
   };
 
   const handleRemoveSuggestion = (idx) => {
     const target = groupPool[idx];
-    if (target) {
-      emit('remove_suggestion', { pin, suggestion: target });
-    }
+    if (target) emit('remove_suggestion', { pin, suggestion: target });
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleShuffleCandidates = () => {
     triggerHaptic('selection');
-    if (realOptions && realOptions.length > 0) {
-      setRealOptions((prev) => {
-        const copy = [...prev];
-        for (let i = copy.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [copy[i], copy[j]] = [copy[j], copy[i]];
-        }
-        return copy;
-      });
-    } else if (groupPool && groupPool.length > 0) {
-      setGroupPool((prev) => {
-        const copy = [...prev];
-        for (let i = copy.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [copy[i], copy[j]] = [copy[j], copy[i]];
-        }
-        return copy;
-      });
-    }
-    addToast({
-      title: t('placesShuffledTitle'),
-      message: t('placesShuffledDesc'),
-      type: 'info',
-    });
+    const shuffleList = (prev) => {
+      const copy = [...prev];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+    if (realOptions && realOptions.length > 0) setRealOptions(shuffleList);
+    else if (groupPool && groupPool.length > 0) setGroupPool(shuffleList);
+    addToast({ title: t('placesShuffledTitle'), message: t('placesShuffledDesc'), type: 'info' });
   };
 
   const handleReportClosedVenue = (venue) => {
     if (!venue?.name) return;
     setRealOptions((prev) => prev.filter((opt) => opt.name !== venue.name));
     setGroupPool((prev) => prev.filter((name) => name !== venue.name));
-    addToast({
-      title: t('closedReportedTitle'),
-      message: t('closedReportedDesc'),
-      type: 'info',
-    });
+    addToast({ title: t('closedReportedTitle'), message: t('closedReportedDesc'), type: 'info' });
   };
 
   useEffect(() => {
@@ -463,28 +442,13 @@ export default function RoomLobby() {
   const handleStartVoting = () => {
     triggerHaptic('selection');
     const cardsToPass = displayedCandidates;
-
     if (cardsToPass.length < 2) {
-      addToast({
-        title: t('addAtLeastTwoTitle'),
-        message: t('addAtLeastTwoMsg'),
-        type: 'warning',
-      });
+      addToast({ title: t('addAtLeastTwoTitle'), message: t('addAtLeastTwoMsg'), type: 'warning' });
       return;
     }
-
     const activeParticipantCount = Math.max(1, participants.length);
-
     const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
-
-    emit('host_start_voting', {
-      pin,
-      host_id: participantId,
-      host_token: hostToken || undefined,
-      options: cardsToPass,
-      topic,
-      mode,
-    });
+    emit('host_start_voting', { pin, host_id: participantId, host_token: hostToken || undefined, options: cardsToPass, topic, mode });
 
     isTransitioningToDeckRef.current = true;
     sessionStorage.setItem(`consensus_host_${pin}`, 'true');
@@ -523,6 +487,22 @@ export default function RoomLobby() {
 
       {/* Main Content */}
       <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+        {isVotingActive && (
+          <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-semibold">{t('votingInProgress')}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResumeVoting}
+              className="font-bold underline cursor-pointer active:opacity-70"
+            >
+              {t('resume')} →
+            </button>
+          </div>
+        )}
+
         {/* Compact Room Header & Roster */}
         <LobbyRoster
           topic={topic}
@@ -565,7 +545,18 @@ export default function RoomLobby() {
       {/* Fixed Bottom Start Action Bar */}
       <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/85 backdrop-blur-xl border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.15)]">
         <div className="max-w-md mx-auto">
-          {isHost ? (
+          {isVotingActive ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={handleResumeVoting}
+              icon={ArrowRight}
+              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl active:scale-[0.98] transition-transform bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              {t('resumeVoting')}
+            </Button>
+          ) : isHost ? (
             <Button
               type="button"
               variant="primary"

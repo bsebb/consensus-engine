@@ -159,6 +159,18 @@ export const ro = {
   waitingFriendsDesc: 'Așteptăm ca toți să termine de evaluat opțiunile.',
   calculatingConsensus: 'Calculăm consensul Schulze...',
 
+  // Leave & Pause Voting
+  leaveSessionTitle: 'Părăsești sesiunea de vot?',
+  leaveSessionDesc: 'Votul este în desfășurare. Unde dorești să mergi?',
+  returnToLobby: 'Înapoi în Lobby',
+  returnToLobbyDesc: 'Pune votul pe pauză și vezi detaliile camerei',
+  leaveRoomAction: 'Părăsește Camera',
+  leaveRoomDesc: 'Ieși complet din cameră și întoarce-te la start',
+  keepSwiping: 'Continuă să votezi',
+  votingInProgress: 'Votul este în desfășurare',
+  resumeVoting: 'Reia Votul',
+  resume: 'Reia',
+
   // Winner View
   consensusWinner: 'Alegerea grupului',
   everyoneAgreed: 'Grupul a căzut de acord pe acest loc!',
