@@ -71,7 +71,7 @@ export default function InstallPrompt() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Install Consensus Engine
+                Install NoYouPick
               </h4>
               <p className="text-[11px] text-[var(--text-secondary)]">
                 Fast, tactile mobile voting app
@@ -81,6 +81,7 @@ export default function InstallPrompt() {
           <button
             type="button"
             onClick={handleDismiss}
+            aria-label="Dismiss"
             className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-lg transition-colors cursor-pointer"
           >
             <X size={14} />

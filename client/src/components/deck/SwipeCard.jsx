@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Flame, Star, MapPin, Coins, Route, Info, Layers } from 'lucide-react';
+import {
+  ThumbsUp,
+  ThumbsDown,
+  Flame,
+  Star,
+  MapPin,
+  Route,
+  Info,
+  Layers,
+} from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 import { useLanguage } from '../../context/LanguageContext';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function SwipeCard({
   mode,
@@ -12,6 +22,7 @@ export default function SwipeCard({
   activeCard,
   dragOffset,
   exitDirection,
+  enterDirection,
   isDragging,
   handlePointerDown,
   handlePointerMove,
@@ -25,7 +36,11 @@ export default function SwipeCard({
 }) {
   const { t } = useLanguage();
   const isCustomCard = Boolean(mode === 'CUSTOM' || activeCard?.isCustom);
-  const { photo: customPhoto } = useCustomOptionPhoto(isCustomCard ? activeCard?.name : '', topic, activeCard?.photo_url);
+  const { photo: customPhoto } = useCustomOptionPhoto(
+    isCustomCard ? activeCard?.name : '',
+    topic,
+    activeCard?.photo_url
+  );
 
   const { primaryPhoto, photos, fallbackPhoto } = useVenuePhotos(
     isCustomCard ? '' : activeCard?.name,
@@ -49,75 +64,96 @@ export default function SwipeCard({
     : (validPhotos[photoIdx] || validPhotos[0] || primaryPhoto || fallbackPhoto);
   const vibeSubtitle = getVenueVibe(activeCard?.name, activeCard?.category);
 
+  const likeProgress = Math.min(1, Math.max(0, (dragOffset.x - 6) / 64));
+  const passProgress = Math.min(1, Math.max(0, (-dragOffset.x - 6) / 64));
+  const isVertical = Math.abs(dragOffset.x) < 65;
+  const vetoProgress = isVertical ? Math.min(1, Math.max(0, (dragOffset.y - 15) / 60)) : 0;
+  const superlikeProgress = isVertical ? Math.min(1, Math.max(0, (-dragOffset.y - 15) / 60)) : 0;
+
+  const enterClass = enterDirection ? `animate-card-fly-in-${enterDirection}` : '';
+  const cardTransform = exitDirection === 'right'
+    ? `translate3d(140%, ${dragOffset.y * 0.4}px, 0) rotate(16deg)`
+    : exitDirection === 'left'
+    ? `translate3d(-140%, ${dragOffset.y * 0.4}px, 0) rotate(-16deg)`
+    : exitDirection === 'down'
+    ? 'translate3d(0, 140%, 0) scale(0.92)'
+    : exitDirection === 'up'
+    ? 'translate3d(0, -140%, 0) scale(0.92)'
+    : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.05}deg)`;
+
   return (
-    <main className="px-4 py-2 flex flex-col justify-center flex-1 min-h-0 max-w-md mx-auto w-full">
+    <main className="px-4 py-1.5 flex flex-col justify-center flex-1 min-h-0 max-w-md mx-auto w-full select-none">
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         style={{
-          transform: exitDirection === 'right'
-            ? 'translate3d(120%, 0, 0) rotate(14deg)'
-            : exitDirection === 'left'
-            ? 'translate3d(-120%, 0, 0) rotate(-14deg)'
-            : exitDirection === 'down'
-            ? 'translate3d(0, 120%, 0) scale(0.92)'
-            : exitDirection === 'up'
-            ? 'translate3d(0, -120%, 0) scale(0.92)'
-            : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.06}deg)`,
+          transform: cardTransform,
           transition: exitDirection
-            ? 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s'
+            ? 'transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.24s ease-out'
             : isDragging
             ? 'none'
-            : 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+            : 'transform 0.42s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.22s ease-out',
           opacity: exitDirection ? 0 : 1,
           touchAction: 'none',
           willChange: isDragging ? 'transform' : 'auto',
         }}
-        className="w-full flex-1 max-h-[520px] min-h-[340px] rounded-3xl bg-[var(--bg-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.14)] border border-[var(--border-main)] flex flex-col select-none relative overflow-hidden cursor-grab active:cursor-grabbing my-auto"
+        className={`w-full flex-1 max-h-[540px] min-h-0 rounded-3xl bg-[var(--bg-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.14)] border border-[var(--border-main)] relative my-auto cursor-grab active:cursor-grabbing flex flex-col overflow-hidden ${enterClass}`}
       >
         {/* Dynamic On-Drag Optical Stamps */}
-        {dragOffset.x > 30 && (
+        {likeProgress > 0 && (
           <div
-            style={{ opacity: Math.min(1, dragOffset.x / 70) }}
-            className="absolute top-6 right-6 px-4 py-1.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/80 text-emerald-400 font-bold text-sm tracking-wide -rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-lg"
+            style={{
+              opacity: Math.min(1, likeProgress * 1.25),
+              transform: `scale(${0.76 + likeProgress * 0.34}) rotate(-12deg)`,
+            }}
+            className="absolute top-6 right-6 px-4 py-1.5 rounded-2xl border-2 border-emerald-500 bg-emerald-950/85 text-emerald-400 font-bold text-sm tracking-wide backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-[0_6px_24px_rgba(16,185,129,0.35)] origin-top-right transition-none"
           >
             <ThumbsUp size={16} strokeWidth={2.5} />
             <span>{t('likeAction')}</span>
           </div>
         )}
-        {dragOffset.x < -30 && (
+        {passProgress > 0 && (
           <div
-            style={{ opacity: Math.min(1, Math.abs(dragOffset.x) / 70) }}
-            className="absolute top-6 left-6 px-4 py-1.5 rounded-2xl border-2 border-rose-500 bg-rose-950/80 text-rose-400 font-bold text-sm tracking-wide rotate-12 backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-lg"
+            style={{
+              opacity: Math.min(1, passProgress * 1.25),
+              transform: `scale(${0.76 + passProgress * 0.34}) rotate(12deg)`,
+            }}
+            className="absolute top-6 left-6 px-4 py-1.5 rounded-2xl border-2 border-rose-500 bg-rose-950/85 text-rose-400 font-bold text-sm tracking-wide backdrop-blur-md flex items-center gap-1.5 z-30 pointer-events-none select-none shadow-[0_6px_24px_rgba(244,63,94,0.35)] origin-top-left transition-none"
           >
             <ThumbsDown size={16} strokeWidth={2.5} />
             <span>{t('passAction')}</span>
           </div>
         )}
-        {dragOffset.y > 40 && Math.abs(dragOffset.x) < 55 && (
+        {vetoProgress > 0 && (
           <div
-            style={{ opacity: Math.min(1, dragOffset.y / 70) }}
-            className="absolute inset-x-12 top-7 py-2 rounded-2xl border-2 border-amber-500 bg-amber-950/85 text-amber-300 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-lg"
+            style={{
+              opacity: vetoProgress,
+              transform: `scale(${0.88 + vetoProgress * 0.2})`,
+            }}
+            className="absolute inset-x-12 top-7 py-2 rounded-2xl border-2 border-red-600 bg-red-950/90 text-red-400 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-[0_6px_24px_rgba(220,38,38,0.35)] origin-top transition-none"
           >
             <Flame size={16} strokeWidth={2.5} />
             <span>{t('vetoAction')}</span>
           </div>
         )}
-        {dragOffset.y < -40 && Math.abs(dragOffset.x) < 55 && (
+        {superlikeProgress > 0 && (
           <div
-            style={{ opacity: Math.min(1, Math.abs(dragOffset.y) / 70) }}
-            className="absolute inset-x-12 bottom-7 py-2 rounded-2xl border-2 border-indigo-500 bg-indigo-950/85 text-indigo-300 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-lg"
+            style={{
+              opacity: superlikeProgress,
+              transform: `scale(${0.88 + superlikeProgress * 0.2})`,
+            }}
+            className="absolute inset-x-12 bottom-7 py-2 rounded-2xl border-2 border-amber-400 bg-amber-950/85 text-amber-300 font-bold text-sm tracking-wide backdrop-blur-md flex items-center justify-center gap-2 z-30 pointer-events-none select-none shadow-[0_6px_24px_rgba(251,191,36,0.35)] origin-bottom transition-none"
           >
-            <Star size={16} strokeWidth={2.5} className="fill-indigo-300" />
+            <Star size={16} strokeWidth={2.5} className="fill-amber-300" />
             <span>{t('superlikeAction') || 'SUPERLIKE'}</span>
           </div>
         )}
 
+        {/* Card Content Surface (Direct 2D Layout) */}
         {isCustomCard ? (
           customPhoto && !customImgError ? (
-            /* Visual Poster Card for Custom Options with matched photos */
             <>
               <div className={`relative flex-1 min-h-0 w-full overflow-hidden ${isLogoImage(customPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
                 <img
@@ -129,71 +165,115 @@ export default function SwipeCard({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
 
-                {/* Top Floating Badges */}
                 <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10 max-w-[70%] truncate">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10 max-w-[85%] truncate">
                     <Layers size={12} className="text-amber-400 shrink-0" />
                     <span className="truncate">{topic || 'Custom Poll'}</span>
                   </span>
-                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-bold text-white tabular-nums">
-                    {cardIndex} {t('ofWord')} {totalCards}
-                  </span>
                 </div>
 
-                {/* Bottom Photo Overlay: Option Name */}
-                <div className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
-                    {t('option')} #{cardIndex}
+                <div
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    onOpenDetails?.();
+                  }}
+                  className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10 cursor-pointer group"
+                  title="Tap for option details"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-2 group-hover:underline">
+                      {activeCard?.name}
+                    </h2>
+                    <Info size={14} className="text-white/70 group-hover:text-white shrink-0" />
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-2">
-                    {activeCard?.name}
-                  </h2>
                 </div>
               </div>
 
-              {/* Action Instruction Footer */}
-              <div className="px-4 py-3 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-center gap-4 text-xs font-medium text-[var(--text-tertiary)] shrink-0">
-                <span>{t('swipeRightApprove')}</span>
-                <span>•</span>
-                <span>{t('swipeLeftDecline')}</span>
+              <div className="px-4 py-2.5 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-4 text-xs font-medium text-[var(--text-tertiary)] shrink-0">
+                <div className="flex items-center gap-2">
+                  <span>{t('swipeRightApprove')}</span>
+                  <span>•</span>
+                  <span>{t('swipeLeftDecline')}</span>
+                </div>
+                {onOpenDetails && (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('tap');
+                      onOpenDetails();
+                    }}
+                    aria-label="View option details"
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                  >
+                    <Info size={12} className="text-[var(--accent-bg)]" />
+                    <span>{t('details')}</span>
+                  </button>
+                )}
               </div>
             </>
           ) : (
-            /* Human-Centric Clean Custom Poll Card (Ultra-niche without poster) */
-            <div className="flex-1 flex flex-col justify-between p-6 text-center bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-inset)]">
-              <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] text-xs font-bold truncate max-w-[70%]">
+            <div className="flex-1 min-h-0 flex flex-col justify-between p-6 text-center bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-inset)]">
+              <div className="flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] text-xs font-bold truncate max-w-[85%]">
                   <Layers size={12} />
                   <span className="truncate">{topic || 'Custom Poll'}</span>
                 </span>
-                <span className="px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] tabular-nums">
-                  {cardIndex} {t('ofWord')} {totalCards}
-                </span>
               </div>
 
-              <div className="my-auto py-8 px-2 flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs">
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  triggerHaptic('tap');
+                  onOpenDetails?.();
+                }}
+                className="my-auto py-8 px-2 flex flex-col items-center gap-3 cursor-pointer group"
+                title="Tap for option details"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs group-hover:scale-105 transition-transform">
                   #{cardIndex}
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words">
-                  {activeCard?.name}
-                </h2>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight leading-tight max-w-xs break-words group-hover:underline">
+                    {activeCard?.name}
+                  </h2>
+                  <Info size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent-bg)] shrink-0" />
+                </div>
               </div>
 
-              <div className="pt-3 border-t border-[var(--border-subtle)] text-xs font-medium text-[var(--text-tertiary)] flex items-center justify-center gap-4">
-                <span>{t('swipeRightApprove')}</span>
-                <span>•</span>
-                <span>{t('swipeLeftDecline')}</span>
+              <div className="pt-2 border-t border-[var(--border-subtle)] text-xs font-medium text-[var(--text-tertiary)] flex items-center justify-between px-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span>{t('swipeRightApprove')}</span>
+                  <span>•</span>
+                  <span>{t('swipeLeftDecline')}</span>
+                </div>
+                {onOpenDetails && (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('tap');
+                      onOpenDetails();
+                    }}
+                    aria-label="View option details"
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                  >
+                    <Info size={12} className="text-[var(--accent-bg)]" />
+                    <span>{t('details')}</span>
+                  </button>
+                )}
               </div>
             </div>
           )
         ) : (
           <>
-            {/* Dominant Curated Venue Photography */}
             <div className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden">
               <img
                 src={displayPhoto}
-                alt={activeCard.name}
+                alt={activeCard?.name || 'Venue'}
                 className="w-full h-full object-cover"
                 draggable="false"
                 onError={(e) => {
@@ -205,7 +285,6 @@ export default function SwipeCard({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
 
-              {/* Multi-photo Story Indicator Bars */}
               {validPhotos.length > 1 && (
                 <div className="absolute top-2.5 inset-x-4 flex items-center gap-1.5 z-20">
                   {validPhotos.slice(0, 4).map((url, idx) => (
@@ -226,10 +305,9 @@ export default function SwipeCard({
                 </div>
               )}
 
-              {/* Top Floating Badges: Category & Verified Rating */}
               <div className={`absolute ${validPhotos.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10`}>
-                <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10">
-                  {vibeSubtitle || activeCard.category || 'Local Venue'}
+                <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10 truncate max-w-[60%]">
+                  {vibeSubtitle || activeCard?.category || 'Local Venue'}
                 </span>
 
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
@@ -239,20 +317,29 @@ export default function SwipeCard({
                 </div>
               </div>
 
-              {/* Bottom Photo Overlay: Venue Name & Address */}
-              <div className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-1">
-                  {activeCard.name}
-                </h2>
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => {
+                  triggerHaptic('tap');
+                  onOpenDetails?.();
+                }}
+                className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10 cursor-pointer group"
+                title="Tap for venue details, map & photos"
+              >
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight line-clamp-1 group-hover:underline">
+                    {activeCard?.name}
+                  </h2>
+                  <Info size={15} className="text-white/70 group-hover:text-white shrink-0" />
+                </div>
                 <div className="flex items-center gap-1.5 text-xs text-zinc-200 font-medium">
                   <MapPin size={13} className="text-amber-400 shrink-0" />
-                  <span className="truncate">{activeCard.address || 'Local Spot'}</span>
+                  <span className="truncate">{activeCard?.address || 'Local Spot'}</span>
                 </div>
               </div>
             </div>
 
-            {/* Unified Human-Centric Metadata Footer */}
-            <div className="px-4 py-3 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-left shrink-0">
+            <div className="px-4 py-2.5 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-left shrink-0">
               <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] min-w-0 truncate">
                 <span className="font-semibold text-[var(--text-primary)] tabular-nums">{cardPriceDesc}</span>
                 <span className="text-[var(--text-tertiary)]">•</span>
@@ -268,11 +355,13 @@ export default function SwipeCard({
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
+                    triggerHaptic('tap');
                     onOpenDetails();
                   }}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-colors cursor-pointer"
+                  aria-label="View details and map"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
-                  <Info size={13} className="text-[var(--text-secondary)]" />
+                  <Info size={13} className="text-[var(--accent-bg)]" />
                   <span>{t('details')}</span>
                 </button>
               )}

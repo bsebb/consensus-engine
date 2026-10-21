@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Navigation,
   ExternalLink,
@@ -7,22 +7,24 @@ import {
   ChevronDown,
   CheckCircle2,
   Star,
-  MessageSquarePlus,
   RotateCcw,
   MapPin,
   Route,
-  Database,
-  Send,
   Info,
+  Sparkles,
+  Compass,
+  Share2,
 } from 'lucide-react';
 import Button from '../ui/Button';
 import VenueDetailsModal from './VenueDetailsModal';
+import WinnerFeedbackCard from './WinnerFeedbackCard';
 import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { apiUrl } from '../../utils/api';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../ui/Toast';
+import { triggerHaptic } from '../../utils/haptics';
 
 export default function ConsensusWinnerView({
   mode,
@@ -63,20 +65,55 @@ export default function ConsensusWinnerView({
   const [telemetrySubmitted, setTelemetrySubmitted] = useState(false);
   const [isSubmittingTelemetry, setIsSubmittingTelemetry] = useState(false);
 
+  useEffect(() => {
+    triggerHaptic('victory');
+  }, []);
+
   const winnerVibe = getVenueVibe(winner?.name, winner?.category);
   const winnerRating = getVenueRating(winner?.name, winner?.category);
   const travelSummary = formatTravelSummary(winner, lang);
 
+  const winnerDest = encodeURIComponent((winner?.name || '') + ' ' + (winner?.address || ''));
+  const googleMapsUrl = mapsDirUrl && mapsDirUrl !== '#'
+    ? mapsDirUrl
+    : `https://www.google.com/maps/dir/?api=1&destination=${winnerDest}`;
+  const appleMapsUrl = `https://maps.apple.com/?daddr=${winnerDest}`;
+
   const handleSelectSatisfaction = (score) => {
+    triggerHaptic('tap');
     setSatisfactionScore(score);
     if (priceAccuracyScore === 0) setPriceAccuracyScore(score);
     if (handleInlineRate) handleInlineRate(score);
+  };
+
+  const handleShareWinner = async () => {
+    triggerHaptic('tap');
+    const shareData = {
+      title: `Consensus Pick: ${winner?.name}`,
+      text: `Our group chose ${winner?.name}!`,
+      url: window.location.href,
+    };
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {}
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      addToast({
+        title: t('copied') || 'Copied',
+        message: t('linkCopied') || 'Link copied to clipboard',
+        type: 'success',
+      });
+    } catch {}
   };
 
   const handleSubmitTelemetry = async () => {
     const finalSat = satisfactionScore || 5;
     const finalPrice = priceAccuracyScore || finalSat;
     setIsSubmittingTelemetry(true);
+    triggerHaptic('like');
 
     try {
       if (pin && winner?.id) {
@@ -107,6 +144,7 @@ export default function ConsensusWinnerView({
   };
 
   const handleStartAnother = () => {
+    triggerHaptic('tap');
     if (pin) {
       if (typeof emit === 'function') {
         emit('leave_lobby', {
@@ -138,12 +176,12 @@ export default function ConsensusWinnerView({
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20" />
 
               {/* Floating Winner Badges */}
-              <div className="absolute top-4 inset-x-4 flex items-center justify-between">
-                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+              <div className="absolute top-4 inset-x-4 flex items-center justify-between gap-2 min-w-0">
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs shrink-0">
                   {t('winningGroupPick')}
                 </span>
                 {topic && (
-                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate max-w-[180px]">
+                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate max-w-[150px] shrink min-w-0 text-right" title={topic}>
                     {topic}
                   </span>
                 )}
@@ -160,14 +198,14 @@ export default function ConsensusWinnerView({
               </div>
             </div>
           ) : (
-            /* Clean Custom Poll Winner Banner (Zero Fake Photos, Ratings, Prices, or Distances) */
+            /* Clean Custom Poll Winner Banner */
             <div className="p-6 pb-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-2.5">
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+              <div className="flex items-center justify-center gap-2 max-w-full px-2 min-w-0">
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs shrink-0">
                   {t('winningPollOption')}
                 </span>
                 {topic && (
-                  <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[180px]">
+                  <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[150px] shrink min-w-0" title={topic}>
                     {topic}
                   </span>
                 )}
@@ -192,16 +230,17 @@ export default function ConsensusWinnerView({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
 
-            {/* Floating Rating & Winner Badge */}
+            {/* Floating Rating & Glowing Winner Badge */}
             <div className="absolute top-4 inset-x-4 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 shadow-xs tabular-nums">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/15 shadow-md tabular-nums">
                 <Star size={13} className="fill-amber-300 text-amber-300" />
                 <span>{winnerRating.rating}</span>
-                <span className="text-[11px] text-white/75 font-normal">({winnerRating.reviewCount})</span>
+                <span className="text-[11px] text-white/80 font-normal">({winnerRating.reviewCount})</span>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
-                {t('consensusWinner')}
-              </span>
+              <div className="animate-match-badge-glow flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-black shadow-[0_0_18px_rgba(16,185,129,0.45)]">
+                <Sparkles size={13} />
+                <span>{matchScore || 96}% {t('match')}</span>
+              </div>
             </div>
 
             {/* Title overlay */}
@@ -222,7 +261,7 @@ export default function ConsensusWinnerView({
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.96]"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
               >
                 <Info size={13} />
                 <span>{t('detailsAndRoute')}</span>
@@ -269,48 +308,68 @@ export default function ConsensusWinnerView({
                 <button
                   type="button"
                   onClick={() => setDetailsOpen(true)}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer active:scale-[0.98]"
                 >
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)] flex items-center gap-1">
                     <Route size={10} className="text-[var(--accent-bg)]" />
                     <span>{t('roadRoute')}</span>
                   </span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[100px] tabular-nums mt-0.5">
+                  <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-full px-1 tabular-nums mt-0.5">
                     {travelSummary}
                   </span>
                 </button>
               </div>
 
-              {/* Primary Navigation Actions */}
+              {/* Primary Directions Actions: Google Maps & Apple Maps */}
               <div className="grid grid-cols-2 gap-2.5 w-full">
                 <a
-                  href={mapsDirUrl}
+                  href={googleMapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-3 px-3 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-[0_6px_20px_var(--accent-glow)] cursor-pointer"
+                  onClick={() => triggerHaptic('tap')}
+                  className="py-3 px-3 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-[0_6px_20px_var(--accent-glow)] active:scale-[0.98] cursor-pointer"
+                  title="Direct Google Maps directions"
                 >
                   <Navigation size={14} />
-                  <span>{t('roadDirections')}</span>
-                  <ExternalLink size={12} className="opacity-80" />
+                  <span>Google Maps</span>
+                  <ExternalLink size={11} className="opacity-75" />
                 </a>
 
-                <button
-                  type="button"
-                  onClick={() => setDetailsOpen(true)}
-                  className="py-3 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] flex items-center justify-center gap-1.5 text-xs font-bold transition-colors cursor-pointer"
+                <a
+                  href={appleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => triggerHaptic('tap')}
+                  className="py-3 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-[0.98] cursor-pointer"
+                  title="Direct Apple Maps directions"
                 >
-                  <MapPin size={14} className="text-[var(--accent-bg)]" />
-                  <span>{t('photosAndMap')}</span>
-                </button>
+                  <Compass size={14} className="text-[var(--accent-bg)]" />
+                  <span>Apple Maps</span>
+                  <ExternalLink size={11} className="opacity-75 text-[var(--text-tertiary)]" />
+                </a>
               </div>
             </>
           )}
+
+          {/* Share Button */}
+          <button
+            type="button"
+            onClick={handleShareWinner}
+            aria-label={t('shareWinner') || 'Share Result with Group'}
+            className="w-full py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center justify-center gap-2 text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <Share2 size={14} />
+            <span>{t('shareWinner') || 'Share Result with Group'}</span>
+          </button>
 
           {/* Expandable How Your Group Voted Drawer */}
           <div className="w-full rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] overflow-hidden text-left">
             <button
               type="button"
-              onClick={() => setCondorcetOpen(!condorcetOpen)}
+              onClick={() => {
+                triggerHaptic('selection');
+                setCondorcetOpen(!condorcetOpen);
+              }}
               className="w-full p-3 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               aria-expanded={condorcetOpen}
             >
@@ -334,179 +393,55 @@ export default function ConsensusWinnerView({
               )}
             </button>
 
-            {condorcetOpen && (
-              <div className="p-3 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 pt-2">
-                  <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
-                  <span>{t('highestApproval')}</span>
-                </div>
+            <div className={`accordion-drawer ${condorcetOpen ? 'open' : ''}`}>
+              <div className="accordion-drawer-inner">
+                <div className="p-3 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 pt-2">
+                    <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+                    <span>{t('highestApproval')}</span>
+                  </div>
 
-                <div className="flex flex-col gap-1.5">
-                  {pairwiseBreakdown.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
-                    >
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {t('preferredOver')} {item.opponent}
-                      </span>
-                      <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums">
-                        {item.score}
-                      </span>
-                    </div>
-                  ))}
+                  <div className="flex flex-col gap-1.5">
+                    {pairwiseBreakdown.length > 0 ? (
+                      pairwiseBreakdown.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
+                        >
+                          <span className="font-medium text-[var(--text-primary)]">
+                            {t('preferredOver')} {item.opponent}
+                          </span>
+                          <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums">
+                            {item.score}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-2 text-xs text-[var(--text-tertiary)]">
+                        {t('highestApproval')}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* PROMINENT DATA COLLECTION & VENUE CALIBRATION CTA */}
-      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border-2 border-[var(--accent-bg)]/45 shadow-[0_12px_32px_var(--accent-glow)] p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Database size={17} />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black uppercase tracking-wider text-[var(--accent-bg)]">
-                  {t('communityDataTitle')}
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  {t('quickRating')}
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-[var(--text-primary)] mt-0.5">
-                {isCustomWinner
-                  ? `${t('rateSpotTitle').split('&')[0].trim().replace('{name}', `"${winner?.name || ''}"`)}`
-                  : t('rateSpotTitle').replace('{name}', winner?.name || '')}
-              </h3>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-          {isCustomWinner
-            ? t('customFeedbackDesc')
-            : t('rateSpotDesc')}
-        </p>
-
-        {telemetrySubmitted ? (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  {isCustomWinner
-                    ? `${t('feedbackSaved')} (${satisfactionScore || 5}/5)`
-                    : `${t('feedbackSaved')} (${satisfactionScore || 5}/5 • ${priceAccuracyScore || 5}/5)`}
-                </span>
-                <span className="text-[11px] text-[var(--text-secondary)]">
-                  {t('thanksFeedback')}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsReviewOpen(true)}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] cursor-pointer"
-            >
-              {t('fullForm')}
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {/* Metric 1: Group Decision Satisfaction */}
-            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-[var(--text-primary)]">
-                  {isCustomWinner ? t('groupPickSatisfaction') : `1. ${t('groupPickSatisfaction')}`}
-                </span>
-                <span className="text-[10px] text-[var(--text-tertiary)]">
-                  {isCustomWinner ? t('customFeedbackDesc') : t('fitsGroupQuestion')}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => handleSelectSatisfaction(star)}
-                    className="p-1 rounded-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                    aria-label={`Rate satisfaction ${star} stars`}
-                  >
-                    <Star
-                      size={19}
-                      className={star <= satisfactionScore ? 'fill-amber-400 text-amber-400' : 'text-[var(--text-tertiary)]'}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Metric 2: Price Tier Accuracy (Discovery Places Only) */}
-            {!isCustomWinner && (
-              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[var(--text-primary)]">
-                    2. {t('priceAccuracy')} ({'$'.repeat(winner?.price_level || 2)})
-                  </span>
-                  <span className="text-[10px] text-[var(--text-tertiary)]">
-                    {t('spendAccurateQuestion')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setPriceAccuracyScore(star)}
-                      className="p-1 rounded-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                      aria-label={`Rate price accuracy ${star} stars`}
-                    >
-                      <Star
-                        size={19}
-                        className={star <= priceAccuracyScore ? 'fill-emerald-400 text-emerald-400' : 'text-[var(--text-tertiary)]'}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Primary Data Collection Submit Button */}
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                disabled={isSubmittingTelemetry}
-                onClick={handleSubmitTelemetry}
-                className="flex-1 py-3.5 px-4 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_6px_20px_var(--accent-glow)] transition-all cursor-pointer disabled:opacity-60"
-              >
-                <Send size={14} />
-                <span>
-                  {isSubmittingTelemetry
-                    ? t('savingFeedback')
-                    : satisfactionScore > 0
-                    ? t('submitFeedback')
-                    : t('quickSubmit5')}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsReviewOpen(true)}
-                className="py-3.5 px-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                title="Open Detailed Feedback Form"
-              >
-                <MessageSquarePlus size={15} />
-                <span>{t('fullForm')}</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Community Data Collection & Feedback */}
+      <WinnerFeedbackCard
+        isCustomWinner={isCustomWinner}
+        winner={winner}
+        satisfactionScore={satisfactionScore}
+        priceAccuracyScore={priceAccuracyScore}
+        telemetrySubmitted={telemetrySubmitted}
+        isSubmittingTelemetry={isSubmittingTelemetry}
+        handleSelectSatisfaction={handleSelectSatisfaction}
+        setPriceAccuracyScore={setPriceAccuracyScore}
+        handleSubmitTelemetry={handleSubmitTelemetry}
+        setIsReviewOpen={setIsReviewOpen}
+      />
 
       {/* Start New Room Action */}
       <div className="w-full">
@@ -532,4 +467,3 @@ export default function ConsensusWinnerView({
     </main>
   );
 }
-

@@ -115,32 +115,36 @@ export default function History() {
     <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
       {/* PWA Mobile Header */}
       <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
-        <div className="flex items-center justify-between max-w-md mx-auto w-full">
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('tap');
-              navigate('/');
-            }}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
-            aria-label={t('back')}
-          >
-            <ArrowLeft size={16} />
-            <span>{t('back')}</span>
-          </button>
+        <div className="relative flex items-center justify-between max-w-md mx-auto w-full min-h-[36px]">
+          <div className="flex items-center z-10">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                navigate('/');
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full hover:bg-black/5 dark:hover:bg-white/5 min-h-[36px]"
+              aria-label={t('back')}
+            >
+              <ArrowLeft size={16} />
+              <span>{t('back')}</span>
+            </button>
+          </div>
 
-          <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-            {t('history')}
-          </h1>
+          <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center z-10 pointer-events-none">
+            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+              {t('history')}
+            </h1>
+          </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 z-10">
             <button
               type="button"
               onClick={() => {
                 triggerHaptic('tap');
                 setSettingsOpen(true);
               }}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer touch-manipulation"
               aria-label={t('prefTitle')}
               title={t('prefTitle')}
             >

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
@@ -9,7 +9,6 @@ import {
   Film,
   IceCream,
   ListPlus,
-  Check,
   User,
   Settings,
   History,
@@ -32,7 +31,8 @@ import {
 } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
 import BrandLogo from '../components/ui/BrandLogo';
-import CustomPollBuilder from '../components/home/CustomPollBuilder';
+import CustomPollDrawer from '../components/home/CustomPollDrawer';
+import JoinPinForm from '../components/home/JoinPinForm';
 
 export default function JoinRoom() {
   const { lang, t } = useLanguage();
@@ -40,25 +40,26 @@ export default function JoinRoom() {
   const hasUrlPin = Boolean(searchParams.get('pin') && /^\d{4}$/.test(searchParams.get('pin')));
 
   const categories = useMemo(() => [
-    { id: 'Restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic') },
-    { id: 'Cafes', title: t('catCafes'), desc: t('catCafesDesc'), icon: Coffee, topic: t('catCafesTopic') },
-    { id: 'Bars & Pubs', title: t('catBars'), desc: t('catBarsDesc'), icon: Wine, topic: t('catBarsTopic') },
-    { id: 'Cinema', title: t('catCinema'), desc: t('catCinemaDesc'), icon: Film, topic: t('catCinemaTopic') },
-    { id: 'Desserts', title: t('catDesserts'), desc: t('catDessertsDesc'), icon: IceCream, topic: t('catDessertsTopic') },
-    { id: 'Custom', title: t('catCustom'), desc: t('catCustomDesc'), icon: ListPlus, topic: t('catCustomTopic') },
+    { id: 'Restaurants', theme: 'restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic'), wide: true },
+    { id: 'Cafes', theme: 'cafes', title: t('catCafes'), desc: t('catCafesDesc'), icon: Coffee, topic: t('catCafesTopic'), wide: false },
+    { id: 'Bars & Pubs', theme: 'bars', title: t('catBars'), desc: t('catBarsDesc'), icon: Wine, topic: t('catBarsTopic'), wide: false },
+    { id: 'Cinema', theme: 'cinema', title: t('catCinema'), desc: t('catCinemaDesc'), icon: Film, topic: t('catCinemaTopic'), wide: false },
+    { id: 'Desserts', theme: 'desserts', title: t('catDesserts'), desc: t('catDessertsDesc'), icon: IceCream, topic: t('catDessertsTopic'), wide: false },
+    { id: 'Custom', theme: 'custom', title: t('catCustom'), desc: t('catCustomDesc'), icon: ListPlus, topic: t('catCustomTopic'), wide: true },
   ], [t]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(hasUrlPin ? 'join' : 'create');
-  const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [name, setName] = useState(() => localStorage.getItem('consensus_user_name') || '');
-  const [loading, setLoading] = useState(false);
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [recentSession, setRecentSession] = useState(null);
 
   // Quick setup & universal location states
   const [selectedCategory, setSelectedCategory] = useState('Restaurants');
   const [customTopic, setCustomTopic] = useState('');
   const [customOptions, setCustomOptions] = useState([]);
+  const [isCustomDrawerOpen, setIsCustomDrawerOpen] = useState(false);
   const [gpsState, setGpsState] = useState(() => {
     const saved = getSavedExactGps();
     return saved
@@ -67,7 +68,6 @@ export default function JoinRoom() {
   });
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  const digitInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const navigate = useNavigate();
   const { participantId, emit } = useSocket();
   const { addToast } = useToast();
@@ -76,12 +76,9 @@ export default function JoinRoom() {
   useEffect(() => {
     const pinParam = searchParams.get('pin');
     if (pinParam && /^\d{4}$/.test(pinParam)) {
-      setPinDigits(pinParam.split(''));
       setActiveTab('join');
     }
   }, [searchParams]);
-
-  const pin = pinDigits.join('');
 
   // Load recent session from history, wake up backend, and restore saved coordinates if present
   useEffect(() => {
@@ -108,52 +105,13 @@ export default function JoinRoom() {
     }
   }, []);
 
-  const handleUseMyGps = async () => {
-    setGpsState((prev) => ({ ...prev, status: 'detecting', label: 'Locating via GPS...' }));
-    const res = await detectUserGps({ forceRefresh: true });
-    setGpsState(res);
-  };
-
-  const handleDigitChange = (index, value) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    const newDigits = [...pinDigits];
-    newDigits[index] = digit;
-    setPinDigits(newDigits);
-    if (digit) {
-      triggerHaptic('tap');
-      if (index < 3) {
-        digitInputRefs[index + 1].current?.focus();
-      } else {
-        triggerHaptic('like');
-      }
-    }
-  };
-
-  const handleDigitKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
-      digitInputRefs[index - 1].current?.focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
-    if (pasted.length > 0) {
-      const newDigits = ['', '', '', ''];
-      for (let i = 0; i < pasted.length; i++) newDigits[i] = pasted[i];
-      setPinDigits(newDigits);
-      digitInputRefs[Math.min(pasted.length, 3)].current?.focus();
-    }
-  };
-
-  const handleJoin = async (e) => {
-    if (e) e.preventDefault();
-    const cleanPin = pin.trim();
+  const executeJoin = async (targetPin) => {
+    const cleanPin = String(targetPin || '').trim();
     const cleanName = name.trim() || 'Friend';
-    if (cleanPin.length !== 4) return;
+    if (cleanPin.length !== 4 || isJoiningRoom) return { success: false };
 
     localStorage.setItem('consensus_user_name', cleanName);
-    setLoading(true);
+    setIsJoiningRoom(true);
 
     try {
       const response = await fetch(apiUrl(`/api/v1/rooms/${cleanPin}`));
@@ -163,38 +121,47 @@ export default function JoinRoom() {
         navigate(`/lobby/${cleanPin}`, {
           state: { isHost: false, userName: cleanName, roomData, mode: roomData?.mode, topic: roomData?.topic },
         });
-        setLoading(false);
-        return;
+        setIsJoiningRoom(false);
+        return { success: true };
       }
       const errData = await response.json().catch(() => ({}));
+      const failMsg = errData.message || t('roomNotFoundDesc')?.replace('{pin}', cleanPin) || `Room #${cleanPin} wasn't found. Double-check the code with your host.`;
       addToast({
-        title: 'Room Not Found',
-        message: errData.message || `Room #${cleanPin} wasn't found. Double-check the code with your host.`,
+        title: t('roomNotFound') || 'Room Not Found',
+        message: failMsg,
         type: 'error',
       });
+      setIsJoiningRoom(false);
+      return { success: false, message: failMsg };
     } catch {
+      const errMsg = 'Could not reach the server. Please check your internet connection.';
       addToast({
         title: 'Connection Error',
-        message: 'Could not reach the server. Please check your internet connection.',
+        message: errMsg,
         type: 'error',
       });
+      setIsJoiningRoom(false);
+      return { success: false, message: errMsg };
     }
-    setLoading(false);
   };
 
   const handleStartRoom = async () => {
-    if (isCustomMode && (!customTopic.trim() || customTopic.trim().length < 2)) {
+    if (isCustomMode && (!customTopic.trim() || customTopic.trim().length < 2 || customOptions.length < 2)) {
+      triggerHaptic('veto');
       addToast({
-        title: t('customQuestionRequired'),
-        message: t('customQuestionRequired'),
+        title: !customTopic.trim() ? (t('customQuestionRequired') || 'Question Required') : 'Options Needed',
+        message: !customTopic.trim()
+          ? 'Please enter a question to start your custom poll.'
+          : 'Please add at least 2 options for your group to vote on.',
         type: 'warning',
       });
+      setIsCustomDrawerOpen(true);
       return;
     }
 
     const cleanName = name.trim() || 'Host';
     localStorage.setItem('consensus_user_name', cleanName);
-    setLoading(true);
+    setIsCreatingRoom(true);
 
     const roomMode = isCustomMode ? 'CUSTOM' : 'DISCOVERY';
     const catConfig = categories.find((c) => c.id === selectedCategory) || categories[0];
@@ -236,7 +203,7 @@ export default function JoinRoom() {
           sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);
         }
         localStorage.setItem('consensus_active_pin', generatedPin);
-        setLoading(false);
+        setIsCreatingRoom(false);
         navigate(`/lobby/${generatedPin}`, {
           state: {
             mode: roomMode,
@@ -257,13 +224,13 @@ export default function JoinRoom() {
     } catch {
       addToast({ title: 'Connection Error', message: 'Could not reach server to create room. Please check your connection.', type: 'error' });
     }
-    setLoading(false);
+    setIsCreatingRoom(false);
   };
 
   const isCustomMode = selectedCategory === 'Custom';
   const activeCatObj = categories.find((c) => c.id === selectedCategory) || categories[0];
 
-  if (loading) {
+  if (isCreatingRoom) {
     return (
       <LobbyLoadingView
         topic={isCustomMode ? (customTopic.trim() || t('catCustomTopic')) : activeCatObj.topic}
@@ -292,6 +259,7 @@ export default function JoinRoom() {
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
+            aria-label={t('langTitle')}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
             title={t('langTitle')}
           >
@@ -300,7 +268,7 @@ export default function JoinRoom() {
           <button
             type="button"
             onClick={() => navigate('/history')}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer touch-manipulation"
             aria-label={t('history')}
             title={t('history')}
           >
@@ -309,7 +277,7 @@ export default function JoinRoom() {
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer touch-manipulation"
             aria-label={t('settings')}
             title={t('settings')}
           >
@@ -320,12 +288,12 @@ export default function JoinRoom() {
       </header>
 
       <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
-        <div className="text-center mb-5 space-y-1 min-h-[64px] flex flex-col justify-center">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
-            {activeTab === 'create' ? activeCatObj.topic : t('joinWithCode')}
+        <div className="text-center mb-4 sm:mb-5 h-[64px] max-h-[64px] shrink-0 flex flex-col justify-center items-center px-2 overflow-hidden select-none">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--text-primary)] truncate whitespace-nowrap max-w-full leading-tight">
+            {activeTab === 'create' ? (isCustomMode && customTopic.trim() ? customTopic.trim() : activeCatObj.topic) : t('joinWithCode')}
           </h1>
-          <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
-            {activeTab === 'create' ? activeCatObj.desc : t('roomCodeHint')}
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate whitespace-nowrap max-w-full leading-normal mt-1">
+            {activeTab === 'create' ? (isCustomMode && customOptions.length > 0 ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready` : activeCatObj.desc) : t('roomCodeHint')}
           </p>
         </div>
 
@@ -369,41 +337,52 @@ export default function JoinRoom() {
                   {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isSelected = selectedCategory === cat.id;
+                    const isCustom = cat.id === 'Custom';
+
+                    const tileTitle = cat.title;
+                    const tileDesc = cat.desc;
+
                     return (
                       <button
                         key={cat.id}
                         type="button"
+                        data-theme={cat.theme}
                         onClick={() => {
                           setSelectedCategory(cat.id);
                           triggerHaptic('tap');
+                          if (isCustom) {
+                            setIsCustomDrawerOpen(true);
+                          }
                         }}
-                        className={`relative flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer min-h-[64px] ${
+                        className={`category-tile relative flex items-center gap-2.5 p-3 rounded-2xl border text-left cursor-pointer min-h-[64px] touch-manipulation hover:scale-[1.01] active:scale-[0.98] ${
+                          cat.wide ? 'col-span-2' : 'col-span-1'
+                        } ${
                           isSelected
-                            ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs ring-1 ring-[var(--accent-bg)]/20'
+                            ? 'is-selected text-[var(--text-primary)] shadow-xs ring-1 ring-black/5 dark:ring-white/10'
                             : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
                         }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                          className={`cat-icon-badge w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                             isSelected
-                              ? 'bg-[var(--accent-bg)] text-white shadow-xs scale-105'
+                              ? 'is-selected scale-105'
                               : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
                           }`}
                         >
                           <Icon size={16} />
                         </div>
-                        <div className="min-w-0 flex-1 pr-1">
-                          <div className="text-[13px] font-bold text-[var(--text-primary)] leading-tight whitespace-nowrap">
-                            {cat.title}
+                        <div className="min-w-0 flex-1 pr-1 overflow-hidden">
+                          <div className="text-xs sm:text-[13px] font-bold text-[var(--text-primary)] leading-tight truncate" title={tileTitle}>
+                            {tileTitle}
                           </div>
-                          <div className="text-[11px] text-[var(--text-tertiary)] leading-tight mt-0.5 whitespace-nowrap">
-                            {cat.desc}
+                          <div className="text-[11px] text-[var(--text-tertiary)] leading-tight mt-0.5 truncate" title={tileDesc}>
+                            {tileDesc}
                           </div>
                         </div>
-                        {/* Smooth non-reflowing active dot indicator */}
+                        {/* Animated selection indicator dot with smooth spring pop */}
                         <div
-                          className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--accent-bg)] transition-all duration-200 pointer-events-none ${
-                            isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                          className={`cat-indicator-dot absolute top-2.5 right-2.5 w-2 h-2 rounded-full pointer-events-none ${
+                            isSelected ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
                           }`}
                         />
                       </button>
@@ -412,14 +391,34 @@ export default function JoinRoom() {
                 </div>
               </div>
 
-              {/* Universal Hex Grid Location Bar or Custom Poll Builder */}
+              {/* Universal Hex Grid Location Bar or Custom Poll Config Summary Bar */}
               {selectedCategory === 'Custom' ? (
-                <CustomPollBuilder
-                  topic={customTopic}
-                  setTopic={setCustomTopic}
-                  customOptions={customOptions}
-                  setCustomOptions={setCustomOptions}
-                />
+                <div
+                  onClick={() => {
+                    triggerHaptic('tap');
+                    setIsCustomDrawerOpen(true);
+                  }}
+                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                      <ListPlus size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-bg)] transition-colors">
+                        {customTopic.trim() ? customTopic.trim() : t('catCustomTopic')}
+                      </div>
+                      <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+                        {customOptions.length > 0
+                          ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready • Tap to edit`
+                          : 'Configure question & options'}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] group-hover:bg-[var(--accent-bg)] group-hover:text-white transition-all shrink-0">
+                    {customOptions.length > 0 ? (t('change') || 'Edit') : (t('customAddBtn') || 'Setup')}
+                  </span>
+                </div>
               ) : (
                 <div
                   onClick={() => setIsLocationModalOpen(true)}
@@ -449,75 +448,21 @@ export default function JoinRoom() {
                 variant="primary"
                 size="md"
                 onClick={handleStartRoom}
-                disabled={loading || (isCustomMode && (!customTopic.trim() || customTopic.trim().length < 2))}
-                loading={loading}
+                disabled={isCreatingRoom}
+                loading={isCreatingRoom}
                 icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1 disabled:opacity-50 disabled:shadow-none"
+                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
               >
                 {t('createRoomBtn')}
               </Button>
             </div>
           ) : (
             /* TAB 2: JOIN WITH 4-DIGIT PIN */
-            <form onSubmit={handleJoin} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between px-1">
-                  <label className="text-xs font-semibold text-[var(--text-secondary)]">
-                    {t('roomCodeLabel')}
-                  </label>
-                  <span className="text-[11px] text-[var(--text-tertiary)]">
-                    {t('roomCodeHint')}
-                  </span>
-                </div>
-
-                {/* 4 PIN Input Boxes */}
-                <div className="grid grid-cols-4 gap-2.5" onPaste={handlePaste}>
-                  {pinDigits.map((digit, index) => (
-                    <input
-                      key={index}
-                      ref={digitInputRefs[index]}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleDigitChange(index, e.target.value)}
-                      onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                      className={`w-full h-14 text-center font-bold text-2xl rounded-2xl border transition-all duration-150 outline-none select-all tabular-nums ${
-                        digit
-                          ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]'
-                          : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)]'
-                      }`}
-                      aria-label={`Digit ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {pin.length === 4 && (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                  <div className="flex items-center gap-1.5">
-                    <Check size={15} className="shrink-0 text-emerald-500" />
-                    <span>{t('roomReadyPrefix')} #{pin} {t('roomReadySuffix')}</span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
-                    {t('ready')}
-                  </span>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                disabled={pin.length !== 4 || loading}
-                loading={loading}
-                icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
-              >
-                {t('joinRoomBtn')}
-              </Button>
-            </form>
+            <JoinPinForm
+              initialPin={searchParams.get('pin') || ''}
+              onJoin={executeJoin}
+              loading={isJoiningRoom}
+            />
           )}
         </div>
 
@@ -528,7 +473,11 @@ export default function JoinRoom() {
               <Clock size={15} className="text-[var(--text-tertiary)] shrink-0" />
               <div className="text-xs truncate">
                 <span className="text-[var(--text-tertiary)]">{t('lastWinnerPrefix')}: </span>
-                <span className="font-bold text-[var(--text-primary)]">{recentSession.winner || 'Recent Spot'}</span>
+                <span className="font-bold text-[var(--text-primary)]">
+                  {typeof recentSession.winner === 'object' && recentSession.winner !== null
+                    ? recentSession.winner.name || recentSession.winner.id || 'Recent Spot'
+                    : String(recentSession.winner || 'Recent Spot')}
+                </span>
               </div>
             </div>
             <button
@@ -561,7 +510,17 @@ export default function JoinRoom() {
         onSelectLocation={(loc) => {
           saveUserLocation(loc);
           setGpsState(loc);
+          setIsLocationModalOpen(false);
         }}
+      />
+
+      <CustomPollDrawer
+        isOpen={isCustomDrawerOpen}
+        onClose={() => setIsCustomDrawerOpen(false)}
+        topic={customTopic}
+        setTopic={setCustomTopic}
+        customOptions={customOptions}
+        setCustomOptions={setCustomOptions}
       />
     </div>
   );

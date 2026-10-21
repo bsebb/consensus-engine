@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
-import Button from '../components/ui/Button';
 import SettingsModal from '../components/ui/SettingsModal';
 import QrCodeModal from '../components/ui/QrCodeModal';
 import StepZeroVault from '../components/lobby/StepZeroVault';
 import CandidatePoolDeck from '../components/lobby/CandidatePoolDeck';
 import LobbyRoster from '../components/lobby/LobbyRoster';
 import LobbyHeader from '../components/lobby/LobbyHeader';
+import LobbyDock from '../components/lobby/LobbyDock';
 import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
@@ -144,16 +143,11 @@ export default function RoomLobby() {
 
   useEffect(() => {
     if (pin) localStorage.setItem('consensus_active_pin', pin);
-
     const handleBeforeUnload = () => {
-      if (pin && participantId) {
-        emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
-      }
+      if (pin && participantId) emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
     };
-
     window.addEventListener('pagehide', handleBeforeUnload);
     window.addEventListener('beforeunload', handleBeforeUnload);
-
     return () => {
       window.removeEventListener('pagehide', handleBeforeUnload);
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -165,10 +159,10 @@ export default function RoomLobby() {
     if (pin) {
       emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
       emit('leave_room', { pin, participant_id: participantId });
-      localStorage.removeItem('consensus_active_pin');
-      sessionStorage.removeItem('consensus_active_pin');
-      sessionStorage.removeItem(`consensus_host_${pin}`);
-      sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
+      ['consensus_active_pin', `consensus_host_${pin}`, `consensus_pause_voting_${pin}`].forEach((k) => {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      });
     }
     navigate('/');
   };
@@ -202,48 +196,43 @@ export default function RoomLobby() {
     onTransitionToDeck: handleTransitionToDeck,
     locationState: location.state,
     lockedConstraint,
-    budgetLimit,
-    setMode,
-    setTopic,
-    setGroupSize,
-    setGroupPool,
-    setParticipants,
-    setVisiblePlacesCount,
-    setRemovedPlaceIds,
-    setRealOptions,
-    navigate,
-    emit,
-    on,
-    off,
-    addToast,
+    budgetLimit, setMode, setTopic, setGroupSize, setGroupPool,
+    setParticipants, setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions,
+    navigate, emit, on, off, addToast,
   });
 
   const handleCopyPin = async () => {
     try {
       await navigator.clipboard.writeText(pin);
-      triggerHaptic('tap');
+      triggerHaptic('like');
       setCopied(true);
-      addToast({ title: 'Room Code Copied', message: `Code #${pin} copied to clipboard`, type: 'success' });
+      addToast({ title: 'Room Code Copied', message: `#${pin} copied to clipboard`, type: 'success' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      addToast({ title: 'Room Code', message: `Share code ${pin} with your friends`, type: 'info' });
+      addToast({ title: 'Room Code', message: `Share code #${pin} with your friends`, type: 'info' });
     }
   };
 
   const handleShareInvite = async () => {
     const inviteUrl = `${window.location.origin}/?pin=${pin}`;
-    if (navigator.share) {
+    triggerHaptic('tap');
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        triggerHaptic('tap');
-        await navigator.share({ title: `Join Room #${pin}`, text: `Vote on "${topic}" with me!`, url: inviteUrl });
+        await navigator.share({
+          title: `Join Consensus Room #${pin}`,
+          text: `Vote on "${topic}" with me on NoYouPick!`,
+          url: inviteUrl,
+        });
         return;
-      } catch {}
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
     }
     try {
       await navigator.clipboard.writeText(inviteUrl);
-      triggerHaptic('tap');
+      triggerHaptic('like');
       setCopied(true);
-      addToast({ title: 'Invite Link Copied', message: 'Paste the link in your group chat!', type: 'success' });
+      addToast({ title: 'Invite Link Copied', message: 'Invite link copied to clipboard. Share it with your friends!', type: 'success' });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       handleCopyPin();
@@ -471,6 +460,20 @@ export default function RoomLobby() {
     });
   };
 
+  // Keyboard shortcut: Enter, Space, or ArrowRight launches voting for host
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+      if (isInput || settingsOpen || qrModalOpen) return;
+      if ((e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') && isHost && displayedCandidates.length >= 2 && !isVotingActive) {
+        e.preventDefault();
+        handleStartVoting();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isHost, displayedCandidates.length, isVotingActive, settingsOpen, qrModalOpen]);
+
   if (!pin) {
     return <NoActiveLobbyView navigate={navigate} setSettingsOpen={setSettingsOpen} />;
   }
@@ -482,7 +485,11 @@ export default function RoomLobby() {
         copied={copied}
         onLeave={handleLeaveLobby}
         onCopyPin={handleCopyPin}
+        onShare={handleShareInvite}
         onOpenSettings={() => setSettingsOpen(true)}
+        topic={topic}
+        participants={participants}
+        isConnected={isConnected}
       />
 
       {showReconnecting && (
@@ -550,41 +557,14 @@ export default function RoomLobby() {
       </main>
 
       {/* Fixed Bottom Start Action Bar */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/85 backdrop-blur-xl border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(0,0,0,0.15)]">
-        <div className="max-w-md mx-auto">
-          {isVotingActive ? (
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              onClick={handleResumeVoting}
-              icon={ArrowRight}
-              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl active:scale-[0.98] transition-transform bg-emerald-600 hover:bg-emerald-500 text-white"
-            >
-              {t('resumeVoting')}
-            </Button>
-          ) : isHost ? (
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              onClick={handleStartVoting}
-              icon={ArrowRight}
-              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl active:scale-[0.98] transition-transform"
-            >
-              {t('startVoting')} • {displayedCandidates.length}{' '}
-              {mode === 'CUSTOM' ? t('optionsSuffix') : t('placesSuffix')}
-            </Button>
-          ) : (
-            <div className="py-2.5 px-4 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-center flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-xs font-semibold text-[var(--text-primary)]">
-                {t('waitingFriendsTitle')}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
+      <LobbyDock
+        isVotingActive={isVotingActive}
+        isHost={isHost}
+        candidateCount={displayedCandidates.length}
+        mode={mode}
+        onResumeVoting={handleResumeVoting}
+        onStartVoting={handleStartVoting}
+      />
 
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <QrCodeModal isOpen={qrModalOpen} onClose={() => setQrModalOpen(false)} pin={pin} topic={topic} />

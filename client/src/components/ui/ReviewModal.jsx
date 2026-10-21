@@ -108,6 +108,7 @@ export default function ReviewModal({
             <button
               type="button"
               onClick={handleClose}
+              aria-label="Close"
               className="p-1.5 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X size={18} />

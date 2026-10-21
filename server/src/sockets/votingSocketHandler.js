@@ -70,6 +70,7 @@ function registerVotingSocketHandlers(io, socket, store) {
 
       const topic = lobby?.topic || data?.topic || 'Where should we go?';
       const mode = lobby?.mode || data?.mode || 'DISCOVERY';
+      const arenaMode = data?.arenaMode || 'speed_swipe';
       const expectedCount = lobby && lobby.size > 0 ? lobby.size : 1;
       activeVotingSessions.set(pin, {
         pin,
@@ -81,6 +82,7 @@ function registerVotingSocketHandlers(io, socket, store) {
         hostId: callerId,
         topic,
         mode,
+        arenaMode,
       });
 
       io.to(pin).emit('voting_started', {
@@ -88,6 +90,7 @@ function registerVotingSocketHandlers(io, socket, store) {
         options: roomOptions,
         topic,
         mode,
+        arenaMode,
         total_participants: expectedCount,
       });
 
@@ -153,6 +156,7 @@ function registerVotingSocketHandlers(io, socket, store) {
         voted_participants: votedCount,
         total_participants: totalCount,
         votes_received: votedCount,
+        voted_participant_ids: Array.from(session.submissions.keys()),
       });
 
       if (votedCount >= totalCount && !session.isResolved) {
@@ -231,6 +235,7 @@ function registerVotingSocketHandlers(io, socket, store) {
             voted_participants: session.submissions.size,
             total_participants: session.expectedCount,
             votes_received: session.submissions.size,
+            voted_participant_ids: Array.from(session.submissions.keys()),
           });
         }
       }
@@ -305,6 +310,40 @@ function registerVotingSocketHandlers(io, socket, store) {
       }, 10000);
 
       disconnectTimeouts.set(dcKey, timeout);
+    }
+  });
+
+  socket.on('send_reaction', (data) => {
+    try {
+      const { pin, emoji, user_name, participant_id } = data || {};
+      if (!pin || !emoji) return;
+      io.to(pin).emit('reaction_received', {
+        id: `rx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        pin,
+        emoji: String(emoji).slice(0, 16),
+        user_name: String(user_name || socket.data.userName || 'Friend').slice(0, 40),
+        participant_id: participant_id || socket.data.participantId,
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      console.error('[Socket] send_reaction error in voting:', err?.message);
+    }
+  });
+
+  socket.on('voting_step_progress', (data) => {
+    try {
+      const { pin, participant_id, user_name, current_index, total_count } = data || {};
+      if (!pin || !participant_id) return;
+      io.to(pin).emit('participant_step_progress', {
+        pin,
+        participant_id,
+        user_name: String(user_name || socket.data.userName || 'Friend').slice(0, 40),
+        current_index: Number(current_index) || 0,
+        total_count: Number(total_count) || 0,
+        cards_remaining: Math.max(0, (Number(total_count) || 0) - (Number(current_index) || 0)),
+      });
+    } catch (err) {
+      console.error('[Socket] voting_step_progress error in voting:', err?.message);
     }
   });
 }

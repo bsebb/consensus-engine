@@ -17,9 +17,8 @@ import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
 import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
-import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from '../utils/customOptionService';
 import { filterOutReportedVenues } from '../utils/reportedVenuesClient';
-import { parseGooglePlaceMetadata } from '../utils/roomOptionsParser';
+import { parseGooglePlaceMetadata, buildInitialSwipeCards } from '../utils/roomOptionsParser';
 
 const DEFAULT_WINNER = {
   id: 'winner_default', name: 'Consensus Spot', category: 'Local Favorites',
@@ -41,70 +40,15 @@ export default function SwipeDeck() {
     location.state?.isHost ||
     (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
   );
+  const currentUserName = location.state?.userName || localStorage.getItem('consensus_user_name') || 'Friend';
 
   useEffect(() => {
     if (pin) localStorage.setItem('consensus_active_pin', pin);
   }, [pin]);
 
-  const [cards, setCards] = useState(() => {
-    const savedGps = getSavedExactGps();
-    if (location.state?.customCards && Array.isArray(location.state.customCards) && location.state.customCards.length > 0) {
-      const initialCards = location.state.customCards.map((item, idx) => {
-        if (typeof item === 'string') {
-          return {
-            id: `custom-${idx}`,
-            name: item,
-            category: 'Custom Poll Option',
-            tags: ['Custom'],
-            distance_km: null,
-            price_level: 2,
-            address: '',
-            photo_url: resolveCuratedOptionPhoto(item),
-            isCustom: true,
-          };
-        }
-        const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
-        const liveDist = isCustomItem ? null : typeof item.distance_km === 'number' ? item.distance_km : savedGps && item.lat != null && item.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng) : null;
-        return {
-          id: item.id || `option-${idx}`,
-          name: item.name || `Option ${idx + 1}`,
-          category: isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite'),
-          tags: item.tags || ['Top Pick'],
-          distance_km: liveDist,
-          drive_minutes: isCustomItem ? null : (item.drive_minutes ?? null),
-          walk_minutes: isCustomItem ? null : (item.walk_minutes ?? null),
-          lat: isCustomItem ? null : (item.lat ?? null),
-          lng: isCustomItem ? null : (item.lng ?? null),
-          price_level: typeof item.price_level === 'number' ? item.price_level : 2,
-          address: isCustomItem ? '' : (item.address || 'Local Venue'),
-          photo_url: item.photo_url || (isCustomItem ? resolveCuratedOptionPhoto(item.name) : null),
-          isCustom: isCustomItem,
-        };
-      });
-      return filterOutReportedVenues(deduplicateVenues(initialCards));
-    }
-
-    if (mode === 'CUSTOM') {
-      const defaultSeeds = getDefaultSeedOptions(topic);
-      return defaultSeeds.map((name, idx) => ({
-        id: `c${idx + 1}`,
-        name,
-        category: 'Custom Poll Option',
-        tags: ['Custom'],
-        distance_km: null,
-        price_level: 2,
-        address: '',
-        photo_url: resolveCuratedOptionPhoto(name),
-        isCustom: true,
-      }));
-    }
-
-    return filterOutReportedVenues((restaurantsMock || []).map((r) => ({
-      ...r,
-      distance_km: savedGps && r.lat != null && r.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng) : null,
-      isCustom: false,
-    })));
-  });
+  const [cards, setCards] = useState(() =>
+    buildInitialSwipeCards({ locationState: location.state, mode, topic, mockPool: restaurantsMock })
+  );
 
   useEffect(() => {
     if (!location.state?.customCards && pin) {
@@ -163,6 +107,7 @@ export default function SwipeDeck() {
   const [activeTab, setActiveTab] = useState('swipe');
   const [myVotes, setMyVotes] = useState([]);
   const [exitDirection, setExitDirection] = useState(null);
+  const [enterDirection, setEnterDirection] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showWinner, setShowWinner] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -228,7 +173,7 @@ export default function SwipeDeck() {
   const rafId = useRef(null);
 
   const handleVote = useCallback((score) => {
-    if (currentIndex >= cards.length || exitDirection) return;
+    if (currentIndex >= cards.length || exitDirection || enterDirection) return;
     const dir = score === 1 ? 'right' : score === -100 ? 'down' : score === 2 ? 'up' : 'left';
     setExitDirection(dir);
     setIsDragging(false);
@@ -237,12 +182,36 @@ export default function SwipeDeck() {
 
     setTimeout(() => {
       const current = cards[currentIndex];
-      setMyVotes((prev) => [...prev, { option_id: current.id, name: current.name, score }]);
-      setCurrentIndex((prev) => prev + 1);
+      setMyVotes((prev) => [...prev, { option_id: current.id, name: current.name, score, direction: dir }]);
+      const nextIdx = currentIndex + 1;
+      setCurrentIndex(nextIdx);
       setExitDirection(null);
       setDragOffset({ x: 0, y: 0 });
-    }, 200);
-  }, [cards, currentIndex, exitDirection]);
+
+      if (pin && typeof emit === 'function') {
+        emit('voting_step_progress', {
+          pin,
+          participant_id: participantId,
+          user_name: currentUserName,
+          current_index: nextIdx,
+          total_count: cards.length,
+        });
+      }
+    }, 220);
+  }, [cards, currentIndex, exitDirection, enterDirection, pin, emit, participantId, currentUserName]);
+
+  const handleUndo = useCallback(() => {
+    if (currentIndex <= 0 || exitDirection || enterDirection) return;
+    const lastVote = myVotes[myVotes.length - 1];
+    const prevDir = lastVote?.direction || (lastVote?.score === 1 ? 'right' : lastVote?.score === -100 ? 'down' : lastVote?.score === 2 ? 'up' : 'left');
+    triggerHaptic('tap');
+    setEnterDirection(prevDir);
+    setMyVotes((prev) => prev.slice(0, -1));
+    setCurrentIndex((prev) => Math.max(0, prev - 1));
+    setDragOffset({ x: 0, y: 0 });
+    setActiveTab('swipe');
+    setTimeout(() => setEnterDirection(null), 360);
+  }, [currentIndex, exitDirection, enterDirection, myVotes]);
 
   const handlePointerDown = (e) => {
     if (exitDirection || currentIndex >= cards.length) return;
@@ -293,14 +262,24 @@ export default function SwipeDeck() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (currentIndex >= cards.length || showWinner) return;
+      const targetTag = e.target?.tagName?.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'textarea' || e.target?.isContentEditable) return;
+
       if (e.key === 'ArrowRight') { e.preventDefault(); handleVote(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); handleVote(-1); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); handleVote(-100); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); handleVote(2); }
+      else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') {
+        if (currentIndex > 0) { e.preventDefault(); handleUndo(); }
+      }
+      else if (e.key === 'd' || e.key === 'D' || e.key === 'i' || e.key === 'I') {
+        e.preventDefault();
+        setActiveTab((prev) => (prev === 'details' ? 'swipe' : 'details'));
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, cards.length, showWinner, handleVote]);
+  }, [currentIndex, cards.length, showWinner, handleVote, handleUndo]);
 
   useSwipeDeckSync({
     pin,
@@ -327,13 +306,7 @@ export default function SwipeDeck() {
     sessionStorage.setItem(`consensus_pause_voting_${pin}`, 'true');
     setLeaveModalOpen(false);
     navigate(`/lobby/${pin}`, {
-      state: {
-        pausedVoting: true,
-        isHost: Boolean(isHost),
-        userName: location.state?.userName,
-        mode,
-        topic,
-      },
+      state: { pausedVoting: true, isHost: Boolean(isHost), userName: location.state?.userName, mode, topic },
     });
   };
 
@@ -426,21 +399,15 @@ export default function SwipeDeck() {
         }));
 
         const entry = {
-          pin,
-          topic,
-          winner: consensusResult.winner.name,
+          pin, topic, winner: consensusResult.winner.name,
           winnerDetails: {
-            name: consensusResult.winner.name,
-            priceLevel: consensusResult.winner.price_level || 2,
-            distanceKm: consensusResult.winner.distance_km ?? null,
-            address: consensusResult.winner.address || 'Local Venue',
+            name: consensusResult.winner.name, priceLevel: consensusResult.winner.price_level || 2,
+            distanceKm: consensusResult.winner.distance_km ?? null, address: consensusResult.winner.address || 'Local Venue',
             matchScore: consensusResult.matchScore || 94,
           },
-          options: optionsList,
-          pairwiseDuels: pairwiseBreakdown,
+          options: optionsList, pairwiseDuels: pairwiseBreakdown,
           date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          participantsCount: totalParticipants,
-          priceLevel: consensusResult.winner.price_level || 2,
+          participantsCount: totalParticipants, priceLevel: consensusResult.winner.price_level || 2,
         };
         const existingIdx = history.findIndex((h) => h.pin === pin);
         if (existingIdx !== -1) {
@@ -515,6 +482,7 @@ export default function SwipeDeck() {
           pin={pin}
           participantId={participantId}
           emit={emit}
+          vetoCount={consensusResult.vetoCount}
         />
       ) : currentIndex >= cards.length ? (
         <WaitingForBallotsView
@@ -523,42 +491,47 @@ export default function SwipeDeck() {
           quorumTotal={quorumTotal}
           handleHostForceReveal={handleHostForceReveal}
         />
-      ) : activeTab === 'details' && mode !== 'CUSTOM' && !activeCard?.isCustom ? (
-        <main className="px-3.5 py-1 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
+      ) : (
+        <>
+          <SwipeCard
+            mode={mode}
+            topic={topic}
+            cardIndex={currentIndex + 1}
+            totalCards={cards.length}
+            activeCard={activeCard}
+            dragOffset={dragOffset}
+            exitDirection={exitDirection}
+            enterDirection={enterDirection}
+            isDragging={isDragging}
+            handlePointerDown={handlePointerDown}
+            handlePointerMove={handlePointerMove}
+            handlePointerUp={handlePointerUp}
+            handlePointerCancel={handlePointerCancel}
+            cardRating={cardRating}
+            cardReviewCount={cardReviewCount}
+            cardPriceDesc={cardPriceDesc}
+            cardWalkDesc={cardWalkDesc}
+            onOpenDetails={() => setActiveTab('details')}
+          />
+
           <VenueDetailsModal
             key={activeCard?.id || activeCard?.name || 'swipedeck-venue-modal'}
             venue={activeCard}
-            isOpen={true}
-            inline={true}
+            isOpen={activeTab === 'details'}
             onClose={() => setActiveTab('swipe')}
+            onVote={handleVote}
             onReportClosed={handleReportClosedCard}
           />
-        </main>
-      ) : (
-        <SwipeCard
-          mode={mode}
-          topic={topic}
-          cardIndex={currentIndex + 1}
-          totalCards={cards.length}
-          activeCard={activeCard}
-          dragOffset={dragOffset}
-          exitDirection={exitDirection}
-          isDragging={isDragging}
-          handlePointerDown={handlePointerDown}
-          handlePointerMove={handlePointerMove}
-          handlePointerUp={handlePointerUp}
-          handlePointerCancel={handlePointerCancel}
-          cardRating={cardRating}
-          cardReviewCount={cardReviewCount}
-          cardPriceDesc={cardPriceDesc}
-          cardWalkDesc={cardWalkDesc}
-          onOpenDetails={mode === 'CUSTOM' || activeCard?.isCustom ? null : () => setActiveTab('details')}
-        />
+        </>
       )}
 
       {/* Floating Tactical Control Dock */}
       {!showWinner && currentIndex < cards.length && (
-        <SwipeControls handleVote={handleVote} />
+        <SwipeControls
+          handleVote={handleVote}
+          handleUndo={handleUndo}
+          canUndo={currentIndex > 0}
+        />
       )}
 
       {/* Review Modal Portal */}

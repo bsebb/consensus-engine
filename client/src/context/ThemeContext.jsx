@@ -2,11 +2,17 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 export const ACCENTS = [
-  { id: 'coral', name: 'Flame Coral', color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)' },
-  { id: 'violet', name: 'Cyber Violet', color: '#8B5CF6', hover: '#7C3AED', glow: 'rgba(139, 92, 246, 0.28)' },
-  { id: 'emerald', name: 'Neon Mint', color: '#10B981', hover: '#059669', glow: 'rgba(16, 185, 129, 0.28)' },
-  { id: 'blue', name: 'Ocean Sapphire', color: '#3B82F6', hover: '#2563EB', glow: 'rgba(59, 130, 246, 0.28)' },
-  { id: 'amber', name: 'Sunset Gold', color: '#F59E0B', hover: '#D97706', glow: 'rgba(245, 158, 11, 0.28)' },
+  { id: 'coral', name: 'Coral', color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)' },
+  { id: 'violet', name: 'Violet', color: '#8B5CF6', hover: '#7C3AED', glow: 'rgba(139, 92, 246, 0.28)' },
+  { id: 'emerald', name: 'Emerald', color: '#10B981', hover: '#059669', glow: 'rgba(16, 185, 129, 0.28)' },
+  { id: 'blue', name: 'Blue', color: '#3B82F6', hover: '#2563EB', glow: 'rgba(59, 130, 246, 0.28)' },
+  { id: 'amber', name: 'Amber', color: '#F59E0B', hover: '#D97706', glow: 'rgba(245, 158, 11, 0.28)' },
+];
+
+export const APPEARANCE_MODES = [
+  { id: 'dark', name: 'Dark' },
+  { id: 'light', name: 'Light' },
+  { id: 'system', name: 'System' },
 ];
 
 const ThemeContext = createContext();
@@ -60,7 +66,7 @@ export function ThemeProvider({ children }) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const willBeDark = newTheme === 'dark' || (newTheme === 'system' && mediaQuery.matches);
 
-    // Synchronized 280ms theme transition across all surfaces, text, and borders
+    // Synchronized 300ms theme transition across all surfaces, text, and borders
     root.classList.add('theme-transitioning');
 
     setTheme(newTheme);
@@ -73,7 +79,7 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('app-theme', newTheme);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute('content', willBeDark ? '#111113' : '#f7f5f0');
+      meta.setAttribute('content', willBeDark ? '#111113' : '#fafafa');
     }
 
     setTimeout(() => {

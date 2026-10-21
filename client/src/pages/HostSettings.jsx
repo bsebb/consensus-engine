@@ -253,22 +253,26 @@ export default function HostSettings() {
     <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
       {/* Consumer Mobile Header with Progress Hairline */}
       <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 relative">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
-            aria-label={t('back')}
-          >
-            <ArrowLeft size={15} />
-            <span>{t('back')}</span>
-          </button>
+        <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[36px]">
+          <div className="flex items-center z-10">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
+              aria-label={t('back')}
+            >
+              <ArrowLeft size={15} />
+              <span>{t('back')}</span>
+            </button>
+          </div>
 
-          <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
-            {t('createRoomBtn')}
-          </h1>
+          <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center z-10 pointer-events-none">
+            <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+              {t('createRoomBtn')}
+            </h1>
+          </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 z-10">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}

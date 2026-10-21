@@ -26,6 +26,8 @@ export const en = {
   roomCodeHint: 'Shared by your host',
   roomReadyPrefix: 'Room',
   roomReadySuffix: 'ready to join',
+  roomNotFound: 'Room Not Found',
+  roomNotFoundDesc: 'No room found with code #{pin}. Check with your host.',
   lastWinnerPrefix: 'Last winner',
   seeAll: 'See All',
   footerSubtext: 'Decide where to go in 30 seconds',
@@ -37,15 +39,15 @@ export const en = {
 
   catCafes: 'Coffee & Cafes',
   catCafesDesc: 'Coffee & brunch',
-  catCafesTopic: 'Where are we grabbing coffee?',
+  catCafesTopic: 'Where to for coffee?',
 
   catBars: 'Bars & Pubs',
   catBarsDesc: 'Drinks & craft',
-  catBarsTopic: 'Where are we getting drinks?',
+  catBarsTopic: 'Where to for drinks?',
 
   catCinema: 'Cinema',
   catCinemaDesc: 'Movies & shows',
-  catCinemaTopic: 'Which cinema are we going to?',
+  catCinemaTopic: 'Which cinema to pick?',
 
   catDesserts: 'Desserts',
   catDessertsDesc: 'Gelato & sweets',
@@ -126,6 +128,8 @@ export const en = {
   startVoting: 'Start Voting',
   placesSuffix: 'Places',
   optionsSuffix: 'Options',
+  placesLabel: 'places',
+  optionsLabel: 'options',
   copied: 'Copied',
   shareQr: 'Show QR Code',
   shareLink: 'Copy Room Code',
@@ -158,6 +162,7 @@ export const en = {
   swipeLeftHint: 'Swipe left to pass',
   waitingFriendsTitle: 'Waiting for friends...',
   waitingFriendsDesc: 'Hold tight while everyone casts their ranked votes.',
+  hostPreparingTable: 'Host is preparing the table...',
   calculatingConsensus: 'Calculating Schulze Consensus...',
 
   // Leave & Pause Voting
@@ -180,6 +185,10 @@ export const en = {
   runnerUpsTitle: 'Runner-ups',
   startAnotherPick: 'Start Another Pick',
   shareWinnerBtn: 'Share Winner',
+  shareWinner: 'Share Result with Group',
+  match: 'Match',
+  linkCopied: 'Link copied to clipboard',
+  hostSettingTable: 'Host is setting the table...',
   groupMatch: 'Group Match',
   votingResult: 'Voting Result',
   condorcetWinner: 'Condorcet Winner',
@@ -235,6 +244,8 @@ export const en = {
   closedReportedDesc: 'Excluded from your candidate options.',
 
   // Operational Stages
+  preparingTable: 'Setting up your table...',
+  preparingPoll: 'Preparing poll options...',
   stageGeo: 'Triangulating closest verified spots...',
   stageFilter: 'Eliminating closed spots & ghost listings...',
   stageRouting: 'Calculating real street travel times...',
@@ -287,5 +298,33 @@ export const en = {
   winningGroupPick: 'Winning Group Pick',
   consensusChoice: 'Consensus Choice',
   winningPollOption: 'Winning Poll Option',
+
+  // Sheet Fallback Keys
+  'common.retry': 'Retry',
+  'error.generic': 'Something went wrong',
+  'error.offline': 'You appear to be offline',
+  'join.hint': 'Enter the 4-digit room code',
+  'join.notFound': 'Room not found',
+  'join.title': 'Join Room',
+  'location.current': 'Current Location',
+  'location.placeholder': 'Search address or place...',
+  'location.popular': 'Popular Places',
+  'location.title': 'Choose Location',
+  'price.any': 'Any Price',
+  'room.endedTitle': 'Voting has concluded',
+  'setup.addOption': 'Add Option',
+  'setup.finding': 'Finding spots nearby...',
+  'setup.near': 'Near you',
+  'setup.optionsHeader': 'Options',
+  'setup.optionsHint': 'Add choices for your group',
+  'setup.price': 'Price Filter',
+  'setup.qExample1': 'Where should we go tonight?',
+  'setup.qExample2': 'What movie should we watch?',
+  'setup.qExample3': 'Which board game to play?',
+  'setup.questionHeader': 'Question',
+  'setup.start': 'Start Pick',
+  'setup.startHint': 'Invite friends to vote',
+  'setup.startHintCustom': 'Invite friends to vote on your options',
+  'setup.stillLooking': 'Still looking for spots...',
 };
 

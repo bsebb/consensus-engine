@@ -203,13 +203,6 @@ export default function CustomOptionAutocomplete({
         </Button>
       </form>
 
-      {duplicateMatch && (
-        <div className="flex items-center gap-1.5 text-xs text-[var(--status-warning)] bg-[rgba(245,158,11,0.12)] px-2.5 py-1.5 rounded-lg mt-2">
-          <AlertTriangle size={14} />
-          <span>Already on the table: "{duplicateMatch}"</span>
-        </div>
-      )}
-
       {/* Autocomplete Dropdown Popover */}
       {isOpen && !disabled && (suggestions.length > 0 || (cleanQuery && !hasExactMatch)) && (
         <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-[var(--bg-elevated)]/95 backdrop-blur-md border border-[var(--border-main)] rounded-2xl shadow-xl overflow-hidden max-h-72 flex flex-col animate-popover">

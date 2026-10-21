@@ -3,13 +3,13 @@
 
 @layer base {
   :root {
-    --bg-root: #f7f5f0;
+    --bg-root: #fafafa;
     --bg-surface: #ffffff;
     --bg-elevated: #ffffff;
-    --bg-inset: #efece6;
-    --border-main: rgba(24, 24, 27, 0.08);
-    --border-subtle: rgba(24, 24, 27, 0.05);
-    --border-glass: rgba(24, 24, 27, 0.08);
+    --bg-inset: #f4f4f6;
+    --border-main: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.05);
+    --border-glass: rgba(0, 0, 0, 0.08);
     
     --text-primary: #18181b;
     --text-secondary: #52525b;
@@ -96,6 +96,15 @@
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+  }
+
+  #root {
+    min-height: 100dvh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   /* Sleek modern scrollbars */
@@ -204,10 +213,78 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes cardFlyInRight {
+  0% { transform: translate3d(140%, 0, 0) rotate(16deg); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+}
+
+@keyframes cardFlyInLeft {
+  0% { transform: translate3d(-140%, 0, 0) rotate(-16deg); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+}
+
+@keyframes cardFlyInUp {
+  0% { transform: translate3d(0, -140%, 0) scale(0.92); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+}
+
+@keyframes cardFlyInDown {
+  0% { transform: translate3d(0, 140%, 0) scale(0.92); opacity: 0; }
+  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+}
+
+@keyframes matchBadgeGlow {
+  0%, 100% { box-shadow: 0 0 14px rgba(16, 185, 129, 0.25); }
+  50% { box-shadow: 0 0 28px rgba(16, 185, 129, 0.55); }
+}
+
 @keyframes checkmarkPop {
   0% { transform: scale(0); opacity: 0; }
   70% { transform: scale(1.15); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes reactionFloat {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.5) rotate(0deg);
+  }
+  16% {
+    opacity: 1;
+    transform: translate3d(var(--rx-drift-x, 0px), -36px, 0) scale(1.22) rotate(var(--rx-rot, 4deg));
+  }
+  75% {
+    opacity: 0.95;
+    transform: translate3d(calc(var(--rx-drift-x, 0px) * 1.4), -140px, 0) scale(1.05) rotate(calc(var(--rx-rot, 4deg) * -1));
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(var(--rx-drift-x, 0px) * 1.8), -210px, 0) scale(0.8) rotate(var(--rx-rot, 4deg));
+  }
+}
+
+@keyframes avatarPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateY(8px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.15) translateY(-2px);
+  }
+  85% {
+    transform: scale(0.96) translateY(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20%, 60% { transform: translate3d(-6px, 0, 0); }
+  40%, 80% { transform: translate3d(6px, 0, 0); }
 }
 
 /* iOS Presentation Classes */
@@ -220,6 +297,17 @@
 .animate-sheet-down { animation: sheetSlideDown 0.22s ease-in forwards; }
 .animate-popover { animation: popoverIn 0.18s var(--spring-smooth) forwards; }
 .animate-checkmark-pop { animation: checkmarkPop 0.22s var(--spring-smooth) forwards; }
+.animate-card-fly-in-right { animation: cardFlyInRight 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-card-fly-in-left { animation: cardFlyInLeft 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-card-fly-in-up { animation: cardFlyInUp 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-card-fly-in-down { animation: cardFlyInDown 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-match-badge-glow { animation: matchBadgeGlow 2.4s ease-in-out infinite; }
+.animate-shake { animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+
+/* Apple Pro-Grade Drawer Handle Height */
+.h-1\.2 {
+  height: 5px;
+}
 
 /* Unified iOS Modal Backdrop Scrim */
 .modal-backdrop-ios {
@@ -231,18 +319,26 @@
   backface-visibility: hidden;
 }
 
-/* Universal Synchronized Theme Crossfade: 100% Uniform, Smooth, Pleasant */
+/* Universal Synchronized Theme Crossfade: Smooth, Flicker-Free */
 html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
+html.theme-transitioning * {
   transition:
-    background-color 0.28s cubic-bezier(0.2, 0, 0, 1),
-    color 0.28s cubic-bezier(0.2, 0, 0, 1),
-    border-color 0.28s cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 0.28s cubic-bezier(0.2, 0, 0, 1),
-    fill 0.28s cubic-bezier(0.2, 0, 0, 1),
-    stroke 0.28s cubic-bezier(0.2, 0, 0, 1) !important;
+    background-color 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    fill 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    stroke 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Ensure the sliding thumb synchronizes theme colors alongside the rest of the UI while preserving its spring transform */
+html.theme-transitioning [data-sliding-thumb] {
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.15s ease !important;
 }
 
 /* Mobile PWA Shell */
@@ -300,7 +396,7 @@ html.theme-transitioning *::after {
 
 /* Bulletproof iOS Safe Area Inset Helpers with Hardware Notch/Island Floor */
 .safe-pt-page {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 4.5rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 3.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-page {
@@ -308,7 +404,7 @@ html.theme-transitioning *::after {
   }
 }
 .safe-pt-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 4.5rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 3.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-header {
@@ -423,4 +519,193 @@ button:active:not(:disabled),
   background: var(--accent-bg);
   border-radius: 9999px;
   transition: width 0.35s var(--spring-smooth);
+}
+
+/* Bento Category Tile Micro-Interactions */
+.category-tile {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              background-color 0.2s ease;
+}
+.category-tile:hover {
+  transform: scale(1.01);
+}
+.category-tile:active {
+  transform: scale(0.98);
+}
+
+/* Ambient Back-Glow Themes */
+.category-tile[data-theme="restaurants"]:hover,
+.category-tile[data-theme="restaurants"].is-selected {
+  box-shadow: 0 0 24px -2px rgba(249, 115, 22, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.category-tile[data-theme="restaurants"].is-selected {
+  border-color: rgba(249, 115, 22, 0.5);
+  background-color: rgba(249, 115, 22, 0.08);
+}
+.category-tile[data-theme="restaurants"] .cat-indicator-dot {
+  background-color: rgb(249, 115, 22);
+  box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
+}
+.category-tile[data-theme="restaurants"] .cat-icon-badge.is-selected {
+  background-color: rgb(249, 115, 22);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+
+.category-tile[data-theme="cafes"]:hover,
+.category-tile[data-theme="cafes"].is-selected {
+  box-shadow: 0 0 24px -2px rgba(245, 158, 11, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.category-tile[data-theme="cafes"].is-selected {
+  border-color: rgba(245, 158, 11, 0.5);
+  background-color: rgba(245, 158, 11, 0.08);
+}
+.category-tile[data-theme="cafes"] .cat-indicator-dot {
+  background-color: rgb(245, 158, 11);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+.category-tile[data-theme="cafes"] .cat-icon-badge.is-selected {
+  background-color: rgb(245, 158, 11);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+}
+
+.category-tile[data-theme="bars"]:hover,
+.category-tile[data-theme="bars"].is-selected {
+  box-shadow: 0 0 24px -2px rgba(168, 85, 247, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.category-tile[data-theme="bars"].is-selected {
+  border-color: rgba(168, 85, 247, 0.5);
+  background-color: rgba(168, 85, 247, 0.08);
+}
+.category-tile[data-theme="bars"] .cat-indicator-dot {
+  background-color: rgb(168, 85, 247);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+.category-tile[data-theme="bars"] .cat-icon-badge.is-selected {
+  background-color: rgb(168, 85, 247);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.35);
+}
+
+.category-tile[data-theme="cinema"]:hover,
+.category-tile[data-theme="cinema"].is-selected {
+  box-shadow: 0 0 24px -2px rgba(6, 182, 212, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.category-tile[data-theme="cinema"].is-selected {
+  border-color: rgba(6, 182, 212, 0.5);
+  background-color: rgba(6, 182, 212, 0.08);
+}
+.category-tile[data-theme="cinema"] .cat-indicator-dot {
+  background-color: rgb(6, 182, 212);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+}
+.category-tile[data-theme="cinema"] .cat-icon-badge.is-selected {
+  background-color: rgb(6, 182, 212);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);
+}
+
+.category-tile[data-theme="desserts"]:hover,
+.category-tile[data-theme="desserts"].is-selected {
+  box-shadow: 0 0 24px -2px rgba(244, 63, 94, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.category-tile[data-theme="desserts"].is-selected {
+  border-color: rgba(244, 63, 94, 0.5);
+  background-color: rgba(244, 63, 94, 0.08);
+}
+.category-tile[data-theme="desserts"] .cat-indicator-dot {
+  background-color: rgb(244, 63, 94);
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.6);
+}
+.category-tile[data-theme="desserts"] .cat-icon-badge.is-selected {
+  background-color: rgb(244, 63, 94);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(244, 63, 94, 0.35);
+}
+
+.category-tile[data-theme="custom"]:hover,
+.category-tile[data-theme="custom"].is-selected {
+  box-shadow: 0 0 24px -2px rgba(99, 102, 241, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+.category-tile[data-theme="custom"].is-selected {
+  border-color: rgba(99, 102, 241, 0.5);
+  background-color: rgba(99, 102, 241, 0.08);
+}
+.category-tile[data-theme="custom"] .cat-indicator-dot {
+  background-color: rgb(99, 102, 241);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+}
+.category-tile[data-theme="custom"] .cat-icon-badge.is-selected {
+  background-color: rgb(99, 102, 241);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+/* Category Selection Indicator Spring Pop */
+.cat-indicator-dot {
+  transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.3),
+              opacity 0.2s ease;
+}
+
+/* Candidate Pool Staggered Slide Up */
+@keyframes slideUp {
+  0% {
+    transform: translate3d(0, 16px, 0) scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Table Count Pill Bounce */
+@keyframes countBounce {
+  0% {
+    transform: scale(0.7) translateY(4px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.18) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-count-bounce {
+  animation: countBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Playful, Organic Card Deck Shuffle Animation */
+@keyframes shuffleDeckEven {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  22% { transform: translate3d(-7px, -4px, 0) rotate(-2.8deg) scale(0.97); }
+  52% { transform: translate3d(9px, 3px, 0) rotate(2.4deg) scale(1.02); }
+  78% { transform: translate3d(-3px, 1px, 0) rotate(-1deg) scale(0.99); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+
+@keyframes shuffleDeckOdd {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  22% { transform: translate3d(7px, -4px, 0) rotate(2.8deg) scale(0.97); }
+  52% { transform: translate3d(-9px, 3px, 0) rotate(-2.4deg) scale(1.02); }
+  78% { transform: translate3d(3px, 1px, 0) rotate(1deg) scale(0.99); }
+  100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+
+.animate-shuffle-deck {
+  animation: shuffleDeckEven 0.48s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+.animate-shuffle-deck-alt {
+  animation: shuffleDeckOdd 0.48s cubic-bezier(0.25, 1, 0.5, 1) both;
 }

@@ -13,51 +13,38 @@ export default function LobbyLoadingView({
   onCancel,
 }) {
   const { t } = useLanguage();
-  const [stageIdx, setStageIdx] = useState(0);
-
-  const stages = [
-    t('stageGeo'),
-    t('stageFilter'),
-    t('stageRouting'),
-    t('stageDeck'),
-  ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStageIdx((prev) => (prev + 1) % stages.length);
-    }, 1200);
-    return () => clearInterval(timer);
-  }, [stages.length]);
 
   return (
     <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none bg-[var(--bg-root)] animate-fade-in text-[var(--text-primary)]">
       {/* Header matching RoomLobby */}
       <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          {onCancel ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] active:scale-[0.96]"
-              aria-label="Cancel and return home"
-            >
-              <span>{t('back')}</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
-                <BrandLogo size={18} />
+        <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[36px]">
+          <div className="flex items-center z-10">
+            {onCancel ? (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] active:scale-[0.96]"
+                aria-label="Cancel and return home"
+              >
+                <span>{t('back')}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
+                  <BrandLogo size={18} />
+                </div>
+                <span className="font-bold text-sm tracking-tight">{t('brand')}</span>
               </div>
-              <span className="font-bold text-sm tracking-tight">{t('brand')}</span>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
+          <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] z-10 pointer-events-none shadow-2xs">
             <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
             <span className="text-[var(--accent-bg)] tracking-widest animate-pulse font-mono font-bold">••••</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 z-10">
             <ThemeToggle />
           </div>
         </div>
@@ -103,9 +90,9 @@ export default function LobbyLoadingView({
                     {t('hostBadge')}
                   </span>
                 </span>
-                <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
-                  <span>{stages[stageIdx]}</span>
+                <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  <span>{t('ready') || 'Ready'}</span>
                 </span>
               </div>
             </div>
@@ -168,12 +155,16 @@ export default function LobbyLoadingView({
         </section>
       </main>
 
-      {/* Fixed Bottom Action Bar with Operational Labor Illusion */}
+      {/* Fixed Bottom Action Bar */}
       <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-4 py-3 safe-pb-dock">
         <div className="max-w-md mx-auto">
-          <div className="w-full h-13 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center gap-2 text-xs font-semibold text-[var(--text-secondary)] shadow-xs">
+          <div className="w-full h-13 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center gap-2.5 text-xs font-semibold text-[var(--text-secondary)] shadow-xs">
             <Loader2 size={16} className="animate-spin text-[var(--accent-bg)] shrink-0" />
-            <span className="truncate">{stages[stageIdx]}</span>
+            <span className="truncate">
+              {isCustom
+                ? (t('preparingPoll') || 'Preparing poll options...')
+                : (t('preparingTable') || 'Setting up your table...')}
+            </span>
           </div>
         </div>
       </div>

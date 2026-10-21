@@ -9,9 +9,9 @@ export default function WaitingForBallotsView({
   handleHostForceReveal,
 }) {
   return (
-    <main className="px-4 py-8 flex flex-col items-center justify-center text-center flex-1 my-auto animate-[modalSpring_0.35s_var(--spring-smooth)]">
-      <div className="w-full rounded-2xl bg-[var(--bg-elevated)] p-8 border border-[var(--border-main)] flex flex-col items-center gap-5">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shadow-[0_8px_24px_var(--accent-glow)] animate-pulse">
+    <main className="px-4 py-8 flex flex-col items-center justify-center text-center flex-1 my-auto max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
+      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] p-8 border border-[var(--border-main)] flex flex-col items-center gap-5 shadow-sm">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(16,185,129,0.35)] animate-pulse">
           <CheckCircle2 size={32} />
         </div>
 
@@ -31,7 +31,7 @@ export default function WaitingForBallotsView({
               {votesReceived} of {quorumTotal} finished
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-[var(--bg-inset)] overflow-hidden">
+          <div className="w-full h-2.5 rounded-full bg-[var(--bg-inset)] overflow-hidden">
             <div
               className="h-full bg-[var(--accent-bg)] transition-all duration-300 rounded-full"
               style={{ width: `${Math.min(100, (votesReceived / Math.max(1, quorumTotal)) * 100)}%` }}

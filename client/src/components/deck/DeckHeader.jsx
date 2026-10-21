@@ -20,28 +20,23 @@ export default function DeckHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-2.5 relative">
-      <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
-        <button
-          type="button"
-          onClick={onBackClick}
-          className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-[0.96]"
-          aria-label="Back to Lobby or Leave"
-        >
-          <ArrowLeft size={14} />
-          <span>{t('lobby')}</span>
-        </button>
+    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-2.5 relative select-none">
+      <div className="relative flex items-center justify-between gap-2 max-w-md mx-auto min-h-[36px]">
+        <div className="flex items-center z-10">
+          <button
+            type="button"
+            onClick={onBackClick}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-[0.96]"
+            aria-label="Back to Lobby or Leave"
+          >
+            <ArrowLeft size={14} />
+            <span>{t('lobby')}</span>
+          </button>
+        </div>
 
-        {/* Segmented Tab Switcher (Discovery Only) or Option Counter (Custom Poll) */}
-        {!showWinner && currentIndex < cardsLength ? (
-          mode === 'CUSTOM' || activeCard?.isCustom ? (
-            <div className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] tabular-nums">
-              <Layers size={12} className="text-[var(--accent-bg)]" />
-              <span>
-                {t('option')} {Math.min(currentIndex + 1, cardsLength)} {t('ofWord')} {cardsLength}
-              </span>
-            </div>
-          ) : (
+        {/* Segmented Tab Switcher or Status Pill - Dead Centered */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center z-10 pointer-events-auto">
+          {!showWinner && currentIndex < cardsLength ? (
             <div className="w-44 sm:w-52 max-w-[210px]">
               <SegmentedControl
                 options={[
@@ -54,15 +49,15 @@ export default function DeckHeader({
                 variant="accent"
               />
             </div>
-          )
-        ) : (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)]">
-            <span className="text-[var(--text-tertiary)] font-normal">{t('roomPrefix')}</span>
-            <span className="text-[var(--accent-bg)] tabular-nums">#{pin}</span>
-          </div>
-        )}
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] shadow-2xs">
+              <span className="text-[var(--text-tertiary)] font-normal">{t('roomPrefix')}</span>
+              <span className="text-[var(--accent-bg)] tabular-nums">#{pin}</span>
+            </div>
+          )}
+        </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 z-10">
           <ThemeToggle />
         </div>
       </div>

@@ -15,10 +15,19 @@ import CustomOptionAutocomplete from './CustomOptionAutocomplete';
 import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
 import { useLanguage } from '../../context/LanguageContext';
+import { triggerHaptic } from '../../utils/haptics';
 
-function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
+function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShuffling }) {
+  const animClass = isShuffling
+    ? (idx % 2 === 0 ? 'animate-shuffle-deck' : 'animate-shuffle-deck-alt')
+    : 'animate-slide-up';
+
   return (
-    <div data-testid="candidate-card" className="relative rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px]">
+    <div
+      data-testid="candidate-card"
+      style={{ animationDelay: isShuffling ? `${(idx % 6) * 35}ms` : `${(idx % 8) * 45}ms` }}
+      className={`relative rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px] touch-manipulation ${animClass}`}
+    >
       <div className="flex items-center justify-between gap-2">
         <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
           #{idx + 1}
@@ -47,23 +56,35 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion }) {
   );
 }
 
-function CandidatePoolCard({ item, onSelectDetails, onRemoveVenue }) {
+function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffling }) {
   const { lang, t } = useLanguage();
   const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
   const vibeSubtitle = getVenueVibe(item.name, item.category);
   const venueRating = getVenueRating(item.name, item.category);
   const travelText = formatTravelSummary(item, lang);
 
+  const animClass = isShuffling
+    ? (idx % 2 === 0 ? 'animate-shuffle-deck' : 'animate-shuffle-deck-alt')
+    : 'animate-slide-up';
+
   return (
     <div
-      onClick={() => onSelectDetails(item)}
+      onClick={() => {
+        triggerHaptic('tap');
+        onSelectDetails(item);
+      }}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onSelectDetails(item);
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          triggerHaptic('tap');
+          onSelectDetails(item);
+        }
       }}
       data-testid="candidate-card"
-      className="rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98]"
+      style={{ animationDelay: isShuffling ? `${(idx % 6) * 35}ms` : `${(idx % 8) * 45}ms` }}
+      className={`rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98] touch-manipulation ${animClass}`}
     >
       {/* Photo with Rating and Price Badge */}
       <div className="relative aspect-[4/3] w-full bg-[var(--bg-inset)] overflow-hidden">
@@ -156,6 +177,16 @@ export default function CandidatePoolDeck({
 }) {
   const { t } = useLanguage();
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [isShuffling, setIsShuffling] = useState(false);
+
+  const handleShuffleClick = () => {
+    triggerHaptic('selection');
+    setIsShuffling(true);
+    onShuffle?.();
+    setTimeout(() => {
+      setIsShuffling(false);
+    }, 500);
+  };
 
   return (
     <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
@@ -164,23 +195,28 @@ export default function CandidatePoolDeck({
         <div className="flex items-center gap-2 min-w-0">
           <LayoutGrid size={16} className="text-[var(--accent-bg)] shrink-0" />
           <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">
-            {mode === 'CUSTOM'
-              ? `${t('optionsOnTable')} (${candidates.length})`
-              : `${t('placesOnTable')} (${candidates.length})`}
+            {mode === 'CUSTOM' ? t('optionsOnTable') : t('placesOnTable')}
           </h3>
+          <span
+            key={`count-pill-${candidates.length}`}
+            className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] border border-[var(--accent-bg)]/20 animate-count-bounce shrink-0"
+            title={`${candidates.length} ${mode === 'CUSTOM' ? t('optionsOnTable') : t('placesOnTable')}`}
+          >
+            {candidates.length}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
           {onShuffle && candidates.length > 1 && (
             <button
               type="button"
-              onClick={onShuffle}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.96]"
+              onClick={handleShuffleClick}
+              className="flex items-center gap-1 px-2 py-1 sm:px-2.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.98]"
               title={t('findDifferent')}
               aria-label={t('findDifferent')}
             >
-              <Shuffle size={12} className="text-[var(--accent-bg)] shrink-0" />
-              <span>{t('findDifferent')}</span>
+              <Shuffle size={12} className={`text-[var(--accent-bg)] shrink-0 ${isShuffling ? 'rotate-180 transition-transform duration-500' : ''}`} />
+              <span className="hidden sm:inline">{t('findDifferent')}</span>
             </button>
           )}
 
@@ -189,9 +225,12 @@ export default function CandidatePoolDeck({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => handleAddNextPlace(1)}
+                onClick={() => {
+                  triggerHaptic('tap');
+                  handleAddNextPlace(1);
+                }}
                 disabled={remainingPoolCount <= 0}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.96] shadow-2xs disabled:opacity-40 disabled:pointer-events-none"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
                 title="Add next venue from pool"
               >
                 <Plus size={13} strokeWidth={2.5} />
@@ -201,11 +240,15 @@ export default function CandidatePoolDeck({
               {remainingPoolCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleAddNextPlace(remainingPoolCount)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-[var(--accent-bg)]/15 border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--accent-bg)] transition-all cursor-pointer active:scale-[0.96]"
-                  title={`Add all ${remainingPoolCount} remaining venues to table`}
+                  onClick={() => {
+                    triggerHaptic('like');
+                    const batch = remainingPoolCount <= 3 ? remainingPoolCount : 3;
+                    handleAddNextPlace(batch);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-[var(--accent-bg)]/15 border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--accent-bg)] transition-all cursor-pointer active:scale-95 touch-manipulation shadow-2xs"
+                  title={`Add ${remainingPoolCount <= 3 ? `all ${remainingPoolCount}` : '3'} venues to table`}
                 >
-                  <span>+{remainingPoolCount} All</span>
+                  <span>+{remainingPoolCount <= 3 ? `${remainingPoolCount} All` : '3 All'}</span>
                 </button>
               )}
             </div>
@@ -293,6 +336,7 @@ export default function CandidatePoolDeck({
                 idx={idx}
                 topic={topic}
                 handleRemoveSuggestion={handleRemoveSuggestion}
+                isShuffling={isShuffling}
               />
             ) : (
               <CandidatePoolCard
@@ -301,6 +345,7 @@ export default function CandidatePoolDeck({
                 idx={idx}
                 onSelectDetails={setSelectedVenue}
                 onRemoveVenue={handleRemovePlace}
+                isShuffling={isShuffling}
               />
             )
           )

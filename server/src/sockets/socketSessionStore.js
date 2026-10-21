@@ -43,7 +43,9 @@ async function resolveAndBroadcastWinner(io, pin) {
       winner: session.winner,
       matchScore: session.matchScore || 96,
       pairwise: session.pairwise || [],
-      total_voted: session.submissions.size,
+      tally: session.tally || [],
+      approval_count: session.approvalCount ?? 0,
+      total_voted: session.totalVoted ?? session.submissions.size,
     });
     io.to(pin).emit('MATCH_FOUND', {
       pin,
@@ -59,6 +61,25 @@ async function resolveAndBroadcastWinner(io, pin) {
     console.warn(`[Socket] Cannot resolve winner for room ${pin}: 0 submissions`);
     return;
   }
+
+  if (!session.options || session.options.length === 0) {
+    console.warn(`[Socket] Cannot resolve winner for room ${pin}: no options`);
+    io.to(pin).emit('room_error', { code: 'no_options', message: 'No options available to determine winner' });
+    return;
+  }
+
+  const tally = session.options.map((o) => {
+    let likes = 0;
+    let passes = 0;
+    for (const sub of submissionsArray) {
+      const vote = sub.votes?.find((v) => v.option_id === o.id);
+      if (vote) {
+        if (vote.score > 0) likes++;
+        else if (vote.score < 0) passes++;
+      }
+    }
+    return { option_id: o.id, likes, passes };
+  });
 
   let winningOptionId = null;
   try {
@@ -90,14 +111,9 @@ async function resolveAndBroadcastWinner(io, pin) {
 
   let winningOption = session.options.find((o) => o.id === winningOptionId);
   if (!winningOption) {
-    winningOption = {
-      id: winningOptionId || 'winner_consensus',
-      name: 'Consensus Winner',
-      price_level: 2,
-      distance_km: 1.2,
-      category: 'Group Choice',
-      tags: ['Top Match'],
-    };
+    const sortedByLikes = [...tally].sort((a, b) => b.likes - a.likes);
+    const topOptionId = sortedByLikes[0]?.option_id;
+    winningOption = session.options.find((o) => o.id === topOptionId) || session.options[0];
   }
 
   // Dynamic head-to-head pairwise duel calculation across all submitted ballots
@@ -106,8 +122,8 @@ async function resolveAndBroadcastWinner(io, pin) {
     let winVotes = 0;
     let lossVotes = 0;
     for (const sub of submissionsArray) {
-      const vWin = sub.votes.find((v) => v.option_id === winningOption.id)?.score || 0;
-      const vRival = sub.votes.find((v) => v.option_id === rival.id)?.score || 0;
+      const vWin = sub.votes?.find((v) => v.option_id === winningOption.id)?.score || 0;
+      const vRival = sub.votes?.find((v) => v.option_id === rival.id)?.score || 0;
       if (vWin > vRival) winVotes++;
       else if (vRival > vWin) lossVotes++;
     }
@@ -119,7 +135,7 @@ async function resolveAndBroadcastWinner(io, pin) {
   });
 
   const approvalCount = submissionsArray.filter((sub) =>
-    sub.votes.some((v) => v.option_id === winningOption.id && (v.score === 1 || v.score === 2))
+    sub.votes?.some((v) => v.option_id === winningOption.id && (v.score === 1 || v.score === 2))
   ).length;
   const approvalRatio = approvalCount / Math.max(1, submissionsArray.length);
   const matchScore = Math.min(98, Math.max(76, Math.round(approvalRatio * 100)));
@@ -128,10 +144,13 @@ async function resolveAndBroadcastWinner(io, pin) {
   session.winner = winningOption;
   session.matchScore = matchScore;
   session.pairwise = pairwiseData;
+  session.tally = tally;
+  session.approvalCount = approvalCount;
+  session.totalVoted = submissionsArray.length;
 
   console.log(`[Socket] Consensus resolved for room ${pin}: "${winningOption.name}" won across ${submissionsArray.length} ballots!`);
 
-  dispatchActivityNotification('decision_reached', {
+  await dispatchActivityNotification('decision_reached', {
     pin,
     winnerName: winningOption.name,
     winnerCategory: winningOption.category,
@@ -147,6 +166,8 @@ async function resolveAndBroadcastWinner(io, pin) {
     winner: winningOption,
     matchScore,
     pairwise: pairwiseData,
+    tally,
+    approval_count: approvalCount,
     total_voted: submissionsArray.length,
   });
 

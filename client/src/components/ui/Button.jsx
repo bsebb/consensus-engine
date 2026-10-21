@@ -44,7 +44,7 @@ export default function Button({
       type={type}
       onClick={handleClick}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center select-none transition-all duration-150 cursor-pointer active:scale-[0.96] disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
+      className={`inline-flex items-center justify-center select-none transition-all duration-150 cursor-pointer active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
       {...props}
     >
       {loading ? (

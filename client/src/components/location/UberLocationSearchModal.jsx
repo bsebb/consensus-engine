@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Navigation, X, Building2, Check, Loader2 } from 'lucide-react';
 import { POPULAR_LOCATIONS, searchLocationByQuery, detectUserGps } from '../../utils/location';
+import { triggerHaptic } from '../../utils/haptics';
+import useDrawerGesture from '../ui/useDrawerGesture';
 
 export default function UberLocationSearchModal({
   isOpen,
@@ -12,14 +14,41 @@ export default function UberLocationSearchModal({
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDetectingGps, setIsDetectingGps] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const inputRef = useRef(null);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 180);
+  };
+
+  const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({
+    onClose: handleClose,
+  });
 
   useEffect(() => {
     if (isOpen) {
       setQuery('');
       setResults(POPULAR_LOCATIONS);
+      document.body.style.overflow = 'hidden';
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   useEffect(() => {
@@ -50,25 +79,15 @@ export default function UberLocationSearchModal({
     };
   }, [query]);
 
-  const [isClosing, setIsClosing] = useState(false);
-
-  const handleClose = () => {
-    if (isClosing) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsClosing(false);
-      onClose();
-    }, 180);
-  };
-
   if (!isOpen && !isClosing) return null;
 
   const handleUseGps = async () => {
     setIsDetectingGps(true);
     try {
       const gpsRes = await detectUserGps({ forceRefresh: true });
+      triggerHaptic('like');
       onSelectLocation(gpsRes);
-      handleClose();
+      onClose();
     } catch (err) {
       console.warn('[Location] GPS detection error:', err);
     } finally {
@@ -77,6 +96,7 @@ export default function UberLocationSearchModal({
   };
 
   const handlePickResult = (item) => {
+    triggerHaptic('tap');
     const payload = {
       status: 'exact',
       lat: item.lat,
@@ -88,12 +108,13 @@ export default function UberLocationSearchModal({
       ts: Date.now(),
     };
     onSelectLocation(payload);
-    handleClose();
+    onClose();
   };
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-backdrop-ios ${
+      ref={backdropRef}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xl bg-black/60 transition-opacity duration-200 ${
         isClosing ? 'animate-fade-out' : 'animate-fade-in'
       }`}
       onClick={handleClose}
@@ -102,14 +123,25 @@ export default function UberLocationSearchModal({
       aria-label="Location Search"
     >
       <div
-        className={`w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-main)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:pb-0 ${
+        ref={panelRef}
+        {...containerProps}
+        className={`w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-main)] rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:pb-4 ${
           isClosing ? 'animate-sheet-down sm:animate-scale-down' : 'animate-sheet-up sm:animate-modal-spring'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Apple Pro-Grade Drag Handle Pill */}
+        <div
+          {...grabberProps}
+          className="w-full pt-2 pb-0 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none shrink-0"
+          aria-label="Drag down to dismiss"
+        >
+          <div className="w-10 h-1.2 rounded-full bg-[var(--text-tertiary)]/30 mx-auto my-2 mb-3 cursor-grab" />
+        </div>
+
         {/* Header with Search Input */}
-        <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-inset)]/50">
-          <div className="flex items-center justify-between mb-3">
+        <div className="px-4 pb-3 border-b border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 shrink-0">
+          <div className="flex items-center justify-between mb-2.5">
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
               <MapPin size={13} className="text-[var(--accent-bg)]" />
               <span>Select Voting Location</span>
@@ -150,7 +182,7 @@ export default function UberLocationSearchModal({
         </div>
 
         {/* Quick Location Actions */}
-        <div className="p-3 border-b border-[var(--border-subtle)] flex flex-col gap-2">
+        <div className="p-3 border-b border-[var(--border-subtle)] flex flex-col gap-2 shrink-0">
           {/* Use GPS Action Button */}
           <button
             type="button"
@@ -171,7 +203,7 @@ export default function UberLocationSearchModal({
                 </div>
               </div>
             </div>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[var(--accent-bg)]/20 text-[var(--accent-bg)]">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent-bg)]/20 text-[var(--accent-bg)]">
               GPS
             </span>
           </button>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   MapPin,
@@ -11,22 +12,56 @@ import {
   BookOpen,
   AlertTriangle,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import { useLanguage } from '../../context/LanguageContext';
 import CleanStreetMiniMap from './CleanStreetMiniMap';
 import { markVenueClosedClient } from '../../utils/reportedVenuesClient';
+import { triggerHaptic } from '../../utils/haptics';
+import useDrawerGesture from '../ui/useDrawerGesture';
 
-export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClosed, inline = false }) {
-  const { lang, t } = useLanguage();
+export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onReportClosed, inline = false }) {
+  const { t } = useLanguage();
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const touchStartX = useRef(null);
 
-  const { photos, isRealPhoto, fallbackPhoto } = useVenuePhotos(
+  const { photos = [], isRealPhoto, fallbackPhoto } = useVenuePhotos(
     venue?.name,
     venue?.address,
     venue?.category,
     venue?.photo_url
   );
+
+  const handlePrevPhoto = () => {
+    if (!photos || photos.length <= 1) return;
+    triggerHaptic('tap');
+    setActivePhotoIdx((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
+  };
+
+  const handleNextPhoto = () => {
+    if (!photos || photos.length <= 1) return;
+    triggerHaptic('tap');
+    setActivePhotoIdx((prev) => (prev < photos.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        handlePrevPhoto();
+      } else {
+        handleNextPhoto();
+      }
+    }
+    touchStartX.current = null;
+  };
 
   const [reported, setReported] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
@@ -41,10 +76,27 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
     }, 180);
   };
 
+  const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({
+    onClose: handleClose,
+  });
+
   useEffect(() => {
     setActivePhotoIdx(0);
     setReported(false);
   }, [venue?.name]);
+
+  useEffect(() => {
+    if (!isOpen || inline) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, inline]);
 
   const handleReportClosed = async () => {
     if (!venue?.name || isReporting) return;
@@ -77,7 +129,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
       ? t('budgetLevel3')
       : t('budgetLevel4');
 
-  const distKm = venue.distance_km;
+  const distKm = venue.road_distance_km || venue.distance_km;
   const walkMin = venue.walk_minutes || (distKm != null ? Math.max(2, Math.round(distKm * 12.5)) : null);
   const driveMin = venue.drive_minutes || (distKm != null ? Math.max(2, Math.round(distKm * 2.2)) : null);
   const isWalkable = distKm != null && distKm <= 1.5;
@@ -95,9 +147,24 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
   const activePhotoUrl = photos[activePhotoIdx] || photos[0] || fallbackPhoto;
 
   const content = (
-    <div className={`w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col ${inline ? 'h-full max-h-full min-h-0' : 'max-h-[84dvh]'}`}>
-      {/* Top Hero Photo + Gallery Strip */}
-      <div className={`relative ${inline ? 'h-36 sm:h-44' : 'h-52 sm:h-60'} w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden`}>
+    <div className={`w-full rounded-t-[32px] sm:rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col ${inline ? 'h-full max-h-full min-h-0' : 'max-h-[88dvh] sm:max-h-[85dvh]'}`}>
+      {/* Consistent Apple Pro-Grade Drag Handle Pill */}
+      {!inline && (
+        <div
+          {...grabberProps}
+          className="w-full pt-2 pb-0 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none shrink-0 bg-[var(--bg-elevated)]"
+          aria-label="Drag down to dismiss"
+        >
+          <div className="w-10 h-1.2 rounded-full bg-[var(--text-tertiary)]/30 mx-auto my-1 mb-2 cursor-grab" />
+        </div>
+      )}
+
+      {/* Interactive Photo Carousel Hero with Touch Swipe & Chevrons */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className={`relative ${inline ? 'h-36 sm:h-44' : 'h-52 sm:h-64'} w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden select-none group`}
+      >
         <img
           src={activePhotoUrl}
           alt={venue.name}
@@ -109,22 +176,99 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35 pointer-events-none" />
 
+        {/* Stories-Style Photo Progress Track */}
+        {photos.length > 1 && (
+          <div className="absolute top-2.5 inset-x-3.5 flex items-center gap-1 z-20">
+            {photos.map((_, i) => (
+              <div
+                key={i}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerHaptic('tap');
+                  setActivePhotoIdx(i);
+                }}
+                className="flex-1 h-1 rounded-full bg-white/35 backdrop-blur-xs overflow-hidden cursor-pointer"
+              >
+                <div
+                  className={`h-full transition-all duration-200 ${
+                    i === activePhotoIdx
+                      ? 'bg-white shadow-xs'
+                      : i < activePhotoIdx
+                      ? 'bg-white/80'
+                      : 'bg-transparent'
+                  }`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Floating Carousel Navigation Chevrons */}
+        {photos.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrevPhoto();
+              }}
+              aria-label="Previous photo"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all opacity-85 hover:opacity-100 hover:scale-105 active:scale-95 cursor-pointer z-20 shadow-lg"
+            >
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNextPhoto();
+              }}
+              aria-label="Next photo"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all opacity-85 hover:opacity-100 hover:scale-105 active:scale-95 cursor-pointer z-20 shadow-lg"
+            >
+              <ChevronRight size={18} strokeWidth={2.5} />
+            </button>
+          </>
+        )}
+
+        {/* Carousel Active Dots Indicator */}
+        {photos.length > 1 && (
+          <div className="absolute bottom-2.5 inset-x-0 flex items-center justify-center gap-1.5 z-20 pointer-events-none">
+            {photos.map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === activePhotoIdx
+                    ? 'w-5 bg-white shadow-xs'
+                    : 'w-1.5 bg-white/40'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Top Bar Badges */}
-        <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between gap-2 z-10">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-xs font-bold tabular-nums">
+        <div className={`absolute ${photos.length > 1 ? 'top-6' : 'top-3.5'} inset-x-3.5 flex items-center justify-between gap-2 z-20`}>
+          {/* Yelp / Google Verified Rating Badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tabular-nums shadow-sm">
             <Star size={12} className="text-amber-400 fill-amber-400" />
             <span>{rating}</span>
-            <span className="text-white/75 font-normal">({reviewCount})</span>
+            <span className="text-white/70 font-normal">({reviewCount})</span>
+            <span className="w-1 h-1 rounded-full bg-white/40" />
+            <span className="text-[10px] text-emerald-300 font-semibold tracking-wide flex items-center gap-0.5">
+              <Check size={10} className="stroke-[3]" />
+              <span>Verified</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5">
             {photos.length > 1 ? (
-              <span className="px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold flex items-center gap-1.5 tabular-nums">
+              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 tabular-nums">
                 <Camera size={11} className="text-emerald-400" />
-                <span>{activePhotoIdx + 1} / {photos.length}</span>
+                <span>{activePhotoIdx + 1}/{photos.length}</span>
               </span>
             ) : !isRealPhoto ? (
-              <span className="px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-[11px] font-semibold">
+              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold">
                 {t('venuePreview')}
               </span>
             ) : null}
@@ -133,7 +277,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
               <button
                 type="button"
                 onClick={handleClose}
-                className="w-8 h-8 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white flex items-center justify-center hover:bg-black/85 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/90 transition-colors cursor-pointer"
                 aria-label="Close Details"
               >
                 <X size={16} />
@@ -143,7 +287,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
         </div>
 
         {/* Bottom Title & Vibe on Photo */}
-        <div className="absolute bottom-3 inset-x-4 flex items-end justify-between gap-2 z-10">
+        <div className={`absolute ${photos.length > 1 ? 'bottom-5' : 'bottom-3'} inset-x-4 flex items-end justify-between gap-2 z-10 pointer-events-none`}>
           <div className="min-w-0">
             <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--accent-bg)] text-white text-[11px] font-bold mb-1 shadow-xs">
               {vibe}
@@ -187,107 +331,185 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
 
       {/* Scrollable Details Body */}
       <div className="p-4 sm:p-5 overflow-y-auto flex flex-col gap-3.5">
-        {/* Context-Aware Human-Centric Travel & Spend Capsule */}
-        <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
-                {isWalkable ? (
-                  <Footprints size={17} />
-                ) : (
-                  <Car size={17} />
-                )}
+        {venue.isCustom ? (
+          <div className="p-4 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                <Star size={18} className="fill-[var(--accent-bg)] text-[var(--accent-bg)]" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-black text-[var(--text-primary)] leading-tight truncate tabular-nums">
-                  {distKm != null
-                    ? isWalkable
-                      ? `~${walkMin} min • ${distKm} km`
-                      : `~${driveMin} min • ${distKm} km`
-                    : t('localVenue')}
+                <span className="text-base font-bold text-[var(--text-primary)] leading-tight truncate">
+                  {venue.name}
                 </span>
-                <span className="text-[11px] text-[var(--text-secondary)] font-medium truncate">
-                  {distKm != null
-                    ? isWalkable
-                      ? `${t('walking')} (${t('shortDrive').replace('{time}', driveMin)})`
-                      : `${t('byCar')} • ${t('viaStreets')}`
-                    : t('centralArea')}
+                <span className="text-xs text-[var(--text-secondary)] font-medium truncate mt-0.5">
+                  {t('customPoll') || 'Custom Poll Option'}
                 </span>
               </div>
             </div>
 
-            <div className="text-right shrink-0">
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] block">
-                {t('estimatedSpend')}
-              </span>
-              <span className="text-xs font-bold text-[var(--text-primary)]">
-                {priceDesc}
-              </span>
-            </div>
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(venue.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-bold hover:border-[var(--accent-bg)] transition-all active:scale-[0.97]"
+            >
+              <BookOpen size={14} className="text-[var(--accent-bg)]" />
+              <span>Search on Google</span>
+              <ExternalLink size={11} className="text-[var(--text-tertiary)]" />
+            </a>
           </div>
+        ) : (
+          <>
+            {/* Context-Aware Human-Centric Travel & Spend Capsule */}
+            <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                    {isWalkable ? (
+                      <Footprints size={17} />
+                    ) : (
+                      <Car size={17} />
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-black text-[var(--text-primary)] leading-tight truncate tabular-nums">
+                      {distKm != null
+                        ? isWalkable
+                          ? `~${walkMin} min • ${distKm} km`
+                          : `~${driveMin} min • ${distKm} km`
+                        : t('localVenue')}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-secondary)] font-medium truncate">
+                      {distKm != null
+                        ? isWalkable
+                          ? `${t('walking')} (${t('shortDrive').replace('{time}', driveMin)})`
+                          : `${t('byCar')} • ${t('viaStreets')}`
+                        : t('centralArea')}
+                    </span>
+                  </div>
+                </div>
 
-          {/* Clean Address Line (without debug monologue) */}
-          {venue.address && (
-            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-              <MapPin size={13} className="text-[var(--accent-bg)] shrink-0" />
-              <span className="truncate font-medium">{venue.address}</span>
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] block">
+                    {t('estimatedSpend')}
+                  </span>
+                  <span className="text-xs font-bold text-[var(--text-primary)]">
+                    {priceDesc}
+                  </span>
+                </div>
+              </div>
+
+              {/* OSRM Travel Time Pill Badge */}
+              <div className="flex items-center gap-2 pt-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] text-xs font-bold border border-[var(--accent-bg)]/20 shadow-xs tabular-nums">
+                  <Car size={13} />
+                  <span>{driveMin != null ? `~${driveMin} min via OSRM` : 'OSRM Live Routing'}</span>
+                </span>
+                {isWalkable && walkMin != null && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)] text-xs font-semibold border border-[var(--border-subtle)] tabular-nums">
+                    <Footprints size={13} className="text-emerald-500" />
+                    <span>~{walkMin} min walk</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Clean Address Line */}
+              {venue.address && (
+                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <MapPin size={13} className="text-[var(--accent-bg)] shrink-0" />
+                  <span className="truncate font-medium">{venue.address}</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Clean Interactive Street Mini-Map */}
-        {hasCoords && (
-          <CleanStreetMiniMap
-            lat={latNum}
-            lng={lngNum}
-            venueName={venue.name}
-            address={venue.address}
-          />
+            {/* Clean Interactive Street Mini-Map */}
+            {hasCoords && (
+              <CleanStreetMiniMap
+                lat={latNum}
+                lng={lngNum}
+                venueName={venue.name}
+                address={venue.address}
+              />
+            )}
+
+            {/* Direct 1-Tap Google Maps Directions & Menu Actions */}
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <a
+                href={driveRouteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white text-xs font-bold shadow-xs transition-all active:scale-[0.97]"
+              >
+                <Navigation size={14} />
+                <span>{t('roadDirections')}</span>
+              </a>
+              <a
+                href={reviewsSearchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 py-3 px-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-bold hover:border-[var(--accent-bg)] transition-all active:scale-[0.97]"
+              >
+                <BookOpen size={14} className="text-[var(--accent-bg)]" />
+                <span>{t('menuAndReviews')}</span>
+                <ExternalLink size={11} className="text-[var(--text-tertiary)]" />
+              </a>
+            </div>
+
+            {/* Outdated / Closed Venue Flag */}
+            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
+              <span className="text-[var(--text-tertiary)]">{t('spottedOutdated')}</span>
+              {reported ? (
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold animate-[fadeIn_0.2s_ease-out]">
+                  <Check size={12} />
+                  <span>{t('reportedClosed')}</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReportClosed}
+                  disabled={isReporting}
+                  aria-label="Report closed venue"
+                  className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-rose-400 transition-colors font-medium cursor-pointer active:scale-[0.96]"
+                >
+                  <AlertTriangle size={12} className="text-amber-500/80" />
+                  <span>{isReporting ? t('reporting') : t('reportClosed')}</span>
+                </button>
+              )}
+            </div>
+          </>
         )}
 
-        {/* 1-Tap Route & Menu Actions */}
-        <div className="grid grid-cols-2 gap-2 pt-0.5">
-          <a
-            href={driveRouteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white text-xs font-bold shadow-xs transition-all active:scale-[0.97]"
-          >
-            <Navigation size={14} />
-            <span>{t('roadDirections')}</span>
-          </a>
-          <a
-            href={reviewsSearchUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-bold hover:border-[var(--accent-bg)] transition-all active:scale-[0.97]"
-          >
-            <BookOpen size={14} className="text-[var(--accent-bg)]" />
-            <span>{t('menuAndReviews')}</span>
-            <ExternalLink size={11} className="text-[var(--text-tertiary)]" />
-          </a>
-        </div>
-
-        {/* Outdated / Closed Venue Flag */}
-        <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
-          <span className="text-[var(--text-tertiary)]">{t('spottedOutdated')}</span>
-          {reported ? (
-            <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold animate-[fadeIn_0.2s_ease-out]">
-              <Check size={12} />
-              <span>{t('reportedClosed')}</span>
-            </span>
-          ) : (
+        {/* Quick Vote Bar when opened during swiping */}
+        {onVote && (
+          <div className="pt-2 border-t border-[var(--border-subtle)] grid grid-cols-2 gap-2.5">
             <button
               type="button"
-              onClick={handleReportClosed}
-              disabled={isReporting}
-              className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-rose-400 transition-colors font-medium cursor-pointer active:scale-[0.96]"
+              onClick={() => {
+                triggerHaptic('pass');
+                handleClose();
+                onVote(-1);
+              }}
+              aria-label="Pass option"
+              className="py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-rose-500/10 border border-[var(--border-main)] hover:border-rose-500/40 text-rose-500 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs"
             >
-              <AlertTriangle size={12} className="text-amber-500/80" />
-              <span>{isReporting ? t('reporting') : t('reportClosed')}</span>
+              <X size={15} strokeWidth={2.5} />
+              <span>{t('passAction')}</span>
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('like');
+                handleClose();
+                onVote(1);
+              }}
+              aria-label="Like option"
+              className="py-2.5 px-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-xs"
+            >
+              <Check size={15} strokeWidth={2.5} />
+              <span>{t('likeAction')}</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -298,23 +520,27 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onReportClos
     return <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">{content}</div>;
   }
 
-  return (
+  return createPortal(
     <div
+      ref={backdropRef}
       role="dialog"
       aria-modal="true"
-      className={`fixed inset-0 z-50 modal-backdrop-ios flex items-end sm:items-center justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(1rem,env(safe-area-inset-top,0px))] sm:p-4 ${
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xl bg-black/60 transition-opacity duration-200 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:pb-4 ${
         isClosing ? 'animate-fade-out' : 'animate-fade-in'
       }`}
       onClick={handleClose}
     >
       <div
-        className={`w-full max-w-md ${
+        ref={panelRef}
+        {...containerProps}
+        className={`w-full max-w-lg sm:max-w-md ${
           isClosing ? 'animate-sheet-down sm:animate-scale-down' : 'animate-sheet-up sm:animate-modal-spring'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {content}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

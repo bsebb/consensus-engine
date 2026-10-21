@@ -59,6 +59,7 @@ export default function StepZeroVault({
         onChange={(tierId) => {
           const selected = tiers.find((t) => t.id === tierId);
           if (selected) {
+            triggerHaptic('selection');
             onSelectTier?.(selected.limit, selected.isFiltered);
           }
         }}

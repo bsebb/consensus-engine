@@ -24,24 +24,24 @@ export default function SegmentedControl({
   // pill: outer 9999px, padding 3px -> inner 9999px
   const sizeConfigs = {
     sm: {
-      padding: '2.5px',
-      trackRadius: pill ? '9999px' : '10px',
-      innerRadius: pill ? '9999px' : '7.5px',
-      btn: 'py-1 px-2 min-h-[32px] text-xs',
+      padding: '3px',
+      trackRadius: pill ? '9999px' : '12px',
+      innerRadius: pill ? '9999px' : '9px',
+      btn: 'py-1.5 px-2.5 min-h-[34px] text-xs font-semibold',
       text: 'text-xs',
     },
     md: {
       padding: '3px',
-      trackRadius: pill ? '9999px' : '12px',
-      innerRadius: pill ? '9999px' : '9px',
-      btn: 'py-1.5 px-3 min-h-[36px] text-xs sm:text-sm',
+      trackRadius: pill ? '9999px' : '14px',
+      innerRadius: pill ? '9999px' : '11px',
+      btn: 'py-2 px-3 min-h-[38px] text-xs sm:text-sm font-semibold',
       text: 'text-sm',
     },
     lg: {
       padding: '3.5px',
-      trackRadius: pill ? '9999px' : '14px',
-      innerRadius: pill ? '9999px' : '10.5px',
-      btn: 'py-2 px-3.5 min-h-[42px] text-sm',
+      trackRadius: pill ? '9999px' : '16px',
+      innerRadius: pill ? '9999px' : '12.5px',
+      btn: 'py-2 px-3.5 min-h-[42px] text-sm font-semibold',
       text: 'text-sm sm:text-base',
     },
   };
@@ -71,10 +71,11 @@ export default function SegmentedControl({
       {/* 60fps GPU Sliding Indicator Thumb (Strict Concentric & Borderless) */}
       <div
         aria-hidden="true"
+        data-sliding-thumb="true"
         className={`absolute pointer-events-none z-10 ${
           isAccent
             ? 'shadow-[0_2px_8px_var(--accent-glow)]'
-            : 'bg-white dark:bg-[var(--bg-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.14),0_2px_6px_rgba(0,0,0,0.06)]'
+            : 'bg-[var(--bg-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] border border-[var(--border-subtle)] dark:border-[var(--border-main)]'
         } ${!isMounted || activeIndex < 0 ? 'opacity-0' : 'opacity-100'}`}
         style={{
           top: cfg.padding,
@@ -85,8 +86,9 @@ export default function SegmentedControl({
           transform: `translate3d(calc(${safeIndex} * 100%), 0, 0)`,
           backgroundColor: isAccent ? 'var(--accent-bg)' : undefined,
           transition: isMounted && activeIndex >= 0
-            ? 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease'
+            ? 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 300ms cubic-bezier(0.16, 1, 0.3, 1), border-color 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease'
             : 'none',
+          willChange: 'transform',
         }}
       />
 
@@ -104,7 +106,7 @@ export default function SegmentedControl({
             style={{
               borderRadius: cfg.innerRadius,
             }}
-            className={`relative z-20 flex-1 flex flex-row items-center justify-center gap-1.5 ${cfg.btn} font-bold cursor-pointer transition-colors duration-150 active:scale-[0.98] min-w-0 text-center ${
+            className={`relative z-20 flex-1 flex flex-row items-center justify-center gap-1.5 ${cfg.btn} font-bold cursor-pointer transition-colors duration-200 active:scale-[0.98] min-w-0 text-center ${
               isSelected
                 ? isAccent
                   ? 'text-white'

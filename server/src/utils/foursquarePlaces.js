@@ -53,19 +53,24 @@ function generateHexRingCenters(centerLat, centerLng, ringIndex, hexRadiusMeters
   });
 }
 
-function getCategoryKey(theme = '') {
-  const norm = String(theme).toLowerCase().trim();
-  if (norm.includes('cinema') || norm.includes('movie') || norm.includes('film')) return 'cinema';
-  if (norm.includes('cafe') || norm.includes('coffee') || norm.includes('tea')) return 'cafes';
-  if (norm.includes('bar') || norm.includes('pub') || norm.includes('beer') || norm.includes('wine') || norm.includes('drink')) return 'bars';
-  if (norm.includes('dessert') || norm.includes('sweet') || norm.includes('bakery') || norm.includes('gelato') || norm.includes('ice cream')) return 'desserts';
-  return 'restaurants';
-}
+const THEME_MAPPINGS = [
+  { match: /cinema|movie|film/, key: 'cinema', query: 'cinema' },
+  { match: /cafe|coffee|tea|brunch/, key: 'cafes', query: 'cafe' },
+  { match: /bar|pub|beer|wine|cocktail/, key: 'bars', query: 'bar' },
+  { match: /dessert|sweet|bakery|gelato/, key: 'desserts', query: 'bakery' },
+  { match: /burger|pizza|fast|street/, key: 'fast_food', query: 'fast food burger pizza' },
+  { match: /game|arcade|bowling|billiard/, key: 'entertainment', query: 'games arcade bowling' },
+  { match: /park|outdoor|nature/, key: 'outdoors', query: 'park garden' },
+  { match: /music|concert|club|jazz/, key: 'nightlife', query: 'live music lounge' },
+  { match: /spa|wellness|sauna/, key: 'wellness', query: 'spa sauna wellness' },
+];
 
-function getSearchQueryForTheme(theme = '') {
-  const key = getCategoryKey(theme);
-  return key === 'cinema' ? 'cinema' : key === 'cafes' ? 'cafe' : key === 'bars' ? 'bar' : key === 'desserts' ? 'bakery' : 'restaurant';
+function getCategoryConfig(theme = '') {
+  const norm = String(theme).toLowerCase().trim();
+  return THEME_MAPPINGS.find((m) => m.match.test(norm)) || { key: 'restaurants', query: 'restaurant' };
 }
+const getCategoryKey = (theme) => getCategoryConfig(theme).key;
+const getSearchQueryForTheme = (theme) => getCategoryConfig(theme).query;
 
 function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = false) {
   const nameLower = String(place.name || '').toLowerCase().trim();

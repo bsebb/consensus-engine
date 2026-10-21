@@ -1,6 +1,7 @@
-import { calculateDistanceKm } from './location';
+import { calculateDistanceKm, getSavedExactGps } from './location';
 import { deduplicateVenues } from './venueImages';
 import { filterOutReportedVenues } from './reportedVenuesClient';
+import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from './customOptionService';
 
 export function parseGooglePlaceMetadata(placeIdString = '') {
   if (!placeIdString || typeof placeIdString !== 'string' || !placeIdString.includes('|')) {
@@ -114,4 +115,70 @@ export function buildCandidatePool({
   }
 
   return filterOutReportedVenues(deduplicateVenues(baseList));
+}
+
+export function buildInitialSwipeCards({ locationState, mode = 'DISCOVERY', topic = '', mockPool = [] }) {
+  const savedGps = getSavedExactGps();
+  if (locationState?.customCards && Array.isArray(locationState.customCards) && locationState.customCards.length > 0) {
+    const initialCards = locationState.customCards.map((item, idx) => {
+      if (typeof item === 'string') {
+        return {
+          id: `custom-${idx}`,
+          name: item,
+          category: 'Custom Poll Option',
+          tags: ['Custom'],
+          distance_km: null,
+          price_level: 2,
+          address: '',
+          photo_url: resolveCuratedOptionPhoto(item),
+          isCustom: true,
+        };
+      }
+      const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
+      const liveDist = isCustomItem
+        ? null
+        : typeof item.distance_km === 'number'
+          ? item.distance_km
+          : savedGps && item.lat != null && item.lng != null
+            ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
+            : null;
+      return {
+        id: item.id || `option-${idx}`,
+        name: item.name || `Option ${idx + 1}`,
+        category: isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite'),
+        tags: item.tags || ['Top Pick'],
+        distance_km: liveDist,
+        drive_minutes: isCustomItem ? null : (item.drive_minutes ?? null),
+        walk_minutes: isCustomItem ? null : (item.walk_minutes ?? null),
+        lat: isCustomItem ? null : (item.lat ?? null),
+        lng: isCustomItem ? null : (item.lng ?? null),
+        price_level: typeof item.price_level === 'number' ? item.price_level : 2,
+        address: isCustomItem ? '' : (item.address || 'Local Venue'),
+        photo_url: item.photo_url || (isCustomItem ? resolveCuratedOptionPhoto(item.name) : null),
+        isCustom: isCustomItem,
+      };
+    });
+    return filterOutReportedVenues(deduplicateVenues(initialCards));
+  }
+
+  if (mode === 'CUSTOM') {
+    const defaultSeeds = getDefaultSeedOptions(topic);
+    return defaultSeeds.map((name, idx) => ({
+      id: `c${idx + 1}`,
+      name,
+      category: 'Custom Poll Option',
+      tags: ['Custom'],
+      distance_km: null,
+      price_level: 2,
+      address: '',
+      photo_url: resolveCuratedOptionPhoto(name),
+      isCustom: true,
+    }));
+  }
+
+  return filterOutReportedVenues((mockPool || []).map((r) => ({
+    ...r,
+    distance_km: savedGps && r.lat != null && r.lng != null ? calculateDistanceKm(savedGps.lat, savedGps.lng, r.lat, r.lng) : null,
+    isCustom: false,
+  })));
 }

@@ -1,51 +1,88 @@
 import React from 'react';
-import { X, Flame, Star, Heart } from 'lucide-react';
+import { X, Heart, Star, Flame, RotateCcw } from 'lucide-react';
+import { triggerHaptic } from '../../utils/haptics';
 
-export default function SwipeControls({ handleVote }) {
+export default function SwipeControls({ handleVote, handleUndo, canUndo = false }) {
   return (
-    <div className="w-full max-w-md mx-auto px-6 pt-1 pb-[max(1.25rem,env(safe-area-inset-bottom))] flex items-center justify-center gap-5 shrink-0 select-none z-20">
-      {/* Pass Button */}
-      <button
-        type="button"
-        onClick={() => handleVote(-1)}
-        aria-label="Pass option"
-        className="w-14 h-14 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] hover:border-rose-500/50 hover:bg-rose-500/10 text-rose-500 flex items-center justify-center shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
-      >
-        <X size={26} strokeWidth={2.4} />
-      </button>
+    <div className="w-full max-w-md mx-auto px-4 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-center shrink-0 select-none z-20">
+      <div className="flex items-center justify-between gap-2.5 sm:gap-3 px-3 py-2 rounded-3xl bg-[var(--bg-elevated)]/90 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+        {/* Undo Button */}
+        <button
+          type="button"
+          disabled={!canUndo}
+          onClick={() => {
+            if (canUndo && handleUndo) {
+              triggerHaptic('tap');
+              handleUndo();
+            }
+          }}
+          aria-label="Undo last swipe"
+          title="Undo last swipe (Z or Backspace)"
+          className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all duration-150 cursor-pointer ${
+            canUndo
+              ? 'bg-[var(--bg-surface)] border-[var(--border-main)] hover:border-amber-400/50 hover:bg-amber-400/10 text-[var(--text-secondary)] hover:text-amber-500 shadow-2xs hover:scale-105 active:scale-95'
+              : 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-30 cursor-not-allowed scale-95'
+          }`}
+        >
+          <RotateCcw size={17} strokeWidth={2.4} />
+        </button>
 
-      {/* Veto Button */}
-      <button
-        type="button"
-        onClick={() => handleVote(-100)}
-        aria-label="Veto option"
-        title="Remove option for the whole group"
-        className="w-11 h-11 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] hover:border-amber-500/50 hover:bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
-      >
-        <Flame size={20} strokeWidth={2.2} />
-      </button>
+        {/* Pass Button */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('pass');
+            handleVote?.(-1);
+          }}
+          aria-label="Pass option"
+          title="Pass (ArrowLeft)"
+          className="w-13 h-13 rounded-2xl bg-[var(--bg-surface)] hover:bg-rose-500/10 border border-[var(--border-main)] hover:border-rose-500/50 text-rose-500 flex items-center justify-center shadow-xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+        >
+          <X size={24} strokeWidth={2.5} />
+        </button>
 
-      {/* Superlike Button */}
-      <button
-        type="button"
-        onClick={() => handleVote(2)}
-        aria-label="Superlike option"
-        title="Favorite / Strong preference"
-        className="w-11 h-11 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] hover:border-indigo-500/50 hover:bg-indigo-500/10 text-indigo-400 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
-      >
-        <Star size={20} strokeWidth={2.2} className="fill-indigo-400/20" />
-      </button>
+        {/* Veto Button */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('veto');
+            handleVote?.(-100);
+          }}
+          aria-label="Veto option"
+          title="Veto option (ArrowDown)"
+          className="w-11 h-11 rounded-2xl bg-[var(--bg-surface)] hover:bg-red-600/10 border border-[var(--border-main)] hover:border-red-500/50 text-red-500 flex items-center justify-center shadow-2xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+        >
+          <Flame size={19} strokeWidth={2.3} />
+        </button>
 
-      {/* Like Button */}
-      <button
-        type="button"
-        onClick={() => handleVote(1)}
-        aria-label="Like option"
-        className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_6px_20px_rgba(16,185,129,0.35)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
-      >
-        <Heart size={26} strokeWidth={2.4} className="fill-white" />
-      </button>
+        {/* Superlike Button */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('superlike');
+            handleVote?.(2);
+          }}
+          aria-label="Superlike option"
+          title="Superlike (ArrowUp)"
+          className="w-11 h-11 rounded-2xl bg-[var(--bg-surface)] hover:bg-amber-400/10 border border-[var(--border-main)] hover:border-amber-400/50 text-amber-500 flex items-center justify-center shadow-2xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+        >
+          <Star size={19} strokeWidth={2.3} className="fill-amber-400/20" />
+        </button>
+
+        {/* Like Button */}
+        <button
+          type="button"
+          onClick={() => {
+            triggerHaptic('like');
+            handleVote?.(1);
+          }}
+          aria-label="Like option"
+          title="Like (ArrowRight)"
+          className="w-13 h-13 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_4px_16px_rgba(16,185,129,0.35)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+        >
+          <Heart size={24} strokeWidth={2.5} className="fill-white" />
+        </button>
+      </div>
     </div>
   );
 }
-
