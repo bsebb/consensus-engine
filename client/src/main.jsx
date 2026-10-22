@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')).render(
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/sw.js')
+      .register('/sw.js', { updateViaCache: 'none' })
       .then((reg) => {
         console.log('[PWA] Service Worker registered with scope:', reg.scope);
         // Force immediate check for sw updates
