@@ -15,7 +15,7 @@ const History = lazy(() => import('./pages/History'));
 
 function PageLoader() {
   return (
-    <div className="flex-1 min-h-[100dvh] flex items-center justify-center bg-[var(--bg-root)]" aria-busy="true">
+    <div className="flex-1 h-full min-h-0 flex items-center justify-center bg-[var(--bg-root)]" aria-busy="true">
       <div className="w-6 h-6 border-2 border-[var(--accent-bg)] border-t-transparent rounded-full animate-spin" />
     </div>
   );

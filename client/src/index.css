@@ -80,6 +80,9 @@
 
   html {
     background-color: var(--bg-root);
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
@@ -90,8 +93,9 @@
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
-    min-height: 100dvh;
+    overflow: hidden;
+    height: 100dvh;
+    max-height: 100dvh;
     touch-action: pan-y;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
@@ -99,8 +103,10 @@
   }
 
   #root {
-    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
     width: 100%;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -345,7 +351,9 @@ html.theme-transitioning [data-sliding-thumb] {
 .pwa-shell {
   width: 100%;
   max-width: 480px;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -396,15 +404,15 @@ html.theme-transitioning [data-sliding-thumb] {
 
 /* Bulletproof iOS Safe Area Inset Helpers with Hardware Notch/Island Floor */
 .safe-pt-page {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 3.5rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-page {
-    padding-top: 1.75rem;
+    padding-top: 1.25rem;
   }
 }
 .safe-pt-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 3.5rem);
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-header {
@@ -412,13 +420,13 @@ html.theme-transitioning [data-sliding-thumb] {
   }
 }
 .safe-pb {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
 }
 .safe-pb-dock {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.75rem);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
 }
 .pb-safe {
-  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 1.5rem), 3rem);
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 0.75rem), 1.25rem);
 }
 
 /* Section Header Label */

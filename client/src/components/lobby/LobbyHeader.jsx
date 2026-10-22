@@ -14,7 +14,7 @@ export default function LobbyHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
+    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 shrink-0">
       <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[36px]">
         <div className="flex items-center z-10">
           <button

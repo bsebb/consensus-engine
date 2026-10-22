@@ -250,9 +250,9 @@ export default function HostSettings() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
+    <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden select-none">
       {/* Consumer Mobile Header with Progress Hairline */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 relative">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 relative shrink-0">
         <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[36px]">
           <div className="flex items-center z-10">
             <button
@@ -296,7 +296,7 @@ export default function HostSettings() {
       </header>
 
       {/* Main Configuration Content with Staged Accordion */}
-      <main className="px-4 pt-4 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+      <main className="px-4 pt-3.5 pb-[max(env(safe-area-inset-bottom,0px),1.5rem)] flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
         {/* Stepper Status Pill */}
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">

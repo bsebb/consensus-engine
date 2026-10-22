@@ -479,7 +479,7 @@ export default function RoomLobby() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] pb-36 sm:pb-40 select-none">
+    <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden select-none">
       <LobbyHeader
         pin={pin}
         copied={copied}
@@ -493,14 +493,14 @@ export default function RoomLobby() {
       />
 
       {showReconnecting && (
-        <div className="bg-amber-500/15 border-b border-amber-500/25 px-4 py-1.5 text-center flex items-center justify-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400 animate-[fadeIn_0.2s_ease-out]">
+        <div className="bg-amber-500/15 border-b border-amber-500/25 px-4 py-1.5 text-center flex items-center justify-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400 animate-[fadeIn_0.2s_ease-out] shrink-0">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
           <span>{t('reconnecting')}</span>
         </div>
       )}
 
       {/* Main Content */}
-      <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+      <main className="px-4 pt-3 pb-28 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
         {isVotingActive && (
           <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs animate-[fadeIn_0.2s_ease-out]">
             <div className="flex items-center gap-2">

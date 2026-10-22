@@ -15,9 +15,9 @@ export default function LobbyLoadingView({
   const { t } = useLanguage();
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none bg-[var(--bg-root)] animate-fade-in text-[var(--text-primary)]">
+    <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden select-none bg-[var(--bg-root)] animate-fade-in text-[var(--text-primary)]">
       {/* Header matching RoomLobby */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3">
+      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 shrink-0">
         <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[36px]">
           <div className="flex items-center z-10">
             {onCancel ? (
@@ -51,7 +51,7 @@ export default function LobbyLoadingView({
       </header>
 
       {/* Main Content matching RoomLobby */}
-      <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+      <main className="px-4 pt-3 pb-28 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
         {/* Roster Card Skeleton */}
         <div className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
           <div className="flex items-start justify-between gap-3">

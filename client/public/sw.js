@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noyoupick-pwa-v22';
+const CACHE_NAME = 'noyoupick-pwa-v24';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

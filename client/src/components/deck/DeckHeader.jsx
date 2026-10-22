@@ -20,7 +20,7 @@ export default function DeckHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-2.5 relative select-none">
+    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-2.5 relative shrink-0 select-none">
       <div className="relative flex items-center justify-between gap-2 max-w-md mx-auto min-h-[36px]">
         <div className="flex items-center z-10">
           <button

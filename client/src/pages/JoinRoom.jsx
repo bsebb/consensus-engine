@@ -243,8 +243,8 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 safe-pt-page pb-safe min-h-[100dvh] overflow-y-auto">
-      <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
+    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 safe-pt-page pb-safe h-full min-h-0 overflow-hidden select-none">
+      <header className="w-full flex items-center justify-between pb-1.5 max-w-md mx-auto shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
             <BrandLogo size={22} />
@@ -287,17 +287,17 @@ export default function JoinRoom() {
         </div>
       </header>
 
-      <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
-        <div className="text-center mb-4 sm:mb-5 h-[64px] max-h-[64px] shrink-0 flex flex-col justify-center items-center px-2 overflow-hidden select-none">
+      <main className="w-full flex-1 min-h-0 flex flex-col justify-center items-center max-w-md mx-auto py-1 overflow-hidden">
+        <div className="text-center mb-2.5 sm:mb-3.5 h-[48px] max-h-[48px] shrink-0 flex flex-col justify-center items-center px-2 overflow-hidden select-none">
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--text-primary)] truncate whitespace-nowrap max-w-full leading-tight">
             {activeTab === 'create' ? (isCustomMode && customTopic.trim() ? customTopic.trim() : activeCatObj.topic) : t('joinWithCode')}
           </h1>
-          <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate whitespace-nowrap max-w-full leading-normal mt-1">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate whitespace-nowrap max-w-full leading-normal mt-0.5">
             {activeTab === 'create' ? (isCustomMode && customOptions.length > 0 ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready` : activeCatObj.desc) : t('roomCodeHint')}
           </p>
         </div>
 
-        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-5 sm:p-6 flex flex-col gap-4">
+        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-3.5 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 shrink-0">
           <SegmentedControl
             options={[{ value: 'create', label: t('startPick') }, { value: 'join', label: t('joinWithCode') }]}
             value={activeTab}
@@ -305,7 +305,7 @@ export default function JoinRoom() {
             size="md"
           />
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <label htmlFor="userName" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
               {t('yourName')}
             </label>
@@ -317,7 +317,7 @@ export default function JoinRoom() {
                 placeholder={t('namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full min-h-[44px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
+                className="w-full min-h-[40px] sm:min-h-[44px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
               />
               {name.trim() ? (
                 <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">
@@ -330,10 +330,10 @@ export default function JoinRoom() {
           </div>
 
           {activeTab === 'create' ? (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5 sm:gap-3.5">
+              <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">{t('whatPicking')}</span>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-2">
                   {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isSelected = selectedCategory === cat.id;
@@ -354,7 +354,7 @@ export default function JoinRoom() {
                             setIsCustomDrawerOpen(true);
                           }
                         }}
-                        className={`category-tile relative flex items-center gap-2.5 p-3 rounded-2xl border text-left cursor-pointer min-h-[64px] touch-manipulation hover:scale-[1.01] active:scale-[0.98] ${
+                        className={`category-tile relative flex items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl border text-left cursor-pointer min-h-[50px] sm:min-h-[58px] touch-manipulation hover:scale-[1.01] active:scale-[0.98] ${
                           cat.wide ? 'col-span-2' : 'col-span-1'
                         } ${
                           isSelected
@@ -363,13 +363,13 @@ export default function JoinRoom() {
                         }`}
                       >
                         <div
-                          className={`cat-icon-badge w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+                          className={`cat-icon-badge w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                             isSelected
                               ? 'is-selected scale-105'
                               : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
                           }`}
                         >
-                          <Icon size={16} />
+                          <Icon size={15} />
                         </div>
                         <div className="min-w-0 flex-1 pr-1 overflow-hidden">
                           <div className="text-xs sm:text-[13px] font-bold text-[var(--text-primary)] leading-tight truncate" title={tileTitle}>
@@ -398,10 +398,10 @@ export default function JoinRoom() {
                     triggerHaptic('tap');
                     setIsCustomDrawerOpen(true);
                   }}
-                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
+                  className="flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
                       <ListPlus size={15} />
                     </div>
                     <div className="min-w-0">
@@ -422,10 +422,10 @@ export default function JoinRoom() {
               ) : (
                 <div
                   onClick={() => setIsLocationModalOpen(true)}
-                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
+                  className="flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
                       <MapPin size={15} />
                     </div>
                     <div className="min-w-0">
@@ -451,7 +451,7 @@ export default function JoinRoom() {
                 disabled={isCreatingRoom}
                 loading={isCreatingRoom}
                 icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
+                className="w-full h-11 sm:h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-0.5"
               >
                 {t('createRoomBtn')}
               </Button>
@@ -468,9 +468,9 @@ export default function JoinRoom() {
 
         {/* Recent Decision Shortcut */}
         {recentSession && (
-          <div className="w-full mt-4 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs">
+          <div className="w-full mt-2.5 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Clock size={15} className="text-[var(--text-tertiary)] shrink-0" />
+              <Clock size={14} className="text-[var(--text-tertiary)] shrink-0" />
               <div className="text-xs truncate">
                 <span className="text-[var(--text-tertiary)]">{t('lastWinnerPrefix')}: </span>
                 <span className="font-bold text-[var(--text-primary)]">
@@ -492,8 +492,8 @@ export default function JoinRoom() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center pt-2 pb-1">
-        <p className="text-xs text-[var(--text-tertiary)]">
+      <footer className="text-center pt-1 pb-0.5 shrink-0">
+        <p className="text-[11px] text-[var(--text-tertiary)]">
           {t('footerSubtext')}
         </p>
       </footer>

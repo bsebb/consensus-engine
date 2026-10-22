@@ -9,7 +9,7 @@ export default function WaitingForBallotsView({
   handleHostForceReveal,
 }) {
   return (
-    <main className="px-4 py-8 flex flex-col items-center justify-center text-center flex-1 my-auto max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
+    <main className="px-4 py-4 flex flex-col items-center justify-center text-center flex-1 min-h-0 overflow-hidden max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
       <div className="w-full rounded-3xl bg-[var(--bg-elevated)] p-8 border border-[var(--border-main)] flex flex-col items-center gap-5 shadow-sm">
         <div className="w-16 h-16 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(16,185,129,0.35)] animate-pulse">
           <CheckCircle2 size={32} />

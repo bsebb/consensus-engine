@@ -441,12 +441,10 @@ export default function SwipeDeck() {
 
   return (
     <div
-      className={`flex-1 flex flex-col select-none ${
-        !showWinner && currentIndex < cards.length
-          ? activeTab === 'details'
-            ? 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-pan-y'
-            : 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-none'
-          : 'min-h-screen pb-16 overflow-y-auto'
+      className={`flex-1 flex flex-col h-full max-h-full min-h-0 overflow-hidden justify-between select-none ${
+        !showWinner && currentIndex < cards.length && activeTab !== 'details'
+          ? 'touch-none'
+          : 'touch-pan-y'
       }`}
     >
       {/* PWA Mobile Header */}

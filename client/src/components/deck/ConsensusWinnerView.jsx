@@ -160,7 +160,7 @@ export default function ConsensusWinnerView({
   };
 
   return (
-    <main className="px-4 py-4 pb-16 flex flex-col items-center gap-4 flex-1 my-auto max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
+    <main className="px-4 py-3.5 pb-12 flex flex-col items-center gap-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
       {/* Winner Hero Card */}
       <div className="w-full rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner ? (
