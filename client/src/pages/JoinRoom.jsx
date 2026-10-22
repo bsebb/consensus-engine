@@ -103,12 +103,6 @@ export default function JoinRoom() {
     };
   }, []);
 
-  const handleUseMyGps = async () => {
-    setGpsState((prev) => ({ ...prev, status: 'detecting', label: 'Locating via GPS...' }));
-    const res = await detectUserGps({ forceRefresh: true });
-    setGpsState(res);
-  };
-
   const handleDigitChange = (index, value) => {
     const digit = value.replace(/\D/g, '').slice(-1);
     const newDigits = [...pinDigits];
@@ -190,12 +184,14 @@ export default function JoinRoom() {
     let lng = gpsState.lng;
     let isExactGps = Boolean(gpsState.isExact && lat != null && lng != null);
 
-    if (!isCustomMode && (lat == null || lng == null)) {
-      const fresh = await detectUserGps();
-      setGpsState(fresh);
-      lat = fresh.lat;
-      lng = fresh.lng;
-      isExactGps = Boolean(fresh.isExact && lat != null && lng != null);
+    if (!isCustomMode && (lat == null || lng != null)) {
+      if (lat == null || lng == null) {
+        const fresh = await detectUserGps();
+        setGpsState(fresh);
+        lat = fresh.lat;
+        lng = fresh.lng;
+        isExactGps = Boolean(fresh.isExact && lat != null && lng != null);
+      }
     }
 
     try {
@@ -249,23 +245,23 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 safe-pt-page pb-safe min-h-[100dvh] overflow-y-auto">
-      <header className="w-full flex items-center justify-between pb-3 max-w-md mx-auto">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
-            <BrandLogo size={22} />
+    <div className="flex-1 h-full max-h-full flex flex-col justify-between px-3.5 sm:px-6 safe-pt-page safe-pb overflow-hidden select-none">
+      <header className="w-full flex items-center justify-between pb-1.5 max-w-md mx-auto shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5 shrink-0">
+            <BrandLogo size={20} />
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold text-base tracking-tight text-[var(--text-primary)] leading-tight">NoYouPick</span>
+            <span className="font-extrabold text-sm sm:text-base tracking-tight text-[var(--text-primary)] leading-tight">NoYouPick</span>
             <span className="text-[10px] font-medium text-[var(--text-tertiary)] -mt-0.5">{t('tagline')}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
             title={t('langTitle')}
           >
             <span>{lang === 'ro' ? '🇲🇩 RO' : lang === 'ru' ? '🇷🇺 RU' : '🇺🇸 EN'}</span>
@@ -273,10 +269,10 @@ export default function JoinRoom() {
           <button
             type="button"
             onClick={() => navigate('/history')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
             title="Past Group Picks"
           >
-            <History size={14} />
+            <History size={13} />
             <span>{t('history')}</span>
           </button>
           <button
@@ -286,23 +282,23 @@ export default function JoinRoom() {
             aria-label="Open Settings"
             title={t('settings')}
           >
-            <Settings size={16} />
+            <Settings size={15} />
           </button>
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="w-full my-auto flex flex-col items-center max-w-md mx-auto py-2">
-        <div className="text-center mb-5 space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
+      <main className="w-full flex-1 min-h-0 flex flex-col justify-center items-center max-w-md mx-auto py-1 overflow-hidden">
+        <div className="text-center mb-2.5 sm:mb-4 space-y-0.5 shrink-0">
+          <h1 className="text-xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)] leading-tight">
             {activeTab === 'create' ? activeCatObj.topic : t('joinWithCode')}
           </h1>
-          <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xs mx-auto leading-relaxed">
+          <p className="text-xs text-[var(--text-secondary)] max-w-xs mx-auto leading-snug line-clamp-1">
             {activeTab === 'create' ? activeCatObj.desc : t('roomCodeHint')}
           </p>
         </div>
 
-        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-5 sm:p-6 flex flex-col gap-4">
+        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-3.5 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 shrink-0">
           <SegmentedControl
             options={[{ value: 'create', label: t('startPick') }, { value: 'join', label: t('joinWithCode') }]}
             value={activeTab}
@@ -310,8 +306,8 @@ export default function JoinRoom() {
             size="md"
           />
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="userName" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="userName" className="text-[11px] font-semibold text-[var(--text-secondary)] px-1">
               {t('yourName')}
             </label>
             <div className="relative">
@@ -322,23 +318,23 @@ export default function JoinRoom() {
                 placeholder={t('namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full min-h-[44px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
+                className="w-full h-10 sm:min-h-[42px] pl-9 pr-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
               />
               {name.trim() ? (
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">
                   {name.trim().slice(0, 2).toUpperCase()}
                 </div>
               ) : (
-                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
               )}
             </div>
           </div>
 
           {activeTab === 'create' ? (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-semibold text-[var(--text-secondary)] px-1">{t('whatPicking')}</span>
-                <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex flex-col gap-2.5 sm:gap-3">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold text-[var(--text-secondary)] px-1">{t('whatPicking')}</span>
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                   {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isSelected = selectedCategory === cat.id;
@@ -350,24 +346,24 @@ export default function JoinRoom() {
                           setSelectedCategory(cat.id);
                           triggerHaptic('tap');
                         }}
-                        className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer min-h-[54px] ${
+                        className={`flex items-center gap-2 p-2 sm:p-2.5 rounded-2xl border text-left transition-all active:scale-[0.98] cursor-pointer min-h-[44px] sm:min-h-[50px] ${
                           isSelected
                             ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--text-primary)] shadow-xs'
                             : 'border-[var(--border-subtle)] bg-[var(--bg-inset)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-main)]'
                         }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                             isSelected
                               ? 'bg-[var(--accent-bg)] text-white'
                               : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
                           }`}
                         >
-                          <Icon size={16} />
+                          <Icon size={15} />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-[var(--text-primary)] truncate">{cat.title}</div>
-                          <div className="text-[11px] text-[var(--text-tertiary)] truncate">{cat.desc}</div>
+                          <div className="text-xs font-bold text-[var(--text-primary)] truncate leading-tight">{cat.title}</div>
+                          <div className="text-[10px] text-[var(--text-tertiary)] truncate leading-tight">{cat.desc}</div>
                         </div>
                       </button>
                     );
@@ -377,8 +373,8 @@ export default function JoinRoom() {
 
               {/* Universal Hex Grid Location Bar or Custom Topic Input */}
               {selectedCategory === 'Custom' ? (
-                <div className="flex flex-col gap-1.5 animate-[modalSpring_0.25s_var(--spring-smooth)]">
-                  <label htmlFor="customTopicInput" className="text-xs font-semibold text-[var(--text-secondary)] px-1">
+                <div className="flex flex-col gap-1 animate-[modalSpring_0.25s_var(--spring-smooth)]">
+                  <label htmlFor="customTopicInput" className="text-[11px] font-semibold text-[var(--text-secondary)] px-1">
                     {t('customQuestionLabel')}
                   </label>
                   <input
@@ -387,28 +383,28 @@ export default function JoinRoom() {
                     value={customTopic}
                     onChange={(e) => setCustomTopic(e.target.value)}
                     placeholder={t('customPlaceholder')}
-                    className="w-full min-h-[44px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
+                    className="w-full h-10 sm:min-h-[42px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
                   />
                 </div>
               ) : (
                 <div
                   onClick={() => setIsLocationModalOpen(true)}
-                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
+                  className="flex items-center justify-between gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-inset)]/80 border border-[var(--border-subtle)] hover:border-[var(--border-main)] transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
-                      <MapPin size={15} />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
+                      <MapPin size={14} />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-bg)] transition-colors">
+                      <div className="text-xs font-bold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-bg)] transition-colors leading-tight">
                         {gpsState.label || t('detectingLocation')}
                       </div>
-                      <div className="text-[11px] text-[var(--text-tertiary)] truncate">
+                      <div className="text-[10px] text-[var(--text-tertiary)] truncate leading-tight">
                         {gpsState.source === 'gps' ? t('locationLabel') : t('locationChangeHint')}
                       </div>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] group-hover:bg-[var(--accent-bg)] group-hover:text-white transition-all shrink-0">
+                  <span className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--accent-bg)] group-hover:bg-[var(--accent-bg)] group-hover:text-white transition-all shrink-0">
                     {t('change')}
                   </span>
                 </div>
@@ -422,26 +418,26 @@ export default function JoinRoom() {
                 disabled={loading}
                 loading={loading}
                 icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
+                className="w-full h-11 sm:h-12 rounded-2xl font-bold text-sm sm:text-base shadow-[0_6px_20px_var(--accent-glow)]"
               >
                 {t('createRoomBtn')}
               </Button>
             </div>
           ) : (
             /* TAB 2: JOIN WITH 4-DIGIT PIN */
-            <form onSubmit={handleJoin} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
+            <form onSubmit={handleJoin} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between px-1">
-                  <label className="text-xs font-semibold text-[var(--text-secondary)]">
+                  <label className="text-[11px] font-semibold text-[var(--text-secondary)]">
                     {t('roomCodeLabel')}
                   </label>
-                  <span className="text-[11px] text-[var(--text-tertiary)]">
+                  <span className="text-[10px] text-[var(--text-tertiary)]">
                     {t('roomCodeHint')}
                   </span>
                 </div>
 
                 {/* 4 PIN Input Boxes */}
-                <div className="grid grid-cols-4 gap-2.5" onPaste={handlePaste}>
+                <div className="grid grid-cols-4 gap-2" onPaste={handlePaste}>
                   {pinDigits.map((digit, index) => (
                     <input
                       key={index}
@@ -453,7 +449,7 @@ export default function JoinRoom() {
                       value={digit}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
-                      className={`w-full h-14 text-center font-bold text-2xl rounded-2xl border transition-all duration-150 outline-none select-all tabular-nums ${
+                      className={`w-full h-13 sm:h-14 text-center font-bold text-2xl rounded-2xl border transition-all duration-150 outline-none select-all tabular-nums ${
                         digit
                           ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]'
                           : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)]'
@@ -465,12 +461,12 @@ export default function JoinRoom() {
               </div>
 
               {pin.length === 4 && (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                   <div className="flex items-center gap-1.5">
-                    <Check size={15} className="shrink-0 text-emerald-500" />
+                    <Check size={14} className="shrink-0 text-emerald-500" />
                     <span>{t('roomReadyPrefix')} #{pin} {t('roomReadySuffix')}</span>
                   </div>
-                  <span className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/15 px-2.5 py-0.5 rounded-full">
+                  <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-500/15 px-2 py-0.5 rounded-full">
                     {t('ready')}
                   </span>
                 </div>
@@ -483,7 +479,7 @@ export default function JoinRoom() {
                 disabled={pin.length !== 4 || loading}
                 loading={loading}
                 icon={ArrowRight}
-                className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1"
+                className="w-full h-11 sm:h-12 rounded-2xl font-bold text-sm sm:text-base shadow-[0_6px_20px_var(--accent-glow)]"
               >
                 {t('joinRoomBtn')}
               </Button>
@@ -493,9 +489,9 @@ export default function JoinRoom() {
 
         {/* Recent Decision Shortcut */}
         {recentSession && (
-          <div className="w-full mt-4 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs">
+          <div className="w-full mt-2 py-2 px-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              <Clock size={15} className="text-[var(--text-tertiary)] shrink-0" />
+              <Clock size={13} className="text-[var(--text-tertiary)] shrink-0" />
               <div className="text-xs truncate">
                 <span className="text-[var(--text-tertiary)]">{t('lastWinnerPrefix')}: </span>
                 <span className="font-bold text-[var(--text-primary)]">{recentSession.winner || 'Recent Spot'}</span>
@@ -513,8 +509,8 @@ export default function JoinRoom() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center pt-2 pb-1">
-        <p className="text-xs text-[var(--text-tertiary)]">
+      <footer className="text-center pt-1 shrink-0">
+        <p className="text-[11px] text-[var(--text-tertiary)] truncate">
           {t('footerSubtext')}
         </p>
       </footer>

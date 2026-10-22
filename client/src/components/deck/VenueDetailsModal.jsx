@@ -53,17 +53,18 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
   const driveRouteUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNum},${lngNum}&travelmode=driving`
     : `https://www.google.com/maps/dir/?api=1&destination=${destinationQuery}&travelmode=driving`;
-  const walkRouteUrl = hasCoords
-    ? `https://www.google.com/maps/dir/?api=1&destination=${latNum},${lngNum}&travelmode=walking`
-    : `https://www.google.com/maps/dir/?api=1&destination=${destinationQuery}&travelmode=walking`;
   const reviewsSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${venue.name} ${venue.address || ''} menu reviews photos`)}`;
 
   const activePhotoUrl = photos[activePhotoIdx] || photos[0] || fallbackPhoto;
 
   const content = (
-    <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col max-h-[84dvh]">
+    <div
+      className={`w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col ${
+        inline ? 'flex-1 min-h-0 max-h-full' : 'max-h-[86dvh]'
+      }`}
+    >
       {/* Top Hero Photo + Gallery Strip */}
-      <div className="relative h-52 sm:h-60 w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden">
+      <div className="relative h-40 sm:h-52 w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden">
         <img
           src={activePhotoUrl}
           alt={venue.name}
@@ -76,38 +77,38 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none" />
 
         {/* Top Bar Badges */}
-        <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-xs font-bold">
-            <Star size={12} className="text-amber-400 fill-amber-400" />
+        <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-xs font-bold">
+            <Star size={11} className="text-amber-400 fill-amber-400" />
             <span>{rating}</span>
             <span className="text-white/75 font-normal">({reviewCount})</span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-[11px] font-semibold flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white text-[11px] font-semibold flex items-center gap-1">
               <Camera size={11} className="text-emerald-400" />
-              <span>{isRealPhoto ? `${photos.length} Venue Photos` : 'Venue Preview'}</span>
+              <span>{isRealPhoto ? `${photos.length} Photos` : 'Preview'}</span>
             </span>
             {!inline && onClose && (
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white flex items-center justify-center hover:bg-black/85 transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-white flex items-center justify-center hover:bg-black/85 transition-colors cursor-pointer"
                 aria-label="Close Details"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             )}
           </div>
         </div>
 
         {/* Bottom Title & Vibe on Photo */}
-        <div className="absolute bottom-3 inset-x-4 flex items-end justify-between gap-2">
+        <div className="absolute bottom-2.5 inset-x-3.5 flex items-end justify-between gap-2">
           <div className="min-w-0">
-            <span className="inline-block px-2 py-0.5 rounded-md bg-[var(--accent-bg)] text-white text-[11px] font-bold mb-1">
+            <span className="inline-block px-2 py-0.5 rounded-md bg-[var(--accent-bg)] text-white text-[10px] font-bold mb-0.5">
               {vibe}
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">
+            <h2 className="text-lg sm:text-2xl font-black text-white leading-tight truncate">
               {venue.name}
             </h2>
           </div>
@@ -116,13 +117,13 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
 
       {/* Multi-Photo Thumbnail Switcher (when multiple real photos exist) */}
       {photos.length > 1 && (
-        <div className="px-4 py-2 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex items-center gap-2 overflow-x-auto shrink-0">
+        <div className="px-3.5 py-1.5 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
           {photos.map((url, idx) => (
             <button
               key={url}
               type="button"
               onClick={() => setActivePhotoIdx(idx)}
-              className={`relative w-14 h-10 rounded-lg overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
+              className={`relative w-12 h-9 rounded-lg overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
                 idx === activePhotoIdx
                   ? 'border-[var(--accent-bg)] scale-105 shadow-xs'
                   : 'border-transparent opacity-70 hover:opacity-100'
@@ -138,65 +139,65 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
               />
             </button>
           ))}
-          <span className="text-[11px] text-[var(--text-tertiary)] ml-auto shrink-0">
-            Tap to view photos
+          <span className="text-[10px] text-[var(--text-tertiary)] ml-auto shrink-0">
+            Tap to view
           </span>
         </div>
       )}
 
       {/* Scrollable Details Body */}
-      <div className="p-4 sm:p-5 overflow-y-auto flex flex-col gap-3.5">
+      <div className="p-3.5 sm:p-4 flex-1 min-h-0 mobile-scroll-area no-scrollbar flex flex-col gap-2.5">
         {/* True Street/Road Network Travel Time Cards */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
-            <span className="text-[11px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
-              <Navigation size={11} className="text-[var(--accent-bg)]" />
+        <div className="grid grid-cols-3 gap-2 shrink-0">
+          <div className="p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
+              <Navigation size={10} className="text-[var(--accent-bg)]" />
               <span>Road Route</span>
             </span>
-            <span className="text-sm font-black text-[var(--text-primary)]">
+            <span className="text-xs sm:text-sm font-black text-[var(--text-primary)]">
               {distKm != null ? `${distKm} km` : 'Local'}
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)]">Via real streets</span>
+            <span className="text-[10px] text-[var(--text-secondary)]">Real streets</span>
           </div>
 
-          <div className="p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
-            <span className="text-[11px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
-              <Car size={12} className="text-emerald-500" />
-              <span>By Car / Taxi</span>
+          <div className="p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
+              <Car size={11} className="text-emerald-500" />
+              <span>By Car</span>
             </span>
-            <span className="text-sm font-black text-[var(--text-primary)]">
+            <span className="text-xs sm:text-sm font-black text-[var(--text-primary)]">
               {driveMin != null ? `~${driveMin} min` : 'Quick ride'}
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)]">Street traffic</span>
+            <span className="text-[10px] text-[var(--text-secondary)]">Street traffic</span>
           </div>
 
-          <div className="p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
-            <span className="text-[11px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
-              <Footprints size={12} className="text-amber-500" />
+          <div className="p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-0.5">
+            <span className="text-[10px] text-[var(--text-tertiary)] font-medium flex items-center gap-1">
+              <Footprints size={11} className="text-amber-500" />
               <span>Walking</span>
             </span>
-            <span className="text-sm font-black text-[var(--text-primary)]">
+            <span className="text-xs sm:text-sm font-black text-[var(--text-primary)]">
               {walkMin != null ? `~${walkMin} min` : 'Walkable'}
             </span>
-            <span className="text-[11px] text-[var(--text-secondary)]">Pedestrian path</span>
+            <span className="text-[10px] text-[var(--text-secondary)]">Pedestrian</span>
           </div>
         </div>
 
         {/* Address & Price Info Box */}
-        <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2">
-          <div className="flex items-start gap-2.5">
-            <MapPin size={15} className="text-[var(--accent-bg)] shrink-0 mt-0.5" />
+        <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-1.5 shrink-0">
+          <div className="flex items-start gap-2">
+            <MapPin size={14} className="text-[var(--accent-bg)] shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <div className="text-xs font-bold text-[var(--text-primary)]">
+              <div className="text-xs font-bold text-[var(--text-primary)] truncate">
                 {venue.address || 'Central Area'}
               </div>
-              <div className="text-[11px] text-[var(--text-tertiary)]">
-                Routed via street network & bridges (not straight-line)
+              <div className="text-[10px] text-[var(--text-tertiary)]">
+                Routed via street network & bridges
               </div>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
+          <div className="pt-1.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
             <span className="text-[var(--text-secondary)] font-medium">Estimated Spend</span>
             <span className="font-bold text-[var(--text-primary)]">{priceDesc}</span>
           </div>
@@ -213,7 +214,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
         )}
 
         {/* 1-Tap Route & Menu Actions */}
-        <div className="grid grid-cols-2 gap-2 pt-0.5">
+        <div className="grid grid-cols-2 gap-2 pt-0.5 shrink-0">
           <a
             href={driveRouteUrl}
             target="_blank"
@@ -239,12 +240,12 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, inline = fal
   );
 
   if (inline) {
-    return <div className="flex-1 flex flex-col justify-center px-4 py-2 max-w-md mx-auto w-full">{content}</div>;
+    return <div className="flex-1 min-h-0 flex flex-col justify-center max-w-md mx-auto w-full overflow-hidden">{content}</div>;
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 sm:p-4 animate-[fadeIn_0.15s_ease-out]"
+      className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-2.5 sm:p-4 animate-[fadeIn_0.15s_ease-out]"
       onClick={onClose}
     >
       <div

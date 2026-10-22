@@ -5,9 +5,9 @@ import ThemeToggle from '../ThemeToggle';
 
 export default function NoActiveLobbyView({ navigate, setSettingsOpen }) {
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-28 select-none">
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 py-3">
-        <div className="flex items-center justify-between">
+    <div className="flex-1 h-full max-h-full flex flex-col justify-between overflow-hidden select-none">
+      <header className="shrink-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-3.5 sm:px-4 safe-pt-header pb-2.5">
+        <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -37,12 +37,12 @@ export default function NoActiveLobbyView({ navigate, setSettingsOpen }) {
         </div>
       </header>
 
-      <main className="px-4 py-8 flex flex-col items-center justify-center flex-1 my-auto text-center gap-5">
-        <div className="w-16 h-16 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-tertiary)] shadow-sm">
-          <Users size={32} />
+      <main className="px-4 py-4 safe-pb flex flex-col items-center justify-center flex-1 min-h-0 text-center gap-4 overflow-hidden">
+        <div className="w-14 h-14 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-tertiary)] shadow-sm">
+          <Users size={28} />
         </div>
 
-        <div className="flex flex-col gap-1.5 max-w-xs">
+        <div className="flex flex-col gap-1 max-w-xs">
           <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
             No Active Lobby
           </h2>
@@ -51,7 +51,7 @@ export default function NoActiveLobbyView({ navigate, setSettingsOpen }) {
           </p>
         </div>
 
-        <div className="flex flex-col gap-2.5 w-full max-w-xs pt-2">
+        <div className="flex flex-col gap-2 w-full max-w-xs pt-1">
           <Button
             variant="primary"
             size="md"

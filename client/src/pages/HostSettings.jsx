@@ -229,13 +229,14 @@ export default function HostSettings() {
   };
 
   const progressPercent = calculateProgress();
+  const savedUserName = localStorage.getItem('consensus_user_name') || 'Host';
 
   if (loading) {
     return (
       <LobbyLoadingView
         topic={topic}
         category={category}
-        userName={userName || 'Host'}
+        userName={savedUserName}
         locationLabel={userLocation?.label || 'Current Location'}
         isCustom={mode === 'CUSTOM'}
         onCancel={() => setLoading(false)}
@@ -244,9 +245,9 @@ export default function HostSettings() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
+    <div className="flex-1 h-full max-h-full flex flex-col justify-between overflow-hidden select-none">
       {/* Consumer Mobile Header with Progress Hairline */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3 relative">
+      <header className="shrink-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-3.5 sm:px-4 safe-pt-header pb-2.5 relative">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
@@ -254,7 +255,7 @@ export default function HostSettings() {
             className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]"
             aria-label="Back to Join"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={14} />
             <span>Back</span>
           </button>
 
@@ -262,7 +263,7 @@ export default function HostSettings() {
             Create Room
           </h1>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -270,7 +271,7 @@ export default function HostSettings() {
               aria-label="Open Settings"
               title="Preferences"
             >
-              <Settings size={16} />
+              <Settings size={15} />
             </button>
             <ThemeToggle />
           </div>
@@ -285,10 +286,10 @@ export default function HostSettings() {
         </div>
       </header>
 
-      {/* Main Configuration Content with Staged Accordion */}
-      <main className="px-4 pt-4 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+      {/* Main Configuration Content with Contained Scroll */}
+      <main className="px-3.5 sm:px-4 py-3 flex flex-col gap-2.5 flex-1 min-h-0 max-w-md mx-auto w-full mobile-scroll-area no-scrollbar">
         {/* Stepper Status Pill */}
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between px-1 shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
             <Layers size={12} />
             <span>Interactive Setup Stages</span>
@@ -299,11 +300,11 @@ export default function HostSettings() {
         </div>
 
         {/* STAGE 1: Consensus Domain & Mode */}
-        <div className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
+        <div className="shrink-0 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
           <button
             type="button"
             onClick={() => toggleStage(1)}
-            className="w-full p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
+            className="w-full p-3 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
             aria-expanded={openStages[1]}
           >
             <div className="flex items-center gap-2.5">
@@ -330,7 +331,7 @@ export default function HostSettings() {
           </button>
 
           <div className={`accordion-drawer ${openStages[1] ? 'open' : ''}`}>
-            <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3">
+            <div className="accordion-drawer-inner p-3 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-2.5">
               <SegmentedControl
                 options={[
                   { value: 'DISCOVERY', label: 'Local Venues', icon: Compass },
@@ -353,11 +354,11 @@ export default function HostSettings() {
         </div>
 
         {/* STAGE 2: Category or Topic */}
-        <div className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
+        <div className="shrink-0 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
           <button
             type="button"
             onClick={() => toggleStage(2)}
-            className="w-full p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
+            className="w-full p-3 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
             aria-expanded={openStages[2]}
           >
             <div className="flex items-center gap-2.5">
@@ -399,11 +400,11 @@ export default function HostSettings() {
         </div>
 
         {/* STAGE 3: Boundaries, Radius & Price Filter */}
-        <div className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
+        <div className="shrink-0 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
           <button
             type="button"
             onClick={() => toggleStage(3)}
-            className="w-full p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
+            className="w-full p-3 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
             aria-expanded={openStages[3]}
           >
             <div className="flex items-center gap-2.5">
@@ -452,12 +453,12 @@ export default function HostSettings() {
           </div>
         </div>
 
-        {/* STAGE 4: Group Quorum & Launch */}
-        <div className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
+        {/* STAGE 4: Group Quorum */}
+        <div className="shrink-0 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm overflow-hidden transition-all duration-200">
           <button
             type="button"
             onClick={() => toggleStage(4)}
-            className="w-full p-3.5 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
+            className="w-full p-3 flex items-center justify-between text-left cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors min-h-[44px]"
             aria-expanded={openStages[4]}
           >
             <div className="flex items-center gap-2.5">
@@ -465,7 +466,7 @@ export default function HostSettings() {
                 04
               </span>
               <div>
-                <h3 className="text-xs font-bold text-[var(--text-primary)]">Group Quorum & Launch</h3>
+                <h3 className="text-xs font-bold text-[var(--text-primary)]">Group Quorum</h3>
                 <p className="text-[10px] text-[var(--text-secondary)]">Target participant headcount</p>
               </div>
             </div>
@@ -484,7 +485,7 @@ export default function HostSettings() {
           </button>
 
           <div className={`accordion-drawer ${openStages[4] ? 'open' : ''}`}>
-            <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-4">
+            <div className="accordion-drawer-inner p-3 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3">
               <div className="flex items-center justify-between pt-1">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center text-[var(--accent-bg)]">
@@ -500,10 +501,10 @@ export default function HostSettings() {
                   <button
                     type="button"
                     onClick={() => setGroupSize((prev) => Math.max(2, prev - 1))}
-                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
+                    className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
                     aria-label="Decrease group size"
                   >
-                    <Minus size={15} />
+                    <Minus size={14} />
                   </button>
                   <span className="font-mono text-sm font-extrabold text-[var(--text-primary)] w-7 text-center tabular-nums">
                     {groupSize}
@@ -511,47 +512,34 @@ export default function HostSettings() {
                   <button
                     type="button"
                     onClick={() => setGroupSize((prev) => Math.min(16, prev + 1))}
-                    className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
+                    className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-primary)] hover:border-[var(--accent-bg)] transition-transform active:scale-95 cursor-pointer"
                     aria-label="Increase group size"
                   >
-                    <Plus size={15} />
+                    <Plus size={14} />
                   </button>
                 </div>
               </div>
-
-              {/* Primary CTA Inside Staged Accordion */}
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                onClick={handleCreateRoom}
-                loading={loading}
-                icon={ArrowRight}
-                className="w-full h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
-              >
-                Launch Room & Enter Lobby
-              </Button>
             </div>
           </div>
         </div>
-
-        {/* Quick Launch Card when Accordion is Collapsed */}
-        {!openStages[4] && (
-          <div className="pt-2">
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              onClick={handleCreateRoom}
-              loading={loading}
-              icon={ArrowRight}
-              className="w-full h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base"
-            >
-              Launch Room & Enter Lobby
-            </Button>
-          </div>
-        )}
       </main>
+
+      {/* Locked Bottom Launch Action Bar */}
+      <div className="shrink-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-3.5 sm:px-4 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-md mx-auto">
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={handleCreateRoom}
+            loading={loading}
+            icon={ArrowRight}
+            className="w-full h-11 sm:h-12 rounded-2xl shadow-[0_8px_24px_var(--accent-glow)] font-bold text-sm sm:text-base"
+          >
+            Launch Room & Enter Lobby
+          </Button>
+        </div>
+      </div>
 
       {/* Global Settings Modal Portal */}
       <SettingsModal

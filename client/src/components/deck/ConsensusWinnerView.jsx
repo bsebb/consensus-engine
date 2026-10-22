@@ -120,64 +120,64 @@ export default function ConsensusWinnerView({
   };
 
   return (
-    <main className="px-4 py-4 pb-16 flex flex-col items-center gap-4 flex-1 my-auto max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
+    <main className="px-3.5 sm:px-4 py-2 safe-pb flex flex-col items-center gap-2.5 flex-1 min-h-0 max-w-md mx-auto w-full mobile-scroll-area no-scrollbar animate-[modalSpring_0.35s_var(--spring-smooth)]">
       {/* Winner Hero Card */}
-      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
+      <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-md border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner ? (
           customWinnerPhoto && !customImgErr ? (
             /* Visual Poster Card for Custom Option Winner */
-            <div className={`relative h-56 w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
+            <div className={`relative h-36 sm:h-44 w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
               <img
                 src={customWinnerPhoto}
                 alt={winner?.name}
-                className={isLogoImage(customWinnerPhoto) ? 'w-full h-full object-contain p-6 pb-12' : 'w-full h-full object-cover'}
+                className={isLogoImage(customWinnerPhoto) ? 'w-full h-full object-contain p-5 pb-10' : 'w-full h-full object-cover'}
                 onError={() => setCustomImgErr(true)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20" />
 
               {/* Floating Winner Badges */}
-              <div className="absolute top-4 inset-x-4 flex items-center justify-between">
-                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+              <div className="absolute top-3 inset-x-3 flex items-center justify-between">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-xs">
                   Winning Group Pick
                 </span>
                 {topic && (
-                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate max-w-[180px]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[11px] font-semibold text-white truncate max-w-[170px]">
                     {topic}
                   </span>
                 )}
               </div>
 
               {/* Title overlay */}
-              <div className="absolute bottom-4 inset-x-4 text-left">
-                <span className="text-xs font-semibold text-amber-300">
+              <div className="absolute bottom-2.5 inset-x-3.5 text-left">
+                <span className="text-[11px] font-semibold text-amber-300">
                   Consensus Choice
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
                   {winner?.name}
                 </h2>
               </div>
             </div>
           ) : (
-            /* Clean Custom Poll Winner Banner (Zero Fake Photos, Ratings, Prices, or Distances) */
-            <div className="p-6 pb-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-2.5">
+            /* Clean Custom Poll Winner Banner */
+            <div className="p-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-1.5">
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-xs">
                   Winning Poll Option
                 </span>
                 {topic && (
-                  <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[180px]">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] font-semibold text-[var(--text-secondary)] truncate max-w-[170px]">
                     {topic}
                   </span>
                 )}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight mt-1 break-words max-w-xs">
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight break-words max-w-xs">
                 {winner?.name}
               </h2>
             </div>
           )
         ) : (
           /* Discovery Venue Hero Image Header */
-          <div className="relative h-56 w-full bg-[var(--bg-inset)]">
+          <div className="relative h-36 sm:h-44 w-full bg-[var(--bg-inset)]">
             <img
               src={primaryPhoto}
               alt={winner?.name}
@@ -191,28 +191,28 @@ export default function ConsensusWinnerView({
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
 
             {/* Floating Rating & Winner Badge */}
-            <div className="absolute top-4 inset-x-4 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 shadow-xs tabular-nums">
-                <Star size={13} className="fill-amber-300 text-amber-300" />
+            <div className="absolute top-3 inset-x-3 flex items-center justify-between">
+              <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-xs tabular-nums">
+                <Star size={11} className="fill-amber-300 text-amber-300" />
                 <span>{winnerRating.rating}</span>
-                <span className="text-[11px] text-white/75 font-normal">({winnerRating.reviewCount})</span>
+                <span className="text-[10px] text-white/75 font-normal">({winnerRating.reviewCount})</span>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-xs">
                 Top Group Pick
               </span>
             </div>
 
             {/* Title overlay */}
-            <div className="absolute bottom-4 inset-x-4 text-left flex items-end justify-between gap-2">
+            <div className="absolute bottom-2.5 inset-x-3.5 text-left flex items-end justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <span className="text-xs font-semibold text-amber-300">
+                <span className="text-[11px] font-semibold text-amber-300 block truncate">
                   {isRealPhoto ? `${winnerVibe} • Real Venue Photo` : winnerVibe}
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate leading-tight">
                   {winner?.name}
                 </h2>
-                <div className="flex items-center gap-1.5 text-xs text-zinc-200 mt-1">
-                  <MapPin size={13} className="text-amber-400 shrink-0" />
+                <div className="flex items-center gap-1 text-[11px] text-zinc-200 mt-0.5">
+                  <MapPin size={11} className="text-amber-400 shrink-0" />
                   <span className="truncate">{winner?.address || 'Local Spot'}</span>
                 </div>
               </div>
@@ -220,26 +220,26 @@ export default function ConsensusWinnerView({
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-colors cursor-pointer"
+                className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-[11px] font-bold transition-colors cursor-pointer"
               >
-                <Info size={13} />
-                <span>Details & Map</span>
+                <Info size={11} />
+                <span>Details</span>
               </button>
             </div>
           </div>
         )}
 
-        <div className="p-4 flex flex-col items-center gap-3.5">
+        <div className="p-3 flex flex-col items-center gap-2.5">
           {isCustomWinner ? (
-            /* Custom Poll Metrics Row (Group Match + Condorcet Status only) */
-            <div className="grid grid-cols-2 gap-2.5 w-full">
-              <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+            /* Custom Poll Metrics Row */
+            <div className="grid grid-cols-2 gap-2 w-full">
+              <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Group Match</span>
-                <span className="text-lg font-black text-emerald-500 tabular-nums">
+                <span className="text-base font-black text-emerald-500 tabular-nums">
                   {matchScore}%
                 </span>
               </div>
-              <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Voting Result</span>
                 <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">
                   Condorcet Winner
@@ -249,17 +249,17 @@ export default function ConsensusWinnerView({
           ) : (
             <>
               {/* Metrics Row: Match %, Price Tier, Road Distance & Travel Time */}
-              <div className="grid grid-cols-3 gap-2 w-full">
-                <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Group Match</span>
-                  <span className="text-base font-black text-emerald-500 tabular-nums">
+                  <span className="text-sm font-black text-emerald-500 tabular-nums">
                     {matchScore}%
                   </span>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+                <div className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">Price Tier</span>
-                  <span className="text-base font-bold text-[var(--text-primary)]">
+                  <span className="text-sm font-bold text-[var(--text-primary)]">
                     {'$'.repeat(winner?.price_level || 2)}
                   </span>
                 </div>
@@ -267,38 +267,38 @@ export default function ConsensusWinnerView({
                 <button
                   type="button"
                   onClick={() => setDetailsOpen(true)}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
+                  className="flex flex-col items-center justify-center p-2 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
                 >
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)] flex items-center gap-1">
                     <Route size={10} className="text-[var(--accent-bg)]" />
                     <span>Road Route</span>
                   </span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[100px] tabular-nums mt-0.5">
+                  <span className="text-[11px] font-bold text-[var(--text-primary)] truncate max-w-[95px] tabular-nums mt-0.5">
                     {travelSummary}
                   </span>
                 </button>
               </div>
 
               {/* Primary Navigation Actions */}
-              <div className="grid grid-cols-2 gap-2.5 w-full">
+              <div className="grid grid-cols-2 gap-2 w-full">
                 <a
                   href={mapsDirUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="py-3 px-3 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-[0_6px_20px_var(--accent-glow)] cursor-pointer"
+                  className="py-2.5 px-3 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-[0_6px_20px_var(--accent-glow)] cursor-pointer"
                 >
-                  <Navigation size={14} />
+                  <Navigation size={13} />
                   <span>Road Directions</span>
-                  <ExternalLink size={12} className="opacity-80" />
+                  <ExternalLink size={11} className="opacity-80" />
                 </a>
 
                 <button
                   type="button"
                   onClick={() => setDetailsOpen(true)}
-                  className="py-3 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] flex items-center justify-center gap-1.5 text-xs font-bold transition-colors cursor-pointer"
+                  className="py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] flex items-center justify-center gap-1.5 text-xs font-bold transition-colors cursor-pointer"
                 >
-                  <MapPin size={14} className="text-[var(--accent-bg)]" />
-                  <span>Photos & Route Map</span>
+                  <MapPin size={13} className="text-[var(--accent-bg)]" />
+                  <span>Photos & Map</span>
                 </button>
               </div>
             </>
@@ -309,46 +309,46 @@ export default function ConsensusWinnerView({
             <button
               type="button"
               onClick={() => setCondorcetOpen(!condorcetOpen)}
-              className="w-full p-3 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="w-full p-2.5 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               aria-expanded={condorcetOpen}
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center">
-                  <BarChart3 size={14} />
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-xl bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] flex items-center justify-center">
+                  <BarChart3 size={13} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[var(--text-primary)]">
+                  <span className="text-xs font-bold text-[var(--text-primary)] leading-tight">
                     How Your Group Voted
                   </span>
-                  <span className="text-[11px] text-[var(--text-tertiary)]">
+                  <span className="text-[10px] text-[var(--text-tertiary)] leading-tight">
                     Pairwise Condorcet head-to-head results
                   </span>
                 </div>
               </div>
               {condorcetOpen ? (
-                <ChevronUp size={16} className="text-[var(--text-tertiary)]" />
+                <ChevronUp size={15} className="text-[var(--text-tertiary)]" />
               ) : (
-                <ChevronDown size={16} className="text-[var(--text-tertiary)]" />
+                <ChevronDown size={15} className="text-[var(--text-tertiary)]" />
               )}
             </button>
 
             {condorcetOpen && (
-              <div className="p-3 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 pt-2">
-                  <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+              <div className="p-2.5 pt-0 border-t border-[var(--border-subtle)] flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 pt-1.5">
+                  <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />
                   <span>Highest group approval (0 vetoes)</span>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
                   {pairwiseBreakdown.map((item, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
+                      className="flex items-center justify-between p-1.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
                     >
-                      <span className="font-medium text-[var(--text-primary)]">
+                      <span className="font-medium text-[var(--text-primary)] truncate pr-2">
                         Preferred over {item.opponent}
                       </span>
-                      <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums">
+                      <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums shrink-0">
                         {item.score}
                       </span>
                     </div>
@@ -360,71 +360,50 @@ export default function ConsensusWinnerView({
         </div>
       </div>
 
-      {/* PROMINENT DATA COLLECTION & VENUE CALIBRATION CTA */}
-      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border-2 border-[var(--accent-bg)]/45 shadow-[0_12px_32px_var(--accent-glow)] p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Database size={17} />
+      {/* COMPACT DATA COLLECTION & VENUE CALIBRATION CTA */}
+      <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--accent-bg)]/40 shadow-sm p-3 flex flex-col gap-2 text-left relative overflow-hidden">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-[var(--accent-bg)] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Database size={14} />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black uppercase tracking-wider text-[var(--accent-bg)]">
-                  Community Data Collection
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                  Quick Rating
-                </span>
-              </div>
-              <h3 className="text-sm font-black text-[var(--text-primary)] mt-0.5">
-                {isCustomWinner ? `Rate "${winner?.name}"` : `Rate ${winner?.name} & Share Feedback`}
+            <div className="min-w-0">
+              <h3 className="text-xs font-black text-[var(--text-primary)] truncate">
+                {isCustomWinner ? `Rate "${winner?.name}"` : `Rate ${winner?.name} & Calibration`}
               </h3>
             </div>
           </div>
+          <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold shrink-0">
+            Quick Rating
+          </span>
         </div>
 
-        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-          {isCustomWinner
-            ? 'Help us understand how well this pick worked for your group.'
-            : 'Your feedback helps ensure local budget tiers and venue recommendations stay accurate.'}
-        </p>
-
         {telemetrySubmitted ? (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  {isCustomWinner
-                    ? `Feedback Recorded (${satisfactionScore || 5}/5 Group Match)`
-                    : `Rating Saved (${satisfactionScore || 5}/5 Match • ${priceAccuracyScore || 5}/5 Price)`}
-                </span>
-                <span className="text-[11px] text-[var(--text-secondary)]">
-                  Thank you for sharing your feedback!
-                </span>
-              </div>
+          <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                {isCustomWinner
+                  ? `Saved (${satisfactionScore || 5}/5 Match)`
+                  : `Saved (${satisfactionScore || 5}/5 Match • ${priceAccuracyScore || 5}/5 Price)`}
+              </span>
             </div>
             <button
               type="button"
               onClick={() => setIsReviewOpen(true)}
-              className="shrink-0 px-3 py-1.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] cursor-pointer"
+              className="shrink-0 px-2.5 py-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[11px] font-bold text-[var(--text-primary)] cursor-pointer"
             >
               Add Note
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-1.5">
             {/* Metric 1: Group Decision Satisfaction */}
-            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-[var(--text-primary)]">
-                  {isCustomWinner ? 'Group Decision Satisfaction' : '1. Group Pick Satisfaction'}
-                </span>
-                <span className="text-[10px] text-[var(--text-tertiary)]">
-                  {isCustomWinner ? 'Are you happy with this winning option?' : 'Does this spot fit your group?'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+              <span className="text-[11px] font-bold text-[var(--text-primary)]">
+                {isCustomWinner ? 'Decision Satisfaction' : '1. Group Pick Fit'}
+              </span>
+              <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
@@ -434,7 +413,7 @@ export default function ConsensusWinnerView({
                     aria-label={`Rate satisfaction ${star} stars`}
                   >
                     <Star
-                      size={19}
+                      size={17}
                       className={star <= satisfactionScore ? 'fill-amber-400 text-amber-400' : 'text-[var(--text-tertiary)]'}
                     />
                   </button>
@@ -444,16 +423,11 @@ export default function ConsensusWinnerView({
 
             {/* Metric 2: Price Tier Accuracy (Discovery Places Only) */}
             {!isCustomWinner && (
-              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[var(--text-primary)]">
-                    2. Price Tier Accuracy ({'$'.repeat(winner?.price_level || 2)})
-                  </span>
-                  <span className="text-[10px] text-[var(--text-tertiary)]">
-                    Is the estimated MDL spend accurate?
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+                <span className="text-[11px] font-bold text-[var(--text-primary)]">
+                  2. Price Accuracy ({'$'.repeat(winner?.price_level || 2)})
+                </span>
+                <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
@@ -463,7 +437,7 @@ export default function ConsensusWinnerView({
                       aria-label={`Rate price accuracy ${star} stars`}
                     >
                       <Star
-                        size={19}
+                        size={17}
                         className={star <= priceAccuracyScore ? 'fill-emerald-400 text-emerald-400' : 'text-[var(--text-tertiary)]'}
                       />
                     </button>
@@ -473,31 +447,31 @@ export default function ConsensusWinnerView({
             )}
 
             {/* Primary Data Collection Submit Button */}
-            <div className="flex items-center gap-2 pt-1">
+            <div className="flex items-center gap-2 pt-0.5">
               <button
                 type="button"
                 disabled={isSubmittingTelemetry}
                 onClick={handleSubmitTelemetry}
-                className="flex-1 py-3.5 px-4 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_6px_20px_var(--accent-glow)] transition-all cursor-pointer disabled:opacity-60"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
               >
-                <Send size={14} />
+                <Send size={13} />
                 <span>
                   {isSubmittingTelemetry
-                    ? 'Saving Feedback...'
+                    ? 'Saving...'
                     : satisfactionScore > 0
-                    ? 'Submit Feedback & Complete'
-                    : 'Quick-Submit 5/5 Feedback'}
+                    ? 'Submit Feedback'
+                    : 'Quick-Submit 5/5'}
                 </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsReviewOpen(true)}
-                className="py-3.5 px-3.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="py-2.5 px-3 rounded-xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-main)] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 title="Open Detailed Feedback Form"
               >
-                <MessageSquarePlus size={15} />
-                <span>Full Form</span>
+                <MessageSquarePlus size={14} />
+                <span>Note</span>
               </button>
             </div>
           </div>
@@ -505,13 +479,13 @@ export default function ConsensusWinnerView({
       </div>
 
       {/* Start New Room Action */}
-      <div className="w-full">
+      <div className="w-full shrink-0">
         <Button
           variant="secondary"
           size="md"
           onClick={handleStartAnother}
           icon={RotateCcw}
-          className="w-full rounded-2xl"
+          className="w-full h-10 rounded-2xl text-xs font-bold"
         >
           Start Another Group Decision
         </Button>
@@ -528,4 +502,3 @@ export default function ConsensusWinnerView({
     </main>
   );
 }
-

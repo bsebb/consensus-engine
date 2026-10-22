@@ -196,10 +196,10 @@ export default function History() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] select-none">
+    <div className="flex-1 h-full max-h-full flex flex-col overflow-hidden select-none">
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
-        <div className="flex items-center justify-between">
+      <header className="shrink-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-3.5 sm:px-4 safe-pt-header pb-2.5">
+        <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={() => navigate('/')}
@@ -229,14 +229,14 @@ export default function History() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="px-4 pt-4 flex flex-col gap-4 flex-1">
-        <div className="flex items-center justify-between px-1">
+      {/* Main Content with Contained Scroll */}
+      <main className="px-3.5 sm:px-4 py-3 safe-pb flex flex-col gap-3.5 flex-1 min-h-0 max-w-md mx-auto w-full mobile-scroll-area no-scrollbar">
+        <div className="flex items-center justify-between px-1 shrink-0">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
               Historical Agreements
             </span>
-            <h2 className="text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
+            <h2 className="text-base sm:text-lg font-extrabold text-[var(--text-primary)] tracking-tight">
               Resolved Sessions ({sessions.length})
             </h2>
           </div>
@@ -256,7 +256,7 @@ export default function History() {
 
         {sessions.length === 0 ? (
           /* Empty State */
-          <div className="rounded-2xl bg-[var(--bg-elevated)] p-8 text-center flex flex-col items-center gap-4 my-8 border border-[var(--border-main)]">
+          <div className="rounded-2xl bg-[var(--bg-elevated)] p-6 text-center flex flex-col items-center justify-center gap-4 my-auto border border-[var(--border-main)]">
             <div className="w-14 h-14 rounded-2xl bg-[var(--bg-inset)] flex items-center justify-center text-[var(--text-tertiary)]">
               <Clock size={28} />
             </div>
@@ -279,7 +279,7 @@ export default function History() {
           </div>
         ) : (
           /* Vertical Decision Cards Feed with Rich Arena Breakdown */
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pb-2">
             {sessions.map((s, idx) => {
               const isExpanded = expandedPin === s.pin;
               const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -289,14 +289,14 @@ export default function History() {
               return (
                 <div
                   key={s.pin || idx}
-                  className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col shadow-sm transition-all duration-200 overflow-hidden"
+                  className="shrink-0 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col shadow-sm transition-all duration-200 overflow-hidden"
                 >
                   {/* Card Main Summary Header */}
                   <button
                     type="button"
                     onClick={() => toggleExpand(s.pin)}
                     aria-expanded={isExpanded}
-                    className="w-full text-left p-4 flex flex-col gap-3 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-bg)]"
+                    className="w-full text-left p-3.5 flex flex-col gap-2.5 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-bg)]"
                   >
                     {/* Header Row: PIN, Resolved Badge, Date */}
                     <div className="flex items-center justify-between">
@@ -360,7 +360,7 @@ export default function History() {
 
                   {/* Expanded Arena Consensus Breakdown Tray */}
                   {isExpanded && (
-                    <div className="px-4 pb-4 pt-1 border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 flex flex-col gap-3.5 animate-[fadeIn_0.2s_var(--spring-smooth)]">
+                    <div className="px-3.5 pb-3.5 pt-1 border-t border-[var(--border-subtle)] bg-[var(--bg-inset)]/50 flex flex-col gap-3 animate-[fadeIn_0.2s_var(--spring-smooth)]">
                       {/* Section 1: Competing Options Breakdown */}
                       <div className="flex flex-col gap-1.5 pt-2">
                         <div className="flex items-center justify-between px-0.5">
@@ -449,7 +449,7 @@ export default function History() {
                       )}
 
                       {/* Section 3: Action Buttons */}
-                      <div className="pt-2 flex flex-col gap-2">
+                      <div className="pt-1 flex flex-col gap-2">
                         {/* Google Maps Directions */}
                         <a
                           href={mapsUrl}

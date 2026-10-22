@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Share, PlusSquare, X, Download } from 'lucide-react';
 import Button from './Button';
 
 export default function InstallPrompt() {
+  const location = useLocation();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -59,22 +61,23 @@ export default function InstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  if (!showPrompt) return null;
+  // Only show on Home route so it never overlaps Lobby or SwipeDeck controls
+  if (!showPrompt || location.pathname !== '/') return null;
 
   return (
-    <aside aria-label="Install App" className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-[1900] select-none">
-      <div className="glass-surface rounded-2xl p-4 shadow-[0_12px_40px_rgba(0,0,0,0.22)] border border-[var(--border-glass)] flex flex-col gap-3">
+    <aside aria-label="Install App" className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-[1900] select-none">
+      <div className="glass-surface rounded-2xl p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.22)] border border-[var(--border-glass)] flex flex-col gap-2.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm shrink-0">
-              <Download size={18} />
+            <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)] flex items-center justify-center text-white shadow-sm shrink-0">
+              <Download size={16} />
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Install Consensus Engine
+                Install NoYouPick
               </h4>
               <p className="text-[11px] text-[var(--text-secondary)]">
-                Fast, tactile mobile voting app
+                Full-screen mobile app experience
               </p>
             </div>
           </div>
@@ -88,7 +91,7 @@ export default function InstallPrompt() {
         </div>
 
         {isIOSDevice ? (
-          <div className="text-xs text-[var(--text-secondary)] bg-[var(--bg-inset)] rounded-xl p-2.5 flex items-center gap-2 leading-snug">
+          <div className="text-xs text-[var(--text-secondary)] bg-[var(--bg-inset)] rounded-xl p-2 flex items-center gap-2 leading-snug">
             <span>Tap</span>
             <Share size={14} className="text-[var(--accent-bg)] shrink-0" />
             <span>then choose</span>

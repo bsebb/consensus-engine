@@ -448,57 +448,55 @@ export default function SwipeDeck() {
 
   return (
     <div
-      className={`flex-1 flex flex-col select-none ${
-        !showWinner && currentIndex < cards.length
-          ? 'h-[100dvh] max-h-[100dvh] overflow-hidden justify-between touch-none'
-          : 'min-h-screen pb-16 overflow-y-auto'
+      className={`flex-1 h-full max-h-full flex flex-col overflow-hidden select-none ${
+        !showWinner && currentIndex < cards.length ? 'justify-between touch-none' : ''
       }`}
     >
       {/* PWA Mobile Header */}
-      <header className="sticky top-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-4 pt-[max(env(safe-area-inset-top,0px),0.625rem)] pb-2.5 relative">
-        <div className="flex items-center justify-between gap-2 max-w-md mx-auto">
+      <header className="shrink-0 z-30 glass-surface border-b border-[var(--border-subtle)] px-3.5 sm:px-4 safe-pt-header pb-2 relative">
+        <div className="flex items-center justify-between gap-1.5 max-w-md mx-auto">
           <button
             type="button"
             onClick={() => navigate(`/lobby/${pin}`)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0"
+            className="flex items-center gap-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-2.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0"
             aria-label="Back to Lobby"
           >
-            <ArrowLeft size={14} />
+            <ArrowLeft size={13} />
             <span>Lobby</span>
           </button>
 
           {/* Segmented Tab Switcher (Discovery Only) or Option Counter (Custom Poll) */}
           {!showWinner && currentIndex < cards.length ? (
             mode === 'CUSTOM' || activeCard?.isCustom ? (
-              <div className="flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] tabular-nums">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] tabular-nums">
                 <Layers size={12} className="text-[var(--accent-bg)]" />
-                <span>Option {Math.min(currentIndex + 1, cards.length)} of {cards.length}</span>
+                <span>Option {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
               </div>
             ) : (
               <div className="flex items-center p-0.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => setActiveTab('swipe')}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer tabular-nums ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer tabular-nums whitespace-nowrap ${
                     activeTab === 'swipe'
                       ? 'bg-[var(--accent-bg)] text-white shadow-xs'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <Layers size={12} />
+                  <Layers size={11} />
                   <span>Card {Math.min(currentIndex + 1, cards.length)}/{cards.length}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('details')}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                     activeTab === 'details'
                       ? 'bg-[var(--accent-bg)] text-white shadow-xs'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <MapPin size={12} />
-                  <span>Details & Route</span>
+                  <MapPin size={11} />
+                  <span>Details</span>
                 </button>
               </div>
             )
@@ -509,7 +507,7 @@ export default function SwipeDeck() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <ThemeToggle />
           </div>
         </div>
@@ -552,7 +550,7 @@ export default function SwipeDeck() {
           handleHostForceReveal={handleHostForceReveal}
         />
       ) : activeTab === 'details' && mode !== 'CUSTOM' && !activeCard?.isCustom ? (
-        <main className="px-4 py-2 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
+        <main className="px-3.5 sm:px-4 py-2 flex-1 min-h-0 max-w-md mx-auto w-full flex flex-col overflow-hidden">
           <VenueDetailsModal
             key={activeCard?.id || activeCard?.name || 'swipedeck-venue-modal'}
             venue={activeCard}
@@ -600,4 +598,3 @@ export default function SwipeDeck() {
     </div>
   );
 }
-

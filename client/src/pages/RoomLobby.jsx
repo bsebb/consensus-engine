@@ -518,9 +518,9 @@ export default function RoomLobby() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-[100dvh] pb-28 select-none">
-      {/* Solid Opaque Header */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 pt-[max(env(safe-area-inset-top,0px),0.75rem)] pb-3">
+    <div className="flex-1 h-full max-h-full flex flex-col justify-between overflow-hidden select-none">
+      {/* Locked Top Header */}
+      <header className="shrink-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 safe-pt-header pb-2">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
@@ -532,12 +532,17 @@ export default function RoomLobby() {
             <span>Home</span>
           </button>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)]">
+          <button
+            type="button"
+            onClick={handleCopyPin}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] cursor-pointer active:scale-95 transition-transform"
+            title="Tap to copy room code"
+          >
             <span className="text-[var(--text-tertiary)] font-normal">Code</span>
             <span className="text-[var(--accent-bg)] tabular-nums">{pin}</span>
-          </div>
+          </button>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -545,15 +550,15 @@ export default function RoomLobby() {
               aria-label="Open Settings"
               title="Preferences"
             >
-              <Settings size={16} />
+              <Settings size={15} />
             </button>
             <ThemeToggle />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="px-4 pt-3.5 flex flex-col gap-3.5 flex-1 max-w-md mx-auto w-full">
+      {/* Locked Viewport Main Container — Never Scrolls the Outer Document */}
+      <main className="px-3.5 sm:px-4 py-2 flex flex-col gap-2 flex-1 min-h-0 max-w-md mx-auto w-full overflow-hidden">
         {/* Compact Room Header & Roster */}
         <LobbyRoster
           pin={pin}
@@ -575,7 +580,7 @@ export default function RoomLobby() {
           />
         )}
 
-        {/* Curated Places / Custom Options on the Table */}
+        {/* Contained Flex-1 Candidate Pool Deck */}
         <CandidatePoolDeck
           mode={mode}
           topic={topic}
@@ -593,8 +598,8 @@ export default function RoomLobby() {
         />
       </main>
 
-      {/* Fixed Bottom Start Action Bar */}
-      <div className="fixed bottom-0 inset-x-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      {/* Locked Bottom Start Action Bar */}
+      <div className="shrink-0 z-30 bg-[var(--bg-root)]/95 backdrop-blur-md border-t border-[var(--border-main)] px-3.5 sm:px-4 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
         <div className="max-w-md mx-auto">
           {isHost ? (
             <Button
@@ -603,7 +608,7 @@ export default function RoomLobby() {
               size="lg"
               onClick={handleStartVoting}
               icon={ArrowRight}
-              className="w-full h-13 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-base rounded-2xl"
+              className="w-full h-11 sm:h-12 shadow-[0_8px_24px_var(--accent-glow)] font-bold text-sm sm:text-base rounded-2xl"
             >
               Start Voting • {Math.min(8, filteredCandidates.length)}{' '}
               {mode === 'CUSTOM'
