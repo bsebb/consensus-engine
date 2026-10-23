@@ -44,7 +44,7 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShufflin
       </div>
 
       <div className="py-1">
-        <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
+        <h4 className="text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
           {item.name}
         </h4>
       </div>
@@ -87,7 +87,7 @@ function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffl
       className={`rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98] touch-manipulation ${animClass}`}
     >
       {/* Photo with Rating and Price Badge */}
-      <div className="relative aspect-[4/3] w-full bg-[var(--bg-inset)] overflow-hidden">
+      <div className="relative aspect-[16/10] w-full bg-[var(--bg-inset)] overflow-hidden">
         <img
           src={primaryPhoto}
           alt={item.name}
@@ -119,7 +119,7 @@ function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffl
               e.stopPropagation();
               onRemoveVenue(item);
             }}
-            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10 active:scale-90"
+            className="absolute top-2 right-2 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10 active:scale-90"
             title="Remove from table"
             aria-label={`Remove ${item.name}`}
           >
@@ -132,7 +132,7 @@ function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffl
       <div className="p-3 flex flex-col gap-1.5 flex-1 justify-between">
         <div>
           <h4
-            className="text-xs sm:text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent-bg)] transition-colors min-h-[2.4em] flex items-center"
+            className="text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent-bg)] transition-colors min-h-[2.4em] flex items-center"
             title={item.name}
           >
             {item.name}
@@ -189,12 +189,12 @@ export default function CandidatePoolDeck({
   };
 
   return (
-    <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
+    <section className="min-w-0 shrink-0 p-3.5 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
       {/* Section Header */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
         <div className="flex items-center gap-2 min-w-0">
           <LayoutGrid size={16} className="text-[var(--accent-bg)] shrink-0" />
-          <h3 className="text-sm font-bold text-[var(--text-primary)] truncate">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">
             {mode === 'CUSTOM' ? t('optionsOnTable') : t('placesOnTable')}
           </h3>
           <span
@@ -287,7 +287,17 @@ export default function CandidatePoolDeck({
       )}
 
       {/* Candidates Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        className={mode === 'CUSTOM' || (!isLoading && candidates.length === 0) ? 'grid grid-cols-2 gap-3' : 'places-rail'}
+        aria-label={mode === 'CUSTOM' ? t('optionsOnTable') : t('placesOnTable')}
+        tabIndex={mode !== 'CUSTOM' ? 0 : undefined}
+        onKeyDown={(event) => {
+          if (mode === 'CUSTOM' || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          event.currentTarget.scrollBy({ left: (event.key === 'ArrowRight' ? 1 : -1) * event.currentTarget.clientWidth * 0.8, behavior: 'smooth' });
+        }}
+      >
         {isLoading ? (
           [0, 1, 2, 3, 4, 5].map((i) => (
             <div
@@ -295,7 +305,7 @@ export default function CandidatePoolDeck({
               className="rounded-2xl overflow-hidden bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-between shadow-2xs text-left animate-pulse"
               style={{ animationDelay: `${i * 100}ms` }}
             >
-              <div className="relative aspect-[4/3] w-full bg-zinc-200/60 dark:bg-zinc-800/60 flex flex-col justify-between p-2.5">
+              <div className="relative aspect-[16/10] w-full bg-zinc-200/60 dark:bg-zinc-800/60 flex flex-col justify-between p-2.5">
                 <div className="flex items-center justify-between">
                   <div className="h-4 w-12 rounded-full bg-white/40 dark:bg-white/10" />
                   <div className="h-4 w-7 rounded-full bg-white/40 dark:bg-white/10" />

@@ -96,7 +96,7 @@
     overflow: hidden;
     height: 100dvh;
     max-height: 100dvh;
-    touch-action: pan-y;
+    touch-action: manipulation;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
@@ -404,7 +404,7 @@ html.theme-transitioning [data-sliding-thumb] {
 
 /* Bulletproof iOS Safe Area Inset Helpers with Hardware Notch/Island Floor */
 .safe-pt-page {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.5rem);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-page {
@@ -412,7 +412,7 @@ html.theme-transitioning [data-sliding-thumb] {
   }
 }
 .safe-pt-header {
-  padding-top: max(calc(env(safe-area-inset-top, 0px) + 0.75rem), 2.5rem);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
 }
 @media (min-width: 641px) {
   .safe-pt-header {
@@ -716,4 +716,35 @@ button:active:not(:disabled),
 
 .animate-shuffle-deck-alt {
   animation: shuffleDeckOdd 0.48s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+
+/* Mobile places stay in one swipeable row; every card is reachable without page scrolling. */
+.places-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 78%;
+  gap: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 2px;
+  padding: 2px 2px 8px;
+  margin: -2px;
+  scrollbar-width: thin;
+}
+.places-rail > * { scroll-snap-align: start; min-width: 0; }
+.places-rail:focus-visible { outline: 2px solid var(--accent-bg); outline-offset: 4px; border-radius: 16px; }
+.venue-details-body > * { flex-shrink: 0; }
+.venue-details-body { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+.winner-scroll { padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
+.toast-stack {
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 24px), 420px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .places-rail { scroll-behavior: auto; }
+  [data-drawer-panel] { animation-duration: 1ms !important; }
 }

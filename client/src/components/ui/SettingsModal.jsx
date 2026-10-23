@@ -44,7 +44,9 @@ export default function SettingsModal({ isOpen, onClose }) {
   };
 
   const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({
-    onClose: handleClose,
+    onClose,
+    isOpen,
+    isClosing,
   });
 
   useEffect(() => {

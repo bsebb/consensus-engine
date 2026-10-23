@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, CheckCircle2, Star, Send, MessageSquarePlus } from 'lucide-react';
+import { Database, CheckCircle2, Star, Send, MessageSquarePlus, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -18,14 +18,14 @@ export default function WinnerFeedbackCard({
   const { t } = useLanguage();
 
   return (
-    <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
-      <div className="flex items-start justify-between gap-2">
+    <details className="group w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
+      <summary className="flex items-start justify-between gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shrink-0 shadow-xs">
             <Database size={17} />
           </div>
           <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs font-black uppercase tracking-wider text-[var(--accent-bg)]">
                 {t('communityDataTitle')}
               </span>
@@ -40,8 +40,10 @@ export default function WinnerFeedbackCard({
             </h3>
           </div>
         </div>
-      </div>
+        <ChevronDown size={18} className="shrink-0 mt-2 text-[var(--text-tertiary)] transition-transform group-open:rotate-180" />
+      </summary>
 
+      <div className="flex flex-col gap-3.5 pt-3.5">
       <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
         {isCustomWinner ? t('customFeedbackDesc') : t('rateSpotDesc')}
       </p>
@@ -72,7 +74,7 @@ export default function WinnerFeedbackCard({
       ) : (
         <div className="flex flex-col gap-2.5">
           {/* Metric 1: Group Decision Satisfaction */}
-          <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
             <div className="flex flex-col">
               <span className="text-xs font-bold text-[var(--text-primary)]">
                 {isCustomWinner ? t('groupPickSatisfaction') : `1. ${t('groupPickSatisfaction')}`}
@@ -87,7 +89,7 @@ export default function WinnerFeedbackCard({
                   key={star}
                   type="button"
                   onClick={() => handleSelectSatisfaction(star)}
-                  className="p-1 rounded-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                   aria-label={`Rate satisfaction ${star} stars`}
                 >
                   <Star
@@ -101,7 +103,7 @@ export default function WinnerFeedbackCard({
 
           {/* Metric 2: Price Tier Accuracy (Discovery Places Only) */}
           {!isCustomWinner && (
-            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-[var(--text-primary)]">
                   2. {t('priceAccuracy')} ({'$'.repeat(winner?.price_level || 2)})
@@ -119,7 +121,7 @@ export default function WinnerFeedbackCard({
                       triggerHaptic('tap');
                       setPriceAccuracyScore(star);
                     }}
-                    className="p-1 rounded-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                    className="w-10 h-10 flex items-center justify-center rounded-lg hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                     aria-label={`Rate price accuracy ${star} stars`}
                   >
                     <Star
@@ -162,6 +164,7 @@ export default function WinnerFeedbackCard({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </details>
   );
 }

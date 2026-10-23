@@ -47,13 +47,14 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
   };
 
   const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
+    touchStartX.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
 
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
-    const diff = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(diff) > 40) {
+    const diff = e.changedTouches[0].clientX - touchStartX.current.x;
+    const vertical = e.changedTouches[0].clientY - touchStartX.current.y;
+    if (Math.abs(diff) > 40 && Math.abs(diff) > Math.abs(vertical)) {
       if (diff > 0) {
         handlePrevPhoto();
       } else {
@@ -77,7 +78,9 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
   };
 
   const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({
-    onClose: handleClose,
+    onClose,
+    isOpen: isOpen && !inline,
+    isClosing,
   });
 
   useEffect(() => {
@@ -147,15 +150,15 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
   const activePhotoUrl = photos[activePhotoIdx] || photos[0] || fallbackPhoto;
 
   const content = (
-    <div className={`w-full rounded-t-[32px] sm:rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col ${inline ? 'h-full max-h-full min-h-0' : 'max-h-[88dvh] sm:max-h-[85dvh]'}`}>
+    <div className={`relative w-full rounded-t-[28px] sm:rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col ${inline ? 'h-full max-h-full min-h-0' : 'max-h-[calc(100dvh-env(safe-area-inset-top,0px)-12px)] sm:max-h-[85dvh]'}`}>
       {/* Consistent Apple Pro-Grade Drag Handle Pill */}
       {!inline && (
         <div
           {...grabberProps}
-          className="w-full pt-2 pb-0 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none shrink-0 bg-[var(--bg-elevated)]"
+          className="absolute top-0 inset-x-0 h-8 z-30 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none"
           aria-label="Drag down to dismiss"
         >
-          <div className="w-10 h-1.2 rounded-full bg-[var(--text-tertiary)]/30 mx-auto my-1 mb-2 cursor-grab" />
+          <div className="w-10 h-1 rounded-full bg-white/70 shadow-sm" />
         </div>
       )}
 
@@ -163,7 +166,8 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className={`relative ${inline ? 'h-36 sm:h-44' : 'h-52 sm:h-64'} w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden select-none group`}
+        onTouchCancel={() => { touchStartX.current = null; }}
+        className={`relative ${inline ? 'h-36 sm:h-44' : 'h-[clamp(156px,27dvh,240px)] sm:h-64'} w-full bg-[var(--bg-inset)] shrink-0 overflow-hidden select-none group`}
       >
         <img
           src={activePhotoUrl}
@@ -178,7 +182,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
 
         {/* Stories-Style Photo Progress Track */}
         {photos.length > 1 && (
-          <div className="absolute top-2.5 inset-x-3.5 flex items-center gap-1 z-20">
+          <div className={`absolute ${inline ? 'top-2.5' : 'top-8'} inset-x-3.5 flex items-center gap-1 z-20`}>
             {photos.map((_, i) => (
               <div
                 key={i}
@@ -248,7 +252,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
         )}
 
         {/* Top Bar Badges */}
-        <div className={`absolute ${photos.length > 1 ? 'top-6' : 'top-3.5'} inset-x-3.5 flex items-center justify-between gap-2 z-20`}>
+        <div className={`absolute ${inline ? 'top-3.5' : 'top-9'} inset-x-3.5 flex items-center justify-between gap-2 z-20`}>
           {/* Yelp / Google Verified Rating Badge */}
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-xs font-bold tabular-nums shadow-sm">
             <Star size={12} className="text-amber-400 fill-amber-400" />
@@ -277,7 +281,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
               <button
                 type="button"
                 onClick={handleClose}
-                className="w-8 h-8 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/90 transition-colors cursor-pointer"
+                className="w-10 h-10 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-black/90 transition-colors cursor-pointer"
                 aria-label="Close Details"
               >
                 <X size={16} />
@@ -330,7 +334,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
       )}
 
       {/* Scrollable Details Body */}
-      <div className="p-4 sm:p-5 overflow-y-auto flex flex-col gap-3.5">
+      <div className="venue-details-body p-4 sm:p-5 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3">
         {venue.isCustom ? (
           <div className="p-4 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-3">
             <div className="flex items-center gap-3">
@@ -362,7 +366,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
           <>
             {/* Context-Aware Human-Centric Travel & Spend Capsule */}
             <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2.5">
-              <div className="flex items-center justify-between gap-2">
+              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
                     {isWalkable ? (
@@ -372,7 +376,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
                     )}
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-black text-[var(--text-primary)] leading-tight truncate tabular-nums">
+                    <span className="text-sm font-black text-[var(--text-primary)] leading-tight tabular-nums">
                       {distKm != null
                         ? isWalkable
                           ? `~${walkMin} min • ${distKm} km`
@@ -389,7 +393,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="min-w-0 min-[400px]:text-right">
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] block">
                     {t('estimatedSpend')}
                   </span>
@@ -400,7 +404,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
               </div>
 
               {/* OSRM Travel Time Pill Badge */}
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] text-xs font-bold border border-[var(--accent-bg)]/20 shadow-xs tabular-nums">
                   <Car size={13} />
                   <span>{driveMin != null ? `~${driveMin} min via OSRM` : 'OSRM Live Routing'}</span>
@@ -417,20 +421,10 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
               {venue.address && (
                 <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                   <MapPin size={13} className="text-[var(--accent-bg)] shrink-0" />
-                  <span className="truncate font-medium">{venue.address}</span>
+                  <span className="font-medium break-words min-w-0">{venue.address}</span>
                 </div>
               )}
             </div>
-
-            {/* Clean Interactive Street Mini-Map */}
-            {hasCoords && (
-              <CleanStreetMiniMap
-                lat={latNum}
-                lng={lngNum}
-                venueName={venue.name}
-                address={venue.address}
-              />
-            )}
 
             {/* Direct 1-Tap Google Maps Directions & Menu Actions */}
             <div className="grid grid-cols-2 gap-2 pt-0.5">
@@ -455,8 +449,18 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
               </a>
             </div>
 
+            {/* Clean Interactive Street Mini-Map */}
+            {hasCoords && (
+              <CleanStreetMiniMap
+                lat={latNum}
+                lng={lngNum}
+                venueName={venue.name}
+                address={venue.address}
+              />
+            )}
+
             {/* Outdated / Closed Venue Flag */}
-            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
+            <div className="pt-2 border-t border-[var(--border-subtle)] flex flex-wrap gap-2 items-center justify-between text-[11px]">
               <span className="text-[var(--text-tertiary)]">{t('spottedOutdated')}</span>
               {reported ? (
                 <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold animate-[fadeIn_0.2s_ease-out]">
@@ -525,7 +529,8 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
       ref={backdropRef}
       role="dialog"
       aria-modal="true"
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xl bg-black/60 transition-opacity duration-200 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:pb-4 ${
+      aria-label={venue.name}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xl bg-black/60 transition-opacity duration-200  ${
         isClosing ? 'animate-fade-out' : 'animate-fade-in'
       }`}
       onClick={handleClose}

@@ -5,7 +5,7 @@ import { triggerHaptic } from '../../utils/haptics';
 export default function SwipeControls({ handleVote, handleUndo, canUndo = false }) {
   return (
     <div className="w-full max-w-md mx-auto px-4 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-center justify-center shrink-0 select-none z-20">
-      <div className="flex items-center justify-between gap-2.5 sm:gap-3 px-3 py-2 rounded-3xl bg-[var(--bg-elevated)]/90 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 px-2 sm:px-3 py-2 rounded-3xl bg-[var(--bg-elevated)]/90 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
         {/* Undo Button */}
         <button
           type="button"

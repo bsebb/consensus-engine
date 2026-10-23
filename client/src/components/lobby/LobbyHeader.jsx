@@ -15,7 +15,7 @@ export default function LobbyHeader({
 
   return (
     <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 shrink-0">
-      <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[36px]">
+      <div className="relative flex items-center justify-between gap-2 max-w-md mx-auto min-h-[36px]">
         <div className="flex items-center z-10">
           <button
             type="button"
@@ -28,11 +28,11 @@ export default function LobbyHeader({
           </button>
         </div>
 
-        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center z-10 pointer-events-auto">
+        <div className="flex-1 min-w-0 flex items-center justify-center z-10 pointer-events-auto">
           <button
             type="button"
             onClick={onCopyPin}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.97] touch-manipulation shadow-2xs"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.97] touch-manipulation shadow-2xs"
             title={t('shareLink')}
             aria-label={t('shareLink')}
           >
@@ -43,7 +43,7 @@ export default function LobbyHeader({
               </>
             ) : (
               <>
-                <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
+                <span className="hidden min-[380px]:inline text-[var(--text-tertiary)] font-normal">{t('code')}</span>
                 <span className="text-[var(--accent-bg)] tabular-nums font-bold">#{pin}</span>
                 <Copy size={11} className="text-[var(--text-tertiary)] ml-0.5" />
               </>
@@ -51,7 +51,7 @@ export default function LobbyHeader({
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 z-10">
+        <div className="flex items-center gap-0.5 z-10 shrink-0">
           {onShare && (
             <button
               type="button"

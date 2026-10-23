@@ -29,8 +29,8 @@ export default function StepZeroVault({
   const activeTier = tiers[activeTierIndex] || tiers[0];
 
   return (
-    <section className="p-3.5 sm:p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
-      <div className="flex items-center justify-between px-1">
+    <section className="shrink-0 p-3 sm:p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
+      <div className="flex flex-wrap gap-2 items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <ShieldCheck size={14} className="text-[var(--accent-bg)] shrink-0" />
           <h3 className="text-xs font-bold text-[var(--text-primary)]">

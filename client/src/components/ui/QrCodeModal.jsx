@@ -27,7 +27,9 @@ export default function QrCodeModal({
   };
 
   const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({
-    onClose: handleClose,
+    onClose,
+    isOpen,
+    isClosing,
   });
 
   const inviteUrl = typeof window !== 'undefined'

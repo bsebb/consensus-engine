@@ -27,7 +27,9 @@ export default function UberLocationSearchModal({
   };
 
   const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({
-    onClose: handleClose,
+    onClose,
+    isOpen,
+    isClosing,
   });
 
   useEffect(() => {
