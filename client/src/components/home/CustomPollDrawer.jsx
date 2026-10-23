@@ -34,7 +34,7 @@ export default function CustomPollDrawer({
     }, 180);
   }, [isClosing, onClose]);
 
-  const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({ onClose: handleClose });
+  const { panelRef, backdropRef, grabberProps, containerProps } = useDrawerGesture({ onClose, isOpen, isClosing });
 
   useEffect(() => {
     if (isOpen) {

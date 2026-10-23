@@ -160,13 +160,13 @@ export default function ConsensusWinnerView({
   };
 
   return (
-    <main className="px-4 py-3.5 pb-12 flex flex-col items-center gap-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
+    <main className="winner-scroll px-4 py-3 pb-6 flex flex-col items-center gap-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
       {/* Winner Hero Card */}
-      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
+      <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner ? (
           customWinnerPhoto && !customImgErr ? (
             /* Visual Poster Card for Custom Option Winner */
-            <div className={`relative h-56 w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
+            <div className={`relative h-[clamp(170px,26dvh,224px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
               <img
                 src={customWinnerPhoto}
                 alt={winner?.name}
@@ -217,7 +217,7 @@ export default function ConsensusWinnerView({
           )
         ) : (
           /* Discovery Venue Hero Image Header */
-          <div className="relative h-56 w-full bg-[var(--bg-inset)]">
+          <div className="relative h-[clamp(170px,26dvh,224px)] w-full bg-[var(--bg-inset)]">
             <img
               src={primaryPhoto}
               alt={winner?.name}
@@ -244,7 +244,7 @@ export default function ConsensusWinnerView({
             </div>
 
             {/* Title overlay */}
-            <div className="absolute bottom-4 inset-x-4 text-left flex items-end justify-between gap-2">
+            <div className="absolute bottom-3 inset-x-3 text-left flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <span className="text-xs font-semibold text-amber-300">
                   {isRealPhoto ? `${winnerVibe} • ${t('realVenuePhoto')}` : winnerVibe}
@@ -314,7 +314,7 @@ export default function ConsensusWinnerView({
                     <Route size={10} className="text-[var(--accent-bg)]" />
                     <span>{t('roadRoute')}</span>
                   </span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-full px-1 tabular-nums mt-0.5">
+                  <span className="text-xs font-bold text-[var(--text-primary)] max-w-full px-1 tabular-nums mt-0.5 leading-snug">
                     {travelSummary}
                   </span>
                 </button>
@@ -444,7 +444,7 @@ export default function ConsensusWinnerView({
       />
 
       {/* Start New Room Action */}
-      <div className="w-full">
+      <div className="w-full shrink-0">
         <Button
           variant="secondary"
           size="md"

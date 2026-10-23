@@ -36,11 +36,11 @@ export default function LobbyRoster({
   const displayTopic = getLocalizedTopic(topic, t);
 
   return (
-    <section className="p-4 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
+    <section className="shrink-0 p-3.5 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
       {/* Topic & Invite Bar */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--border-subtle)] min-h-[4.25rem]">
+      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[var(--border-subtle)]">
         <div className="flex flex-col text-left min-w-0 flex-1">
-          <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-snug min-h-[3.25rem] flex items-center">
+          <h2 className="text-lg sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-snug flex items-center">
             {displayTopic}
           </h2>
         </div>
@@ -60,9 +60,10 @@ export default function LobbyRoster({
             onClick={onShare}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[var(--accent-bg)] text-white hover:opacity-90 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-[0.95]"
             title={t('inviteFriends')}
+            aria-label={t('inviteFriends')}
           >
             <Share2 size={13} />
-            <span>{t('inviteFriends')}</span>
+            <span className="hidden min-[380px]:inline">{t('inviteFriends')}</span>
           </button>
         </div>
       </div>

@@ -464,7 +464,7 @@ export default function RoomLobby() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
-      if (isInput || settingsOpen || qrModalOpen) return;
+      if (e.defaultPrevented || isInput || settingsOpen || qrModalOpen || e.target.closest('button, a, [role="button"], [role="dialog"], [role="tab"]')) return;
       if ((e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') && isHost && displayedCandidates.length >= 2 && !isVotingActive) {
         e.preventDefault();
         handleStartVoting();

@@ -99,7 +99,7 @@ export default function SwipeCard({
           touchAction: 'none',
           willChange: isDragging ? 'transform' : 'auto',
         }}
-        className={`w-full flex-1 max-h-[540px] min-h-0 rounded-3xl bg-[var(--bg-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.14)] border border-[var(--border-main)] relative my-auto cursor-grab active:cursor-grabbing flex flex-col overflow-hidden ${enterClass}`}
+        className={`w-full flex-1 max-h-none sm:max-h-[640px] min-h-0 rounded-3xl bg-[var(--bg-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.14)] border border-[var(--border-main)] relative my-auto cursor-grab active:cursor-grabbing flex flex-col overflow-hidden ${enterClass}`}
       >
         {/* Dynamic On-Drag Optical Stamps */}
         {likeProgress > 0 && (

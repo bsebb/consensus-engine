@@ -42,7 +42,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={{ addToast }}>
       {children}
       {/* Viewport-anchored Toast Stack */}
-      <aside aria-label="Notifications" className="fixed bottom-20 right-4 z-[2200] flex flex-col gap-2 max-w-xs w-full pointer-events-none">
+      <aside aria-label="Notifications" aria-live="polite" aria-relevant="additions" className="toast-stack fixed z-[2200] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => {
           const Icon = {
             success: CheckCircle2,
@@ -79,7 +79,8 @@ export function ToastProvider({ children }) {
               <button
                 type="button"
                 onClick={() => removeToast(toast.id)}
-                className="shrink-0 p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-lg transition-colors cursor-pointer"
+                aria-label="Dismiss notification"
+                className="shrink-0 w-9 h-9 -m-1 flex items-center justify-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] rounded-lg transition-colors cursor-pointer"
               >
                 <X size={13} />
               </button>

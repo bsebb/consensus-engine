@@ -35,9 +35,9 @@ export default function DeckHeader({
         </div>
 
         {/* Segmented Tab Switcher or Status Pill - Dead Centered */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center justify-center z-10 pointer-events-auto">
+        <div className="flex-1 min-w-0 flex items-center justify-center z-10 pointer-events-auto">
           {!showWinner && currentIndex < cardsLength ? (
-            <div className="w-44 sm:w-52 max-w-[210px]">
+            <div className="w-full max-w-[210px]">
               <SegmentedControl
                 options={[
                   { value: 'swipe', label: `${t('card')} ${Math.min(currentIndex + 1, cardsLength)}/${cardsLength}`, icon: Layers },
