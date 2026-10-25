@@ -454,25 +454,32 @@ export function getVenueVibe(name = '', category = '') {
   return 'Local Favorite';
 }
 
-const PHOTO_CACHE_PREFIX = 'consensus_photo_v3_';
+const PHOTO_CACHE_PREFIX = 'consensus_photo_v4_';
+
+const TRUSTED_PHOTO_HOSTS = [
+  'images.unsplash.com',
+  'images.pexels.com',
+  'thumb.wikimedia.org',
+  'upload.wikimedia.org',
+  'visit.chisinau.md',
+  'img.restaurantguru.com',
+  'www.struguras.md',
+  'honeypot0.s3.amazonaws.com',
+  'www.visualbrand.ro',
+  'qmzxbjlpwqkagcyhcglm.supabase.co',
+  'grekofresh.md',
+  'davidansushi.md',
+];
 
 function isUntrustedScrapedUrl(url = '') {
-  if (!url || typeof url !== 'string' || !url.startsWith('http')) return true;
-  // Reject previously scraped classifieds, real-estate sites, Reddit memes, or bedroom photo IDs
-  if (
-    url.includes('999.md') ||
-    url.includes('simpalsmedia') ||
-    url.includes('mirax.md') ||
-    url.includes('topestate.md') ||
-    url.includes('connectimobil.md') ||
-    url.includes('redd.it') ||
-    url.includes('presedintia.jpg') ||
-    url.includes('menu.restaurantguru.com') ||
-    url.includes('photo-1538688525198-9b88f6f53126')
-  ) {
+  if (!url || typeof url !== 'string' || !url.startsWith('https://')) return true;
+  if (url.includes('photo-1538688525198-9b88f6f53126')) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return !TRUSTED_PHOTO_HOSTS.includes(host);
+  } catch {
     return true;
   }
-  return false;
 }
 
 /**
