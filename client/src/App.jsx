@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -10,8 +11,13 @@ import HostSettings from './pages/HostSettings';
 import RoomLobby from './pages/RoomLobby';
 import SwipeDeck from './pages/SwipeDeck';
 import History from './pages/History';
+import { initGlobalIosHaptics } from './utils/haptics';
 
 function App() {
+  useEffect(() => {
+    initGlobalIosHaptics();
+  }, []);
+
   return (
     <ThemeProvider>
       <LanguageProvider>

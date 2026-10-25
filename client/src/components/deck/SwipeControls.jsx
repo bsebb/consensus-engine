@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Heart, Star, Flame, RotateCcw } from 'lucide-react';
-import { triggerHaptic } from '../../utils/haptics';
+import { triggerHaptic, hapticTrigger } from '../../utils/haptics';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function SwipeControls({
@@ -20,6 +20,7 @@ export default function SwipeControls({
         {/* Undo Action */}
         <div className="flex flex-col items-center gap-0.5">
           <button
+            ref={hapticTrigger}
             type="button"
             disabled={!canUndo}
             onClick={() => {
@@ -46,6 +47,7 @@ export default function SwipeControls({
         {/* Pass Action */}
         <div className="flex flex-col items-center gap-0.5">
           <button
+            ref={hapticTrigger}
             type="button"
             onClick={() => {
               triggerHaptic('pass');
@@ -53,7 +55,7 @@ export default function SwipeControls({
             }}
             aria-label="Pass option"
             title="Pass (ArrowLeft)"
-            className="w-12 h-12 rounded-2xl bg-[var(--bg-surface)] hover:bg-rose-500/10 border border-[var(--border-main)] hover:border-rose-500/50 text-rose-500 flex items-center justify-center shadow-xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+            className="relative w-12 h-12 rounded-2xl bg-[var(--bg-surface)] hover:bg-rose-500/10 border border-[var(--border-main)] hover:border-rose-500/50 text-rose-500 flex items-center justify-center shadow-xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
           >
             <X size={23} strokeWidth={2.5} />
           </button>
@@ -65,6 +67,7 @@ export default function SwipeControls({
         {/* Veto Action (1 per round quota) */}
         <div className="flex flex-col items-center gap-0.5">
           <button
+            ref={hapticTrigger}
             type="button"
             onClick={() => {
               triggerHaptic('veto');
@@ -98,6 +101,7 @@ export default function SwipeControls({
         {/* Superlike Action (1 per round quota) */}
         <div className="flex flex-col items-center gap-0.5">
           <button
+            ref={hapticTrigger}
             type="button"
             onClick={() => {
               triggerHaptic('superlike');
@@ -131,6 +135,7 @@ export default function SwipeControls({
         {/* Like Action */}
         <div className="flex flex-col items-center gap-0.5">
           <button
+            ref={hapticTrigger}
             type="button"
             onClick={() => {
               triggerHaptic('like');
@@ -138,7 +143,7 @@ export default function SwipeControls({
             }}
             aria-label="Like option"
             title="Like (ArrowRight)"
-            className="w-12 h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_4px_16px_rgba(16,185,129,0.35)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+            className="relative w-12 h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-[0_4px_16px_rgba(16,185,129,0.35)] hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
           >
             <Heart size={23} strokeWidth={2.5} className="fill-white" />
           </button>

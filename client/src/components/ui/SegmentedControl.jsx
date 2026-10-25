@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { triggerHaptic } from '../../utils/haptics';
+import { triggerHaptic, hapticTrigger } from '../../utils/haptics';
 
 export default function SegmentedControl({
   options = [],
@@ -99,6 +99,7 @@ export default function SegmentedControl({
         return (
           <button
             key={opt.value}
+            ref={hapticTrigger}
             role="tab"
             type="button"
             aria-selected={isSelected}

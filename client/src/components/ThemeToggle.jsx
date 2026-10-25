@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { triggerHaptic } from '../utils/haptics';
+import { triggerHaptic, hapticTrigger } from '../utils/haptics';
 
 export default function ThemeToggle({ className = '' }) {
   const { isDark, toggleTheme } = useTheme();
@@ -15,6 +15,7 @@ export default function ThemeToggle({ className = '' }) {
 
   return (
     <button
+      ref={hapticTrigger}
       type="button"
       role="switch"
       aria-checked={isDark}

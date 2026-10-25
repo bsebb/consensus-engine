@@ -38,27 +38,229 @@ export {
   playVictoryChord,
 };
 
-/**
- * Triggers iOS Safari / WebKit native switch haptic pulse.
- * In iOS 17.4+ and iOS 18+, WebKit triggers UIKit's UIImpactFeedbackGenerator / Taptic Engine
- * when a user interaction toggles a native switch element via its label.
- */
+let persistentHapticLabel = null;
+let persistentHapticInput = null;
+
+function ensurePersistentHapticSwitch() {
+  if (typeof document === 'undefined' || !document.body) return null;
+  if (persistentHapticLabel && persistentHapticInput) return persistentHapticLabel;
+
+  const id = 'ios-global-haptic-switch';
+  let input = document.getElementById(id);
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = id;
+    input.setAttribute('switch', '');
+    input.setAttribute('aria-hidden', 'true');
+    input.tabIndex = -1;
+    Object.assign(input.style, {
+      position: 'fixed',
+      bottom: '0px',
+      right: '0px',
+      width: '1px',
+      height: '1px',
+      opacity: '0.001',
+      pointerEvents: 'none',
+      zIndex: '-1',
+    });
+    document.body.appendChild(input);
+  }
+
+  let label = document.getElementById('ios-global-haptic-label');
+  if (!label) {
+    label = document.createElement('label');
+    label.id = 'ios-global-haptic-label';
+    label.htmlFor = id;
+    label.setAttribute('aria-hidden', 'true');
+    Object.assign(label.style, {
+      position: 'fixed',
+      bottom: '0px',
+      right: '0px',
+      width: '1px',
+      height: '1px',
+      opacity: '0.001',
+      pointerEvents: 'none',
+      zIndex: '-1',
+    });
+    document.body.appendChild(label);
+  }
+
+  persistentHapticInput = input;
+  persistentHapticLabel = label;
+  return label;
+}
+
 function fireIOSSwitch() {
   if (typeof document === 'undefined' || !document.body) return;
   try {
-    const label = document.createElement('label');
-    label.setAttribute('aria-hidden', 'true');
-    label.style.cssText =
-      'position:fixed;top:-1000px;left:-1000px;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;opacity:0.001;pointer-events:auto;';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.setAttribute('switch', '');
-    input.style.cssText = 'pointer-events:auto;';
-    label.appendChild(input);
-    document.body.appendChild(label);
-    label.click();
-    document.body.removeChild(label);
+    const label = ensurePersistentHapticSwitch();
+    if (label) {
+      label.click();
+    }
   } catch {}
+}
+
+/**
+ * Attaches a transparent iOS native switch overlay to an element.
+ * On iOS Safari/WebKit, physical user taps on an <input type="checkbox" switch>
+ * trigger UIKit's UIImpactFeedbackGenerator / Taptic Engine in hardware.
+ * The switch overlay captures the physical finger press while letting click
+ * events bubble naturally to the parent element.
+ */
+export function hapticTrigger(el) {
+  if (!el || typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  // Verify iOS / iPadOS WebKit platform
+  const isIOS =
+    typeof navigator !== 'undefined' &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+  if (!isIOS) return;
+  if (el.querySelector?.('[data-haptic-trigger]')) return;
+
+  const n = document.createElement('input');
+  n.type = 'checkbox';
+  n.setAttribute('switch', '');
+  n.setAttribute('data-haptic-trigger', '');
+  n.setAttribute('aria-hidden', 'true');
+  n.tabIndex = -1;
+
+  Object.assign(n.style, {
+    position: 'absolute',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    margin: '0',
+    opacity: '0.0001',
+    borderRadius: 'inherit',
+    touchAction: 'manipulation',
+    cursor: 'pointer',
+    zIndex: '2',
+  });
+  n.style.setProperty('-webkit-tap-highlight-color', 'transparent');
+
+  if (getComputedStyle(el).position === 'static') {
+    el.style.position = 'relative';
+  }
+
+  let startY = 0;
+  let didDrag = false;
+
+  n.addEventListener(
+    'pointerdown',
+    (e) => {
+      startY = e.clientY;
+      didDrag = false;
+    },
+    { passive: true }
+  );
+
+  n.addEventListener(
+    'pointermove',
+    (e) => {
+      if (Math.abs(e.clientY - startY) > 10) {
+        didDrag = true;
+        n.checked = false;
+      }
+    },
+    { passive: true }
+  );
+
+  n.addEventListener(
+    'pointerup',
+    () => {
+      if (didDrag) {
+        n.checked = false;
+      }
+      didDrag = false;
+    },
+    { passive: true }
+  );
+
+  n.addEventListener(
+    'pointercancel',
+    () => {
+      didDrag = false;
+      n.checked = false;
+    },
+    { passive: true }
+  );
+
+  el.insertAdjacentElement('beforeend', n);
+}
+
+let isGlobalHapticsInitialized = false;
+
+/**
+ * Automatically initializes global iOS WebKit switch triggers across all interactive elements.
+ * Native iOS Safari triggers UIKit UIImpactFeedbackGenerator / Taptic Engine when a physical
+ * touch lands on an <input type="checkbox" switch>.
+ */
+export function initGlobalIosHaptics() {
+  if (isGlobalHapticsInitialized || typeof window === 'undefined' || typeof document === 'undefined') return;
+  isGlobalHapticsInitialized = true;
+
+  // Unlock audio on first user touch anywhere
+  window.addEventListener('pointerdown', unlockIosAudioSession, { once: true, passive: true });
+  window.addEventListener('touchstart', unlockIosAudioSession, { once: true, passive: true });
+
+  // Initialize persistent global switch
+  ensurePersistentHapticSwitch();
+
+  const selector = 'button, [role="button"], .category-tile, .spring-toggle, [data-haptic]';
+
+  const attach = (root = document) => {
+    try {
+      if (!isHapticsEnabled()) return;
+      if (root.nodeType === 1 && root.matches?.(selector)) {
+        hapticTrigger(root);
+      }
+      const nodes = root.querySelectorAll?.(selector);
+      if (nodes && nodes.length > 0) {
+        for (let i = 0; i < nodes.length; i++) {
+          hapticTrigger(nodes[i]);
+        }
+      }
+    } catch {}
+  };
+
+  // 1. Initial pass
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => attach(document), { once: true });
+  } else {
+    attach(document);
+  }
+
+  // 2. React component lifecycle mutation observer
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    const observer = new MutationObserver((mutations) => {
+      for (let i = 0; i < mutations.length; i++) {
+        const mutation = mutations[i];
+        for (let j = 0; j < mutation.addedNodes.length; j++) {
+          const node = mutation.addedNodes[j];
+          if (node.nodeType === 1) {
+            attach(node);
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // 3. Capture-phase pointerdown listener as zero-latency immediate fallback
+  window.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (!isHapticsEnabled()) return;
+      const target = e.target?.closest?.(selector);
+      if (target) {
+        hapticTrigger(target);
+      }
+    },
+    { capture: true, passive: true }
+  );
 }
 
 function triggerIosTaptic() {

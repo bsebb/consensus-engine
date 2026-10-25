@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight, ListPlus, MapPin, Zap } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-import { triggerHaptic } from '../../utils/haptics';
+import { triggerHaptic, hapticTrigger } from '../../utils/haptics';
 import Button from '../ui/Button';
 
 export default function CategoryQuickGrid({
@@ -64,6 +64,7 @@ export default function CategoryQuickGrid({
             return (
               <button
                 key={cat.id}
+                ref={hapticTrigger}
                 type="button"
                 data-theme={cat.theme}
                 onClick={() => handleTileClick(cat)}

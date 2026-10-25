@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noyoupick-pwa-v43';
+const CACHE_NAME = 'noyoupick-pwa-v44';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -121,7 +121,7 @@ self.addEventListener('message', (event) => {
     const delayMs = Math.max(5000, Number(data.delayMs) || 90 * 60 * 1000);
     reminderTimer = setTimeout(() => {
       if (self.registration && self.registration.showNotification) {
-        self.registration.showNotification(`How was ${data.winnerName}? ⭐`, {
+        self.registration.showNotification(`How was ${data.winnerName}?`, {
           body: `Tap to leave a quick 1-tap rating for your group pick!`,
           icon: '/pwa-192x192.png',
           badge: '/favicon.ico',
