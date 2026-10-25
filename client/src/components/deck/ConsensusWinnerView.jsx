@@ -55,15 +55,17 @@ export default function ConsensusWinnerView({
   const { addToast } = useToast();
   const { lang, t } = useLanguage();
   const isCustomWinner = Boolean(mode === 'CUSTOM' || winner?.isCustom);
+  const isRoutable = Boolean(winner?.isRoutablePlace || (winner?.address && winner?.address !== 'Added by group'));
+  const useRealVenueDisplay = !isCustomWinner || isRoutable;
 
   const { primaryPhoto, isRealPhoto, fallbackPhoto } = useVenuePhotos(
-    isCustomWinner ? '' : winner?.name,
-    isCustomWinner ? '' : winner?.address,
-    isCustomWinner ? '' : winner?.category,
-    isCustomWinner ? null : winner?.photo_url
+    useRealVenueDisplay ? winner?.name : '',
+    useRealVenueDisplay ? winner?.address : '',
+    useRealVenueDisplay ? winner?.category : '',
+    useRealVenueDisplay ? (winner?.photo_url || null) : null
   );
   const { photo: customWinnerPhoto } = useCustomOptionPhoto(
-    isCustomWinner ? winner?.name : '',
+    isCustomWinner && !isRoutable ? winner?.name : '',
     topic,
     winner?.photo_url
   );
@@ -103,10 +105,10 @@ export default function ConsensusWinnerView({
   const travelSummary = formatTravelSummary(winner, lang);
 
   const winnerDest = encodeURIComponent((winner?.name || '') + ' ' + (winner?.address || ''));
-  const googleMapsUrl = mapsDirUrl && mapsDirUrl !== '#'
+  const googleMapsUrl = winner?.googleMapsUrl || (mapsDirUrl && mapsDirUrl !== '#'
     ? mapsDirUrl
-    : `https://www.google.com/maps/dir/?api=1&destination=${winnerDest}`;
-  const appleMapsUrl = `https://maps.apple.com/?daddr=${winnerDest}`;
+    : `https://www.google.com/maps/dir/?api=1&destination=${winnerDest}`);
+  const appleMapsUrl = winner?.appleMapsUrl || `https://maps.apple.com/?daddr=${winnerDest}`;
 
   const handleSelectSatisfaction = (score) => {
     triggerHaptic('tap');
@@ -232,7 +234,7 @@ export default function ConsensusWinnerView({
     <main className="winner-scroll px-4 py-3 pb-6 flex flex-col items-center gap-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
       {/* Winner Hero Card */}
       <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
-        {isCustomWinner ? (
+        {isCustomWinner && !isRoutable ? (
           customWinnerPhoto && !customImgErr ? (
             /* Visual Poster Card for Custom Option Winner */
             <div className={`relative h-[clamp(170px,26dvh,224px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
@@ -340,7 +342,7 @@ export default function ConsensusWinnerView({
         )}
 
         <div className="p-4 flex flex-col items-center gap-3.5">
-          {isCustomWinner ? (
+          {isCustomWinner && !isRoutable ? (
             /* Custom Poll Metrics Row (Group Match + Condorcet Status only) */
             <div className="grid grid-cols-2 gap-2.5 w-full">
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
@@ -528,8 +530,8 @@ export default function ConsensusWinnerView({
         </Button>
       </div>
 
-      {/* Full Venue Details & Route Modal (Discovery Places Only) */}
-      {!isCustomWinner && (
+      {/* Full Venue Details & Route Modal */}
+      {(!isCustomWinner || isRoutable) && (
         <VenueDetailsModal
           venue={winner}
           isOpen={detailsOpen}

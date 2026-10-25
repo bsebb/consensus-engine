@@ -122,12 +122,17 @@ export const AUTOCOMPLETE_DATABASE = [
   { name: 'Camping & Campfire Night', category: 'activities', subtitle: 'Tents, Roasted Marshmallows & Stargazing', keywords: ['camping', 'campfire', 'outdoors'] },
 ];
 
+import { searchSmartPlaceSuggestions } from './smartPlaceResolver';
+
 /**
  * Fast search and ranking algorithm for custom poll autocomplete.
  */
 export function searchCustomSuggestions(query = '', topic = '', existingNames = []) {
   const q = String(query || '').toLowerCase().trim();
   const existingSet = new Set(existingNames.map((n) => String(n || '').toLowerCase().trim()));
+
+  // 1. Check typo-tolerant smart place/chain suggestions (e.g. "macdonals" -> McDonald's)
+  const smartPlaces = searchSmartPlaceSuggestions(query, existingNames);
 
   // If query is empty, return popular curated picks prioritized by room topic
   if (!q) {
@@ -180,6 +185,12 @@ export function searchCustomSuggestions(query = '', topic = '', existingNames = 
 
     if (score > 0) {
       scored.push({ item, score });
+    }
+  }
+
+  for (const sp of smartPlaces) {
+    if (!scored.some((s) => s.item.name.toLowerCase() === sp.name.toLowerCase())) {
+      scored.push({ item: sp, score: sp.score || 95 });
     }
   }
 

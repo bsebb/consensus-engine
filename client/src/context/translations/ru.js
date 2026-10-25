@@ -49,6 +49,10 @@ export const ru = {
   catCinemaDesc: 'Фильмы и залы',
   catCinemaTopic: 'В какой кинотеатр?',
 
+  catFun: 'Развлечения & Игры',
+  catFunDesc: 'Боулинг, бильярд, квесты',
+  catFunTopic: 'Куда пойдём развлечься?',
+
   catDesserts: 'Десерты',
   catDessertsDesc: 'Джелато и торты',
   catDessertsTopic: 'Куда за десертом?',

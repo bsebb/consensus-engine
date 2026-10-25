@@ -285,6 +285,7 @@ export default function RoomLobby() {
   const candidatePoolPreview = useMemo(() => {
     return buildCandidatePool({
       mode,
+      topic,
       groupPool,
       realOptions,
       category: location.state?.category,
@@ -292,7 +293,7 @@ export default function RoomLobby() {
       roadRoutes,
       mockPool: restaurantsMock,
     });
-  }, [mode, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
+  }, [mode, topic, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
 
   // Query OSRM street network for real road distance & travel time from user's exact coordinates
   useEffect(() => {

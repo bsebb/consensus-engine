@@ -2,6 +2,7 @@ import { calculateDistanceKm, getSavedExactGps } from './location';
 import { deduplicateVenues } from './venueImages';
 import { filterOutReportedVenues } from './reportedVenuesClient';
 import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from './customOptionService';
+import { resolveSmartCustomVenue } from './smartPlaceResolver';
 
 export function parseGooglePlaceMetadata(placeIdString = '') {
   if (!placeIdString || typeof placeIdString !== 'string' || !placeIdString.includes('|')) {
@@ -29,6 +30,7 @@ export function parseGooglePlaceMetadata(placeIdString = '') {
 
 export function buildCandidatePool({
   mode = 'DISCOVERY',
+  topic = '',
   groupPool = [],
   realOptions = [],
   category = null,
@@ -37,17 +39,28 @@ export function buildCandidatePool({
   mockPool = [],
 }) {
   if (mode === 'CUSTOM') {
-    return groupPool.map((name, idx) => ({
-      id: `custom-${idx}-${name}`,
-      name,
-      category: 'Group Suggestion',
-      price_level: 2,
-      distance_km: null,
-      address: 'Added by group',
-      tags: ['Custom'],
-      isCustom: true,
-      customIndex: idx,
-    }));
+    return groupPool.map((name, idx) => {
+      const smart = resolveSmartCustomVenue(name, topic, userGps);
+      return {
+        id: `custom-${idx}-${name}`,
+        name: smart ? smart.canonicalName : name,
+        originalName: name,
+        category: smart ? smart.category : 'Group Suggestion',
+        price_level: smart ? smart.price_level : 2,
+        distance_km: smart ? smart.distance_km : null,
+        drive_minutes: smart ? smart.drive_minutes : null,
+        walk_minutes: smart ? smart.walk_minutes : null,
+        address: smart ? smart.address : 'Added by group',
+        lat: smart ? smart.lat : null,
+        lng: smart ? smart.lng : null,
+        tags: smart ? [smart.category, 'Custom'] : ['Custom'],
+        isCustom: true,
+        isRoutablePlace: Boolean(smart?.isRoutablePlace),
+        googleMapsUrl: smart?.googleMapsUrl,
+        appleMapsUrl: smart?.appleMapsUrl,
+        customIndex: idx,
+      };
+    });
   }
 
   let baseList = [];
@@ -121,39 +134,56 @@ export function buildInitialSwipeCards({ locationState, mode = 'DISCOVERY', topi
   const savedGps = getSavedExactGps();
   if (locationState?.customCards && Array.isArray(locationState.customCards) && locationState.customCards.length > 0) {
     const initialCards = locationState.customCards.map((item, idx) => {
+      const rawName = typeof item === 'string' ? item : item?.name || `Option ${idx + 1}`;
+      const smart = resolveSmartCustomVenue(rawName, topic, savedGps);
+
       if (typeof item === 'string') {
         return {
           id: `custom-${idx}`,
-          name: item,
-          category: 'Custom Poll Option',
-          tags: ['Custom'],
-          distance_km: null,
-          price_level: 2,
-          address: '',
-          photo_url: resolveCuratedOptionPhoto(item),
+          name: smart ? smart.canonicalName : rawName,
+          originalName: rawName,
+          category: smart ? smart.category : 'Custom Poll Option',
+          tags: smart ? [smart.category, 'Custom'] : ['Custom'],
+          distance_km: smart ? smart.distance_km : null,
+          drive_minutes: smart ? smart.drive_minutes : null,
+          walk_minutes: smart ? smart.walk_minutes : null,
+          price_level: smart ? smart.price_level : 2,
+          address: smart ? smart.address : '',
+          lat: smart ? smart.lat : null,
+          lng: smart ? smart.lng : null,
+          isRoutablePlace: Boolean(smart?.isRoutablePlace),
+          googleMapsUrl: smart?.googleMapsUrl,
+          appleMapsUrl: smart?.appleMapsUrl,
+          photo_url: resolveCuratedOptionPhoto(rawName),
           isCustom: true,
         };
       }
+
       const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
       const liveDist = isCustomItem
-        ? null
+        ? (smart?.distance_km ?? null)
         : typeof item.distance_km === 'number'
           ? item.distance_km
           : savedGps && item.lat != null && item.lng != null
             ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
             : null;
+
       return {
         id: item.id || `option-${idx}`,
-        name: item.name || `Option ${idx + 1}`,
-        category: isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite'),
-        tags: item.tags || ['Top Pick'],
+        name: smart ? smart.canonicalName : (item.name || `Option ${idx + 1}`),
+        originalName: item.name,
+        category: smart ? smart.category : (isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite')),
+        tags: smart ? [smart.category, 'Top Pick'] : (item.tags || ['Top Pick']),
         distance_km: liveDist,
-        drive_minutes: isCustomItem ? null : (item.drive_minutes ?? null),
-        walk_minutes: isCustomItem ? null : (item.walk_minutes ?? null),
-        lat: isCustomItem ? null : (item.lat ?? null),
-        lng: isCustomItem ? null : (item.lng ?? null),
-        price_level: typeof item.price_level === 'number' ? item.price_level : 2,
-        address: isCustomItem ? '' : (item.address || 'Local Venue'),
+        drive_minutes: smart?.drive_minutes ?? (isCustomItem ? null : (item.drive_minutes ?? null)),
+        walk_minutes: smart?.walk_minutes ?? (isCustomItem ? null : (item.walk_minutes ?? null)),
+        lat: smart?.lat ?? (isCustomItem ? null : (item.lat ?? null)),
+        lng: smart?.lng ?? (isCustomItem ? null : (item.lng ?? null)),
+        price_level: smart?.price_level ?? (typeof item.price_level === 'number' ? item.price_level : 2),
+        address: smart?.address ?? (isCustomItem ? '' : (item.address || 'Local Venue')),
+        isRoutablePlace: Boolean(smart?.isRoutablePlace || item.isRoutablePlace),
+        googleMapsUrl: smart?.googleMapsUrl || item.googleMapsUrl,
+        appleMapsUrl: smart?.appleMapsUrl || item.appleMapsUrl,
         photo_url: item.photo_url || (isCustomItem ? resolveCuratedOptionPhoto(item.name) : null),
         isCustom: isCustomItem,
       };
@@ -163,17 +193,28 @@ export function buildInitialSwipeCards({ locationState, mode = 'DISCOVERY', topi
 
   if (mode === 'CUSTOM') {
     const defaultSeeds = getDefaultSeedOptions(topic);
-    return defaultSeeds.map((name, idx) => ({
-      id: `c${idx + 1}`,
-      name,
-      category: 'Custom Poll Option',
-      tags: ['Custom'],
-      distance_km: null,
-      price_level: 2,
-      address: '',
-      photo_url: resolveCuratedOptionPhoto(name),
-      isCustom: true,
-    }));
+    return defaultSeeds.map((name, idx) => {
+      const smart = resolveSmartCustomVenue(name, topic, savedGps);
+      return {
+        id: `c${idx + 1}`,
+        name: smart ? smart.canonicalName : name,
+        originalName: name,
+        category: smart ? smart.category : 'Custom Poll Option',
+        tags: smart ? [smart.category, 'Custom'] : ['Custom'],
+        distance_km: smart ? smart.distance_km : null,
+        drive_minutes: smart ? smart.drive_minutes : null,
+        walk_minutes: smart ? smart.walk_minutes : null,
+        price_level: smart ? smart.price_level : 2,
+        address: smart ? smart.address : '',
+        lat: smart ? smart.lat : null,
+        lng: smart ? smart.lng : null,
+        isRoutablePlace: Boolean(smart?.isRoutablePlace),
+        googleMapsUrl: smart?.googleMapsUrl,
+        appleMapsUrl: smart?.appleMapsUrl,
+        photo_url: resolveCuratedOptionPhoto(name),
+        isCustom: true,
+      };
+    });
   }
 
   return filterOutReportedVenues((mockPool || []).map((r) => ({

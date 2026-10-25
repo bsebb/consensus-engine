@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight, Clock, Utensils, Coffee, Wine, Film, IceCream,
-  ListPlus, User, Settings, History, MapPin, Globe, Star, MessageSquarePlus,
+  ListPlus, User, Settings, History, MapPin, Globe, Star, MessageSquarePlus, Sparkles,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -36,11 +36,11 @@ export default function JoinRoom() {
 
   const categories = useMemo(() => [
     { id: 'Restaurants', theme: 'restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic'), wide: true },
+    { id: 'Fun & Distractions', theme: 'activities', title: t('catFun') || 'Fun & Distractions', desc: t('catFunDesc') || 'Bowling, games & nightlife', icon: Sparkles, topic: t('catFunTopic') || 'What are we doing for fun?', wide: true },
     { id: 'Cafes', theme: 'cafes', title: t('catCafes'), desc: t('catCafesDesc'), icon: Coffee, topic: t('catCafesTopic'), wide: false },
     { id: 'Bars & Pubs', theme: 'bars', title: t('catBars'), desc: t('catBarsDesc'), icon: Wine, topic: t('catBarsTopic'), wide: false },
-    { id: 'Cinema', theme: 'cinema', title: t('catCinema'), desc: t('catCinemaDesc'), icon: Film, topic: t('catCinemaTopic'), wide: false },
     { id: 'Desserts', theme: 'desserts', title: t('catDesserts'), desc: t('catDessertsDesc'), icon: IceCream, topic: t('catDessertsTopic'), wide: false },
-    { id: 'Custom', theme: 'custom', title: t('catCustom'), desc: t('catCustomDesc'), icon: ListPlus, topic: t('catCustomTopic'), wide: true },
+    { id: 'Custom', theme: 'custom', title: t('catCustom'), desc: t('catCustomDesc'), icon: ListPlus, topic: t('catCustomTopic'), wide: false },
   ], [t]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -222,7 +222,7 @@ export default function JoinRoom() {
           device_id: deviceId,
           host_device_id: deviceId,
           mode: roomMode,
-          theme: isCustomMode ? topicTitle : selectedCategory.toLowerCase(),
+          theme: isCustomMode ? topicTitle : (categories.find((c) => c.id === selectedCategory)?.theme || selectedCategory.toLowerCase()),
           radius: 5000,
           latitude: lat,
           longitude: lng,

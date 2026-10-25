@@ -49,6 +49,10 @@ export const de = {
   catCinemaDesc: 'Filme & Vorstellungen',
   catCinemaTopic: 'Welches Kino wahlen wir?',
 
+  catFun: 'Spaß & Aktivitäten',
+  catFunDesc: 'Bowling, Spiele & Abenteuer',
+  catFunTopic: 'Was machen wir zum Spaß?',
+
   catDesserts: 'Desserts',
   catDessertsDesc: 'Eis & Susses',
   catDessertsTopic: 'Wohin zum Dessert?',

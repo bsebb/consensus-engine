@@ -8,6 +8,9 @@ import {
   Route,
   Info,
   Layers,
+  ChevronLeft,
+  ChevronRight,
+  Camera,
 } from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
@@ -36,17 +39,20 @@ export default function SwipeCard({
 }) {
   const { t } = useLanguage();
   const isCustomCard = Boolean(mode === 'CUSTOM' || activeCard?.isCustom);
+  const isRoutable = Boolean(activeCard?.isRoutablePlace || (activeCard?.address && activeCard?.address !== 'Added by group'));
+  const useRealVenueGallery = !isCustomCard || isRoutable;
+
   const { photo: customPhoto } = useCustomOptionPhoto(
-    isCustomCard ? activeCard?.name : '',
+    isCustomCard && !isRoutable ? activeCard?.name : '',
     topic,
     activeCard?.photo_url
   );
 
-  const { primaryPhoto, photos, fallbackPhoto } = useVenuePhotos(
-    isCustomCard ? '' : activeCard?.name,
-    isCustomCard ? '' : activeCard?.address,
-    isCustomCard ? '' : activeCard?.category,
-    isCustomCard ? null : activeCard?.photo_url
+  const { primaryPhoto, photos, photoSlides, fallbackPhoto } = useVenuePhotos(
+    useRealVenueGallery ? activeCard?.name : '',
+    useRealVenueGallery ? activeCard?.address : '',
+    useRealVenueGallery ? activeCard?.category : '',
+    useRealVenueGallery ? activeCard?.photo_url : null
   );
   const [photoIdx, setPhotoIdx] = useState(0);
   const [failedUrls, setFailedUrls] = useState({});
@@ -59,8 +65,8 @@ export default function SwipeCard({
   }, [activeCard?.id, activeCard?.name]);
 
   const validPhotos = (photos || []).filter((u) => !failedUrls[u]);
-  const displayPhoto = isCustomCard
-    ? (customPhoto || fallbackPhoto)
+  const displayPhoto = (!useRealVenueGallery && customPhoto)
+    ? customPhoto
     : (validPhotos[photoIdx] || validPhotos[0] || primaryPhoto || fallbackPhoto);
   const vibeSubtitle = getVenueVibe(activeCard?.name, activeCard?.category);
 
@@ -152,7 +158,7 @@ export default function SwipeCard({
         )}
 
         {/* Card Content Surface (Direct 2D Layout) */}
-        {isCustomCard ? (
+        {isCustomCard && !isRoutable ? (
           customPhoto && !customImgError ? (
             <>
               <div className={`relative flex-1 min-h-0 w-full overflow-hidden ${isLogoImage(customPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
@@ -305,6 +311,38 @@ export default function SwipeCard({
                 </div>
               )}
 
+              {/* Floating photo navigation chevrons for smooth browsing */}
+              {validPhotos.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('tap');
+                      setPhotoIdx((prev) => (prev > 0 ? prev - 1 : validPhotos.length - 1));
+                    }}
+                    aria-label="Previous photo"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
+                  >
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('tap');
+                      setPhotoIdx((prev) => (prev < validPhotos.length - 1 ? prev + 1 : 0));
+                    }}
+                    aria-label="Next photo"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
+                  >
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                  </button>
+                </>
+              )}
+
               <div className={`absolute ${validPhotos.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10`}>
                 <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10 truncate max-w-[60%]">
                   {vibeSubtitle || activeCard?.category || 'Local Venue'}
@@ -316,6 +354,17 @@ export default function SwipeCard({
                   <span className="text-[11px] text-white/75 font-normal">({cardReviewCount})</span>
                 </div>
               </div>
+
+              {/* Photo slide detail pill badge */}
+              {photoSlides && photoSlides[photoIdx] && (
+                <div className="absolute bottom-16 inset-x-4 z-10 pointer-events-none">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-[11px] font-semibold text-white/90 border border-white/15 shadow-sm max-w-[95%] truncate">
+                    <Camera size={11} className="text-emerald-400 shrink-0" />
+                    <span className="font-bold text-white">{photoSlides[photoIdx].label}:</span>
+                    <span className="truncate">{photoSlides[photoIdx].detail}</span>
+                  </span>
+                </div>
+              )}
 
               <div
                 onPointerDown={(e) => e.stopPropagation()}

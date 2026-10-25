@@ -2,7 +2,7 @@
  * Universal Geolocation, Reverse Geocoder & Hexagonal Grid Anchor Resolver.
  * Works in any city, town, or neighborhood without clamping to a single city.
  */
-import { formatRegionalDistance } from './regionFormat';
+import { formatRegionalDistance } from './regionFormat.js';
 
 /**
  * Haversine distance in kilometers between two coordinates.

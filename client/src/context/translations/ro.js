@@ -49,6 +49,10 @@ export const ro = {
   catCinemaDesc: 'Filme & cinema',
   catCinemaTopic: 'La ce film mergem?',
 
+  catFun: 'Distracție & Activități',
+  catFunDesc: 'Bowling, biliard & aventură',
+  catFunTopic: 'Unde ne distrăm azi?',
+
   catDesserts: 'Deserturi',
   catDessertsDesc: 'Gelato & dulciuri',
   catDessertsTopic: 'Unde mâncăm un desert?',

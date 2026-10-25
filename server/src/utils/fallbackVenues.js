@@ -56,6 +56,8 @@ async function searchExpandedOsmVenues(lat, lng, theme = 'restaurant', isExactGp
     ? 'bakery'
     : theme.toLowerCase().includes('cinema')
     ? 'cinema'
+    : theme.toLowerCase().includes('activit') || theme.toLowerCase().includes('fun') || theme.toLowerCase().includes('distraction')
+    ? 'entertainment'
     : 'restaurant';
 
   for (const radiusMeters of [8000, 16000, 24000]) {
@@ -138,7 +140,7 @@ async function resolveRegionalFallback(
     theme.toLowerCase().includes('cafe') ? 'cafes' :
     theme.toLowerCase().includes('bar') ? 'bars' :
     theme.toLowerCase().includes('dessert') ? 'desserts' :
-    theme.toLowerCase().includes('activit') || theme.toLowerCase().includes('bowling') || theme.toLowerCase().includes('arcade') ? 'activities' :
+    theme.toLowerCase().includes('activit') || theme.toLowerCase().includes('fun') || theme.toLowerCase().includes('distraction') || theme.toLowerCase().includes('bowling') || theme.toLowerCase().includes('arcade') ? 'activities' :
     'restaurants';
 
   const rawPlaces = CATEGORIZED_FALLBACKS[key] || CATEGORIZED_FALLBACKS.restaurants;

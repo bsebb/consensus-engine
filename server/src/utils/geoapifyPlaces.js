@@ -49,6 +49,9 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 
 function mapThemeToGeoapifyCategories(theme = '') {
   const norm = String(theme).toLowerCase().trim();
+  if (norm.includes('activit') || norm.includes('fun') || norm.includes('distraction') || norm.includes('bowling') || norm.includes('arcade') || norm.includes('game')) {
+    return 'entertainment.bowling_alley,entertainment.cinema,entertainment.escape_game,entertainment.amusement_arcade,entertainment.miniature_golf,entertainment,leisure.park';
+  }
   if (norm.includes('cinema') || norm.includes('movie') || norm.includes('film')) {
     return 'entertainment.cinema';
   }

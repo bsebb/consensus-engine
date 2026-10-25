@@ -29,7 +29,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const touchStartX = useRef(null);
 
-  const { photos = [], isRealPhoto, fallbackPhoto } = useVenuePhotos(
+  const { photos = [], photoSlides = [], isRealPhoto, fallbackPhoto } = useVenuePhotos(
     venue?.name,
     venue?.address,
     venue?.category,
@@ -146,10 +146,10 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
   const latNum = hasCoords ? Number(venue.lat) : null;
   const lngNum = hasCoords ? Number(venue.lng) : null;
 
-  const destinationQuery = encodeURIComponent(`${venue.name} ${venue.address || ''}`);
-  const driveRouteUrl = hasCoords
+  const destinationQuery = encodeURIComponent(`${venue.name} ${venue.address && venue.address !== 'Added by group' ? venue.address : ''}`);
+  const driveRouteUrl = venue.googleMapsUrl || (hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNum},${lngNum}&travelmode=driving`
-    : `https://www.google.com/maps/dir/?api=1&destination=${destinationQuery}&travelmode=driving`;
+    : `https://www.google.com/maps/dir/?api=1&destination=${destinationQuery}&travelmode=driving`);
   const reviewsSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${venue.name} ${venue.address || ''} menu reviews photos`)}`;
 
   const activePhotoUrl = photos[activePhotoIdx] || photos[0] || fallbackPhoto;
@@ -298,9 +298,16 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
         {/* Bottom Title & Vibe on Photo */}
         <div className={`absolute ${photos.length > 1 ? 'bottom-5' : 'bottom-3'} inset-x-4 flex items-end justify-between gap-2 z-10 pointer-events-none`}>
           <div className="min-w-0">
-            <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--accent-bg)] text-white text-[11px] font-bold mb-1 shadow-xs">
-              {vibe}
-            </span>
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--accent-bg)] text-white text-[11px] font-bold shadow-xs">
+                {vibe}
+              </span>
+              {photoSlides && photoSlides[activePhotoIdx] && (
+                <span className="inline-block px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white/90 text-[10px] font-semibold border border-white/10 truncate max-w-[220px]">
+                  {photoSlides[activePhotoIdx].label}
+                </span>
+              )}
+            </div>
             <h2 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">
               {venue.name}
             </h2>
@@ -340,7 +347,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
 
       {/* Scrollable Details Body */}
       <div className="venue-details-body p-4 sm:p-5 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3">
-        {venue.isCustom ? (
+        {venue.isCustom && !venue.isRoutablePlace && (!venue.address || venue.address === 'Added by group') ? (
           <div className="p-4 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0">

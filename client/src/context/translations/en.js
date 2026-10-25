@@ -49,6 +49,10 @@ export const en = {
   catCinemaDesc: 'Movies & shows',
   catCinemaTopic: 'Which cinema to pick?',
 
+  catFun: 'Fun & Distractions',
+  catFunDesc: 'Bowling, games & nightlife',
+  catFunTopic: 'What are we doing for fun?',
+
   catDesserts: 'Desserts',
   catDessertsDesc: 'Gelato & sweets',
   catDessertsTopic: 'Where to for dessert?',

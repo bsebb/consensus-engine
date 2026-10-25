@@ -18,25 +18,45 @@ import { formatRegionalPricePill } from '../../utils/regionFormat';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
 
-function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShuffling }) {
+function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShuffling, onSelectDetails }) {
   const animClass = isShuffling
     ? (idx % 2 === 0 ? 'animate-shuffle-deck' : 'animate-shuffle-deck-alt')
     : 'animate-slide-up';
 
+  const isRoutable = Boolean(item.isRoutablePlace || (item.address && item.address !== 'Added by group'));
+
   return (
     <div
       data-testid="candidate-card"
+      onClick={() => {
+        if (isRoutable && onSelectDetails) {
+          triggerHaptic('tap');
+          onSelectDetails(item);
+        }
+      }}
+      role={isRoutable ? 'button' : undefined}
+      tabIndex={isRoutable ? 0 : undefined}
       style={{ animationDelay: isShuffling ? `${(idx % 6) * 35}ms` : `${(idx % 8) * 45}ms` }}
-      className={`relative rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px] touch-manipulation ${animClass}`}
+      className={`relative rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px] touch-manipulation ${isRoutable ? 'cursor-pointer active:scale-[0.98]' : ''} ${animClass}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
-          #{idx + 1}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
+            #{idx + 1}
+          </span>
+          {isRoutable && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 truncate">
+              {item.distance_km != null ? `~${item.distance_km} km` : 'Nearest'}
+            </span>
+          )}
+        </div>
         {handleRemoveSuggestion && (
           <button
             type="button"
-            onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemoveSuggestion(item.customIndex ?? idx);
+            }}
             className="w-6 h-6 rounded-full bg-[var(--bg-inset)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
             title="Remove option"
             aria-label={`Remove ${item.name}`}
@@ -50,10 +70,21 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShufflin
         <h4 className="text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
           {item.name}
         </h4>
+        {item.address && item.address !== 'Added by group' && (
+          <p className="text-[10px] text-[var(--text-tertiary)] font-medium truncate flex items-center gap-1 mt-0.5">
+            <MapPin size={10} className="text-[var(--accent-bg)] shrink-0" />
+            <span className="truncate">{item.address}</span>
+          </p>
+        )}
       </div>
 
-      <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)] truncate">
-        {topic || 'Custom Poll'}
+      <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)] truncate flex items-center justify-between">
+        <span className="truncate">{topic || 'Custom Poll'}</span>
+        {isRoutable && (
+          <span className="text-[10px] text-[var(--accent-bg)] font-bold shrink-0 ml-1">
+            Details →
+          </span>
+        )}
       </div>
     </div>
   );
@@ -351,6 +382,7 @@ export default function CandidatePoolDeck({
                 topic={topic}
                 handleRemoveSuggestion={handleRemoveSuggestion}
                 isShuffling={isShuffling}
+                onSelectDetails={setSelectedVenue}
               />
             ) : (
               <CandidatePoolCard
