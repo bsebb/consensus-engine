@@ -102,6 +102,29 @@ function fireIOSSwitch() {
 }
 
 /**
+ * Synchronizes all active iOS WebKit switch triggers in the DOM with the user preference.
+ * When disabled, switches are disabled with pointer-events: none so touches never trigger the Taptic Engine.
+ */
+export function updateIosHapticsState() {
+  if (typeof document === 'undefined') return;
+  const enabled = isHapticsEnabled();
+  const triggers = document.querySelectorAll('[data-haptic-trigger]');
+  for (let i = 0; i < triggers.length; i++) {
+    const el = triggers[i];
+    if (enabled) {
+      el.style.pointerEvents = 'auto';
+      el.style.cursor = 'pointer';
+      el.removeAttribute('disabled');
+    } else {
+      el.style.pointerEvents = 'none';
+      el.style.cursor = 'default';
+      el.setAttribute('disabled', 'true');
+      el.checked = false;
+    }
+  }
+}
+
+/**
  * Attaches a transparent iOS native switch overlay to an element.
  * On iOS Safari/WebKit, physical user taps on an <input type="checkbox" switch>
  * trigger UIKit's UIImpactFeedbackGenerator / Taptic Engine in hardware.
@@ -120,6 +143,8 @@ export function hapticTrigger(el) {
   if (!isIOS) return;
   if (el.querySelector?.('[data-haptic-trigger]')) return;
 
+  const enabled = isHapticsEnabled();
+
   const n = document.createElement('input');
   n.type = 'checkbox';
   n.setAttribute('switch', '');
@@ -136,10 +161,15 @@ export function hapticTrigger(el) {
     opacity: '0.0001',
     borderRadius: 'inherit',
     touchAction: 'manipulation',
-    cursor: 'pointer',
+    cursor: enabled ? 'pointer' : 'default',
+    pointerEvents: enabled ? 'auto' : 'none',
     zIndex: '2',
   });
   n.style.setProperty('-webkit-tap-highlight-color', 'transparent');
+
+  if (!enabled) {
+    n.setAttribute('disabled', 'true');
+  }
 
   if (getComputedStyle(el).position === 'static') {
     el.style.position = 'relative';
@@ -151,6 +181,10 @@ export function hapticTrigger(el) {
   n.addEventListener(
     'pointerdown',
     (e) => {
+      if (!isHapticsEnabled()) {
+        n.checked = false;
+        return;
+      }
       startY = e.clientY;
       didDrag = false;
     },
@@ -160,6 +194,10 @@ export function hapticTrigger(el) {
   n.addEventListener(
     'pointermove',
     (e) => {
+      if (!isHapticsEnabled()) {
+        n.checked = false;
+        return;
+      }
       if (Math.abs(e.clientY - startY) > 10) {
         didDrag = true;
         n.checked = false;
@@ -171,7 +209,9 @@ export function hapticTrigger(el) {
   n.addEventListener(
     'pointerup',
     () => {
-      if (didDrag) {
+      if (!isHapticsEnabled()) {
+        n.checked = false;
+      } else if (didDrag) {
         n.checked = false;
       }
       didDrag = false;
@@ -261,6 +301,16 @@ export function initGlobalIosHaptics() {
     },
     { capture: true, passive: true }
   );
+
+  // 4. Synchronize active DOM triggers dynamically when settings toggle
+  window.addEventListener('consensus_haptics_change', () => {
+    updateIosHapticsState();
+  });
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'consensus_haptics_enabled') {
+      updateIosHapticsState();
+    }
+  });
 }
 
 function triggerIosTaptic() {
