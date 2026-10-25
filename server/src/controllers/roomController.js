@@ -3,7 +3,9 @@ const path = require('path');
 const { Worker } = require('worker_threads');
 const {
   createRoom,
+  createParticipantWithId,
   getRoomByPin,
+  getRoomWithVotesByPin,
   updateRoomConfig,
   updateParticipantBudget,
   pruneOptionsByBudget,
@@ -76,6 +78,8 @@ const createNewRoom = async (req, res) => {
   // Sprint 2: Added mode, theme, radius, latitude, longitude, and is_exact_gps
   const {
     host_id,
+    device_id,
+    host_device_id,
     mode = 'DISCOVERY',
     theme = 'restaurant',
     radius = 5000,
@@ -94,18 +98,22 @@ const createNewRoom = async (req, res) => {
     });
   }
 
+  const hostDeviceId = host_device_id || device_id || null;
   const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
   let pin = null;
   let room = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       pin = generatePin();
-      room = await createRoom(host_id, pin, roomTheme, radius);
+      room = await createRoom(host_id, pin, roomTheme, radius, hostDeviceId);
       break;
     } catch (err) {
       if (attempt === 4) throw err;
     }
   }
+
+  // Persist host participant record with deviceId once on room creation
+  createParticipantWithId(room.id, host_id, null, hostDeviceId).catch(() => {});
 
   // Fetch places from Google, Geoapify, or spatial fallback engine
   if (mode === 'DISCOVERY') {
@@ -248,7 +256,7 @@ const updateConfig = async (req, res) => {
 // Lilia: handle Step Zero budget constraint submission
 const submitConstraints = async (req, res) => {
   const { pin } = req.params;
-  const { participant_id, max_price_level } = req.body;
+  const { participant_id, device_id, max_price_level } = req.body;
 
   // Lilia: validate the Step Zero budget range
   if (
@@ -264,14 +272,16 @@ const submitConstraints = async (req, res) => {
     });
   }
 
-  // Lilia: verify that the participant belongs to this room
+  // Lilia: verify that the participant belongs to this room (by participant_id or same-room device_id)
   const room = await getRoomByPin(pin);
 
-  const participantExists = room.participants.some(
-    (participant) => participant.id === participant_id
+  const matchedParticipant = room.participants.find(
+    (participant) =>
+      participant.id === participant_id ||
+      (device_id && participant.deviceId === device_id)
   );
 
-  if (!participantExists) {
+  if (!matchedParticipant) {
     return res.status(404).json({
       success: false,
       error: 'PARTICIPANT_NOT_FOUND',
@@ -280,7 +290,7 @@ const submitConstraints = async (req, res) => {
   }
 
   // Lilia: save the participant's budget limit
-  await updateParticipantBudget(participant_id, max_price_level);
+  await updateParticipantBudget(matchedParticipant.id, max_price_level);
 
   // Lilia: find the strictest budget limit among all participants
   const updatedRoom = await getRoomByPin(pin);
@@ -293,6 +303,7 @@ const submitConstraints = async (req, res) => {
 
   // Lilia: remove restaurants that exceed the group's strictest budget
   await pruneOptionsByBudget(updatedRoom.id, groupMaxPriceLevel);
+  invalidateRoomCache(pin);
 
   return res.status(200).json({
     success: true,
@@ -305,7 +316,7 @@ const submitConstraints = async (req, res) => {
 // Lilia: save a participant's batched rankings and broadcast live vote progress
 const submitVotes = async (req, res) => {
   const { pin } = req.params;
-  const { participant_id, rankings } = req.body;
+  const { participant_id, device_id, rankings } = req.body;
 
   // Lilia: validate the batched rankings payload
   if (
@@ -339,20 +350,24 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  // Verify that the participant belongs to this room
+  // Verify that the participant belongs to this room (by participant_id or same-room device_id)
   const room = await getRoomByPin(pin);
 
-  const participantExists = room.participants.some(
-    (participant) => participant.id === participant_id
+  const matchedParticipant = room.participants.find(
+    (participant) =>
+      participant.id === participant_id ||
+      (device_id && participant.deviceId === device_id)
   );
 
-  if (!participantExists) {
+  if (!matchedParticipant) {
     return res.status(404).json({
       success: false,
       error: 'PARTICIPANT_NOT_FOUND',
       message: 'Participant does not belong to this room.',
     });
   }
+
+  const effectiveParticipantId = matchedParticipant.id;
 
   // Map submitted options to registered room options by ID or name
   const roomOptionIds = new Set(room.options.map((option) => option.id));
@@ -371,7 +386,7 @@ const submitVotes = async (req, res) => {
       }
       if (!targetId) return null;
       return {
-        participantId: participant_id,
+        participantId: effectiveParticipantId,
         optionId: targetId,
         score: r.score,
       };
@@ -423,7 +438,7 @@ const submitVotes = async (req, res) => {
 // Sprint 4: finalize voting using worker_thread to prevent event loop blocking
 const finalizeVoting = async (req, res) => {
   const { pin } = req.params;
-  const room = await getRoomByPin(pin);
+  const room = await getRoomWithVotesByPin(pin);
 
   if (!room) {
     return res.status(404).json({

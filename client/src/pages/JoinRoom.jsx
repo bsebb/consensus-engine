@@ -69,7 +69,7 @@ export default function JoinRoom() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const navigate = useNavigate();
-  const { participantId, emit } = useSocket();
+  const { participantId, deviceId, setRoomParticipantId } = useSocket();
   const { addToast } = useToast();
 
   // Auto-populate PIN from URL query param if present (e.g. ?pin=1234)
@@ -117,7 +117,6 @@ export default function JoinRoom() {
       const response = await fetch(apiUrl(`/api/v1/rooms/${cleanPin}`));
       if (response.ok) {
         const roomData = await response.json();
-        emit('join_lobby', { pin: cleanPin, participant_id: participantId, user_name: cleanName });
         navigate(`/lobby/${cleanPin}`, {
           state: { isHost: false, userName: cleanName, roomData, mode: roomData?.mode, topic: roomData?.topic },
         });
@@ -185,6 +184,8 @@ export default function JoinRoom() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           host_id: participantId,
+          device_id: deviceId,
+          host_device_id: deviceId,
           mode: roomMode,
           theme: isCustomMode ? topicTitle : selectedCategory.toLowerCase(),
           radius: 5000,
@@ -198,6 +199,7 @@ export default function JoinRoom() {
       if (response.ok) {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
+        setRoomParticipantId(generatedPin, participantId);
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
         if (realRoom.host_token) {
           sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);

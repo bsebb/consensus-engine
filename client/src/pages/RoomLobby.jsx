@@ -23,7 +23,21 @@ export default function RoomLobby() {
   const { pin } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isConnected, participantId, emit, on, off } = useSocket();
+  const { isConnected, deviceId, getRoomParticipantId, setRoomParticipantId, emit, on, off } = useSocket();
+  const [participantId, setParticipantIdState] = useState(() => getRoomParticipantId(pin));
+
+  useEffect(() => {
+    if (pin) {
+      setParticipantIdState(getRoomParticipantId(pin));
+    }
+  }, [pin, getRoomParticipantId]);
+
+  const handleReconcileParticipantId = useCallback((reconciledId) => {
+    if (!reconciledId) return;
+    setParticipantIdState(reconciledId);
+    if (pin) setRoomParticipantId(pin, reconciledId);
+  }, [pin, setRoomParticipantId]);
+
   const { addToast } = useToast();
   const { t } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -189,6 +203,8 @@ export default function RoomLobby() {
   useLobbySync({
     pin,
     participantId,
+    setParticipantId: handleReconcileParticipantId,
+    deviceId,
     currentUserName,
     isHost,
     setIsHost,
@@ -248,7 +264,7 @@ export default function RoomLobby() {
       fetch(apiUrl(`/api/v1/rooms/${pin}/constraints`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participant_id: participantId, max_price_level, max_budget: newLimit }),
+        body: JSON.stringify({ participant_id: participantId, device_id: deviceId, max_price_level, max_budget: newLimit }),
       }).catch(() => {});
     }
     emit('update_budget', { pin, participant_id: participantId, budgetSealed: shouldFilter, budgetLimit: newLimit });

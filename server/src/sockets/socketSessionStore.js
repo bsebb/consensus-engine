@@ -218,7 +218,7 @@ async function disbandLobby(io, pin, reason = 'All participants left the room') 
     if (prisma?.room) {
       await prisma.room.update({
         where: { pin },
-        data: { status: 'CLOSED' },
+        data: { status: 'RESOLVED' },
       }).catch(() => {});
     }
   } catch {}

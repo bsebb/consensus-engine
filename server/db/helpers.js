@@ -38,11 +38,31 @@ if (process.env.NODE_ENV !== 'production') {
     global.__prisma = prisma;
 }
 
-async function createRoom(hostId, pin, theme = null, radius = null) {
+// Global in-memory set of persisted participant keys (`${roomId}:${participantId}` and `${roomId}:dev:${deviceId}`)
+// Survives lobby eviction and prevents redundant INSERT/ON CONFLICT DO UPDATE queries across socket reconnects.
+const persistedParticipantCache = new Map();
+const MAX_PERSISTED_CACHE_SIZE = 10000;
+
+function markParticipantPersisted(roomId, participantId, deviceId, resolvedRecord) {
+    if (persistedParticipantCache.size >= MAX_PERSISTED_CACHE_SIZE) {
+        const oldestKey = persistedParticipantCache.keys().next().value;
+        if (oldestKey) persistedParticipantCache.delete(oldestKey);
+    }
+    const record = resolvedRecord || { id: participantId, roomId, deviceId: deviceId || null };
+    if (roomId && participantId) {
+        persistedParticipantCache.set(`${roomId}:${participantId}`, record);
+    }
+    if (roomId && deviceId) {
+        persistedParticipantCache.set(`${roomId}:dev:${deviceId}`, record);
+    }
+}
+
+async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null) {
     try {
         const room = await prisma.room.create({
             data: {
                 hostId,
+                hostDeviceId: hostDeviceId ? String(hostDeviceId).slice(0, 64) : null,
                 pin,
                 theme: theme ? String(theme) : null,
                 radius: typeof radius === 'number' ? radius : null,
@@ -54,11 +74,12 @@ async function createRoom(hostId, pin, theme = null, radius = null) {
         throw new Error("Failed to create room");
     }
 }
-async function createParticipant(roomId, budgetCap) {
+async function createParticipant(roomId, budgetCap, deviceId = null) {
     try {
         const participant = await prisma.participant.create({
             data: {
                 roomId,
+                deviceId: deviceId ? String(deviceId).slice(0, 64) : null,
                 budgetCap,
             },
         });
@@ -69,26 +90,76 @@ async function createParticipant(roomId, budgetCap) {
         throw new Error("Failed to create participant");
     }
 }
-// Lilia: create or update a participant with the UUID provided by the Socket.io client
-async function createParticipantWithId(roomId, participantId, budgetCap = null) {
+// Create or reuse a participant without triggering redundant ON CONFLICT DO UPDATE writes on reconnects
+async function createParticipantWithId(roomId, participantId, budgetCap = null, deviceId = null) {
+    const cleanDeviceId = deviceId && typeof deviceId === 'string' ? deviceId.trim().slice(0, 64) : null;
     try {
-        const participant = await prisma.participant.upsert({
+        if (budgetCap === null) {
+            if (cleanDeviceId && persistedParticipantCache.has(`${roomId}:dev:${cleanDeviceId}`)) {
+                return persistedParticipantCache.get(`${roomId}:dev:${cleanDeviceId}`);
+            }
+            if (persistedParticipantCache.has(`${roomId}:${participantId}`)) {
+                return persistedParticipantCache.get(`${roomId}:${participantId}`);
+            }
+        }
+
+        // 1. Per-room device idempotency: if the same (roomId, deviceId) already joined this room, reuse that participant slot
+        if (cleanDeviceId) {
+            const existingByDevice = await prisma.participant.findFirst({
+                where: { roomId, deviceId: cleanDeviceId },
+            });
+            if (existingByDevice) {
+                if (budgetCap !== null && existingByDevice.budgetCap !== budgetCap) {
+                    const updated = await prisma.participant.update({
+                        where: { id: existingByDevice.id },
+                        data: { budgetCap },
+                    });
+                    markParticipantPersisted(roomId, updated.id, cleanDeviceId, updated);
+                    return updated;
+                }
+                markParticipantPersisted(roomId, existingByDevice.id, cleanDeviceId, existingByDevice);
+                return existingByDevice;
+            }
+        }
+
+        // 2. Check if participantId already exists to avoid unnecessary UPDATE write locks
+        const existingById = await prisma.participant.findUnique({
             where: { id: participantId },
-            update: {
-                roomId,
-                ...(budgetCap !== null ? { budgetCap } : {}),
-            },
-            create: {
+        });
+        if (existingById) {
+            const needsDeviceBackfill = cleanDeviceId && !existingById.deviceId;
+            const needsBudgetUpdate = budgetCap !== null && existingById.budgetCap !== budgetCap;
+            if (needsDeviceBackfill || needsBudgetUpdate) {
+                const updated = await prisma.participant.update({
+                    where: { id: participantId },
+                    data: {
+                        ...(needsDeviceBackfill ? { deviceId: cleanDeviceId } : {}),
+                        ...(needsBudgetUpdate ? { budgetCap } : {}),
+                    },
+                });
+                markParticipantPersisted(roomId, updated.id, updated.deviceId, updated);
+                return updated;
+            }
+            markParticipantPersisted(roomId, existingById.id, existingById.deviceId, existingById);
+            return existingById;
+        }
+
+        // 3. Create new participant record once (safe against concurrent inserts via P2002 fallback)
+        const created = await prisma.participant.create({
+            data: {
                 id: participantId,
                 roomId,
+                deviceId: cleanDeviceId,
                 budgetCap,
             },
         });
-
-        return participant;
+        markParticipantPersisted(roomId, created.id, created.deviceId, created);
+        return created;
     } catch (error) {
         if (error.code === 'P2002') {
-            return await prisma.participant.findUnique({ where: { id: participantId } }).catch(() => null);
+            const fallback = await prisma.participant.findUnique({ where: { id: participantId } }).catch(() => null);
+            if (fallback) markParticipantPersisted(roomId, fallback.id, fallback.deviceId, fallback);
+            return fallback;
         }
         console.error(error);
         throw new Error("Failed to create participant with ID");
@@ -182,8 +253,29 @@ async function getRoomByPin(pin) {
         const room = await prisma.room.findUnique({
             where: { pin },
             include: {
+                participants: true,
+                options: true,
+            },
+        });
+        if (!room) {
+            throw new Error("Room not found");
+        }
+        return room;
+    } catch (error) {
+        if (error.message !== "Room not found") {
+            console.error(error);
+        }
+        throw error;
+    }
+}
+
+async function getRoomWithVotesByPin(pin) {
+    try {
+        const room = await prisma.room.findUnique({
+            where: { pin },
+            include: {
                 participants: {
-                    include: { votes: true } 
+                    include: { votes: true }
                 },
                 options: true,
             },
@@ -209,6 +301,7 @@ async function getRoomSummaryByPin(pin) {
                 id: true,
                 pin: true,
                 hostId: true,
+                hostDeviceId: true,
                 status: true,
                 theme: true,
                 radius: true,
@@ -409,6 +502,7 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
 
 module.exports = {
     prisma,
+    persistedParticipantCache,
     createRoom,
     createParticipant,
     createOption,
@@ -416,6 +510,7 @@ module.exports = {
     createVotesBulk,
     getRoomById,
     getRoomByPin,
+    getRoomWithVotesByPin,
     getRoomSummaryByPin,
     createVote,
     //Lilia: export vote progress helper

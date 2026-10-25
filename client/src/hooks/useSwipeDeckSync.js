@@ -4,6 +4,7 @@ import { apiUrl } from '../utils/api';
 export function useSwipeDeckSync({
   pin,
   participantId,
+  deviceId,
   isHost,
   cards,
   myVotes,
@@ -22,18 +23,24 @@ export function useSwipeDeckSync({
   on,
   off,
 }) {
+  const lastRoomJoinEmitTsRef = useRef(0);
+
   // Ensure socket is registered in the room on mount and reconnection
   useEffect(() => {
     if (!pin) return;
     const registerSocket = () => {
-      emit('join_room', { pin, participant_id: participantId, is_host: isHost });
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      const now = Date.now();
+      if (now - lastRoomJoinEmitTsRef.current < 1500) return;
+      lastRoomJoinEmitTsRef.current = now;
+      emit('join_room', { pin, participant_id: participantId, device_id: deviceId, is_host: isHost });
     };
     registerSocket();
     on('connect', registerSocket);
     return () => {
       off('connect', registerSocket);
     };
-  }, [pin, participantId, isHost, emit, on, off]);
+  }, [pin, participantId, deviceId, isHost, emit, on, off]);
 
   const propsRef = useRef({});
   propsRef.current = {
@@ -134,10 +141,11 @@ export function useSwipeDeckSync({
       emit('submit_ballot', {
         pin,
         participant_id: participantId,
+        device_id: deviceId,
         rankings: myVotes,
       });
 
-      emit('notify_votes_submitted', { pin, participant_id: participantId });
+      emit('notify_votes_submitted', { pin, participant_id: participantId, device_id: deviceId });
 
       // 2. Fallback REST submission
       fetch(apiUrl(`/api/v1/rooms/${pin}/votes`), {
@@ -145,6 +153,7 @@ export function useSwipeDeckSync({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           participant_id: participantId,
+          device_id: deviceId,
           rankings: myVotes,
         }),
       })

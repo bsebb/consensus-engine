@@ -13,6 +13,67 @@ function registerVotingSocketHandlers(io, socket, store) {
     disbandLobby,
   } = store;
 
+  // Direct room join for swipe deck and reconnects (zero DB writes)
+  socket.on('join_room', (data) => {
+    const pin = data?.pin;
+    const participant_id = data?.participant_id;
+    const device_id = data?.device_id;
+    if (!pin) return;
+
+    socket.join(pin);
+    socket.data.pin = pin;
+
+    const lobby = activeLobbies.get(pin);
+    const cleanDeviceId = device_id && typeof device_id === 'string' ? device_id.trim().slice(0, 64) : null;
+    let effectiveParticipantId = participant_id;
+    if (cleanDeviceId && lobby?.deviceToParticipantId?.has(cleanDeviceId)) {
+      effectiveParticipantId = lobby.deviceToParticipantId.get(cleanDeviceId);
+    }
+    if (effectiveParticipantId) socket.data.participantId = effectiveParticipantId;
+    if (cleanDeviceId) socket.data.deviceId = cleanDeviceId;
+
+    for (const idToClear of [participant_id, effectiveParticipantId]) {
+      if (!idToClear) continue;
+      const dcKey = `${pin}:${idToClear}`;
+      if (disconnectTimeouts.has(dcKey)) {
+        clearTimeout(disconnectTimeouts.get(dcKey));
+        disconnectTimeouts.delete(dcKey);
+      }
+    }
+
+    const session = activeVotingSessions.get(pin);
+    if (session && session.isResolved && session.winner) {
+      socket.emit('winner_announced', {
+        pin,
+        winning_option: session.winner,
+        winningOptionId: session.winner.id,
+        winner: session.winner,
+        matchScore: session.matchScore || 96,
+        pairwise: session.pairwise || [],
+        tally: session.tally || [],
+        approval_count: session.approvalCount ?? 0,
+        total_voted: session.totalVoted ?? session.submissions.size,
+      });
+    } else if (session) {
+      socket.emit('state_restore', {
+        pin,
+        phase: 'VOTING',
+        options: session.options || [],
+        topic: session.topic || lobby?.topic || 'Where should we go?',
+        mode: session.mode || lobby?.mode || 'DISCOVERY',
+        voted_participants: session.submissions.size,
+        total_participants: Math.max(session.expectedCount, session.submissions.size),
+        already_voted: Boolean(effectiveParticipantId && session.submissions.has(effectiveParticipantId)),
+      });
+      socket.emit('vote_progress', {
+        pin,
+        voted_participants: session.submissions.size,
+        total_participants: Math.max(session.expectedCount, session.submissions.size),
+        votes_received: session.submissions.size,
+      });
+    }
+  });
+
   socket.on('host_start_voting', async (data) => {
     try {
       const { pin, host_id, host_token, options } = data || {};
@@ -111,10 +172,15 @@ function registerVotingSocketHandlers(io, socket, store) {
 
   socket.on('submit_ballot', async (data) => {
     try {
-      const { pin, participant_id, rankings } = data || {};
+      const { pin, participant_id, device_id, rankings } = data || {};
       if (!pin || !participant_id || !Array.isArray(rankings)) return;
 
-      if (socket.data.participantId && socket.data.participantId !== participant_id) {
+      const lobby = activeLobbies.get(pin);
+      const cleanDeviceId = device_id && typeof device_id === 'string' ? device_id.trim().slice(0, 64) : socket.data.deviceId;
+      const mappedId = cleanDeviceId && lobby?.deviceToParticipantId?.get(cleanDeviceId);
+      const effectiveParticipantId = mappedId || socket.data.participantId || participant_id;
+
+      if (socket.data.participantId && socket.data.participantId !== participant_id && socket.data.participantId !== effectiveParticipantId) {
         console.warn(`[Socket] Mismatched participant_id in submit_ballot: caller=${socket.data.participantId}, claimed=${participant_id}`);
         return;
       }
@@ -142,13 +208,13 @@ function registerVotingSocketHandlers(io, socket, store) {
 
       if (votes.length === 0) return;
 
-      session.submissions.set(participant_id, {
-        participant_id,
+      session.submissions.set(effectiveParticipantId, {
+        participant_id: effectiveParticipantId,
+        device_id: cleanDeviceId || null,
         votes,
       });
 
       const votedCount = session.submissions.size;
-      const lobby = activeLobbies.get(pin);
       const totalCount = Math.max(session.expectedCount, lobby ? lobby.size : 0, votedCount);
 
       io.to(pin).emit('vote_progress', {
@@ -310,40 +376,6 @@ function registerVotingSocketHandlers(io, socket, store) {
       }, 10000);
 
       disconnectTimeouts.set(dcKey, timeout);
-    }
-  });
-
-  socket.on('send_reaction', (data) => {
-    try {
-      const { pin, emoji, user_name, participant_id } = data || {};
-      if (!pin || !emoji) return;
-      io.to(pin).emit('reaction_received', {
-        id: `rx-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        pin,
-        emoji: String(emoji).slice(0, 16),
-        user_name: String(user_name || socket.data.userName || 'Friend').slice(0, 40),
-        participant_id: participant_id || socket.data.participantId,
-        timestamp: Date.now(),
-      });
-    } catch (err) {
-      console.error('[Socket] send_reaction error in voting:', err?.message);
-    }
-  });
-
-  socket.on('voting_step_progress', (data) => {
-    try {
-      const { pin, participant_id, user_name, current_index, total_count } = data || {};
-      if (!pin || !participant_id) return;
-      io.to(pin).emit('participant_step_progress', {
-        pin,
-        participant_id,
-        user_name: String(user_name || socket.data.userName || 'Friend').slice(0, 40),
-        current_index: Number(current_index) || 0,
-        total_count: Number(total_count) || 0,
-        cards_remaining: Math.max(0, (Number(total_count) || 0) - (Number(current_index) || 0)),
-      });
-    } catch (err) {
-      console.error('[Socket] voting_step_progress error in voting:', err?.message);
     }
   });
 }

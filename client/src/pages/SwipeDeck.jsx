@@ -29,7 +29,8 @@ export default function SwipeDeck() {
   const { pin } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isConnected, participantId, emit, on, off } = useSocket();
+  const { isConnected, deviceId, getRoomParticipantId, emit, on, off } = useSocket();
+  const participantId = useMemo(() => getRoomParticipantId(pin), [pin, getRoomParticipantId]);
   const { addToast } = useToast();
   const { lang, t } = useLanguage();
 
@@ -50,11 +51,16 @@ export default function SwipeDeck() {
     buildInitialSwipeCards({ locationState: location.state, mode, topic, mockPool: restaurantsMock })
   );
 
+  const hasCustomCards = Boolean(location.state?.customCards);
+  const categoryFromState = location.state?.category;
+
   useEffect(() => {
-    if (!location.state?.customCards && pin) {
+    if (!hasCustomCards && pin && !showWinner) {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetch(apiUrl(`/api/v1/rooms/${pin}`))
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
+          if (data?.status === 'RESOLVED') return;
           if (data && Array.isArray(data.options) && data.options.length > 0) {
             const savedGps = getSavedExactGps();
             const rehydrated = data.options.map((opt) => {
@@ -63,7 +69,7 @@ export default function SwipeDeck() {
               if (savedGps && meta.lat != null && meta.lng != null && dist == null) {
                 dist = calculateDistanceKm(savedGps.lat, savedGps.lng, meta.lat, meta.lng);
               }
-              const catLabel = meta.catLabel || location.state?.category || 'Local Favorite';
+              const catLabel = meta.catLabel || categoryFromState || 'Local Favorite';
               return {
                 id: opt.id,
                 name: opt.name,
@@ -82,7 +88,7 @@ export default function SwipeDeck() {
         })
         .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));
     }
-  }, [pin, location.state]);
+  }, [pin, hasCustomCards, categoryFromState, showWinner]);
 
   useEffect(() => {
     const savedGps = getSavedExactGps();
@@ -284,6 +290,7 @@ export default function SwipeDeck() {
   useSwipeDeckSync({
     pin,
     participantId,
+    deviceId,
     isHost,
     cards,
     myVotes,

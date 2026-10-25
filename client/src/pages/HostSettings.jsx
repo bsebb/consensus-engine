@@ -34,7 +34,7 @@ import { triggerHaptic } from '../utils/haptics';
 
 export default function HostSettings() {
   const navigate = useNavigate();
-  const { participantId } = useSocket();
+  const { participantId, deviceId, setRoomParticipantId } = useSocket();
   const { addToast } = useToast();
   const { t } = useLanguage();
   const userName = localStorage.getItem('consensus_user_name') || 'Host';
@@ -172,6 +172,8 @@ export default function HostSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           host_id: participantId,
+          device_id: deviceId,
+          host_device_id: deviceId,
           mode,
           theme: mode === 'CUSTOM' ? (topic.trim() || 'What should we do?') : category.toLowerCase(),
           radius: radiusKm * 1000,
@@ -184,6 +186,7 @@ export default function HostSettings() {
       if (response.ok) {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
+        setRoomParticipantId(generatedPin, participantId);
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
         if (realRoom.host_token) {
           sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);

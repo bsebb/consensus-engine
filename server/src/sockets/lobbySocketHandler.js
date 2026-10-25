@@ -12,7 +12,8 @@ function registerLobbySocketHandlers(io, socket, store) {
   // Handle lobby join - join the socket room and emit participant_joined with full roster
   socket.on('join_lobby', async (data) => {
     try {
-      const { pin, participant_id, user_name, host_token } = data || {};
+      const { pin, participant_id, device_id, user_name, host_token } = data || {};
+      const cleanDeviceId = device_id && typeof device_id === 'string' ? device_id.trim().slice(0, 64) : null;
 
       if (!pin || !participant_id || !/^\d{4}$/.test(String(pin))) {
         socket.emit('room_error', {
@@ -21,17 +22,7 @@ function registerLobbySocketHandlers(io, socket, store) {
         return;
       }
 
-      socket.data.pin = pin;
-      socket.data.participantId = participant_id;
-      socket.data.userName = user_name || 'Guest';
-
       socket.join(pin);
-
-      const dcKey = `${pin}:${participant_id}`;
-      if (disconnectTimeouts.has(dcKey)) {
-        clearTimeout(disconnectTimeouts.get(dcKey));
-        disconnectTimeouts.delete(dcKey);
-      }
 
       let room = null;
       try {
@@ -51,6 +42,7 @@ function registerLobbySocketHandlers(io, socket, store) {
         const map = new Map();
         map.suggestions = Array.isArray(data?.initial_suggestions) ? [...data.initial_suggestions] : [];
         map.persistedParticipants = new Set();
+        map.deviceToParticipantId = new Map();
         map.mode = data?.mode || (room?.theme?.startsWith('custom') ? 'CUSTOM' : 'DISCOVERY');
         map.topic = data?.topic || (room?.theme?.startsWith('custom:') ? room.theme.replace(/^custom:/, '') : 'Where should we go?');
         map.groupSize = data?.group_size || 4;
@@ -66,11 +58,63 @@ function registerLobbySocketHandlers(io, socket, store) {
         lobby.visiblePlacesCount = data.visible_places_count;
       }
       if (!lobby.persistedParticipants) lobby.persistedParticipants = new Set();
+      if (!lobby.deviceToParticipantId) lobby.deviceToParticipantId = new Map();
 
-      if (room && !lobby.persistedParticipants.has(participant_id)) {
-        lobby.persistedParticipants.add(participant_id);
-        createParticipantWithId(room.id, participant_id).catch(() => {});
+      // Enforce per-room device idempotency: if the same device rejoins the room (e.g., refresh or switching from In-App Browser to Safari/Chrome), reuse its existing participant slot.
+      let effectiveParticipantId = participant_id;
+      if (cleanDeviceId && lobby.deviceToParticipantId.has(cleanDeviceId)) {
+        effectiveParticipantId = lobby.deviceToParticipantId.get(cleanDeviceId);
       }
+
+      if (room && (!lobby.persistedParticipants.has(effectiveParticipantId) || (cleanDeviceId && !lobby.deviceToParticipantId.has(cleanDeviceId)))) {
+        lobby.persistedParticipants.add(effectiveParticipantId);
+        if (cleanDeviceId) {
+          lobby.deviceToParticipantId.set(cleanDeviceId, effectiveParticipantId);
+        }
+        try {
+          const persisted = await createParticipantWithId(room.id, effectiveParticipantId, null, cleanDeviceId);
+          if (persisted && persisted.id) {
+            effectiveParticipantId = persisted.id;
+            lobby.persistedParticipants.add(effectiveParticipantId);
+            if (cleanDeviceId) {
+              lobby.deviceToParticipantId.set(cleanDeviceId, effectiveParticipantId);
+            }
+          }
+        } catch {
+          // Non-fatal if DB is unreachable in local/offline mode
+        }
+      } else if (cleanDeviceId) {
+        lobby.deviceToParticipantId.set(cleanDeviceId, effectiveParticipantId);
+      }
+
+      // Clean up any stale slot if the client initially generated a different temporary UUID before resolving its device-linked participant ID
+      if (effectiveParticipantId !== participant_id && lobby.has(participant_id)) {
+        const prevEntry = lobby.get(participant_id);
+        lobby.delete(participant_id);
+        if (!lobby.has(effectiveParticipantId)) {
+          lobby.set(effectiveParticipantId, { ...prevEntry, id: effectiveParticipantId });
+        }
+      }
+
+      socket.data.pin = pin;
+      socket.data.participantId = effectiveParticipantId;
+      socket.data.deviceId = cleanDeviceId;
+      socket.data.userName = user_name || 'Guest';
+
+      for (const idToClear of [participant_id, effectiveParticipantId]) {
+        const dcKey = `${pin}:${idToClear}`;
+        if (disconnectTimeouts.has(dcKey)) {
+          clearTimeout(disconnectTimeouts.get(dcKey));
+          disconnectTimeouts.delete(dcKey);
+        }
+      }
+
+      const hasVerifiedHostToken = Boolean(
+        host_token && (verifyHostToken(pin, effectiveParticipantId, host_token) || verifyHostToken(pin, participant_id, host_token))
+      );
+      const isHost = hasVerifiedHostToken || Boolean(
+        room && ((room.hostId && room.hostId === effectiveParticipantId) || (cleanDeviceId && room.hostDeviceId === cleanDeviceId))
+      );
 
       if (data?.mode) lobby.mode = data.mode;
       const cleanDataTopic = data?.topic && data.topic !== 'custom' && data.topic !== 'poll' ? data.topic : null;
@@ -89,30 +133,30 @@ function registerLobbySocketHandlers(io, socket, store) {
         lobby.suggestions = [...data.initial_suggestions];
       }
 
-      const hasVerifiedHostToken = Boolean(host_token && verifyHostToken(pin, participant_id, host_token));
-      const isHost = hasVerifiedHostToken;
-
       socket.data.isHost = isHost;
       socket.data.hostToken = hasVerifiedHostToken ? host_token : null;
 
-      const existing = lobby.get(participant_id);
+      const existing = lobby.get(effectiveParticipantId);
       const participantRecord = {
-        id: participant_id,
-        name: user_name || 'Guest',
-        isHost,
+        id: effectiveParticipantId,
+        deviceId: cleanDeviceId || existing?.deviceId || null,
+        name: user_name || existing?.name || 'Guest',
+        isHost: isHost || Boolean(existing?.isHost),
         isOnline: true,
         budgetSealed: existing ? Boolean(existing.budgetSealed) : false,
         budgetLimit: existing ? existing.budgetLimit : null,
       };
-      lobby.set(participant_id, participantRecord);
+      lobby.set(effectiveParticipantId, participantRecord);
 
       const participantsList = Array.from(lobby.values());
       const hostId = room ? room.hostId : (participantsList.find((p) => p.isHost)?.id || null);
 
       io.to(pin).emit('participant_joined', {
         pin,
-        participant_id,
-        user_name: user_name || 'Guest',
+        participant_id: effectiveParticipantId,
+        claimed_participant_id: participant_id,
+        device_id: cleanDeviceId,
+        user_name: participantRecord.name,
         host_id: hostId,
         participants: participantsList,
         mode: lobby.mode || 'DISCOVERY',
@@ -125,6 +169,9 @@ function registerLobbySocketHandlers(io, socket, store) {
 
       socket.emit('lobby_state', {
         pin,
+        participant_id: effectiveParticipantId,
+        claimed_participant_id: participant_id,
+        device_id: cleanDeviceId,
         host_id: hostId,
         participants: participantsList,
         mode: lobby.mode || 'DISCOVERY',

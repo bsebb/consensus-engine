@@ -141,3 +141,79 @@ test('resolveAndBroadcastWinner emits room_error and avoids winner_announced whe
     activeVotingSessions.delete(pin);
   }
 });
+
+test('join_lobby enforces per-room deviceId idempotency and reuses existing participant slot across browser switches', async () => {
+  const { registerLobbySocketHandlers } = require('./lobbySocketHandler');
+  const pin = '8842';
+  const activeLobbies = new Map();
+  const activeVotingSessions = new Map();
+  const disconnectTimeouts = new Map();
+
+  const mockStore = {
+    activeLobbies,
+    activeVotingSessions,
+    disconnectTimeouts,
+    getCachedRoomSummary: async () => null, // In-memory lobby test
+  };
+
+  // Seed active lobby so join_lobby accepts without DB
+  const initialMap = new Map();
+  initialMap.suggestions = [];
+  initialMap.persistedParticipants = new Set();
+  initialMap.deviceToParticipantId = new Map();
+  activeLobbies.set(pin, initialMap);
+
+  const roomEmissions = [];
+  const mockIo = {
+    to: (targetPin) => ({
+      emit: (event, payload) => roomEmissions.push({ targetPin, event, payload }),
+    }),
+  };
+
+  function createMockSocket() {
+    const handlers = {};
+    const directEmissions = [];
+    return {
+      data: {},
+      join: () => {},
+      on: (event, cb) => { handlers[event] = cb; },
+      emit: (event, payload) => directEmissions.push({ event, payload }),
+      trigger: async (event, data) => handlers[event](data),
+      directEmissions,
+    };
+  }
+
+  // 1. User joins from In-App Browser with participant_id "p-inapp-1" and device_id "nyp_device_abc123"
+  const socket1 = createMockSocket();
+  registerLobbySocketHandlers(mockIo, socket1, mockStore);
+  await socket1.trigger('join_lobby', {
+    pin,
+    participant_id: 'p-inapp-1',
+    device_id: 'nyp_device_abc123',
+    user_name: 'Alex',
+  });
+
+  const lobby = activeLobbies.get(pin);
+  assert.equal(lobby.size, 1, 'Lobby should have 1 participant');
+  assert.equal(lobby.get('p-inapp-1').name, 'Alex');
+
+  // 2. Same physical device switches to Safari with a brand new session UUID "p-safari-2", but same device_id "nyp_device_abc123"
+  const socket2 = createMockSocket();
+  registerLobbySocketHandlers(mockIo, socket2, mockStore);
+  await socket2.trigger('join_lobby', {
+    pin,
+    participant_id: 'p-safari-2',
+    device_id: 'nyp_device_abc123',
+    user_name: 'Alex (Safari)',
+  });
+
+  assert.equal(lobby.size, 1, 'Lobby must reuse existing slot for same deviceId instead of spawning a duplicate');
+  assert.equal(lobby.has('p-inapp-1'), true, 'Original participantId slot must be preserved');
+  assert.equal(lobby.has('p-safari-2'), false, 'Duplicate participantId must not be added');
+  assert.equal(socket2.data.participantId, 'p-inapp-1', 'Socket2 must reconcile to original participantId');
+
+  const lastLobbyState = socket2.directEmissions.find((e) => e.event === 'lobby_state');
+  assert.ok(lastLobbyState, 'lobby_state must be emitted to joining socket');
+  assert.equal(lastLobbyState.payload.participant_id, 'p-inapp-1');
+  assert.equal(lastLobbyState.payload.claimed_participant_id, 'p-safari-2');
+});

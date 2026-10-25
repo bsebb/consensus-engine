@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { API_BASE_URL } from '../utils/api';
+import { getPersistentDeviceId, getRoomParticipantId, setRoomParticipantId } from '../utils/deviceId';
 
 const SocketContext = createContext(null);
 const SERVER_URL = API_BASE_URL;
@@ -11,26 +12,11 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
 
-  // Persistent participant ID per browser session
-  const [participantId] = useState(() => {
-    let id = sessionStorage.getItem('consensus_participant_id');
+  // Persistent account-free hardware/browser device identifier (stored in localStorage + 400-day cookie)
+  const [deviceId] = useState(() => getPersistentDeviceId());
 
-    // UUID compliant generator with fallback for non-secure HTTP contexts on LAN/mobile
-    if (!id) {
-      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-        id = crypto.randomUUID();
-      } else {
-        id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0;
-          const v = c === 'x' ? r : (r & 0x3) | 0x8;
-          return v.toString(16);
-        });
-      }
-      sessionStorage.setItem('consensus_participant_id', id);
-    }
-
-    return id;
-  });
+  // Fallback session participant ID when not yet scoped to a specific room PIN
+  const [participantId] = useState(() => getRoomParticipantId(null));
 
   useEffect(() => {
     // Initialize socket connection
@@ -38,6 +24,7 @@ export function SocketProvider({ children }) {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
       timeout: 8000,
       autoConnect: true,
     });
@@ -93,11 +80,14 @@ export function SocketProvider({ children }) {
     socket,
     isConnected,
     connectionError,
+    deviceId,
     participantId,
+    getRoomParticipantId,
+    setRoomParticipantId,
     emit,
     on,
     off,
-  }), [socket, isConnected, connectionError, participantId, emit, on, off]);
+  }), [socket, isConnected, connectionError, deviceId, participantId, emit, on, off]);
 
   return (
     <SocketContext.Provider value={contextValue}>

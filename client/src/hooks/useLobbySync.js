@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 export function useLobbySync({
   pin,
   participantId,
+  setParticipantId,
+  deviceId,
   currentUserName,
   isHost,
   setIsHost,
@@ -29,6 +31,8 @@ export function useLobbySync({
   propsRef.current = {
     pin,
     participantId,
+    setParticipantId,
+    deviceId,
     currentUserName,
     isHost,
     setIsHost,
@@ -53,17 +57,24 @@ export function useLobbySync({
   };
 
   const hasNavigatedToDeckRef = useRef(false);
+  const lastJoinEmitTsRef = useRef(0);
 
   useEffect(() => {
     if (!pin) return;
     hasNavigatedToDeckRef.current = false;
 
     const sendJoin = () => {
-      const { currentUserName: uName, locationState: lState } = propsRef.current;
+      const now = Date.now();
+      // Debounce rapid socket connect/mount signals within 1.5s to prevent redundant join emissions
+      if (now - lastJoinEmitTsRef.current < 1500) return;
+      lastJoinEmitTsRef.current = now;
+
+      const { currentUserName: uName, locationState: lState, participantId: currentPid, deviceId: currentDeviceId } = propsRef.current;
       const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
       emit('join_lobby', {
         pin,
-        participant_id: participantId,
+        participant_id: currentPid || participantId,
+        device_id: currentDeviceId || deviceId,
         user_name: uName,
         host_token: hostToken || undefined,
         mode: lState?.mode,
@@ -79,6 +90,9 @@ export function useLobbySync({
 
     const handleParticipantJoined = (data) => {
       const {
+        participantId: currentPid,
+        setParticipantId: updatePid,
+        deviceId: currentDeviceId,
         setMode,
         setTopic,
         setGroupSize,
@@ -89,6 +103,17 @@ export function useLobbySync({
         setIsHost,
         locationState,
       } = propsRef.current;
+
+      // Reconcile room-scoped participantId if the server matched our persistent deviceId to an existing participant slot
+      if (
+        updatePid &&
+        data?.participant_id &&
+        ((data?.claimed_participant_id && data.claimed_participant_id === currentPid) ||
+          (currentDeviceId && data?.device_id === currentDeviceId)) &&
+        data.participant_id !== currentPid
+      ) {
+        updatePid(data.participant_id);
+      }
 
       if (data?.mode) setMode(data.mode);
       if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') {
@@ -121,7 +146,7 @@ export function useLobbySync({
         );
 
         if (setIsHost) {
-          const myRecord = data.participants.find((p) => p.id === participantId);
+          const myRecord = data.participants.find((p) => p.id === (propsRef.current.participantId || participantId));
           if (myRecord?.isHost) {
             setIsHost(true);
             sessionStorage.setItem(`consensus_host_${pin}`, 'true');
@@ -187,9 +212,10 @@ export function useLobbySync({
       }
 
       if (setIsHost) {
+        const myPid = propsRef.current.participantId || participantId;
         const amIHost = Boolean(
-          data?.host_id === participantId ||
-          (data?.participants && data.participants.find((p) => p.id === participantId)?.isHost)
+          data?.host_id === myPid ||
+          (data?.participants && data.participants.find((p) => p.id === myPid)?.isHost)
         );
         if (amIHost) {
           setIsHost(true);
@@ -321,5 +347,5 @@ export function useLobbySync({
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, participantId, emit, on, off]);
+  }, [pin, emit, on, off]);
 }

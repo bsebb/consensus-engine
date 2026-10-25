@@ -23,6 +23,7 @@ model Room {
   id             String     @id @default(uuid())
   pin            String     @unique
   hostId         String
+  hostDeviceId   String?
   status         RoomStatus @default(CONFIGURING)
   
   theme          String?
@@ -36,12 +37,14 @@ model Room {
   participants   Participant[]
   options        Option[]      @relation("RoomOptions")
 
+  @@index([hostDeviceId])
   @@map("rooms")
 }
 
 model Participant {
   id        String   @id @default(uuid())
   roomId    String
+  deviceId  String?
   budgetCap Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -51,6 +54,8 @@ model Participant {
   feedbacks Feedback[]
 
   @@index([roomId])
+  @@index([deviceId])
+  @@index([roomId, deviceId])
   @@map("participants")
 }
 

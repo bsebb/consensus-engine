@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { LayoutGrid, MapPin, Loader2, Compass, Layers, Shield } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 import BrandLogo from '../ui/BrandLogo';
