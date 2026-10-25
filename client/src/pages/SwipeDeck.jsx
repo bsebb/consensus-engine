@@ -33,7 +33,7 @@ export default function SwipeDeck() {
   const { isConnected, deviceId, getRoomParticipantId, emit, on, off } = useSocket();
   const participantId = useMemo(() => getRoomParticipantId(pin), [pin, getRoomParticipantId]);
   const { addToast } = useToast();
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
 
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
