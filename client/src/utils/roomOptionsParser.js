@@ -1,8 +1,8 @@
-import { calculateDistanceKm, getSavedExactGps } from './location';
-import { deduplicateVenues } from './venueImages';
-import { filterOutReportedVenues } from './reportedVenuesClient';
-import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from './customOptionService';
-import { resolveSmartCustomVenue } from './smartPlaceResolver';
+import { calculateDistanceKm, getSavedExactGps } from './location.js';
+import { deduplicateVenues } from './venueImages.js';
+import { filterOutReportedVenues } from './reportedVenuesClient.js';
+import { resolveCuratedOptionPhoto, getDefaultSeedOptions } from './customOptionService.js';
+import { resolveSmartCustomVenue } from './smartPlaceResolver.js';
 
 export function parseGooglePlaceMetadata(placeIdString = '') {
   if (!placeIdString || typeof placeIdString !== 'string' || !placeIdString.includes('|')) {
@@ -39,7 +39,10 @@ export function buildCandidatePool({
   mockPool = [],
 }) {
   if (mode === 'CUSTOM') {
-    return groupPool.map((name, idx) => {
+    return groupPool.map((rawItem, idx) => {
+      const isObj = typeof rawItem === 'object' && rawItem !== null;
+      const name = isObj ? String(rawItem.name || rawItem.suggestion || '').trim() : String(rawItem || '').trim();
+      const addedBy = (isObj ? (rawItem.addedBy || rawItem.added_by || rawItem.user_name) : null) || 'Group';
       const smart = resolveSmartCustomVenue(name, topic, userGps);
       return {
         id: `custom-${idx}-${name}`,
@@ -55,6 +58,8 @@ export function buildCandidatePool({
         lng: smart ? smart.lng : null,
         tags: smart ? [smart.category, 'Custom'] : ['Custom'],
         isCustom: true,
+        isGroupAdded: true,
+        addedBy,
         isRoutablePlace: Boolean(smart?.isRoutablePlace),
         googleMapsUrl: smart?.googleMapsUrl,
         appleMapsUrl: smart?.appleMapsUrl,
@@ -67,14 +72,14 @@ export function buildCandidatePool({
   if (realOptions && realOptions.length > 0) {
     baseList = realOptions.map((opt) => {
       const meta = parseGooglePlaceMetadata(opt.googlePlaceId);
-      const catLabel = meta.catLabel || category || 'Local Favorite';
-      const venueLat = meta.lat;
-      const venueLng = meta.lng;
-      const addr = meta.addr || 'Local Venue';
-      const photoUrl = meta.photoUrl;
+      const catLabel = meta.catLabel || opt.category || category || 'Local Favorite';
+      const venueLat = meta.lat ?? opt.lat ?? null;
+      const venueLng = meta.lng ?? opt.lng ?? null;
+      const addr = (meta.addr && meta.addr !== 'Local Venue' ? meta.addr : opt.address) || 'Local Venue';
+      const photoUrl = meta.photoUrl || opt.photo_url || null;
 
       const route = roadRoutes[opt.id];
-      let dist = meta.dist;
+      let dist = meta.dist ?? opt.distance_km ?? null;
       if (route && route.roadDistanceKm != null) {
         dist = route.roadDistanceKm;
       } else if (userGps && venueLat != null && venueLng != null) {
@@ -87,7 +92,7 @@ export function buildCandidatePool({
         id: opt.id,
         name: opt.name,
         category: catLabel,
-        price_level: opt.priceLevel || 2,
+        price_level: opt.priceLevel ?? opt.price_level ?? 2,
         distance_km: dist,
         drive_minutes: route?.driveMinutes ?? null,
         walk_minutes: route?.walkMinutes ?? null,
@@ -129,8 +134,10 @@ export function buildCandidatePool({
 
   // In DISCOVERY mode, prepend any spots specifically added by the host or participants via search/autocomplete
   if (Array.isArray(groupPool) && groupPool.length > 0) {
-    const addedDiscoveryVenues = groupPool.map((name, idx) => {
-      const cleanName = String(name || '').trim();
+    const addedDiscoveryVenues = groupPool.map((rawItem, idx) => {
+      const isObj = typeof rawItem === 'object' && rawItem !== null;
+      const cleanName = isObj ? String(rawItem.name || rawItem.suggestion || '').trim() : String(rawItem || '').trim();
+      const addedBy = (isObj ? (rawItem.addedBy || rawItem.added_by || rawItem.user_name) : null) || 'Group';
       const smart = resolveSmartCustomVenue(cleanName, topic || category || 'Where should we go?', userGps);
       const canonical = smart ? smart.canonicalName : cleanName;
       const existingInPool = baseList.find(
@@ -149,6 +156,7 @@ export function buildCandidatePool({
           walk_minutes: existingInPool.walk_minutes ?? smart?.walk_minutes ?? null,
           isCustom: false,
           isGroupAdded: true,
+          addedBy,
           isRoutablePlace: true,
           googleMapsUrl: smart?.googleMapsUrl || existingInPool.googleMapsUrl,
           appleMapsUrl: smart?.appleMapsUrl || existingInPool.appleMapsUrl,
@@ -172,6 +180,7 @@ export function buildCandidatePool({
         photo_url: resolveCuratedOptionPhoto(canonical),
         isCustom: false,
         isGroupAdded: true,
+        addedBy,
         isRoutablePlace: true,
         googleMapsUrl: smart?.googleMapsUrl,
         appleMapsUrl: smart?.appleMapsUrl,
@@ -179,10 +188,41 @@ export function buildCandidatePool({
       };
     });
 
-    baseList = [...addedDiscoveryVenues, ...baseList];
+    baseList = [...addedDiscoveryVenues.reverse(), ...baseList];
   }
 
   return filterOutReportedVenues(deduplicateVenues(baseList));
+}
+
+export function parseRoomOptions(param1 = {}, param2 = [], param3 = {}) {
+  const isConfigObj = param1 && typeof param1 === 'object' && !Array.isArray(param1);
+  const config = isConfigObj
+    ? param1
+    : {
+        realOptions: Array.isArray(param1) ? param1 : [],
+        groupPool: Array.isArray(param2) ? param2 : [],
+        ...(param3 && typeof param3 === 'object' ? param3 : {}),
+      };
+
+  const groupPool = config.groupPool || config.customSuggestions || config.suggestions || [];
+  const realOptions = config.realOptions || config.options || [];
+  const pool = buildCandidatePool({
+    ...config,
+    groupPool,
+    realOptions,
+  });
+
+  return pool.map((item) => {
+    if (item.isGroupAdded || item.isCustom) {
+      return {
+        ...item,
+        isCustom: true,
+        isGroupAdded: true,
+        addedBy: item.addedBy || 'Group',
+      };
+    }
+    return item;
+  });
 }
 
 export function buildInitialSwipeCards({ locationState, mode = 'DISCOVERY', topic = '', mockPool = [] }) {

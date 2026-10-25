@@ -186,7 +186,7 @@ export const de = {
   ctrlVeto: 'Veto',
   ctrlSuper: 'Super',
   ctrlLike: 'Like',
-  swipeHintPill: '👉 Nach rechts für Like • Nach links für Pass • Tippen für Details',
+  swipeHintPill: 'Nach rechts für Like • Nach links für Pass • Tippen für Details',
   allDoneTitle: 'Alles erledigt!',
   waitingFriendsSubtitle: 'Warten auf die Stimmen deiner Freunde...',
   groupProgress: 'Gruppenfortschritt',

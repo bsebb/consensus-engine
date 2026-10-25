@@ -396,3 +396,6 @@ export function searchSmartPlaceSuggestions(query = '', existingNames = [], cate
 
   return results.sort((a, b) => b.score - a.score).slice(0, 7);
 }
+
+export const resolveSmartPlaceQuery = resolveSmartCustomVenue;
+export const searchCustomPlaceSuggestions = searchSmartPlaceSuggestions;

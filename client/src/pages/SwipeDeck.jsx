@@ -33,7 +33,7 @@ export default function SwipeDeck() {
   const { isConnected, deviceId, getRoomParticipantId, emit, on, off } = useSocket();
   const participantId = useMemo(() => getRoomParticipantId(pin), [pin, getRoomParticipantId]);
   const { addToast } = useToast();
-  const { lang, t } = useLanguage();
+  const { lang } = useLanguage();
 
   const mode = location.state?.mode || 'DISCOVERY';
   const topic = location.state?.topic || (mode === 'CUSTOM' ? 'Group Decision' : 'Places Nearby');
@@ -57,6 +57,7 @@ export default function SwipeDeck() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('swipe');
+  const [selectedPhotoIdx, setSelectedPhotoIdx] = useState(0);
   const [myVotes, setMyVotes] = useState([]);
   const [exitDirection, setExitDirection] = useState(null);
   const [enterDirection, setEnterDirection] = useState(null);
@@ -73,7 +74,7 @@ export default function SwipeDeck() {
   const [serverMatchScore, setServerMatchScore] = useState(null);
   const [votesReceived, setVotesReceived] = useState(1);
   const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
-  const [participants, setParticipants] = useState(() => (Array.isArray(location.state?.participants) ? location.state.participants : []));
+  const [participants] = useState(() => (Array.isArray(location.state?.participants) ? location.state.participants : []));
   const [votedParticipantIds, setVotedParticipantIds] = useState([]);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [userRating, setUserRating] = useState(0);
@@ -332,6 +333,31 @@ export default function SwipeDeck() {
     }
   };
 
+  const handleQuickRematch = useCallback(() => {
+    triggerHaptic('like');
+    const prevWinnerName = serverWinner?.name || location.state?.winner?.name || location.state?.winner;
+    setCards((prev) => {
+      if (prev.length > 2 && prevWinnerName) {
+        const remaining = prev.filter((c) => c.name !== prevWinnerName);
+        if (remaining.length >= 2) return remaining;
+      }
+      return prev;
+    });
+    setMyVotes([]);
+    setCurrentIndex(0);
+    setSelectedPhotoIdx(0);
+    setActiveTab('swipe');
+    setServerWinner(null);
+    setServerPairwise(null);
+    setServerMatchScore(null);
+    setShowWinner(false);
+    addToast({
+      title: 'Runner-Up Rematch Started',
+      message: 'Swiping on the remaining top spots!',
+      type: 'info',
+    });
+  }, [serverWinner, location.state, addToast]);
+
   const consensusResult = useMemo(() => {
     if (serverWinner) {
       const matchedCard = cards.find((c) => c.id === serverWinner.id || c.name === serverWinner.name);
@@ -483,6 +509,7 @@ export default function SwipeDeck() {
           deviceId={deviceId}
           emit={emit}
           vetoCount={consensusResult.vetoCount}
+          onQuickRematch={cards.length > 1 ? handleQuickRematch : undefined}
         />
       ) : currentIndex >= cards.length ? (
         <WaitingForBallotsView
@@ -514,13 +541,17 @@ export default function SwipeDeck() {
             cardReviewCount={cardReviewCount}
             cardPriceDesc={cardPriceDesc}
             cardWalkDesc={cardWalkDesc}
-            onOpenDetails={() => setActiveTab('details')}
+            onOpenDetails={(idx = 0) => {
+              setSelectedPhotoIdx(typeof idx === 'number' ? idx : 0);
+              setActiveTab('details');
+            }}
           />
 
           <VenueDetailsModal
             key={activeCard?.id || activeCard?.name || 'swipedeck-venue-modal'}
             venue={activeCard}
             isOpen={activeTab === 'details'}
+            initialPhotoIdx={selectedPhotoIdx}
             onClose={() => setActiveTab('swipe')}
             onVote={handleVote}
             onReportClosed={handleReportClosedCard}

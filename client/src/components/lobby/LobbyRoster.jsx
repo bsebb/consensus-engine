@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, ShieldCheck, Share2, Crown, QrCode } from 'lucide-react';
+import { ShieldCheck, Share2, Crown, QrCode, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -20,6 +20,8 @@ export default function LobbyRoster({
   pin,
   topic,
   participants = [],
+  candidateCount = 0,
+  isHost = false,
   handleShareInvite,
   handleCopyPin,
   setQrModalOpen,
@@ -31,12 +33,14 @@ export default function LobbyRoster({
     handleShareInvite?.(e);
   };
 
-  const onQr = (e) => {
+  const onQr = () => {
     triggerHaptic('selection');
     setQrModalOpen?.(true);
   };
 
   const displayTopic = getLocalizedTopic(topic, t);
+  const sealedCount = participants.filter((p) => p.budgetSealed).length;
+  const isDeckReady = candidateCount >= 2;
 
   return (
     <section className="shrink-0 p-3.5 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
@@ -71,7 +75,7 @@ export default function LobbyRoster({
         </div>
       </div>
 
-      {/* Live Collaboration Friends Bar */}
+      {/* Live Collaboration Friends & Readiness Bar */}
       <div className="flex items-center justify-between gap-3 pt-0.5">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 min-w-0">
           <div className="flex items-center -space-x-1.5 shrink-0">
@@ -85,6 +89,11 @@ export default function LobbyRoster({
                 {p.isHost && (
                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-2xs">
                     <Crown size={8} className="fill-black text-black" />
+                  </span>
+                )}
+                {p.budgetSealed && !p.isHost && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-2xs">
+                    <ShieldCheck size={8} />
                   </span>
                 )}
               </div>
@@ -103,9 +112,34 @@ export default function LobbyRoster({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] font-semibold text-[var(--text-secondary)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="tabular-nums">{participants.length} {t('inRoomPrefix')}</span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {sealedCount > 0 && (
+            <span
+              className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums"
+              title="Price filter active"
+            >
+              <ShieldCheck size={10} />
+              <span>{sealedCount}</span>
+            </span>
+          )}
+          <div
+            data-testid="participant-readiness-pill"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
+              isDeckReady
+                ? 'bg-emerald-500/12 border-emerald-500/25 text-emerald-700 dark:text-emerald-300'
+                : 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-[var(--text-secondary)]'
+            }`}
+          >
+            {isDeckReady ? (
+              <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+            ) : (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+            <span className="tabular-nums">
+              {participants.length} {t('inRoomPrefix')}
+              {isDeckReady ? ` - ${isHost ? 'Ready' : 'Connected'}` : ''}
+            </span>
+          </div>
         </div>
       </div>
 

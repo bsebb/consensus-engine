@@ -4,6 +4,7 @@ const http = require('http');
 const helmet = require('helmet');
 const { Server } = require('socket.io');
 const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
+const { discoverDiscoveryVenues } = require('./src/services/venueDiscoveryService');
 const { resolveGamePoster } = require('./src/utils/gamePosterService');
 const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteService');
 const { resolveGooglePhotoMedia } = require('./src/utils/googlePlaces');
@@ -122,6 +123,42 @@ app.post('/api/v1/system/prune', requireAdminAuth, sensitiveLimiter, async (req,
 });
 
 app.use('/api/v1/rooms', roomRoutes);
+
+// Spatial venue discovery endpoint across all 6 categories (restaurants, cafes, bars, cinema, desserts, activities)
+app.get('/api/v1/places', async (req, res) => {
+  try {
+    const rawCategory = String(req.query.category || req.query.theme || 'restaurants').trim();
+    const lat = req.query.lat ?? req.query.latitude;
+    const lng = req.query.lng ?? req.query.longitude;
+    const radius = Number(req.query.radius) || 5000;
+    const targetPlaces = Math.max(1, Math.min(50, Number(req.query.limit || req.query.targetPlaces) || 30));
+    const isExactGps = req.query.is_exact_gps === 'true' || (lat != null && lng != null);
+
+    const places = await discoverDiscoveryVenues({
+      theme: rawCategory,
+      latitude: lat,
+      longitude: lng,
+      radius,
+      is_exact_gps: isExactGps,
+      targetPlaces,
+    });
+
+    res.set('Cache-Control', 'public, max-age=120');
+    return res.status(200).json({
+      success: true,
+      category: rawCategory,
+      count: Array.isArray(places) ? places.length : 0,
+      places: Array.isArray(places) ? places : [],
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: 'DISCOVERY_FAILED',
+      message: err.message || 'Failed to discover places.',
+      places: [],
+    });
+  }
+});
 
 // Real venue photography endpoint (returns up to 4 real high-res CDN photos for any venue)
 app.get('/api/v1/venue-photos', async (req, res) => {
@@ -274,10 +311,12 @@ httpServer.keepAliveTimeout = 65000;
 httpServer.headersTimeout = 66000;
 httpServer.maxRequestsPerSocket = 0;
 
-httpServer.listen(PORT, '0.0.0.0', 2048, () => {
-  console.log(`Server listening on http://0.0.0.0:${PORT}`);
-  initStorageSafeguard();
-});
+if (require.main === module) {
+  httpServer.listen(PORT, '0.0.0.0', 2048, () => {
+    console.log(`Server listening on http://0.0.0.0:${PORT}`);
+    initStorageSafeguard();
+  });
+}
 
 // Gracefully handle process termination (Render deploys, container recycling, local ctrl-c)
 // to immediately release PostgreSQL client connections and prevent connection pool exhaustion.
@@ -304,4 +343,6 @@ async function gracefulShutdown(signal) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+module.exports = { app, httpServer, io };
 

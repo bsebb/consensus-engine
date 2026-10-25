@@ -28,7 +28,7 @@ export default function SettingsModal({ isOpen, onClose }) {
   const [isClosing, setIsClosing] = useState(false);
 
   const [userName, setUserName] = useState(() => {
-    return localStorage.getItem('consensus_user_name') || 'Guest';
+    return localStorage.getItem('consensus_nickname') || localStorage.getItem('consensus_user_name') || 'Guest';
   });
 
   const [haptics, setHaptics] = useState(() => {
@@ -68,7 +68,9 @@ export default function SettingsModal({ isOpen, onClose }) {
   const handleNameSave = (e) => {
     const val = e.target.value;
     setUserName(val);
-    localStorage.setItem('consensus_user_name', val.trim() || 'Guest');
+    const clean = val.trim() || 'Guest';
+    localStorage.setItem('consensus_nickname', clean);
+    localStorage.setItem('consensus_user_name', clean);
   };
 
   const handleToggleHaptics = (val) => {

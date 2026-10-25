@@ -186,7 +186,7 @@ export const ru = {
   ctrlVeto: 'Вето',
   ctrlSuper: 'Супер',
   ctrlLike: 'Нравится',
-  swipeHintPill: '👉 Свайп вправо — Нравится • Влево — Пропуск • Нажмите для деталей',
+  swipeHintPill: 'Свайп вправо - Нравится • Влево - Пропуск • Нажмите для деталей',
   allDoneTitle: 'Вы проголосовали!',
   waitingFriendsSubtitle: 'Ждём, пока друзья закончат голосовать...',
   groupProgress: 'Прогресс группы',

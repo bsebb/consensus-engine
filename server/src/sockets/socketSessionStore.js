@@ -36,7 +36,7 @@ async function resolveAndBroadcastWinner(io, pin) {
   }
 
   if (session.isResolved && session.winner) {
-    io.to(pin).emit('winner_announced', {
+    const resolvedPayload = {
       pin,
       winning_option: session.winner,
       winningOptionId: session.winner.id,
@@ -46,7 +46,9 @@ async function resolveAndBroadcastWinner(io, pin) {
       tally: session.tally || [],
       approval_count: session.approvalCount ?? 0,
       total_voted: session.totalVoted ?? session.submissions.size,
-    });
+    };
+    io.to(pin).emit('winner_announced', resolvedPayload);
+    io.to(pin).emit('consensus_reached', resolvedPayload);
     io.to(pin).emit('MATCH_FOUND', {
       pin,
       winningOptionId: session.winner.id,
@@ -175,7 +177,7 @@ async function resolveAndBroadcastWinner(io, pin) {
     matchScore,
   }).catch(() => {});
 
-  io.to(pin).emit('winner_announced', {
+  const consensusPayload = {
     pin,
     winning_option: winningOption,
     winningOptionId: winningOption.id,
@@ -185,7 +187,10 @@ async function resolveAndBroadcastWinner(io, pin) {
     tally,
     approval_count: approvalCount,
     total_voted: submissionsArray.length,
-  });
+  };
+
+  io.to(pin).emit('winner_announced', consensusPayload);
+  io.to(pin).emit('consensus_reached', consensusPayload);
 
   io.to(pin).emit('MATCH_FOUND', {
     pin,

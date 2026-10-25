@@ -1,4 +1,4 @@
-import { apiUrl } from './api';
+import { apiUrl } from './api.js';
 
 const STORAGE_KEY = 'consensus_reported_venues';
 

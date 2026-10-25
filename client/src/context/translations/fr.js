@@ -186,7 +186,7 @@ export const fr = {
   ctrlVeto: 'Veto',
   ctrlSuper: 'Super',
   ctrlLike: 'J\'aime',
-  swipeHintPill: '👉 Glissez à droite pour Aimer • À gauche pour Passer • Touchez pour détails',
+  swipeHintPill: 'Glissez à droite pour Aimer • À gauche pour Passer • Touchez pour détails',
   allDoneTitle: 'Tout est prêt !',
   waitingFriendsSubtitle: 'En attente des votes de vos amis...',
   groupProgress: 'Progression du groupe',

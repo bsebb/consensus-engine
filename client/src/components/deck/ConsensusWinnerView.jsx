@@ -1,19 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Navigation,
-  ExternalLink,
-  BarChart3,
-  ChevronUp,
-  ChevronDown,
-  CheckCircle2,
-  Star,
-  RotateCcw,
-  MapPin,
-  Route,
-  Info,
-  Sparkles,
-  Compass,
-  Share2,
+  Navigation, ExternalLink, BarChart3, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
+  CheckCircle2, Star, RotateCcw, MapPin, Route, Info, Sparkles, Compass, Share2, Heart, Camera,
 } from 'lucide-react';
 import Button from '../ui/Button';
 import VenueDetailsModal from './VenueDetailsModal';
@@ -28,29 +16,15 @@ import { useToast } from '../ui/Toast';
 import { triggerHaptic } from '../../utils/haptics';
 import { invalidateClientVenueInsights } from '../../hooks/useVenueInsights';
 import {
-  savePendingCheckin,
-  schedulePostVisitReminder,
-  recordLocalFeedback,
-  getPendingCheckin,
+  savePendingCheckin, schedulePostVisitReminder, recordLocalFeedback, getPendingCheckin,
 } from '../../utils/checkinReminder';
 
+const FAVORITES_KEY = 'consensus_favorites';
+
 export default function ConsensusWinnerView({
-  mode,
-  topic,
-  winner,
-  matchScore,
-  mapsDirUrl,
-  condorcetOpen,
-  setCondorcetOpen,
-  pairwiseBreakdown = [],
-  userRating,
-  handleInlineRate,
-  setIsReviewOpen,
-  navigate,
-  pin,
-  participantId,
-  deviceId,
-  emit,
+  mode, topic, winner, matchScore, mapsDirUrl, condorcetOpen, setCondorcetOpen,
+  pairwiseBreakdown = [], userRating, handleInlineRate, setIsReviewOpen,
+  navigate, pin, participantId, deviceId, emit, onQuickRematch,
 }) {
   const { addToast } = useToast();
   const { lang, t } = useLanguage();
@@ -58,7 +32,7 @@ export default function ConsensusWinnerView({
   const isRoutable = Boolean(winner?.isRoutablePlace || (winner?.address && winner?.address !== 'Added by group'));
   const useRealVenueDisplay = !isCustomWinner || isRoutable;
 
-  const { primaryPhoto, isRealPhoto, fallbackPhoto } = useVenuePhotos(
+  const { primaryPhoto, photoSlides, isRealPhoto, fallbackPhoto } = useVenuePhotos(
     useRealVenueDisplay ? winner?.name : '',
     useRealVenueDisplay ? winner?.address : '',
     useRealVenueDisplay ? winner?.category : '',
@@ -69,7 +43,10 @@ export default function ConsensusWinnerView({
     topic,
     winner?.photo_url
   );
+
   const [customImgErr, setCustomImgErr] = useState(false);
+  const [winnerPhotoIdx, setWinnerPhotoIdx] = useState(0);
+  const [failedUrls, setFailedUrls] = useState({});
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [satisfactionScore, setSatisfactionScore] = useState(userRating || 0);
   const [priceAccuracyScore, setPriceAccuracyScore] = useState(0);
@@ -77,14 +54,16 @@ export default function ConsensusWinnerView({
   const [isSubmittingTelemetry, setIsSubmittingTelemetry] = useState(false);
   const [insightsRefreshKey, setInsightsRefreshKey] = useState(0);
   const [reminderScheduled, setReminderScheduled] = useState(() => Boolean(getPendingCheckin()?.reminderRequested));
+  const [isFavorite, setIsFavorite] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+      return Array.isArray(saved) && saved.some((f) => f.name === winner?.name);
+    } catch { return false; }
+  });
 
   useEffect(() => {
     if (winner?.name && !telemetrySubmitted) {
-      savePendingCheckin({
-        pin,
-        winnerName: winner.name,
-        optionId: winner.id || `winner_${pin}`,
-      });
+      savePendingCheckin({ pin, winnerName: winner.name, optionId: winner.id || `winner_${pin}` });
     }
   }, [pin, winner?.name, winner?.id, telemetrySubmitted]);
 
@@ -96,19 +75,44 @@ export default function ConsensusWinnerView({
     }
   }, [userRating]);
 
-  useEffect(() => {
-    triggerHaptic('victory');
-  }, []);
+  useEffect(() => { triggerHaptic('victory'); }, []);
 
   const winnerVibe = getVenueVibe(winner?.name, winner?.category);
   const winnerRating = getVenueRating(winner?.name, winner?.category);
   const travelSummary = formatTravelSummary(winner, lang);
 
+  const validSlides = useMemo(() => {
+    const slides = (photoSlides || []).filter((s) => s?.url && !failedUrls[s.url]);
+    if (slides.length > 0) return slides;
+    return [{ url: primaryPhoto || fallbackPhoto, label: 'Spot Overview', detail: `${winnerVibe || 'Local Spot'} • Winning group pick` }];
+  }, [photoSlides, failedUrls, primaryPhoto, fallbackPhoto, winnerVibe]);
+
+  const safeWinnerIdx = validSlides.length > 0 ? winnerPhotoIdx % validSlides.length : 0;
+  const activeSlide = validSlides[safeWinnerIdx] || validSlides[0];
+  const heroPhotoUrl = activeSlide?.url || primaryPhoto || fallbackPhoto;
+
   const winnerDest = encodeURIComponent((winner?.name || '') + ' ' + (winner?.address || ''));
-  const googleMapsUrl = winner?.googleMapsUrl || (mapsDirUrl && mapsDirUrl !== '#'
-    ? mapsDirUrl
-    : `https://www.google.com/maps/dir/?api=1&destination=${winnerDest}`);
+  const googleMapsUrl = winner?.googleMapsUrl || (mapsDirUrl && mapsDirUrl !== '#' ? mapsDirUrl : `https://www.google.com/maps/dir/?api=1&destination=${winnerDest}`);
   const appleMapsUrl = winner?.appleMapsUrl || `https://maps.apple.com/?daddr=${winnerDest}`;
+
+  const handleToggleFavorite = () => {
+    triggerHaptic('like');
+    try {
+      const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+      const list = Array.isArray(saved) ? saved : [];
+      const exists = list.some((f) => f.name === winner?.name);
+      const next = exists
+        ? list.filter((f) => f.name !== winner?.name)
+        : [{ name: winner?.name, address: winner?.address || 'Local Spot', category: winner?.category || winnerVibe, priceLevel: winner?.price_level || 2, savedAt: new Date().toISOString() }, ...list].slice(0, 30);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
+      setIsFavorite(!exists);
+      addToast({
+        title: !exists ? 'Saved to Favorites' : 'Removed from Favorites',
+        message: !exists ? `${winner?.name} bookmarked for future group picks.` : `${winner?.name} removed from saved spots.`,
+        type: 'success',
+      });
+    } catch {}
+  };
 
   const handleSelectSatisfaction = (score) => {
     triggerHaptic('tap');
@@ -121,24 +125,13 @@ export default function ConsensusWinnerView({
     const addrLine = winner?.address && winner.address !== 'Added by group' ? `\nAddress: ${winner.address}` : '';
     const shareText = `Group Consensus Pick: ${winner?.name} (${matchScore || 96}% match on NoYouPick!)${addrLine}`;
     const shareUrl = window.location.origin;
-    const shareData = {
-      title: `Consensus Pick: ${winner?.name}`,
-      text: shareText,
-      url: shareUrl,
-    };
+    const shareData = { title: `Consensus Pick: ${winner?.name}`, text: shareText, url: shareUrl };
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch {}
+      try { await navigator.share(shareData); return; } catch {}
     }
     try {
       await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-      addToast({
-        title: t('copied') || 'Copied',
-        message: t('linkCopied') || 'Result & link copied to clipboard',
-        type: 'success',
-      });
+      addToast({ title: t('copied') || 'Copied', message: t('linkCopied') || 'Result & link copied to clipboard', type: 'success' });
     } catch {}
   };
 
@@ -164,18 +157,11 @@ export default function ConsensusWinnerView({
             price_accuracy_score: finalPrice,
           }),
         });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       }
       recordLocalFeedback({
-        pin,
-        winnerName: winner?.name || 'Consensus Pick',
-        optionId: winner?.id || `winner_${pin}`,
-        participantId,
-        deviceId,
-        satisfactionScore: finalSat,
-        priceAccuracyScore: finalPrice,
+        pin, winnerName: winner?.name || 'Consensus Pick', optionId: winner?.id || `winner_${pin}`,
+        participantId, deviceId, satisfactionScore: finalSat, priceAccuracyScore: finalPrice,
       });
       if (handleInlineRate) handleInlineRate(finalSat);
       invalidateClientVenueInsights(winner?.name);
@@ -183,19 +169,13 @@ export default function ConsensusWinnerView({
       setTelemetrySubmitted(true);
       addToast({
         title: isCustomWinner ? 'Poll Feedback Saved' : t('feedbackSaved') || 'Rating Saved',
-        message: isCustomWinner
-          ? `Recorded ${finalSat}/5 group satisfaction for "${winner?.name}".`
-          : `Recorded ${finalSat}/5 satisfaction & ${finalPrice}/5 price accuracy for ${winner?.name}.`,
+        message: isCustomWinner ? `Recorded ${finalSat}/5 group satisfaction for "${winner?.name}".` : `Recorded ${finalSat}/5 satisfaction & ${finalPrice}/5 price accuracy for ${winner?.name}.`,
         type: 'success',
       });
     } catch (err) {
       console.warn('[ConsensusWinnerView] Telemetry sync notice:', err);
       setTelemetrySubmitted(true);
-      addToast({
-        title: t('feedbackSaved') || 'Rating Saved',
-        message: t('thanksFeedback') || 'Thank you for sharing your feedback!',
-        type: 'info',
-      });
+      addToast({ title: t('feedbackSaved') || 'Rating Saved', message: t('thanksFeedback') || 'Thank you for sharing your feedback!', type: 'info' });
     } finally {
       setIsSubmittingTelemetry(false);
     }
@@ -204,28 +184,16 @@ export default function ConsensusWinnerView({
   const handleScheduleReminder = async () => {
     triggerHaptic('like');
     await schedulePostVisitReminder({
-      pin,
-      winnerName: winner?.name || 'Consensus Pick',
-      optionId: winner?.id || `winner_${pin}`,
-      delayMinutes: 90,
+      pin, winnerName: winner?.name || 'Consensus Pick', optionId: winner?.id || `winner_${pin}`, delayMinutes: 90,
     });
     setReminderScheduled(true);
-    addToast({
-      title: 'Post-Visit Reminder Set',
-      message: `We'll prompt you to rate ${winner?.name} after your outing!`,
-      type: 'success',
-    });
+    addToast({ title: 'Post-Visit Reminder Set', message: `We'll prompt you to rate ${winner?.name} after your outing!`, type: 'success' });
   };
 
   const handleStartAnother = () => {
     triggerHaptic('tap');
     if (pin) {
-      if (typeof emit === 'function') {
-        emit('leave_lobby', {
-          pin,
-          participant_id: participantId,
-        });
-      }
+      if (typeof emit === 'function') emit('leave_lobby', { pin, participant_id: participantId });
       localStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem(`consensus_host_${pin}`);
@@ -239,7 +207,6 @@ export default function ConsensusWinnerView({
       <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner && !isRoutable ? (
           customWinnerPhoto && !customImgErr ? (
-            /* Visual Poster Card for Custom Option Winner */
             <div className={`relative h-[clamp(170px,26dvh,224px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
               <img
                 src={customWinnerPhoto}
@@ -248,137 +215,180 @@ export default function ConsensusWinnerView({
                 onError={() => setCustomImgErr(true)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/20" />
-
-              {/* Floating Winner Badges */}
               <div className="absolute top-4 inset-x-4 flex items-center justify-between gap-2 min-w-0">
-                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs shrink-0">
-                  {t('winningGroupPick')}
-                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs shrink-0">{t('winningGroupPick')}</span>
                 {topic && (
                   <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate max-w-[150px] shrink min-w-0 text-right" title={topic}>
                     {topic}
                   </span>
                 )}
               </div>
-
-              {/* Title overlay */}
               <div className="absolute bottom-4 inset-x-4 text-left">
-                <span className="text-xs font-semibold text-amber-300">
-                  {t('consensusChoice')}
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
-                  {winner?.name}
-                </h2>
+                <span className="text-xs font-semibold text-amber-300">{t('consensusChoice')}</span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">{winner?.name}</h2>
               </div>
             </div>
           ) : (
-            /* Clean Custom Poll Winner Banner */
             <div className="p-6 pb-4 bg-gradient-to-b from-[var(--accent-bg)]/12 to-transparent border-b border-[var(--border-subtle)] flex flex-col items-center gap-2.5">
               <div className="flex items-center justify-center gap-2 max-w-full px-2 min-w-0">
-                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs shrink-0">
-                  {t('winningPollOption')}
-                </span>
+                <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold shadow-xs shrink-0">{t('winningPollOption')}</span>
                 {topic && (
                   <span className="px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-secondary)] truncate max-w-[150px] shrink min-w-0" title={topic}>
                     {topic}
                   </span>
                 )}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight mt-1 break-words max-w-xs">
-                {winner?.name}
-              </h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight mt-1 break-words max-w-xs">{winner?.name}</h2>
             </div>
           )
         ) : (
-          /* Discovery Venue Hero Image Header */
-          <div className="relative h-[clamp(170px,26dvh,224px)] w-full bg-[var(--bg-inset)]">
-            <img
-              src={primaryPhoto}
-              alt={winner?.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                if (e.currentTarget.src !== fallbackPhoto) {
-                  e.currentTarget.src = fallbackPhoto;
-                }
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
+          /* Discovery Venue 4-Photo Interactive Hero & Strip */
+          <>
+            <div className="relative h-[clamp(180px,27dvh,236px)] w-full bg-[var(--bg-inset)] overflow-hidden select-none">
+              <img
+                key={heroPhotoUrl}
+                src={heroPhotoUrl}
+                alt={winner?.name}
+                className="w-full h-full object-cover animate-[fadeIn_0.22s_ease-out]"
+                onError={(e) => {
+                  const nextUrl = validSlides[(safeWinnerIdx + 1) % validSlides.length]?.url || fallbackPhoto;
+                  setFailedUrls((prev) => ({ ...prev, [heroPhotoUrl]: true }));
+                  if (nextUrl && e.currentTarget.src !== nextUrl) e.currentTarget.src = nextUrl;
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15 pointer-events-none" />
 
-            {/* Floating Rating & Glowing Winner Badge */}
-            <div className="absolute top-4 inset-x-4 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/15 shadow-md tabular-nums">
-                <Star size={13} className="fill-amber-300 text-amber-300" />
-                <span>{winnerRating.rating}</span>
-                <span className="text-[11px] text-white/80 font-normal">({winnerRating.reviewCount})</span>
-              </div>
-              <div className="animate-match-badge-glow flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-black shadow-[0_0_18px_rgba(16,185,129,0.45)]">
-                <Sparkles size={13} />
-                <span>{matchScore || 96}% {t('match')}</span>
-              </div>
-            </div>
+              {validSlides.length > 1 && (
+                <div className="absolute top-2.5 inset-x-4 flex items-center gap-1.5 z-20">
+                  {validSlides.slice(0, 4).map((slide, idx) => (
+                    <button
+                      key={slide.url || idx}
+                      type="button"
+                      onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx(idx); }}
+                      aria-label={`View winner photo ${idx + 1}: ${slide.label}`}
+                      className={`h-1.5 flex-1 rounded-full transition-all cursor-pointer ${
+                        idx === safeWinnerIdx ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.85)]' : idx < safeWinnerIdx ? 'bg-white/65 hover:bg-white/85' : 'bg-white/30 hover:bg-white/55'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
 
-            {/* Title overlay */}
-            <div className="absolute bottom-3 inset-x-3 text-left flex flex-wrap items-end justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <span className="text-xs font-semibold text-amber-300">
-                  {isRealPhoto ? `${winnerVibe} • ${t('realVenuePhoto')}` : winnerVibe}
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">
-                  {winner?.name}
-                </h2>
-                <div className="flex items-center gap-1.5 text-xs text-zinc-200 mt-1">
-                  <MapPin size={13} className="text-amber-400 shrink-0" />
-                  <span className="truncate">{winner?.address || t('localVenue')}</span>
+              {validSlides.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx((prev) => (prev > 0 ? prev - 1 : validSlides.length - 1)); }}
+                    aria-label="Previous photo"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
+                  >
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx((prev) => (prev + 1) % validSlides.length); }}
+                    aria-label="Next photo"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
+                  >
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                  </button>
+                </>
+              )}
+
+              <div className={`absolute ${validSlides.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10`}>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/15 shadow-md tabular-nums">
+                  <Star size={13} className="fill-amber-300 text-amber-300" />
+                  <span>{winnerRating.rating}</span>
+                  <span className="text-[11px] text-white/80 font-normal">({winnerRating.reviewCount})</span>
+                </div>
+                <div className="animate-match-badge-glow flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-black shadow-[0_0_18px_rgba(16,185,129,0.45)]">
+                  <Sparkles size={13} />
+                  <span>{matchScore || 96}% {t('match')}</span>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setDetailsOpen(true)}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
-              >
-                <Info size={13} />
-                <span>{t('detailsAndRoute')}</span>
-              </button>
+              <div className="absolute bottom-3 inset-x-3.5 text-left flex flex-wrap items-end justify-between gap-2 z-10">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-semibold text-amber-300">
+                      {isRealPhoto ? `${winnerVibe} • ${t('realVenuePhoto')}` : winnerVibe}
+                    </span>
+                    {activeSlide && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[10px] font-semibold text-emerald-300 border border-white/15">
+                        <Camera size={10} />
+                        <span>{safeWinnerIdx + 1}/{validSlides.length} • {activeSlide.label}</span>
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">{winner?.name}</h2>
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-200 mt-0.5">
+                    <MapPin size={13} className="text-amber-400 shrink-0" />
+                    <span className="truncate">{winner?.address || t('localVenue')}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setDetailsOpen(true)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <Info size={13} />
+                  <span>{t('detailsAndRoute')}</span>
+                </button>
+              </div>
             </div>
-          </div>
+
+            {validSlides.length > 1 && (
+              <div className="px-4 py-2 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] grid grid-cols-4 gap-2">
+                {validSlides.slice(0, 4).map((slide, idx) => (
+                  <button
+                    key={slide.url || idx}
+                    type="button"
+                    onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx(idx); }}
+                    className={`relative h-11 rounded-xl overflow-hidden border-2 transition-all cursor-pointer flex items-end text-left ${
+                      idx === safeWinnerIdx ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/20 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img
+                      src={slide.url}
+                      alt={`${winner?.name} - ${slide.label}`}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { if (fallbackPhoto && e.currentTarget.src !== fallbackPhoto) e.currentTarget.src = fallbackPhoto; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+                    <span className="relative z-10 px-1.5 pb-0.5 text-[10px] font-bold text-white truncate w-full">{slide.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         <div className="p-4 flex flex-col items-center gap-3.5">
           {isCustomWinner && !isRoutable ? (
-            /* Custom Poll Metrics Row (Group Match + Condorcet Status only) */
             <div className="grid grid-cols-2 gap-2.5 w-full">
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('groupMatch')}</span>
-                <span className="text-lg font-black text-emerald-500 tabular-nums">
-                  {matchScore}%
-                </span>
+                <span className="text-lg font-black text-emerald-500 tabular-nums">{matchScore}%</span>
               </div>
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('votingResult')}</span>
-                <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">
-                  {t('condorcetWinner')}
-                </span>
+                <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">{t('condorcetWinner')}</span>
               </div>
             </div>
           ) : (
             <>
-              {/* Metrics Row: Match %, Price Tier, Road Distance & Travel Time */}
               <div className="grid grid-cols-3 gap-2 w-full">
                 <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('groupMatch')}</span>
-                  <span className="text-base font-black text-emerald-500 tabular-nums">
-                    {matchScore}%
-                  </span>
+                  <span className="text-base font-black text-emerald-500 tabular-nums">{matchScore}%</span>
                 </div>
-
                 <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('priceTierLabel')}</span>
                   <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5 tabular-nums">
                     {formatRegionalPricePill(winner?.price_level || 2, winner)}
                   </span>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => setDetailsOpen(true)}
@@ -388,13 +398,10 @@ export default function ConsensusWinnerView({
                     <Route size={10} className="text-[var(--accent-bg)]" />
                     <span>{t('roadRoute')}</span>
                   </span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] max-w-full px-1 tabular-nums mt-0.5 leading-snug">
-                    {travelSummary}
-                  </span>
+                  <span className="text-xs font-bold text-[var(--text-primary)] max-w-full px-1 tabular-nums mt-0.5 leading-snug">{travelSummary}</span>
                 </button>
               </div>
 
-              {/* Primary Directions Actions: Google Maps & Apple Maps */}
               <div className="grid grid-cols-2 gap-2.5 w-full">
                 <a
                   href={googleMapsUrl}
@@ -408,7 +415,6 @@ export default function ConsensusWinnerView({
                   <span>Google Maps</span>
                   <ExternalLink size={11} className="opacity-75" />
                 </a>
-
                 <a
                   href={appleMapsUrl}
                   target="_blank"
@@ -425,25 +431,35 @@ export default function ConsensusWinnerView({
             </>
           )}
 
-          {/* Share Button */}
-          <button
-            type="button"
-            onClick={handleShareWinner}
-            aria-label={t('shareWinner') || 'Share Result with Group'}
-            className="w-full py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center justify-center gap-2 text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
-          >
-            <Share2 size={14} />
-            <span>{t('shareWinner') || 'Share Result with Group'}</span>
-          </button>
+          {/* Retention Action Bar: Share Result + Save to Favorites */}
+          <div className="grid grid-cols-2 gap-2.5 w-full">
+            <button
+              type="button"
+              onClick={handleShareWinner}
+              aria-label={t('shareWinner') || 'Share Result with Group'}
+              className="py-2.5 px-3 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-subtle)] flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <Share2 size={14} className="text-[var(--accent-bg)] shrink-0" />
+              <span className="truncate">{t('shareWinnerBtn') || 'Share Winner'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleFavorite}
+              aria-label={isFavorite ? 'Saved to Favorites' : 'Save to Favorites'}
+              className={`py-2.5 px-3 rounded-2xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-[0.98] cursor-pointer ${
+                isFavorite ? 'bg-rose-500/12 border-rose-500/35 text-rose-500' : 'bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-primary)]'
+              }`}
+            >
+              <Heart size={14} className={isFavorite ? 'fill-rose-500 text-rose-500 shrink-0' : 'text-rose-500 shrink-0'} />
+              <span className="truncate">{isFavorite ? 'Saved Spot' : 'Save Favorite'}</span>
+            </button>
+          </div>
 
           {/* Expandable How Your Group Voted Drawer */}
           <div className="w-full rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] overflow-hidden text-left">
             <button
               type="button"
-              onClick={() => {
-                triggerHaptic('selection');
-                setCondorcetOpen(!condorcetOpen);
-              }}
+              onClick={() => { triggerHaptic('selection'); setCondorcetOpen(!condorcetOpen); }}
               className="w-full p-3 flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               aria-expanded={condorcetOpen}
             >
@@ -452,19 +468,11 @@ export default function ConsensusWinnerView({
                   <BarChart3 size={14} />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[var(--text-primary)]">
-                    {t('howGroupVoted')}
-                  </span>
-                  <span className="text-[11px] text-[var(--text-tertiary)]">
-                    {t('headToHeadResults')}
-                  </span>
+                  <span className="text-xs font-bold text-[var(--text-primary)]">{t('howGroupVoted')}</span>
+                  <span className="text-[11px] text-[var(--text-tertiary)]">{t('headToHeadResults')}</span>
                 </div>
               </div>
-              {condorcetOpen ? (
-                <ChevronUp size={16} className="text-[var(--text-tertiary)]" />
-              ) : (
-                <ChevronDown size={16} className="text-[var(--text-tertiary)]" />
-              )}
+              {condorcetOpen ? <ChevronUp size={16} className="text-[var(--text-tertiary)]" /> : <ChevronDown size={16} className="text-[var(--text-tertiary)]" />}
             </button>
 
             <div className={`accordion-drawer ${condorcetOpen ? 'open' : ''}`}>
@@ -474,26 +482,16 @@ export default function ConsensusWinnerView({
                     <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
                     <span>{t('highestApproval')}</span>
                   </div>
-
                   <div className="flex flex-col gap-1.5">
                     {pairwiseBreakdown.length > 0 ? (
                       pairwiseBreakdown.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs"
-                        >
-                          <span className="font-medium text-[var(--text-primary)]">
-                            {t('preferredOver')} {item.opponent}
-                          </span>
-                          <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums">
-                            {item.score}
-                          </span>
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs">
+                          <span className="font-medium text-[var(--text-primary)]">{t('preferredOver')} {item.opponent}</span>
+                          <span className="font-bold text-[var(--text-secondary)] px-2 py-0.5 rounded-md bg-[var(--bg-inset)] tabular-nums">{item.score}</span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-2 text-xs text-[var(--text-tertiary)]">
-                        {t('highestApproval')}
-                      </div>
+                      <div className="text-center py-2 text-xs text-[var(--text-tertiary)]">{t('highestApproval')}</div>
                     )}
                   </div>
                 </div>
@@ -520,24 +518,35 @@ export default function ConsensusWinnerView({
         onScheduleReminder={handleScheduleReminder}
       />
 
-      {/* Start New Room Action */}
-      <div className="w-full shrink-0">
+      {/* Post-Match Retention Loop: Quick Runner-Up Rematch or Start Another Pick */}
+      <div className="w-full shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {onQuickRematch && (
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={onQuickRematch}
+            icon={Sparkles}
+            className="w-full rounded-2xl active:scale-[0.98] transition-transform"
+          >
+            Runner-Up Rematch
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="md"
           onClick={handleStartAnother}
           icon={RotateCcw}
-          className="w-full rounded-2xl active:scale-[0.98] transition-transform"
+          className={`w-full rounded-2xl active:scale-[0.98] transition-transform ${!onQuickRematch ? 'sm:col-span-2' : ''}`}
         >
           {t('startAnotherPick')}
         </Button>
       </div>
 
-      {/* Full Venue Details & Route Modal */}
       {(!isCustomWinner || isRoutable) && (
         <VenueDetailsModal
           venue={winner}
           isOpen={detailsOpen}
+          initialPhotoIdx={safeWinnerIdx}
           onClose={() => setDetailsOpen(false)}
         />
       )}

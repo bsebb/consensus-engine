@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
@@ -27,9 +28,7 @@ export default function RoomLobby() {
   const [participantId, setParticipantIdState] = useState(() => getRoomParticipantId(pin));
 
   useEffect(() => {
-    if (pin) {
-      setParticipantIdState(getRoomParticipantId(pin));
-    }
+    if (pin) setParticipantIdState(getRoomParticipantId(pin));
   }, [pin, getRoomParticipantId]);
 
   const handleReconcileParticipantId = useCallback((reconciledId) => {
@@ -47,7 +46,11 @@ export default function RoomLobby() {
   const [isHost, setIsHost] = useState(() => Boolean(
     location.state?.isHost || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`consensus_host_${pin}`) === 'true')
   ));
-  const currentUserName = location.state?.userName || localStorage.getItem('consensus_user_name') || (isHost ? 'Host' : 'Friend');
+  const currentUserName =
+    location.state?.userName ||
+    localStorage.getItem('consensus_nickname') ||
+    localStorage.getItem('consensus_user_name') ||
+    (isHost ? 'Host' : 'Friend');
   const [groupSize, setGroupSize] = useState(location.state?.groupSize || 2);
   const [mode, setMode] = useState(location.state?.mode || 'DISCOVERY');
   const [topic, setTopic] = useState(location.state?.topic || 'Where should we go?');
@@ -56,21 +59,34 @@ export default function RoomLobby() {
     { id: participantId || 'host_1', name: currentUserName, isHost, budgetSealed: false },
   ]);
 
-  // Instant 1-tap Budget Filter State
   const [budgetLimit, setBudgetLimit] = useState(600);
   const [lockedConstraint, setLockedConstraint] = useState(false);
 
-  // Custom Suggestions State
   const [suggestion, setSuggestion] = useState('');
-  const [groupPool, setGroupPool] = useState(() => {
-    return Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0
+  const [groupPool, setGroupPool] = useState(() => (
+    Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0
       ? location.state.initialCustomOptions
-      : [];
-  });
+      : []
+  ));
+  const [recentlyAddedName, setRecentlyAddedName] = useState(null);
+  const prevPoolLenRef = useRef(groupPool.length);
+
+  useEffect(() => {
+    if (groupPool.length > prevPoolLenRef.current) {
+      const latest = groupPool[groupPool.length - 1];
+      if (latest) {
+        setRecentlyAddedName(latest);
+        const timer = setTimeout(() => setRecentlyAddedName(null), 4000);
+        prevPoolLenRef.current = groupPool.length;
+        return () => clearTimeout(timer);
+      }
+    }
+    prevPoolLenRef.current = groupPool.length;
+  }, [groupPool]);
+
   const [copied, setCopied] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
 
-  // Real room venue options loaded from database/Foursquare
   const [realOptions, setRealOptions] = useState(() => location.state?.roomData?.options || []);
   const [loadingOptions, setLoadingOptions] = useState(() => (
     (location.state?.mode || 'DISCOVERY') !== 'CUSTOM' &&
@@ -102,14 +118,11 @@ export default function RoomLobby() {
         setUserGps({ lat: res.lat, lng: res.lng });
       }
     });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
     if (!pin) return;
-    // Optimization: Skip network fetch if roomData was already passed in navigation state
     const hasPassedOptions = Array.isArray(location.state?.roomData?.options) && location.state.roomData.options.length > 0;
     const isFreshHostCustom = Boolean(location.state?.isHost && location.state?.mode === 'CUSTOM' && location.state?.roomData);
     if (hasPassedOptions || isFreshHostCustom) {
@@ -124,42 +137,31 @@ export default function RoomLobby() {
         return res.json();
       })
       .then((data) => {
-        if (data) {
-          if (data.status === 'RESOLVED' && !location.state?.isHost) {
-            ['consensus_active_pin', `consensus_host_${pin}`, `consensus_pause_voting_${pin}`].forEach((k) => {
-              localStorage.removeItem(k);
-              sessionStorage.removeItem(k);
-            });
-            navigate('/');
-            return;
-          }
-          if (data.mode) setMode(data.mode);
-          const safeTopic = (data.topic && data.topic !== 'custom' && data.topic !== 'poll')
-            ? data.topic
-            : (data.theme && data.theme.startsWith('custom:')
-              ? data.theme.replace(/^custom:/, '').trim()
-              : null);
-          if (safeTopic && safeTopic !== 'custom' && safeTopic !== 'poll') {
-            setTopic((prev) => {
-              const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts', 'activities'].includes(String(safeTopic).toLowerCase().trim());
-              return (isBare && prev && prev !== 'Where should we go?') ? prev : safeTopic;
-            });
-          }
-          if (Array.isArray(data.options) && data.options.length > 0) {
-            setRealOptions(data.options);
-          }
+        if (!data) return;
+        if (data.status === 'RESOLVED' && !location.state?.isHost) {
+          ['consensus_active_pin', `consensus_host_${pin}`, `consensus_pause_voting_${pin}`].forEach((k) => {
+            localStorage.removeItem(k);
+            sessionStorage.removeItem(k);
+          });
+          navigate('/');
+          return;
         }
+        if (data.mode) setMode(data.mode);
+        const safeTopic = (data.topic && data.topic !== 'custom' && data.topic !== 'poll')
+          ? data.topic
+          : (data.theme?.startsWith('custom:') ? data.theme.replace(/^custom:/, '').trim() : null);
+        if (safeTopic && safeTopic !== 'custom' && safeTopic !== 'poll') {
+          setTopic((prev) => {
+            const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts', 'activities'].includes(String(safeTopic).toLowerCase().trim());
+            return (isBare && prev && prev !== 'Where should we go?') ? prev : safeTopic;
+          });
+        }
+        if (Array.isArray(data.options) && data.options.length > 0) setRealOptions(data.options);
       })
       .catch((err) => {
         console.warn('[RoomLobby] Room fetch notice:', err.message);
-        if (location.state?.isHost || location.state?.roomData) {
-          return;
-        }
-        addToast({
-          title: 'Room Not Found',
-          message: `Room #${pin} could not be loaded or is expired.`,
-          type: 'error',
-        });
+        if (location.state?.isHost || location.state?.roomData) return;
+        addToast({ title: 'Room Not Found', message: `Room #${pin} could not be loaded or is expired.`, type: 'error' });
         localStorage.removeItem('consensus_active_pin');
         sessionStorage.removeItem('consensus_active_pin');
         sessionStorage.removeItem(`consensus_host_${pin}`);
@@ -194,42 +196,16 @@ export default function RoomLobby() {
     navigate('/');
   };
 
-  const handleResumeVoting = () => {
-    sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
-    isTransitioningToDeckRef.current = true;
-    navigate(`/deck/${pin}`, {
-      state: {
-        mode,
-        topic,
-        isHost: Boolean(isHost),
-        totalParticipants: Math.max(1, participants.length),
-        customCards: displayedCandidates.length > 0 ? displayedCandidates : undefined,
-        budgetLimit: lockedConstraint ? budgetLimit : undefined,
-        participants: participants.map((p) => ({ id: p.id, name: p.name, isHost: Boolean(p.isHost) })),
-      },
-    });
-  };
-
   const handleTransitionToDeck = useCallback(() => {
     isTransitioningToDeckRef.current = true;
   }, []);
 
   useLobbySync({
-    pin,
-    participantId,
-    setParticipantId: handleReconcileParticipantId,
-    deviceId,
-    currentUserName,
-    isHost,
-    setIsHost,
-    setIsVotingActive,
-    onTransitionToDeck: handleTransitionToDeck,
-    locationState: location.state,
-    participants,
-    lockedConstraint,
-    budgetLimit, setMode, setTopic, setGroupSize, setGroupPool,
-    setParticipants, setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions,
-    navigate, emit, on, off, addToast,
+    pin, participantId, setParticipantId: handleReconcileParticipantId, deviceId,
+    currentUserName, isHost, setIsHost, setIsVotingActive, onTransitionToDeck: handleTransitionToDeck,
+    locationState: location.state, participants, lockedConstraint, budgetLimit,
+    setMode, setTopic, setGroupSize, setGroupPool, setParticipants,
+    setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions, navigate, emit, on, off, addToast,
   });
 
   const handleCopyPin = async () => {
@@ -249,14 +225,10 @@ export default function RoomLobby() {
     triggerHaptic('tap');
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        await navigator.share({
-          title: `Join Consensus Room #${pin}`,
-          text: `Vote on "${topic}" with me on NoYouPick!`,
-          url: inviteUrl,
-        });
+        await navigator.share({ title: `Join Consensus Room #${pin}`, text: `Vote on "${topic}" with me on NoYouPick!`, url: inviteUrl });
         return;
       } catch (err) {
-        if (err && err.name === 'AbortError') return;
+        if (err?.name === 'AbortError') return;
       }
     }
     try {
@@ -270,7 +242,6 @@ export default function RoomLobby() {
     }
   };
 
-  // Instant 1-tap budget tier handler
   const handleSelectBudgetTier = async (newLimit, shouldFilter) => {
     setBudgetLimit(newLimit);
     setLockedConstraint(shouldFilter);
@@ -288,21 +259,10 @@ export default function RoomLobby() {
     );
   };
 
-  // Candidate pool resolution from live database options + custom suggestions
-  const candidatePoolPreview = useMemo(() => {
-    return buildCandidatePool({
-      mode,
-      topic,
-      groupPool,
-      realOptions,
-      category: location.state?.category,
-      userGps,
-      roadRoutes,
-      mockPool: restaurantsMock,
-    });
-  }, [mode, topic, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
+  const candidatePoolPreview = useMemo(() => buildCandidatePool({
+    mode, topic, groupPool, realOptions, category: location.state?.category, userGps, roadRoutes, mockPool: restaurantsMock,
+  }), [mode, topic, groupPool, realOptions, location.state?.category, userGps, roadRoutes]);
 
-  // Query OSRM street network for real road distance & travel time from user's exact coordinates
   useEffect(() => {
     if (!userGps || mode === 'CUSTOM') return;
     const venuesWithCoords = candidatePoolPreview.filter((v) => !v.isCustom && v.lat != null && v.lng != null);
@@ -310,13 +270,9 @@ export default function RoomLobby() {
 
     let cancelled = false;
     fetchRoadRouteMetrics(userGps.lat, userGps.lng, venuesWithCoords).then((map) => {
-      if (!cancelled && map && Object.keys(map).length > 0) {
-        setRoadRoutes((prev) => ({ ...prev, ...map }));
-      }
+      if (!cancelled && map && Object.keys(map).length > 0) setRoadRoutes((prev) => ({ ...prev, ...map }));
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [userGps, realOptions, mode]);
 
   const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
@@ -330,27 +286,14 @@ export default function RoomLobby() {
     return filteredCandidates.filter((item) => !removedPlaceIds.has(String(item.id)) && !removedPlaceIds.has(item.id));
   }, [mode, filteredCandidates, removedPlaceIds]);
 
-  const displayedCandidates = useMemo(() => {
-    if (mode === 'CUSTOM') return activePool;
-    return activePool.slice(0, visiblePlacesCount);
-  }, [mode, activePool, visiblePlacesCount]);
+  const displayedCandidates = useMemo(() => (mode === 'CUSTOM' ? activePool : activePool.slice(0, visiblePlacesCount)), [mode, activePool, visiblePlacesCount]);
+  const remainingPoolCount = useMemo(() => (mode === 'CUSTOM' ? 0 : Math.max(0, activePool.length - displayedCandidates.length)), [mode, activePool.length, displayedCandidates.length]);
+  const prunedCount = lockedConstraint && mode !== 'CUSTOM' ? candidatePoolPreview.length - filteredCandidates.length : 0;
 
-  const remainingPoolCount = useMemo(() => {
-    if (mode === 'CUSTOM') return 0;
-    return Math.max(0, activePool.length - displayedCandidates.length);
-  }, [mode, activePool.length, displayedCandidates.length]);
-
-  const prunedCount = lockedConstraint && mode !== 'CUSTOM'
-    ? candidatePoolPreview.length - filteredCandidates.length
-    : 0;
-
-  // Duplicate check across currently visible options on the table
   const duplicateMatch = useMemo(() => {
     const clean = suggestion.trim().toLowerCase();
     if (clean.length < 3) return null;
-    const match = displayedCandidates.find(
-      (item) => levenshteinDistance(item.name.toLowerCase(), clean) <= 2
-    );
+    const match = displayedCandidates.find((item) => levenshteinDistance(item.name.toLowerCase(), clean) <= 2);
     return match ? match.name : null;
   }, [suggestion, displayedCandidates]);
 
@@ -360,32 +303,16 @@ export default function RoomLobby() {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const clean = suggestion.trim();
     if (!clean) return;
-
     if (duplicateMatch) {
-      addToast({
-        title: 'Already on Table',
-        message: `"${duplicateMatch}" is already on the table.`,
-        type: 'warning',
-      });
+      addToast({ title: 'Already on Table', message: `"${duplicateMatch}" is already on the table.`, type: 'warning' });
       return;
     }
-
-    emit('add_suggestion', {
-      pin,
-      suggestion: clean,
-      participant_id: participantId,
-      host_token: getHostToken(),
-      user_name: currentUserName,
-    });
-
+    emit('add_suggestion', { pin, suggestion: clean, participant_id: participantId, host_token: getHostToken(), user_name: currentUserName });
     setGroupPool((prev) => (prev.some((s) => s.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean]));
+    setRecentlyAddedName(clean);
     if (mode !== 'CUSTOM') {
       setVisiblePlacesCount((prev) => prev + 1);
-      addToast({
-        title: t('addedBadge') || 'Added to Table',
-        message: `"${clean}" added to the front of the table.`,
-        type: 'success',
-      });
+      addToast({ title: t('addedBadge') || 'Group Pick Added', message: `"${clean}" added to the front of the table.`, type: 'success' });
     }
     setSuggestion('');
   };
@@ -393,35 +320,19 @@ export default function RoomLobby() {
   const handleQuickAddSuggestion = (ideaText) => {
     const clean = String(ideaText || '').trim();
     if (!clean || groupPool.some((s) => s.toLowerCase() === clean.toLowerCase())) return;
-    emit('add_suggestion', {
-      pin,
-      suggestion: clean,
-      participant_id: participantId,
-      host_token: getHostToken(),
-      user_name: currentUserName,
-    });
+    emit('add_suggestion', { pin, suggestion: clean, participant_id: participantId, host_token: getHostToken(), user_name: currentUserName });
     setGroupPool((prev) => [...prev, clean]);
+    setRecentlyAddedName(clean);
     if (mode !== 'CUSTOM') {
       setVisiblePlacesCount((prev) => prev + 1);
-      addToast({
-        title: t('addedBadge') || 'Added to Table',
-        message: `"${clean}" added to the front of the table.`,
-        type: 'success',
-      });
+      addToast({ title: t('addedBadge') || 'Group Pick Added', message: `"${clean}" added to the front of the table.`, type: 'success' });
     }
   };
 
   const handleRemoveSuggestion = (idx) => {
     if (!isHost) return;
     const target = groupPool[idx];
-    if (target) {
-      emit('remove_suggestion', {
-        pin,
-        suggestion: target,
-        participant_id: participantId,
-        host_token: getHostToken(),
-      });
-    }
+    if (target) emit('remove_suggestion', { pin, suggestion: target, participant_id: participantId, host_token: getHostToken() });
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
@@ -436,8 +347,8 @@ export default function RoomLobby() {
       }
       return copy;
     };
-    if (realOptions && realOptions.length > 0) setRealOptions(shuffleList);
-    else if (groupPool && groupPool.length > 0) setGroupPool(shuffleList);
+    if (realOptions?.length > 0) setRealOptions(shuffleList);
+    else if (groupPool?.length > 0) setGroupPool(shuffleList);
     addToast({ title: t('placesShuffledTitle'), message: t('placesShuffledDesc'), type: 'info' });
   };
 
@@ -452,11 +363,9 @@ export default function RoomLobby() {
     if (!isHost || mode === 'CUSTOM' || remainingPoolCount <= 0) return;
     triggerHaptic('selection');
     const inc = typeof count === 'number' ? count : 1;
-    const nextCount = Math.min(activePool.length, visiblePlacesCount + inc);
-    setVisiblePlacesCount(nextCount);
+    setVisiblePlacesCount(Math.min(activePool.length, visiblePlacesCount + inc));
     emit('add_discovery_place', { pin, count: inc, participant_id: participantId, host_token: getHostToken() });
 
-    // When remaining pool gets low (<= 5 remaining), prefetch 10 more locations in the background!
     if (remainingPoolCount <= 5 && realOptions.length < 50 && !isPrefetchingRef.current) {
       isPrefetchingRef.current = true;
       fetch(apiUrl(`/api/v1/rooms/${pin}/more-places`), {
@@ -466,11 +375,10 @@ export default function RoomLobby() {
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data?.options && Array.isArray(data.options)) {
+          if (Array.isArray(data?.options)) {
             setRealOptions((prev) => {
               const existingIds = new Set(prev.map((o) => String(o.id)));
-              const toAdd = data.options.filter((o) => !existingIds.has(String(o.id)));
-              return [...prev, ...toAdd];
+              return [...prev, ...data.options.filter((o) => !existingIds.has(String(o.id)))];
             });
           }
         })
@@ -493,34 +401,41 @@ export default function RoomLobby() {
     addToast({ title: 'Place Removed', message: `"${item.name}" removed from table`, type: 'info' });
   };
 
-  const handleStartVoting = () => {
-    triggerHaptic('selection');
-    const cardsToPass = displayedCandidates;
-    if (cardsToPass.length < 2) {
-      addToast({ title: t('addAtLeastTwoTitle'), message: t('addAtLeastTwoMsg'), type: 'warning' });
-      return;
-    }
-    const activeParticipantCount = Math.max(1, participants.length);
-    const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
+  const handleResumeVoting = () => {
     sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
-    emit('host_start_voting', { pin, host_id: participantId, host_token: hostToken || undefined, options: cardsToPass, topic, mode });
-
     isTransitioningToDeckRef.current = true;
-    sessionStorage.setItem(`consensus_host_${pin}`, 'true');
     navigate(`/deck/${pin}`, {
       state: {
-        mode,
-        topic,
-        isHost: true,
-        totalParticipants: activeParticipantCount,
-        customCards: cardsToPass,
+        mode, topic, isHost: Boolean(isHost), totalParticipants: Math.max(1, participants.length),
+        customCards: displayedCandidates.length > 0 ? displayedCandidates : undefined,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
         participants: participants.map((p) => ({ id: p.id, name: p.name, isHost: Boolean(p.isHost) })),
       },
     });
   };
 
-  // Keyboard shortcut: Enter, Space, or ArrowRight launches voting for host
+  const handleStartVoting = () => {
+    triggerHaptic('selection');
+    if (displayedCandidates.length < 2) {
+      addToast({ title: t('addAtLeastTwoTitle'), message: t('addAtLeastTwoMsg'), type: 'warning' });
+      return;
+    }
+    const activeParticipantCount = Math.max(1, participants.length);
+    const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
+    sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
+    emit('host_start_voting', { pin, host_id: participantId, host_token: hostToken || undefined, options: displayedCandidates, topic, mode });
+
+    isTransitioningToDeckRef.current = true;
+    sessionStorage.setItem(`consensus_host_${pin}`, 'true');
+    navigate(`/deck/${pin}`, {
+      state: {
+        mode, topic, isHost: true, totalParticipants: activeParticipantCount,
+        customCards: displayedCandidates, budgetLimit: lockedConstraint ? budgetLimit : undefined,
+        participants: participants.map((p) => ({ id: p.id, name: p.name, isHost: Boolean(p.isHost) })),
+      },
+    });
+  };
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
@@ -534,22 +449,14 @@ export default function RoomLobby() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isHost, displayedCandidates.length, isVotingActive, settingsOpen, qrModalOpen]);
 
-  if (!pin) {
-    return <NoActiveLobbyView navigate={navigate} setSettingsOpen={setSettingsOpen} />;
-  }
+  if (!pin) return <NoActiveLobbyView navigate={navigate} setSettingsOpen={setSettingsOpen} />;
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden select-none">
       <LobbyHeader
-        pin={pin}
-        copied={copied}
-        onLeave={handleLeaveLobby}
-        onCopyPin={handleCopyPin}
-        onShare={handleShareInvite}
-        onOpenSettings={() => setSettingsOpen(true)}
-        topic={topic}
-        participants={participants}
-        isConnected={isConnected}
+        pin={pin} copied={copied} onLeave={handleLeaveLobby}
+        onCopyPin={handleCopyPin} onShare={handleShareInvite} onOpenSettings={() => setSettingsOpen(true)}
+        topic={topic} participants={participants} isConnected={isConnected}
       />
 
       {showReconnecting && (
@@ -559,77 +466,52 @@ export default function RoomLobby() {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="px-4 pt-3 pb-28 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
+      <main className="px-4 pt-3 pb-32 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
         {isVotingActive && (
           <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs animate-[fadeIn_0.2s_ease-out]">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-semibold">{t('votingInProgress')}</span>
             </div>
-            <button
-              type="button"
-              onClick={handleResumeVoting}
-              className="font-bold underline cursor-pointer active:opacity-70"
-            >
-              {t('resume')} →
+            <button type="button" onClick={handleResumeVoting} className="inline-flex items-center gap-1 font-bold underline cursor-pointer active:opacity-70">
+              <span>{t('resume')}</span>
+              <ArrowRight size={13} />
             </button>
           </div>
         )}
 
-        {/* Compact Room Header & Roster */}
         <LobbyRoster
-          pin={pin}
-          topic={topic}
-          participants={participants}
-          handleShareInvite={handleShareInvite}
-          handleCopyPin={handleCopyPin}
-          setQrModalOpen={setQrModalOpen}
+          pin={pin} topic={topic} participants={participants}
+          candidateCount={displayedCandidates.length} isHost={isHost}
+          handleShareInvite={handleShareInvite} handleCopyPin={handleCopyPin} setQrModalOpen={setQrModalOpen}
         />
 
-        {/* 1-Tap Anonymous Price Filter (Hidden in Custom Poll mode) */}
         {mode !== 'CUSTOM' && (
           <StepZeroVault
-            lockedConstraint={lockedConstraint}
-            budgetLimit={budgetLimit}
-            onSelectTier={handleSelectBudgetTier}
-            locationContext={candidatePoolPreview[0] || userGps}
+            lockedConstraint={lockedConstraint} budgetLimit={budgetLimit}
+            onSelectTier={handleSelectBudgetTier} locationContext={candidatePoolPreview[0] || userGps}
           />
         )}
 
-        {/* Curated Places / Custom Options on the Table */}
         <CandidatePoolDeck
-          isHost={isHost}
-          mode={mode}
-          topic={topic}
-          category={location.state?.category || topic}
+          isHost={isHost} mode={mode} topic={topic} category={location.state?.category || topic}
           extraPoolOptions={mode !== 'CUSTOM' ? activePool.slice(visiblePlacesCount) : []}
-          isLoading={loadingOptions}
-          candidates={displayedCandidates}
-          remainingPoolCount={remainingPoolCount}
-          lockedConstraint={lockedConstraint}
-          prunedCount={prunedCount}
-          suggestion={suggestion}
-          setSuggestion={setSuggestion}
-          handleAddSuggestion={handleAddSuggestion}
+          isLoading={loadingOptions} candidates={displayedCandidates} remainingPoolCount={remainingPoolCount}
+          lockedConstraint={lockedConstraint} prunedCount={prunedCount} suggestion={suggestion}
+          setSuggestion={setSuggestion} handleAddSuggestion={handleAddSuggestion}
           handleQuickAddSuggestion={handleQuickAddSuggestion}
           handleRemoveSuggestion={isHost ? handleRemoveSuggestion : undefined}
           handleAddNextPlace={isHost ? handleAddNextPlace : undefined}
           handleRemovePlace={isHost ? handleRemovePlace : undefined}
-          duplicateMatch={duplicateMatch}
+          duplicateMatch={duplicateMatch} recentlyAddedName={recentlyAddedName}
           onShuffle={isHost ? handleShuffleCandidates : undefined}
           onReportClosed={isHost ? handleReportClosedVenue : undefined}
         />
       </main>
 
-      {/* Fixed Bottom Start Action Bar */}
       <LobbyDock
-        isVotingActive={isVotingActive}
-        isHost={isHost}
-        candidateCount={displayedCandidates.length}
-        mode={mode}
-        onResumeVoting={handleResumeVoting}
-        onStartVoting={handleStartVoting}
+        isVotingActive={isVotingActive} isHost={isHost} candidateCount={displayedCandidates.length}
+        participants={participants} mode={mode} onResumeVoting={handleResumeVoting} onStartVoting={handleStartVoting}
       />
 
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />

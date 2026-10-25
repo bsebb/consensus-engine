@@ -1,204 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  LayoutGrid,
-  PlusCircle,
-  ShieldCheck,
-  Plus,
-  Trash2,
-  MapPin,
-  Star,
-  Shuffle,
-  X,
-  Sparkles,
+  LayoutGrid, PlusCircle, ShieldCheck, Plus, Shuffle, Sparkles, CheckCircle2,
 } from 'lucide-react';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
-import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
-import { formatTravelSummary } from '../../utils/location';
-import { formatRegionalPricePill } from '../../utils/regionFormat';
+import { CandidatePoolCard, CustomOptionCard } from './CandidatePoolCards';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
 
-function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShuffling, onSelectDetails }) {
-  const animClass = isShuffling
-    ? (idx % 2 === 0 ? 'animate-shuffle-deck' : 'animate-shuffle-deck-alt')
-    : 'animate-slide-up';
-
-  const isRoutable = Boolean(item.isRoutablePlace || (item.address && item.address !== 'Added by group'));
-
-  return (
-    <div
-      data-testid="candidate-card"
-      onClick={() => {
-        if (isRoutable && onSelectDetails) {
-          triggerHaptic('tap');
-          onSelectDetails(item);
-        }
-      }}
-      role={isRoutable ? 'button' : undefined}
-      tabIndex={isRoutable ? 0 : undefined}
-      style={{ animationDelay: isShuffling ? `${(idx % 6) * 35}ms` : `${(idx % 8) * 45}ms` }}
-      className={`relative rounded-2xl p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs text-left min-h-[96px] touch-manipulation ${isRoutable ? 'cursor-pointer active:scale-[0.98]' : ''} ${animClass}`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
-            #{idx + 1}
-          </span>
-          {isRoutable && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 truncate">
-              {item.distance_km != null ? `~${item.distance_km} km` : 'Nearest'}
-            </span>
-          )}
-        </div>
-        {handleRemoveSuggestion && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemoveSuggestion(item.customIndex ?? idx);
-            }}
-            className="w-6 h-6 rounded-full bg-[var(--bg-inset)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
-            title="Remove option"
-            aria-label={`Remove ${item.name}`}
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
-      </div>
-
-      <div className="py-1">
-        <h4 className="text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug min-h-[2.4em] flex items-center" title={item.name}>
-          {item.name}
-        </h4>
-        {item.address && item.address !== 'Added by group' && (
-          <p className="text-[10px] text-[var(--text-tertiary)] font-medium truncate flex items-center gap-1 mt-0.5">
-            <MapPin size={10} className="text-[var(--accent-bg)] shrink-0" />
-            <span className="truncate">{item.address}</span>
-          </p>
-        )}
-      </div>
-
-      <div className="text-[10px] text-[var(--text-tertiary)] font-medium pt-1 border-t border-[var(--border-subtle)] truncate flex items-center justify-between">
-        <span className="truncate">{topic || 'Custom Poll'}</span>
-        {isRoutable && (
-          <span className="text-[10px] text-[var(--accent-bg)] font-bold shrink-0 ml-1">
-            Details →
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffling }) {
-  const { lang, t } = useLanguage();
-  const { primaryPhoto, fallbackPhoto } = useVenuePhotos(item.name, item.address, item.category, item.photo_url);
-  const vibeSubtitle = getVenueVibe(item.name, item.category);
-  const venueRating = getVenueRating(item.name, item.category);
-  const travelText = formatTravelSummary(item, lang);
-
-  const animClass = isShuffling
-    ? (idx % 2 === 0 ? 'animate-shuffle-deck' : 'animate-shuffle-deck-alt')
-    : 'animate-slide-up';
-
-  return (
-    <div
-      onClick={() => {
-        triggerHaptic('tap');
-        onSelectDetails(item);
-      }}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          triggerHaptic('tap');
-          onSelectDetails(item);
-        }
-      }}
-      data-testid="candidate-card"
-      style={{ animationDelay: isShuffling ? `${(idx % 6) * 35}ms` : `${(idx % 8) * 45}ms` }}
-      className={`rounded-2xl overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--accent-bg)]/40 transition-all flex flex-col justify-between shadow-2xs relative group cursor-pointer text-left active:scale-[0.98] touch-manipulation ${animClass}`}
-    >
-      {/* Photo with Rating and Price Badge */}
-      <div className="relative aspect-[16/10] w-full bg-[var(--bg-inset)] overflow-hidden">
-        <img
-          src={primaryPhoto}
-          alt={item.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = fallbackPhoto;
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-
-        {/* Rating and Price Pills */}
-        <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
-          {item.isGroupAdded && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/90 backdrop-blur-md text-[10px] font-bold text-white border border-white/15 shadow-2xs">
-              <Sparkles size={9} />
-              <span>{t('addedBadge') || 'Added'}</span>
-            </span>
-          )}
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs tabular-nums">
-            <Star size={10} className="fill-amber-300 text-amber-300" />
-            <span>{venueRating.rating}</span>
-          </div>
-          <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 tabular-nums">
-            {formatRegionalPricePill(item.price_level || 2, item)}
-          </span>
-        </div>
-
-        {/* Remove Venue Button */}
-        {onRemoveVenue && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemoveVenue(item);
-            }}
-            className="absolute top-2 right-2 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md text-white/80 hover:bg-rose-600 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer z-10 active:scale-90"
-            title="Remove from table"
-            aria-label={`Remove ${item.name}`}
-          >
-            <X size={12} />
-          </button>
-        )}
-      </div>
-
-      {/* Card Body with Full Title & Travel Summary */}
-      <div className="p-3 flex flex-col gap-1.5 flex-1 justify-between">
-        <div>
-          <h4
-            className="text-sm font-bold text-[var(--text-primary)] line-clamp-2 leading-snug group-hover:text-[var(--accent-bg)] transition-colors min-h-[2.4em] flex items-center"
-            title={item.name}
-          >
-            {item.name}
-          </h4>
-          <p className="text-[11px] text-[var(--text-secondary)] font-medium truncate mt-0.5">
-            {vibeSubtitle}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] text-[var(--text-tertiary)] pt-1.5 border-t border-[var(--border-subtle)]">
-          <div className="flex items-center gap-1 truncate font-medium">
-            <MapPin size={11} className="shrink-0 text-[var(--accent-bg)]" />
-            <span className="truncate">{travelText}</span>
-          </div>
-          <span className="text-[10px] text-[var(--accent-bg)] font-bold shrink-0 ml-1">
-            {t('details')}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function CandidatePoolDeck({
-  isHost = false,
   mode,
   topic = '',
   category = '',
@@ -216,24 +26,39 @@ export default function CandidatePoolDeck({
   handleAddNextPlace,
   handleRemovePlace,
   duplicateMatch,
+  recentlyAddedName = null,
   onShuffle,
   onReportClosed,
 }) {
   const { t } = useLanguage();
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [localAddedName, setLocalAddedName] = useState(null);
   const railRef = useRef(null);
+
+  const activeHighlightName = recentlyAddedName || localAddedName;
+
+  useEffect(() => {
+    if (!recentlyAddedName) return;
+    if (mode !== 'CUSTOM' && railRef.current) {
+      setTimeout(() => {
+        railRef.current?.scrollTo?.({ left: 0, behavior: 'smooth' });
+      }, 60);
+    }
+  }, [recentlyAddedName, mode]);
 
   const handleShuffleClick = () => {
     triggerHaptic('selection');
     setIsShuffling(true);
     onShuffle?.();
-    setTimeout(() => {
-      setIsShuffling(false);
-    }, 500);
+    setTimeout(() => setIsShuffling(false), 500);
   };
 
-  const handleOptionAddedToRail = () => {
+  const handleOptionAddedToRail = (addedText) => {
+    if (addedText) {
+      setLocalAddedName(addedText);
+      setTimeout(() => setLocalAddedName(null), 4000);
+    }
     if (mode !== 'CUSTOM' && railRef.current) {
       setTimeout(() => {
         railRef.current?.scrollTo?.({ left: 0, behavior: 'smooth' });
@@ -243,7 +68,6 @@ export default function CandidatePoolDeck({
 
   return (
     <section className="min-w-0 shrink-0 p-3.5 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-3.5 shadow-2xs">
-      {/* Section Header */}
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
         <div className="flex items-center gap-2 min-w-0">
           <LayoutGrid size={16} className="text-[var(--accent-bg)] shrink-0" />
@@ -273,7 +97,6 @@ export default function CandidatePoolDeck({
             </button>
           )}
 
-          {/* Discovery Mode: Add Next Place / Add All Buttons */}
           {mode !== 'CUSTOM' && handleAddNextPlace && (
             <div className="flex items-center gap-1.5">
               <button
@@ -295,8 +118,7 @@ export default function CandidatePoolDeck({
                   type="button"
                   onClick={() => {
                     triggerHaptic('like');
-                    const batch = remainingPoolCount <= 3 ? remainingPoolCount : 3;
-                    handleAddNextPlace(batch);
+                    handleAddNextPlace(remainingPoolCount <= 3 ? remainingPoolCount : 3);
                   }}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-[var(--accent-bg)]/15 border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--accent-bg)] transition-all cursor-pointer active:scale-95 touch-manipulation shadow-2xs"
                   title={`Add ${remainingPoolCount <= 3 ? `all ${remainingPoolCount}` : '3'} venues to table`}
@@ -309,7 +131,6 @@ export default function CandidatePoolDeck({
         </div>
       </div>
 
-      {/* Discovery Mode: Price Filter Notice */}
       {lockedConstraint && prunedCount > 0 && mode !== 'CUSTOM' && (
         <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 font-medium">
           <div className="flex items-center gap-2">
@@ -322,7 +143,6 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Search & Add Spot / Option Bar (Available in both Custom and Discovery Lobbies) */}
       {handleAddSuggestion && (
         <div className="pt-0.5 pb-1">
           <CustomOptionAutocomplete
@@ -342,7 +162,24 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Candidates Grid */}
+      {activeHighlightName && (
+        <div
+          data-testid="instant-added-feedback"
+          className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-emerald-500/12 border border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-300 animate-scale-up"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+            <span className="truncate">
+              Added <span className="font-extrabold">"{activeHighlightName}"</span> to the top of the deck
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold shrink-0">
+            <Sparkles size={9} />
+            <span>Group Pick</span>
+          </span>
+        </div>
+      )}
+
       <div
         ref={railRef}
         className={mode === 'CUSTOM' || (!isLoading && candidates.length === 0) ? 'grid grid-cols-2 gap-3' : 'places-rail'}
@@ -377,10 +214,6 @@ export default function CandidatePoolDeck({
                   <div className="h-3 bg-zinc-300/70 dark:bg-zinc-700/60 rounded-md w-4/5" />
                   <div className="h-2.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-1/2" />
                 </div>
-                <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border-subtle)]">
-                  <div className="h-2.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-1/3" />
-                  <div className="h-2.5 bg-zinc-200/80 dark:bg-zinc-800/80 rounded-md w-8" />
-                </div>
               </div>
             </div>
           ))
@@ -395,8 +228,13 @@ export default function CandidatePoolDeck({
             </span>
           </div>
         ) : (
-          candidates.map((item, idx) =>
-            mode === 'CUSTOM' || item.isCustom ? (
+          candidates.map((item, idx) => {
+            const isNewlyAdded = Boolean(
+              activeHighlightName &&
+              (String(item.name || '').toLowerCase().includes(activeHighlightName.toLowerCase()) ||
+                String(item.originalName || '').toLowerCase() === activeHighlightName.toLowerCase())
+            );
+            return mode === 'CUSTOM' || item.isCustom ? (
               <CustomOptionCard
                 key={item.id || item.name || idx}
                 item={item}
@@ -404,6 +242,7 @@ export default function CandidatePoolDeck({
                 topic={topic}
                 handleRemoveSuggestion={handleRemoveSuggestion}
                 isShuffling={isShuffling}
+                isNewlyAdded={isNewlyAdded}
                 onSelectDetails={setSelectedVenue}
               />
             ) : (
@@ -414,13 +253,13 @@ export default function CandidatePoolDeck({
                 onSelectDetails={setSelectedVenue}
                 onRemoveVenue={handleRemovePlace}
                 isShuffling={isShuffling}
+                isNewlyAdded={isNewlyAdded}
               />
-            )
-          )
+            );
+          })
         )}
       </div>
 
-      {/* Venue Details Modal */}
       <VenueDetailsModal
         key={selectedVenue?.id || selectedVenue?.name || 'lobby-venue-modal'}
         venue={selectedVenue}

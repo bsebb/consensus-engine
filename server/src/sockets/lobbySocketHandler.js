@@ -205,7 +205,7 @@ function registerLobbySocketHandlers(io, socket, store) {
       const activeSession = activeVotingSessions.get(pin);
       if (activeSession) {
         if (activeSession.isResolved && activeSession.winner) {
-          socket.emit('winner_announced', {
+          const resolvedPayload = {
             pin,
             winning_option: activeSession.winner,
             winningOptionId: activeSession.winner.id,
@@ -213,7 +213,9 @@ function registerLobbySocketHandlers(io, socket, store) {
             matchScore: activeSession.matchScore || 96,
             pairwise: activeSession.pairwise || [],
             total_voted: activeSession.submissions.size,
-          });
+          };
+          socket.emit('winner_announced', resolvedPayload);
+          socket.emit('consensus_reached', resolvedPayload);
         } else {
           activeSession.expectedCount = Math.max(activeSession.expectedCount, lobby.size);
           socket.emit('voting_started', {
@@ -232,60 +234,90 @@ function registerLobbySocketHandlers(io, socket, store) {
     }
   });
 
-  socket.on('add_suggestion', (data) => {
+  const handleAddSuggestion = (data) => {
     try {
-      const { pin, suggestion, user_name, participant_id } = data || {};
-      if (!pin || !suggestion) return;
+      const { pin, suggestion, name, user_name, added_by, addedBy, participant_id } = data || {};
+      const rawSuggestion = suggestion ?? name;
+      if (!pin || !rawSuggestion) return;
       const lobby = activeLobbies.get(pin);
-      const isJoinedParticipant = Boolean(lobby && participant_id && lobby.has(participant_id));
+      const callerId = participant_id || socket.data.participantId;
+      const isJoinedParticipant = Boolean(lobby && callerId && lobby.has(callerId));
       if (!isCallerHost(lobby, pin, data) && !isJoinedParticipant) {
         socket.emit('room_error', { message: 'Join the room first to add options.' });
         return;
       }
-      const clean = String(suggestion).trim().slice(0, 120);
+      const clean = String(typeof rawSuggestion === 'object' ? (rawSuggestion.name || rawSuggestion.suggestion || '') : rawSuggestion).trim().slice(0, 120);
       if (!clean) return;
+      const authorName = user_name || added_by || addedBy || (typeof rawSuggestion === 'object' ? (rawSuggestion.addedBy || rawSuggestion.user_name) : null) || socket.data.userName || 'Friend';
 
       if (lobby) {
         if (!lobby.suggestions) lobby.suggestions = [];
+        if (!lobby.suggestionMeta) lobby.suggestionMeta = new Map();
         if (lobby.suggestions.length >= 50) return;
         if (!lobby.suggestions.some((s) => s.toLowerCase() === clean.toLowerCase())) {
           lobby.suggestions.push(clean);
-          io.to(pin).emit('suggestions_updated', {
+          lobby.suggestionMeta.set(clean.toLowerCase(), {
+            name: clean,
+            addedBy: authorName,
+            participantId: callerId || null,
+          });
+          const updatePayload = {
             pin,
             suggestions: lobby.suggestions,
+            suggestion_entries: lobby.suggestions.map((s) => (
+              lobby.suggestionMeta.get(s.toLowerCase()) || { name: s, addedBy: 'Group' }
+            )),
             added: clean,
-            user_name: user_name || 'Friend',
-          });
+            user_name: authorName,
+            addedBy: authorName,
+          };
+          io.to(pin).emit('suggestions_updated', updatePayload);
+          io.to(pin).emit('custom_suggestions_updated', updatePayload);
         }
       }
     } catch (err) {
       console.error('[Socket] add_suggestion error:', err.message);
     }
-  });
+  };
 
-  socket.on('remove_suggestion', (data) => {
+  socket.on('add_suggestion', handleAddSuggestion);
+  socket.on('add_custom_suggestion', handleAddSuggestion);
+
+  const handleRemoveSuggestion = (data) => {
     try {
-      const { pin, suggestion } = data || {};
-      if (!pin || !suggestion) return;
+      const { pin, suggestion, name } = data || {};
+      const rawSuggestion = suggestion ?? name;
+      if (!pin || !rawSuggestion) return;
       const lobby = activeLobbies.get(pin);
       if (!isCallerHost(lobby, pin, data)) {
         socket.emit('room_error', { message: 'Only the room host can remove options.' });
         return;
       }
-      const clean = String(suggestion).trim();
+      const clean = String(typeof rawSuggestion === 'object' ? (rawSuggestion.name || rawSuggestion.suggestion || '') : rawSuggestion).trim();
 
       if (lobby && lobby.suggestions) {
         lobby.suggestions = lobby.suggestions.filter((s) => s.toLowerCase() !== clean.toLowerCase());
-        io.to(pin).emit('suggestions_updated', {
+        if (lobby.suggestionMeta) {
+          lobby.suggestionMeta.delete(clean.toLowerCase());
+        }
+        const removePayload = {
           pin,
           suggestions: lobby.suggestions,
+          suggestion_entries: lobby.suggestions.map((s) => (
+            lobby.suggestionMeta?.get(s.toLowerCase()) || { name: s, addedBy: 'Group' }
+          )),
           removed: clean,
-        });
+        };
+        io.to(pin).emit('suggestions_updated', removePayload);
+        io.to(pin).emit('custom_suggestions_updated', removePayload);
       }
     } catch (err) {
       console.error('[Socket] remove_suggestion error:', err.message);
     }
-  });
+  };
+
+  socket.on('remove_suggestion', handleRemoveSuggestion);
+  socket.on('remove_custom_suggestion', handleRemoveSuggestion);
 
   socket.on('add_discovery_place', (data) => {
     try {

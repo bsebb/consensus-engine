@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiUrl } from './api';
+import { apiUrl } from './api.js';
 
 // Curated high-resolution poster library for popular activities, games, movies, and takeout
 export const KNOWN_CUSTOM_POSTERS = {

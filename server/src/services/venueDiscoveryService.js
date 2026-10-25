@@ -1,9 +1,30 @@
 const { fetchGooglePlaces } = require('../utils/googlePlaces');
 const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
-const { resolveRegionalFallback, isInsideMoldovaRegion, calculateDistance } = require('../utils/fallbackVenues');
+const { resolveRegionalFallback, isInsideMoldovaRegion, calculateDistance, formatPriceLabel } = require('../utils/fallbackVenues');
+const { resolveVenuePhotosBatch, getCanonicalVenueKey } = require('../utils/venuePhotoService');
 const { filterReportedVenues } = require('../utils/reportedVenues');
 const { getCachedVenuesByGrid, saveCachedVenuesBulk, getCommunityAnalyticsByNameMap } = require('../../db/helpers');
+
+function deduplicateDiscoveryPlaces(places = []) {
+  if (!Array.isArray(places)) return [];
+  const seenKeys = new Set();
+  const result = [];
+  for (const p of places) {
+    if (!p || !p.name) continue;
+    const normName = String(p.name).toLowerCase().trim();
+    const cKey = getCanonicalVenueKey(p.name) || normName;
+    if (seenKeys.has(cKey) || seenKeys.has(normName)) continue;
+    seenKeys.add(cKey);
+    seenKeys.add(normName);
+    result.push({
+      ...p,
+      priceLevel: p.priceLevel ?? 2,
+      priceLabel: p.priceLabel || formatPriceLabel(p.priceLevel ?? 2, p.lat, p.lng),
+    });
+  }
+  return result;
+}
 
 // High-speed in-memory discovery deck cache (30-min TTL) for sub-millisecond room creation at 1000+ CCU
 const discoveryDeckCache = new Map();
@@ -25,7 +46,7 @@ function getGridKey(theme = 'restaurant', lat = 47.0225, lng = 28.8340) {
     : normTheme.includes('cafe') ? 'cafes'
     : normTheme.includes('bar') ? 'bars'
     : normTheme.includes('dessert') ? 'desserts'
-    : normTheme.includes('activit') ? 'activities'
+    : (normTheme.includes('activit') || normTheme.includes('fun') || normTheme.includes('distraction')) ? 'activities'
     : 'restaurants';
   // Round to 0.05 deg (~5km grid cell) so nearby users in the same city share the DB venue cache
   const gLat = (Math.round(Number(lat) * 20) / 20).toFixed(2);
@@ -96,7 +117,9 @@ async function discoverDiscoveryVenues({
       targetPlaces,
       radius
     );
-    const cleaned = filterReportedVenues(instantPlaces || []);
+    const cleaned = deduplicateDiscoveryPlaces(
+      await resolveVenuePhotosBatch(filterReportedVenues(instantPlaces || []))
+    );
     if (cleaned.length > 0) {
       setDiscoveryCache(cacheKey, cleaned);
       if (!persistedGridKeys.has(gridKey)) {
@@ -120,6 +143,7 @@ async function discoverDiscoveryVenues({
         fsq_place_id: `db_${row.id.slice(0, 8)}`,
         category: row.category,
         priceLevel: row.priceLevel ?? 2,
+        priceLabel: formatPriceLabel(row.priceLevel ?? 2, row.lat, row.lng),
         lat: row.lat,
         lng: row.lng,
         distance_meters: roadMeters,
@@ -132,7 +156,9 @@ async function discoverDiscoveryVenues({
       };
     }).sort((a, b) => a.distance_meters - b.distance_meters);
 
-    const cleanedDb = filterReportedVenues(hydratedFromDb);
+    const cleanedDb = deduplicateDiscoveryPlaces(
+      await resolveVenuePhotosBatch(filterReportedVenues(hydratedFromDb))
+    );
     if (cleanedDb.length > 0) {
       setDiscoveryCache(cacheKey, cleanedDb);
       persistedGridKeys.add(gridKey);
@@ -217,7 +243,9 @@ async function discoverDiscoveryVenues({
     }
   }
 
-  const finalPlaces = places || [];
+  const finalPlaces = deduplicateDiscoveryPlaces(
+    await resolveVenuePhotosBatch(places || [])
+  );
   if (finalPlaces.length > 0) {
     try {
       const analyticsMap = await getCommunityAnalyticsByNameMap();

@@ -242,3 +242,5 @@ export function searchCustomSuggestions(query = '', topic = '', existingNames = 
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, 8).map((s) => s.item);
 }
+
+export const searchCustomPlaceSuggestions = searchCustomSuggestions;

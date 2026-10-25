@@ -186,7 +186,7 @@ export const es = {
   ctrlVeto: 'Veto',
   ctrlSuper: 'Super',
   ctrlLike: 'Me gusta',
-  swipeHintPill: '👉 Desliza a la derecha para Me gusta • A la izquierda para Pasar • Toca para detalles',
+  swipeHintPill: 'Desliza a la derecha para Me gusta • A la izquierda para Pasar • Toca para detalles',
   allDoneTitle: '¡Ya terminaste!',
   waitingFriendsSubtitle: 'Esperando a que tus amigos terminen de votar...',
   groupProgress: 'Progreso del grupo',

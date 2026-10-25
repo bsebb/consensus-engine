@@ -33,7 +33,7 @@ export function deduplicateVenues(venues = []) {
   const result = [];
   for (const v of venues) {
     if (!v || !v.name) continue;
-    if (v.isCustom) {
+    if (v.isCustom && !v.isGroupAdded) {
       const normName = v.name.trim().toLowerCase();
       if (!result.some((r) => r.isCustom && r.name.trim().toLowerCase() === normName)) {
         result.push(v);
@@ -43,7 +43,7 @@ export function deduplicateVenues(venues = []) {
 
     const cKey = getCanonicalVenueKey(v.name);
     const dupIdx = result.findIndex((r) => {
-      if (r.isCustom) return false;
+      if (r.isCustom && !r.isGroupAdded) return false;
       const rKey = getCanonicalVenueKey(r.name);
       if (cKey && rKey && cKey === rKey) return true;
       if (cKey.length >= 4 && rKey.length >= 4 && (cKey.includes(rKey) || rKey.includes(cKey))) {
@@ -51,9 +51,6 @@ export function deduplicateVenues(venues = []) {
           return calculateCoordDistanceMeters(v.lat, v.lng, r.lat, r.lng) <= 350;
         }
         return true;
-      }
-      if (v.lat != null && v.lng != null && r.lat != null && r.lng != null) {
-        return calculateCoordDistanceMeters(v.lat, v.lng, r.lat, r.lng) <= 150;
       }
       return false;
     });
@@ -63,7 +60,14 @@ export function deduplicateVenues(venues = []) {
     } else {
       const existing = result[dupIdx];
       if ((!existing.distance_km && v.distance_km) || (existing.name.length < v.name.length && !v.name.includes('...'))) {
-        result[dupIdx] = { ...v, ...existing, name: existing.name.includes('...') ? v.name : existing.name };
+        result[dupIdx] = {
+          ...v,
+          ...existing,
+          name: existing.name.includes('...') ? v.name : existing.name,
+          isGroupAdded: Boolean(existing.isGroupAdded || v.isGroupAdded),
+          isCustom: Boolean(existing.isCustom || v.isCustom),
+          addedBy: existing.addedBy || v.addedBy,
+        };
       }
     }
   }

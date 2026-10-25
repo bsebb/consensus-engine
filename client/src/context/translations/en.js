@@ -186,7 +186,7 @@ export const en = {
   ctrlVeto: 'Veto',
   ctrlSuper: 'Super',
   ctrlLike: 'Like',
-  swipeHintPill: '👉 Swipe right to Like • Left to Pass • Tap for details',
+  swipeHintPill: 'Swipe right to Like • Left to Pass • Tap for details',
   allDoneTitle: "You're All Done!",
   waitingFriendsSubtitle: 'Waiting for your friends to finish swiping...',
   groupProgress: 'Group Progress',

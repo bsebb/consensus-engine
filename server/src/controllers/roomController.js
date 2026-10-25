@@ -529,6 +529,7 @@ const finalizeVoting = async (req, res) => {
     if (io) {
       io.to(pin).emit('MATCH_FOUND', { winningOptionId, winning_option: winningOption, winner: winningOption });
       io.to(pin).emit('winner_announced', { pin, winning_option: winningOption, winningOptionId, winner: winningOption });
+      io.to(pin).emit('consensus_reached', { pin, winning_option: winningOption, winningOptionId, winner: winningOption });
     }
 
     dispatchActivityNotification('decision_reached', {

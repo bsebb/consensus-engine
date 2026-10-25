@@ -124,6 +124,56 @@ async function resolveVenuePhoto(name = '') {
   return resolveCachedVenuePhotoSync(name);
 }
 
+const CATEGORY_FALLBACK_POOLS = {
+  cinema: [
+    "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1574267432553-4b4628081c31?auto=format&fit=crop&w=900&q=85",
+  ],
+  cafes: [
+    "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  ],
+  bars: [
+    "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1575037614876-c38a4d44f5b8?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=85",
+  ],
+  desserts: [
+    "https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=900&q=85",
+  ],
+  restaurants: [
+    "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
+    "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?auto=format&fit=crop&w=900&q=85",
+  ],
+};
+
+function resolveCategoryFallbackPhotoSync(name = '', category = '') {
+  const combined = `${name} ${category}`.toLowerCase();
+  const poolKey = /cinema|movie|film|screening/i.test(combined) ? 'cinema'
+    : /dessert|gelato|sweet|cake|eclair|brioche|waffle|pastry|patisserie|tart|confectionery|donut|sorbet/i.test(combined) ? 'desserts'
+    : /cafe|café|coffee|espresso|roastery|tearoom/i.test(combined) ? 'cafes'
+    : /bar|pub|beer|wine|cocktail|taproom|nightlife|pivnice|brewery|karaoke/i.test(combined) ? 'bars'
+    : 'restaurants';
+  const pool = CATEGORY_FALLBACK_POOLS[poolKey] || CATEGORY_FALLBACK_POOLS.restaurants;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    hash = (hash * 31 + combined.charCodeAt(i)) % 1000;
+  }
+  return pool[hash % pool.length];
+}
+
 /**
  * Batch resolves verified photos for a list of candidates from in-memory cache in <1ms.
  */
@@ -132,7 +182,7 @@ async function resolveVenuePhotosBatch(venues = []) {
 
   return venues.map((v) => {
     if (v.photo_url) return v;
-    const cachedPhoto = resolveCachedVenuePhotoSync(v.name);
+    const cachedPhoto = resolveCachedVenuePhotoSync(v.name) || resolveCategoryFallbackPhotoSync(v.name, v.category);
     return { ...v, photo_url: cachedPhoto || null };
   });
 }

@@ -36,8 +36,9 @@ export default function WinnerFeedbackCard({
                 {t('communityDataTitle')}
               </span>
               {insights?.found && insights.totalReviews > 0 ? (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold tabular-nums">
-                  ★ {insights.satisfactionAvg}/5 ({insights.totalReviews})
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold tabular-nums">
+                  <Star size={10} className="fill-current shrink-0" />
+                  <span>{insights.satisfactionAvg}/5 ({insights.totalReviews})</span>
                 </span>
               ) : (
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
@@ -186,7 +187,7 @@ export default function WinnerFeedbackCard({
               <Bell size={12} className={reminderScheduled ? 'text-emerald-500' : 'text-[var(--accent-bg)]'} />
               <span>
                 {reminderScheduled
-                  ? 'Reminder set! We’ll ask how it went next time you open NoYouPick.'
+                  ? "Reminder set! We'll ask how it went next time you open NoYouPick."
                   : 'Heading there now? Remind me to rate it after we go'}
               </span>
             </button>
@@ -210,8 +211,9 @@ export default function WinnerFeedbackCard({
                 <p className="text-xs text-[var(--text-primary)] font-medium leading-snug">
                   "{rev.comment}"
                 </p>
-                <span className="text-[11px] font-bold text-amber-500 shrink-0 tabular-nums">
-                  ★ {rev.satisfactionScore}/5
+                <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-amber-500 shrink-0 tabular-nums">
+                  <Star size={11} className="fill-amber-400 text-amber-400 shrink-0" />
+                  <span>{rev.satisfactionScore}/5</span>
                 </span>
               </div>
             ))}

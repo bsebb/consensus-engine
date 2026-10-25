@@ -186,7 +186,7 @@ export const ro = {
   ctrlVeto: 'Veto',
   ctrlSuper: 'Super',
   ctrlLike: 'Vreau',
-  swipeHintPill: '👉 Glisează dreapta pentru Vreau • Stânga pentru Pas • Atinge pentru detalii',
+  swipeHintPill: 'Glisează dreapta pentru Vreau • Stânga pentru Pas • Atinge pentru detalii',
   allDoneTitle: 'Ai terminat votul!',
   waitingFriendsSubtitle: 'Așteptăm ca prietenii tăi să termine de votat...',
   groupProgress: 'Progresul grupului',

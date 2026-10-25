@@ -43,7 +43,7 @@ function registerVotingSocketHandlers(io, socket, store) {
 
     const session = activeVotingSessions.get(pin);
     if (session && session.isResolved && session.winner) {
-      socket.emit('winner_announced', {
+      const resolvedPayload = {
         pin,
         winning_option: session.winner,
         winningOptionId: session.winner.id,
@@ -53,7 +53,9 @@ function registerVotingSocketHandlers(io, socket, store) {
         tally: session.tally || [],
         approval_count: session.approvalCount ?? 0,
         total_voted: session.totalVoted ?? session.submissions.size,
-      });
+      };
+      socket.emit('winner_announced', resolvedPayload);
+      socket.emit('consensus_reached', resolvedPayload);
     } else if (session) {
       socket.emit('state_restore', {
         pin,
@@ -74,14 +76,9 @@ function registerVotingSocketHandlers(io, socket, store) {
     }
   });
 
-  socket.on('host_start_voting', async (data) => {
+  const handleHostStartVoting = async (data) => {
     try {
-      const { pin, host_id, host_token, options } = data || {};
-
-      if (!pin || !Array.isArray(options)) {
-        socket.emit('room_error', { message: 'pin and options are required.' });
-        return;
-      }
+      const { pin, host_id, participant_id, host_token, options } = data || {};
 
       let room = null;
       try {
@@ -91,12 +88,21 @@ function registerVotingSocketHandlers(io, socket, store) {
       }
 
       const lobby = activeLobbies.get(pin);
-      const callerId = socket.data.participantId || host_id;
+      const resolvedInputOptions = Array.isArray(options)
+        ? options
+        : (lobby?.suggestions && lobby.suggestions.length > 0 ? lobby.suggestions : null);
+
+      if (!pin || !Array.isArray(resolvedInputOptions)) {
+        socket.emit('room_error', { message: 'pin and options are required.' });
+        return;
+      }
+
+      const callerId = socket.data.participantId || host_id || participant_id;
       const tokenToCheck = host_token || socket.data.hostToken;
       const hasVerifiedToken = Boolean(tokenToCheck && callerId && verifyHostToken(pin, callerId, tokenToCheck));
       const isAuthorized = hasVerifiedToken || Boolean(
         socket.data.isHost && (socket.data.hostToken || (lobby && lobby.get(callerId)?.isHost))
-      );
+      ) || Boolean(room && callerId && room.hostId === callerId);
 
       if (!isAuthorized) {
         console.warn(`[Socket] Unauthorized host_start_voting in room ${pin} by ${callerId}`);
@@ -104,7 +110,7 @@ function registerVotingSocketHandlers(io, socket, store) {
         return;
       }
 
-      const cappedOptions = options.slice(0, 50);
+      const cappedOptions = resolvedInputOptions.slice(0, 50);
       let roomOptions = cappedOptions.map((opt, idx) => {
         if (typeof opt === 'string') {
           return {
@@ -168,20 +174,25 @@ function registerVotingSocketHandlers(io, socket, store) {
       console.error('[Socket] Failed to start voting:', error.message);
       socket.emit('room_error', { message: 'Failed to start voting.' });
     }
-  });
+  };
 
-  socket.on('submit_ballot', async (data) => {
+  socket.on('host_start_voting', handleHostStartVoting);
+  socket.on('start_voting', handleHostStartVoting);
+
+  const handleSubmitBallot = async (data) => {
     try {
-      const { pin, participant_id, device_id, rankings } = data || {};
-      if (!pin || !participant_id || !Array.isArray(rankings)) return;
+      const { pin, participant_id, device_id, rankings, votes: rawVotes } = data || {};
+      const ballotRankings = Array.isArray(rankings) ? rankings : (Array.isArray(rawVotes) ? rawVotes : null);
+      const claimedId = participant_id || socket.data.participantId;
+      if (!pin || !claimedId || !Array.isArray(ballotRankings)) return;
 
       const lobby = activeLobbies.get(pin);
       const cleanDeviceId = device_id && typeof device_id === 'string' ? device_id.trim().slice(0, 64) : socket.data.deviceId;
       const mappedId = cleanDeviceId && lobby?.deviceToParticipantId?.get(cleanDeviceId);
-      const effectiveParticipantId = mappedId || socket.data.participantId || participant_id;
+      const effectiveParticipantId = mappedId || socket.data.participantId || claimedId;
 
-      if (socket.data.participantId && socket.data.participantId !== participant_id && socket.data.participantId !== effectiveParticipantId) {
-        console.warn(`[Socket] Mismatched participant_id in submit_ballot: caller=${socket.data.participantId}, claimed=${participant_id}`);
+      if (socket.data.participantId && socket.data.participantId !== claimedId && socket.data.participantId !== effectiveParticipantId) {
+        console.warn(`[Socket] Mismatched participant_id in submit_ballot: caller=${socket.data.participantId}, claimed=${claimedId}`);
         return;
       }
 
@@ -198,7 +209,7 @@ function registerVotingSocketHandlers(io, socket, store) {
         activeVotingSessions.set(pin, session);
       }
 
-      const votes = rankings
+      const votes = ballotRankings
         .slice(0, 50)
         .filter((r) => r && typeof r.option_id === 'string' && ALLOWED_BALLOT_SCORES.has(Number(r.score)))
         .map((r) => ({
@@ -231,7 +242,11 @@ function registerVotingSocketHandlers(io, socket, store) {
     } catch (err) {
       console.error('[Socket] submit_ballot error:', err.message);
     }
-  });
+  };
+
+  socket.on('submit_ballot', handleSubmitBallot);
+  socket.on('submit_votes', handleSubmitBallot);
+  socket.on('submit_Votes', handleSubmitBallot);
 
   const handleForceResolve = async (data) => {
     try {
@@ -374,6 +389,7 @@ function registerVotingSocketHandlers(io, socket, store) {
           });
         }
       }, 10000);
+      if (timeout.unref) timeout.unref();
 
       disconnectTimeouts.set(dcKey, timeout);
     }
