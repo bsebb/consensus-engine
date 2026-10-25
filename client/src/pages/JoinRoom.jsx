@@ -158,8 +158,8 @@ export default function JoinRoom() {
       setIsJoiningRoom(false);
       return { success: false, message: failMsg };
     } catch {
-      const errMsg = 'Could not reach the server. Please check your internet connection.';
-      addToast({ title: 'Connection Error', message: errMsg, type: 'error' });
+      const errMsg = t('networkErrorDesc') || 'Could not reach the server. Please check your internet connection.';
+      addToast({ title: t('connectionError') || 'Connection Error', message: errMsg, type: 'error' });
       setIsJoiningRoom(false);
       return { success: false, message: errMsg };
     }
@@ -178,8 +178,8 @@ export default function JoinRoom() {
     if (effectiveIsCustom && (!effectiveTopic.trim() || effectiveTopic.trim().length < 2 || effectiveOptions.length < 2)) {
       triggerHaptic('veto');
       addToast({
-        title: !effectiveTopic.trim() ? (t('customQuestionRequired') || 'Question Required') : 'Options Needed',
-        message: !effectiveTopic.trim() ? 'Please enter a question to start your custom poll.' : 'Please add at least 2 options for your group to vote on.',
+        title: !effectiveTopic.trim() ? (t('customQuestionRequired') || 'Question Required') : (t('customOptionsNeeded') || 'Options Needed'),
+        message: !effectiveTopic.trim() ? (t('customQuestionRequiredHint') || 'Please enter a question to start your custom poll.') : (t('customOptionsNeededHint') || 'Please add at least 2 options for your group to vote on.'),
         type: 'warning',
       });
       setIsCustomDrawerOpen(true);
@@ -249,9 +249,9 @@ export default function JoinRoom() {
         return;
       }
       const errData = await response.json().catch(() => ({}));
-      addToast({ title: 'Could Not Create Room', message: errData.message || 'Please try again in a moment.', type: 'error' });
+      addToast({ title: t('createRoomError') || 'Could Not Create Room', message: errData.message || t('tryAgainMoment') || 'Please try again in a moment.', type: 'error' });
     } catch {
-      addToast({ title: 'Connection Error', message: 'Could not reach server to create room. Please check your connection.', type: 'error' });
+      addToast({ title: t('connectionError') || 'Connection Error', message: t('networkErrorDesc') || 'Could not reach server to create room. Please check your connection.', type: 'error' });
     }
     setIsCreatingRoom(false);
   };
@@ -329,7 +329,7 @@ export default function JoinRoom() {
               {name.trim() && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                   <Check size={10} />
-                  <span>Saved</span>
+                  <span>{t('savedBadge') || 'Saved'}</span>
                 </span>
               )}
             </div>

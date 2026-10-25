@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Share, PlusSquare, X, Download } from 'lucide-react';
 import Button from './Button';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function InstallPrompt() {
+  const { t } = useLanguage();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -28,9 +30,11 @@ export default function InstallPrompt() {
     const isSafari = /safari/.test(userAgent) && !/chrome|crios|fxios/.test(userAgent);
 
     if (isAppleDevice && isSafari) {
-      setIsIOSDevice(true);
-      setShowPrompt(true);
-      return;
+      const timer = setTimeout(() => {
+        setIsIOSDevice(true);
+        setShowPrompt(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     // 4. Android / Chromium beforeinstallprompt handler
@@ -71,10 +75,10 @@ export default function InstallPrompt() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Install NoYouPick
+                {t('installNoYouPick') || 'Install NoYouPick'}
               </h4>
               <p className="text-[11px] text-[var(--text-secondary)]">
-                Fast, tactile mobile voting app
+                {t('installDesc') || 'Fast, tactile mobile voting app'}
               </p>
             </div>
           </div>
@@ -94,7 +98,7 @@ export default function InstallPrompt() {
             <Share size={14} className="text-[var(--accent-bg)] shrink-0" />
             <span>then choose</span>
             <span className="font-bold text-[var(--text-primary)] inline-flex items-center gap-1">
-              <PlusSquare size={13} /> Add to Home Screen
+              <PlusSquare size={13} /> {t('addToHomeScreen') || 'Add to Home Screen'}
             </span>
           </div>
         ) : (
@@ -104,7 +108,7 @@ export default function InstallPrompt() {
             onClick={handleNativeInstall}
             className="w-full"
           >
-            Add to Device
+            {t('addToDevice') || 'Add to Device'}
           </Button>
         )}
       </div>

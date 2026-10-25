@@ -41,7 +41,7 @@ export default function RecentRoomsDrawer({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="text-xs font-bold text-[var(--text-primary)] truncate">
-              Active Room <span className="text-[var(--accent-bg)] tabular-nums">#{activePin}</span>
+              {t('activeRoomBanner') || 'Active Room'} <span className="text-[var(--accent-bg)] tabular-nums">#{activePin}</span>
             </span>
           </div>
           <button
@@ -52,7 +52,7 @@ export default function RecentRoomsDrawer({
             }}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[var(--accent-bg)] text-white text-xs font-bold hover:opacity-95 active:scale-95 transition-all cursor-pointer shrink-0"
           >
-            <span>Rejoin</span>
+            <span>{t('rejoinBtn') || 'Rejoin'}</span>
             <ArrowRight size={12} />
           </button>
         </div>
@@ -65,10 +65,10 @@ export default function RecentRoomsDrawer({
             <>
               <div className="flex flex-col min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-bg)]">
-                  How did it go?
+                  {t('howDidItGo') || 'How did it go?'}
                 </span>
                 <span className="text-xs font-extrabold text-[var(--text-primary)] truncate">
-                  Rate {recentWinnerName}
+                  {t('rateVenuePrompt')?.replace('{name}', recentWinnerName) || `Rate ${recentWinnerName}`}
                 </span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -122,7 +122,7 @@ export default function RecentRoomsDrawer({
                     }}
                     className="text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                   >
-                    Recent ({historyList.length})
+                    {t('recentBadge') || 'Recent'} ({historyList.length})
                   </button>
                 )}
                 <button
@@ -159,9 +159,9 @@ export default function RecentRoomsDrawer({
                     <History size={16} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold">Recent Group Picks</h3>
+                    <h3 className="text-sm font-extrabold">{t('recentGroupPicks') || 'Recent Group Picks'}</h3>
                     <p className="text-[11px] text-[var(--text-secondary)]">
-                      Tap a category to start a fresh room in 1 tap
+                      {t('recentGroupPicksDesc') || 'Tap a category to start a fresh room in 1 tap'}
                     </p>
                   </div>
                 </div>
@@ -208,7 +208,7 @@ export default function RecentRoomsDrawer({
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--accent-bg)] hover:text-white border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--accent-bg)] transition-colors cursor-pointer shrink-0"
                         >
                           <RotateCcw size={11} />
-                          <span>Run again</span>
+                          <span>{t('runAgain') || 'Run again'}</span>
                         </button>
                       )}
                     </div>

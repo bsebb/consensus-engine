@@ -38,50 +38,31 @@ export {
   playVictoryChord,
 };
 
-let persistentSwitchLabel = null;
-let persistentSwitchInput = null;
-
 /**
- * Persistent off-screen WebKit switch input element.
- * WebKit routes input.click() directly to UIKit UIImpactFeedbackGenerator on iOS 17.4+.
+ * Triggers iOS Safari / WebKit native switch haptic pulse.
+ * In iOS 17.4+ and iOS 18+, WebKit triggers UIKit's UIImpactFeedbackGenerator / Taptic Engine
+ * when a user interaction toggles a native switch element via its label.
  */
-function getPersistentSwitchElements() {
-  if (typeof document === 'undefined') return null;
-  if (!persistentSwitchInput || !persistentSwitchInput.isConnected) {
-    try {
-      const container = document.createElement('div');
-      container.setAttribute('aria-hidden', 'true');
-      container.style.cssText =
-        'position:fixed;bottom:-20px;right:-20px;width:1px;height:1px;opacity:0.001;pointer-events:none;overflow:hidden;z-index:-1;';
-      const label = document.createElement('label');
-      label.style.cssText = 'pointer-events:auto;cursor:pointer;display:inline-block;';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.setAttribute('switch', '');
-      input.style.cssText = 'pointer-events:auto;cursor:pointer;';
-      label.appendChild(input);
-      container.appendChild(label);
-      const root = document.body || document.documentElement;
-      if (root) {
-        root.appendChild(container);
-        persistentSwitchLabel = label;
-        persistentSwitchInput = input;
-      }
-    } catch {}
-  }
-  return { label: persistentSwitchLabel, input: persistentSwitchInput };
+function fireIOSSwitch() {
+  if (typeof document === 'undefined' || !document.body) return;
+  try {
+    const label = document.createElement('label');
+    label.setAttribute('aria-hidden', 'true');
+    label.style.cssText =
+      'position:fixed;top:-1000px;left:-1000px;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;opacity:0.001;pointer-events:auto;';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('switch', '');
+    input.style.cssText = 'pointer-events:auto;';
+    label.appendChild(input);
+    document.body.appendChild(label);
+    label.click();
+    document.body.removeChild(label);
+  } catch {}
 }
 
 function triggerIosTaptic() {
-  if (typeof document === 'undefined') return;
-  try {
-    const els = getPersistentSwitchElements();
-    if (els?.input) {
-      els.input.click();
-    } else if (els?.label) {
-      els.label.click();
-    }
-  } catch {}
+  fireIOSSwitch();
 }
 
 function isHapticsEnabled() {

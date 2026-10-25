@@ -246,7 +246,7 @@ export default function CustomOptionAutocomplete({
       {duplicateMatch && cleanQuery && (
         <div className="mt-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
           <AlertTriangle size={12} className="shrink-0 text-amber-500" />
-          <span className="truncate">"{duplicateMatch}" is already on the table</span>
+          <span className="truncate">{t('alreadyOnTable')?.replace('{name}', duplicateMatch) || `"${duplicateMatch}" is already on the table`}</span>
         </div>
       )}
 

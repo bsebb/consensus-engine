@@ -44,19 +44,21 @@ export function useSwipeDeckSync({
   }, [pin, participantId, deviceId, isHost, emit, on, off]);
 
   const propsRef = useRef({});
-  propsRef.current = {
-    cards,
-    locationState,
-    setCards,
-    setVotesReceived,
-    setQuorumTotal,
-    setVotedParticipantIds,
-    setServerWinner,
-    setServerMatchScore,
-    setServerPairwise,
-    setShowWinner,
-    onAlreadyVoted,
-  };
+  useEffect(() => {
+    propsRef.current = {
+      cards,
+      locationState,
+      setCards,
+      setVotesReceived,
+      setQuorumTotal,
+      setVotedParticipantIds,
+      setServerWinner,
+      setServerMatchScore,
+      setServerPairwise,
+      setShowWinner,
+      onAlreadyVoted,
+    };
+  });
 
   // Global room resolution and real-time progress listeners
   useEffect(() => {

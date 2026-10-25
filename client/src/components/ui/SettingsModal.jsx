@@ -216,11 +216,11 @@ export default function SettingsModal({ isOpen, onClose }) {
                 type="text"
                 value={userName}
                 onChange={handleNameSave}
-                placeholder="Your Name (e.g. Alex)"
+                placeholder={t('namePlaceholder') || 'Your Name (e.g. Alex)'}
                 className="flex-1 px-3 py-2 text-xs font-semibold bg-transparent outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
               />
-              <span className="text-[10px] font-mono font-bold px-2 py-1 bg-[var(--bg-elevated)] rounded-xl text-[var(--text-secondary)]">
-                Saved
+              <span className="text-[10px] font-sans font-bold px-2 py-1 bg-[var(--bg-elevated)] rounded-xl text-[var(--text-secondary)]">
+                {t('savedBadge') || 'Saved'}
               </span>
             </div>
           </section>
@@ -271,7 +271,7 @@ export default function SettingsModal({ isOpen, onClose }) {
               className="flex-1 py-2 px-2.5 rounded-xl bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] font-medium border border-[var(--border-subtle)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[36px]"
             >
               <RotateCcw size={13} className="opacity-70" />
-              <span>Reset Active PIN</span>
+              <span>{t('resetPinBtn') || 'Reset Active PIN'}</span>
             </button>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Check, Clock, Crown, User, Sparkles } from 'lucide-react';
+import { CheckCircle2, Check, Clock, Crown, Sparkles } from 'lucide-react';
 import Button from '../ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -93,7 +93,7 @@ export default function WaitingForBallotsView({
                         </span>
                         {isCurrent && (
                           <span className="text-[10px] text-[var(--text-tertiary)] font-normal">
-                            (You)
+                            ({t('you') || 'You'})
                           </span>
                         )}
                         {p.isHost && (

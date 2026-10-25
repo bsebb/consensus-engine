@@ -45,7 +45,7 @@ export default function LobbyDock({
             className="w-full h-13 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] disabled:opacity-45 text-white font-extrabold text-sm sm:text-base tracking-tight flex items-center justify-center gap-2.5 shadow-[0_8px_28px_var(--accent-glow)] active:scale-[0.98] transition-all cursor-pointer disabled:cursor-not-allowed"
           >
             <Play size={15} className="fill-current shrink-0" />
-            <span>{isReady ? (t('startVoting') || 'Start voting') : `Add ${Math.max(1, 2 - candidateCount)} more to start`}</span>
+            <span>{isReady ? (t('startVoting') || 'Start voting') : (t('addMoreToStart')?.replace('{count}', Math.max(1, 2 - candidateCount)) || `Add ${Math.max(1, 2 - candidateCount)} more to start`)}</span>
             {isReady && (
               <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-bold tabular-nums">
                 {candidateCount} {itemUnit}
@@ -68,7 +68,7 @@ export default function LobbyDock({
                   {t('hostSettingTable') || `Waiting for ${hostName} to start swiping...`}
                 </span>
                 <span className="text-[11px] text-[var(--text-secondary)] truncate tabular-nums">
-                  {candidateCount} {itemUnit} on the table
+                  {candidateCount} {itemUnit} {t('onTheTable') || 'on the table'}
                 </span>
               </div>
             </div>

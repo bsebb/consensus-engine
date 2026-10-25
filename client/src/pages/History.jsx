@@ -174,7 +174,8 @@ export default function History() {
       </header>
 
       {/* Main Content */}
-      <main className="px-4 pt-3.5 pb-[max(env(safe-area-inset-bottom,0px),1.5rem)] flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
+      <main className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-3.5 pb-8">
+        <div className="max-w-md mx-auto w-full flex flex-col gap-3.5">
         {/* Section Header: Clean headline without duplicate labels */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-baseline gap-2">
@@ -257,7 +258,7 @@ export default function History() {
                         {s.topic}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-mono text-[11px] font-bold text-[var(--accent-bg)] bg-[var(--accent-bg)]/10 px-2 py-0.5 rounded-md">
+                        <span className="text-[11px] font-bold text-[var(--accent-bg)] bg-[var(--accent-bg)]/10 px-2 py-0.5 rounded-md tabular-nums">
                           #{s.pin}
                         </span>
                         <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
@@ -296,7 +297,7 @@ export default function History() {
                         <span className="text-[11px] font-medium text-[var(--text-secondary)] bg-[var(--bg-inset)] px-2 py-0.5 rounded-full border border-[var(--border-subtle)]">
                           {s.participantsCount || 4} {t('historyVoters')}
                         </span>
-                        <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                        <span className="text-xs font-bold text-[var(--text-secondary)] tabular-nums">
                           {formatRegionalPricePill(s.priceLevel || 2, s)}
                         </span>
                         {myReview && (
@@ -339,7 +340,7 @@ export default function History() {
                               }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="font-mono text-xs font-bold text-[var(--text-tertiary)] w-4 text-center shrink-0">
+                                <span className="text-xs font-bold text-[var(--text-tertiary)] w-4 text-center shrink-0 tabular-nums">
                                   {opt.isWinner ? '1' : oIdx + 1}
                                 </span>
                                 <div className="flex flex-col min-w-0">
@@ -358,7 +359,7 @@ export default function History() {
                               </div>
 
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
+                                <span className="text-xs font-bold text-[var(--text-secondary)] tabular-nums">
                                   {formatRegionalPricePill(opt.priceLevel || 2, opt)}
                                 </span>
                                 {opt.isWinner && (
@@ -376,7 +377,7 @@ export default function History() {
                           <div className="flex flex-col min-w-0">
                             <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                               <Star size={12} className="fill-amber-400 text-amber-400 shrink-0" />
-                              <span>Your Rating: {myReview.satisfaction_score || 5}/5</span>
+                              <span>{t('yourRating') || 'Your Rating'}: {myReview.satisfaction_score || 5}/5</span>
                             </span>
                             {myReview.comment && (
                               <span className="text-[11px] text-[var(--text-secondary)] italic truncate mt-0.5">
@@ -392,7 +393,7 @@ export default function History() {
                             }}
                             className="shrink-0 px-2.5 py-1 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-primary)] cursor-pointer"
                           >
-                            Edit
+                            {t('edit') || 'Edit'}
                           </button>
                         </div>
                       ) : (
@@ -450,6 +451,7 @@ export default function History() {
             })}
           </div>
         )}
+        </div>
       </main>
 
       {/* Global Settings Modal */}

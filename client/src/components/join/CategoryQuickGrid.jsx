@@ -48,7 +48,7 @@ export default function CategoryQuickGrid({
           {hasSavedNickname && !isCustomMode && (
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--accent-bg)]">
               <Zap size={11} className="fill-current" />
-              <span>1-tap ready</span>
+              <span>{t('oneTapReady') || '1-tap ready'}</span>
             </span>
           )}
         </div>
@@ -91,7 +91,7 @@ export default function CategoryQuickGrid({
                     </span>
                     {isFav && !isSelected && (
                       <span className="px-1.5 py-0.5 rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[10px] font-semibold text-[var(--text-tertiary)] shrink-0">
-                        Recent
+                        {t('recentBadge') || 'Recent'}
                       </span>
                     )}
                   </div>
@@ -139,7 +139,7 @@ export default function CategoryQuickGrid({
               <div className="text-[11px] text-[var(--text-tertiary)] truncate">
                 {customOptions.length > 0
                   ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready - Tap to edit`
-                  : 'Configure question & options'}
+                  : (t('configureQuestionHint') || 'Configure question & options')}
               </div>
             </div>
           </div>

@@ -31,7 +31,7 @@ export function LanguageGridPicker({ onSelectDone }) {
           >
             <div className="flex items-center gap-2 min-w-0">
               <span
-                className={`text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-md shrink-0 ${
+                className={`text-[10px] font-sans font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
                   isSelected
                     ? 'bg-[var(--accent-bg)] text-white'
                     : 'bg-[var(--bg-elevated)] text-[var(--text-tertiary)] border border-[var(--border-subtle)]'
