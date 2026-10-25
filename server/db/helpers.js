@@ -95,19 +95,25 @@ async function ensureRoomPersisted(key) {
 }
 
 async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null, preGeneratedId = null) {
+    const data = {
+        ...(preGeneratedId ? { id: preGeneratedId } : {}),
+        hostId,
+        hostDeviceId: hostDeviceId ? String(hostDeviceId).slice(0, 64) : null,
+        pin,
+        theme: theme ? String(theme) : null,
+        radius: typeof radius === 'number' ? radius : null,
+    };
     try {
-        const room = await prisma.room.create({
-            data: {
-                ...(preGeneratedId ? { id: preGeneratedId } : {}),
-                hostId,
-                hostDeviceId: hostDeviceId ? String(hostDeviceId).slice(0, 64) : null,
-                pin,
-                theme: theme ? String(theme) : null,
-                radius: typeof radius === 'number' ? radius : null,
-            },
-        });
-        return room;
+        return await prisma.room.create({ data });
     } catch (error) {
+        if (error && error.code === 'P2002') {
+            try {
+                await prisma.room.deleteMany({ where: { pin } });
+                return await prisma.room.create({ data });
+            } catch (retryErr) {
+                console.error(retryErr);
+            }
+        }
         console.error(error);
         throw new Error("Failed to create room");
     }

@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Camera,
+  Sparkles,
 } from 'lucide-react';
 import { getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';

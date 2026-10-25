@@ -402,7 +402,7 @@ export default function CandidatePoolDeck({
       <VenueDetailsModal
         key={selectedVenue?.id || selectedVenue?.name || 'lobby-venue-modal'}
         venue={selectedVenue}
-        isOpen={Boolean(selectedVenue && !selectedVenue.isCustom && mode !== 'CUSTOM')}
+        isOpen={Boolean(selectedVenue && (!selectedVenue.isCustom || selectedVenue.isRoutablePlace || mode !== 'CUSTOM'))}
         onClose={() => setSelectedVenue(null)}
         onReportClosed={(v) => {
           setSelectedVenue(null);

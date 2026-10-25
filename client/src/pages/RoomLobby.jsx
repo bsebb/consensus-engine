@@ -109,8 +109,10 @@ export default function RoomLobby() {
 
   useEffect(() => {
     if (!pin) return;
-    // Optimization: Skip network fetch if options were already passed in navigation state
-    if (location.state?.roomData?.options && location.state.roomData.options.length > 0) {
+    // Optimization: Skip network fetch if roomData was already passed in navigation state
+    const hasPassedOptions = Array.isArray(location.state?.roomData?.options) && location.state.roomData.options.length > 0;
+    const isFreshHostCustom = Boolean(location.state?.isHost && location.state?.mode === 'CUSTOM' && location.state?.roomData);
+    if (hasPassedOptions || isFreshHostCustom) {
       setLoadingOptions(false);
       return;
     }
@@ -123,7 +125,7 @@ export default function RoomLobby() {
       })
       .then((data) => {
         if (data) {
-          if (data.status === 'RESOLVED') {
+          if (data.status === 'RESOLVED' && !location.state?.isHost) {
             ['consensus_active_pin', `consensus_host_${pin}`, `consensus_pause_voting_${pin}`].forEach((k) => {
               localStorage.removeItem(k);
               sessionStorage.removeItem(k);
@@ -139,7 +141,7 @@ export default function RoomLobby() {
               : null);
           if (safeTopic && safeTopic !== 'custom' && safeTopic !== 'poll') {
             setTopic((prev) => {
-              const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts'].includes(String(safeTopic).toLowerCase().trim());
+              const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts', 'activities'].includes(String(safeTopic).toLowerCase().trim());
               return (isBare && prev && prev !== 'Where should we go?') ? prev : safeTopic;
             });
           }
@@ -150,6 +152,9 @@ export default function RoomLobby() {
       })
       .catch((err) => {
         console.warn('[RoomLobby] Room fetch notice:', err.message);
+        if (location.state?.isHost || location.state?.roomData) {
+          return;
+        }
         addToast({
           title: 'Room Not Found',
           message: `Room #${pin} could not be loaded or is expired.`,
@@ -404,21 +409,6 @@ export default function RoomLobby() {
     addToast({ title: t('closedReportedTitle'), message: t('closedReportedDesc'), type: 'info' });
   };
 
-  useEffect(() => {
-    if (isHost && Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0) {
-      const hostToken = getHostToken();
-      location.state.initialCustomOptions.forEach((opt) => {
-        emit('add_suggestion', {
-          pin,
-          suggestion: opt,
-          participant_id: participantId,
-          host_token: hostToken,
-          user_name: currentUserName,
-        });
-      });
-    }
-  }, []);
-
   const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
   const filteredCandidates = useMemo(() => {
     if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
@@ -493,6 +483,7 @@ export default function RoomLobby() {
     }
     const activeParticipantCount = Math.max(1, participants.length);
     const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
+    sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
     emit('host_start_voting', { pin, host_id: participantId, host_token: hostToken || undefined, options: cardsToPass, topic, mode });
 
     isTransitioningToDeckRef.current = true;

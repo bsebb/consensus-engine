@@ -598,18 +598,23 @@ button:active:not(:disabled),
   box-shadow: 0 2px 8px rgba(168, 85, 247, 0.35);
 }
 
+.category-tile[data-theme="activities"]:hover,
+.category-tile[data-theme="activities"].is-selected,
 .category-tile[data-theme="cinema"]:hover,
 .category-tile[data-theme="cinema"].is-selected {
   box-shadow: 0 0 24px -2px rgba(6, 182, 212, 0.22), 0 4px 14px rgba(0, 0, 0, 0.04);
 }
+.category-tile[data-theme="activities"].is-selected,
 .category-tile[data-theme="cinema"].is-selected {
   border-color: rgba(6, 182, 212, 0.5);
   background-color: rgba(6, 182, 212, 0.08);
 }
+.category-tile[data-theme="activities"] .cat-indicator-dot,
 .category-tile[data-theme="cinema"] .cat-indicator-dot {
   background-color: rgb(6, 182, 212);
   box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
 }
+.category-tile[data-theme="activities"] .cat-icon-badge.is-selected,
 .category-tile[data-theme="cinema"] .cat-icon-badge.is-selected {
   background-color: rgb(6, 182, 212);
   color: #ffffff;

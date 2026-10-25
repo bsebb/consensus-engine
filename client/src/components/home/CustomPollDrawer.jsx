@@ -112,7 +112,16 @@ export default function CustomPollDrawer({
       questionInputRef.current?.focus();
       return;
     }
-    if ((customOptions || []).length < 2) {
+
+    const pendingOpt = (newOptionText || '').trim();
+    let finalOptions = Array.isArray(customOptions) ? [...customOptions] : [];
+    if (pendingOpt && finalOptions.length < 10 && !finalOptions.some((o) => o.toLowerCase() === pendingOpt.toLowerCase())) {
+      finalOptions = [...finalOptions, pendingOpt];
+      setCustomOptions(finalOptions);
+      setNewOptionText('');
+    }
+
+    if (finalOptions.length < 2) {
       triggerHaptic('veto');
       addToast({
         title: t('customOptionsNeeded') || 'Options Needed',
@@ -125,7 +134,7 @@ export default function CustomPollDrawer({
     triggerHaptic('like');
     if (onStartRoom) {
       onClose?.();
-      onStartRoom();
+      onStartRoom({ customTopic: cleanTopic, customOptions: finalOptions });
     } else {
       handleClose();
     }

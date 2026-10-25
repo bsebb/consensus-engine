@@ -22,13 +22,13 @@ const { buildOptionRecords, discoverDiscoveryVenues, expandRoomVenues } = requir
 const { reportClosedVenue } = require('../utils/reportedVenues');
 const { dispatchActivityNotification } = require('../utils/storageSafeguard');
 const { calculateSchulzeWinner } = require('../utils/schulze');
-const { roomSummaryCache, activeVotingSessions } = require('../sockets/socketSessionStore');
+const { roomSummaryCache, activeLobbies, activeVotingSessions } = require('../sockets/socketSessionStore');
 
-// High-capacity in-memory cache (25s TTL, 2000 rooms) for 1000+ CCU room lookups
+// High-capacity in-memory cache (5m TTL, 2000 rooms) for 1000+ CCU room lookups
 const roomResponseCache = new Map();
 const MAX_ROOM_CACHE = 2000;
 
-function setBoundedRoomCache(pin, payload, ttlMs = 25000) {
+function setBoundedRoomCache(pin, payload, ttlMs = 300000) {
   if (roomResponseCache.size >= MAX_ROOM_CACHE) {
     const oldest = roomResponseCache.keys().next().value;
     if (oldest) roomResponseCache.delete(oldest);
@@ -68,8 +68,8 @@ const createNewRoom = async (req, res) => {
 
   // Generate unique 4-digit PIN in RAM (checking active caches first for 0ms collision avoidance)
   let pin = generatePin();
-  for (let attempt = 0; attempt < 10; attempt++) {
-    if (!roomResponseCache.has(pin) && !roomSummaryCache.has(pin)) break;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (!roomResponseCache.has(pin) && !roomSummaryCache.has(pin) && !activeLobbies?.has(pin) && !activeVotingSessions?.has(pin)) break;
     pin = generatePin();
   }
   const roomId = crypto.randomUUID();

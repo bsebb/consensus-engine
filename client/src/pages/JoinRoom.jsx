@@ -173,12 +173,16 @@ export default function JoinRoom() {
     }
   };
 
-  const handleStartRoom = async () => {
-    if (isCustomMode && (!customTopic.trim() || customTopic.trim().length < 2 || customOptions.length < 2)) {
+  const handleStartRoom = async (overrideConfig = null) => {
+    const hasOverride = Boolean(overrideConfig && typeof overrideConfig === 'object' && !overrideConfig.nativeEvent);
+    const effectiveTopic = hasOverride && typeof overrideConfig.customTopic === 'string' ? overrideConfig.customTopic : customTopic;
+    const effectiveOptions = hasOverride && Array.isArray(overrideConfig.customOptions) ? overrideConfig.customOptions : customOptions;
+
+    if (isCustomMode && (!effectiveTopic.trim() || effectiveTopic.trim().length < 2 || effectiveOptions.length < 2)) {
       triggerHaptic('veto');
       addToast({
-        title: !customTopic.trim() ? (t('customQuestionRequired') || 'Question Required') : 'Options Needed',
-        message: !customTopic.trim()
+        title: !effectiveTopic.trim() ? (t('customQuestionRequired') || 'Question Required') : 'Options Needed',
+        message: !effectiveTopic.trim()
           ? 'Please enter a question to start your custom poll.'
           : 'Please add at least 2 options for your group to vote on.',
         type: 'warning',
@@ -193,7 +197,7 @@ export default function JoinRoom() {
 
     const roomMode = isCustomMode ? 'CUSTOM' : 'DISCOVERY';
     const catConfig = categories.find((c) => c.id === selectedCategory) || categories[0];
-    const topicTitle = isCustomMode ? (customTopic.trim() || 'What should we do?') : catConfig.topic;
+    const topicTitle = isCustomMode ? (effectiveTopic.trim() || 'What should we do?') : catConfig.topic;
 
     let lat = gpsState.lat;
     let lng = gpsState.lng;
@@ -240,7 +244,6 @@ export default function JoinRoom() {
           sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);
         }
         localStorage.setItem('consensus_active_pin', generatedPin);
-        setIsCreatingRoom(false);
         navigate(`/lobby/${generatedPin}`, {
           state: {
             mode: roomMode,
@@ -250,7 +253,7 @@ export default function JoinRoom() {
             topic: topicTitle,
             radiusKm: 5,
             roomData: realRoom,
-            initialCustomOptions: isCustomMode && customOptions.length > 0 ? customOptions : undefined,
+            initialCustomOptions: isCustomMode && effectiveOptions.length > 0 ? effectiveOptions : undefined,
           },
         });
         return;
