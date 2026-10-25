@@ -73,6 +73,8 @@ export default function SwipeDeck() {
   const [serverMatchScore, setServerMatchScore] = useState(null);
   const [votesReceived, setVotesReceived] = useState(1);
   const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
+  const [participants, setParticipants] = useState(() => (Array.isArray(location.state?.participants) ? location.state.participants : []));
+  const [votedParticipantIds, setVotedParticipantIds] = useState([]);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [condorcetOpen, setCondorcetOpen] = useState(false);
@@ -240,9 +242,9 @@ export default function SwipeDeck() {
       handleVote(1);
     } else if (diffX < -70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
       handleVote(-1);
-    } else if (diffY > 80 && Math.abs(diffY) > Math.abs(diffX)) {
+    } else if (diffY > 115 && Math.abs(diffY) > Math.abs(diffX) * 1.4) {
       handleVote(-100);
-    } else if (diffY < -80 && Math.abs(diffY) > Math.abs(diffX)) {
+    } else if (diffY < -80 && Math.abs(diffY) > Math.abs(diffX) * 1.2) {
       handleVote(2);
     } else {
       setDragOffset({ x: 0, y: 0 });
@@ -287,7 +289,7 @@ export default function SwipeDeck() {
     cards,
     myVotes,
     currentIndex, showWinner, locationState: location.state,
-    setCards, setVotesReceived, setQuorumTotal, setServerWinner,
+    setCards, setVotesReceived, setQuorumTotal, setVotedParticipantIds, setServerWinner,
     setServerMatchScore, setServerPairwise, setShowWinner,
     onAlreadyVoted: () => setCurrentIndex(cards.length),
     emit, on, off,
@@ -488,6 +490,9 @@ export default function SwipeDeck() {
           votesReceived={votesReceived}
           quorumTotal={quorumTotal}
           handleHostForceReveal={handleHostForceReveal}
+          participants={participants}
+          votedParticipantIds={votedParticipantIds}
+          currentParticipantId={participantId}
         />
       ) : (
         <>

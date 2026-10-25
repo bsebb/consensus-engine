@@ -200,6 +200,7 @@ export default function RoomLobby() {
         totalParticipants: Math.max(1, participants.length),
         customCards: displayedCandidates.length > 0 ? displayedCandidates : undefined,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
+        participants: participants.map((p) => ({ id: p.id, name: p.name, isHost: Boolean(p.isHost) })),
       },
     });
   };
@@ -219,6 +220,7 @@ export default function RoomLobby() {
     setIsVotingActive,
     onTransitionToDeck: handleTransitionToDeck,
     locationState: location.state,
+    participants,
     lockedConstraint,
     budgetLimit, setMode, setTopic, setGroupSize, setGroupPool,
     setParticipants, setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions,
@@ -503,6 +505,7 @@ export default function RoomLobby() {
         totalParticipants: activeParticipantCount,
         customCards: cardsToPass,
         budgetLimit: lockedConstraint ? budgetLimit : undefined,
+        participants: participants.map((p) => ({ id: p.id, name: p.name, isHost: Boolean(p.isHost) })),
       },
     });
   };

@@ -11,6 +11,7 @@ export function useLobbySync({
   setIsVotingActive,
   onTransitionToDeck,
   locationState,
+  participants,
   lockedConstraint,
   budgetLimit,
   setMode,
@@ -39,6 +40,7 @@ export function useLobbySync({
     setIsVotingActive,
     onTransitionToDeck,
     locationState,
+    participants,
     lockedConstraint,
     budgetLimit,
     setMode,
@@ -283,6 +285,11 @@ export function useLobbySync({
           totalParticipants: data?.total_participants || 1,
           customCards: options.length > 0 ? options : undefined,
           budgetLimit: lockedConstraint ? budgetLimit : undefined,
+          participants: (Array.isArray(propsRef.current.participants) ? propsRef.current.participants : []).map((p) => ({
+            id: p.id,
+            name: p.name,
+            isHost: Boolean(p.isHost),
+          })),
         },
       });
     };

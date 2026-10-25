@@ -14,6 +14,7 @@ export function useSwipeDeckSync({
   setCards,
   setVotesReceived,
   setQuorumTotal,
+  setVotedParticipantIds,
   setServerWinner,
   setServerMatchScore,
   setServerPairwise,
@@ -49,6 +50,7 @@ export function useSwipeDeckSync({
     setCards,
     setVotesReceived,
     setQuorumTotal,
+    setVotedParticipantIds,
     setServerWinner,
     setServerMatchScore,
     setServerPairwise,
@@ -61,12 +63,15 @@ export function useSwipeDeckSync({
     if (!pin) return;
 
     const handleVoteProgress = (data) => {
-      const { setVotesReceived, setQuorumTotal } = propsRef.current;
+      const { setVotesReceived, setQuorumTotal, setVotedParticipantIds } = propsRef.current;
       if (data?.voted_participants || data?.votes_received) {
         setVotesReceived(data.voted_participants || data.votes_received);
       }
       if (data?.total_participants && typeof data.total_participants === 'number') {
         setQuorumTotal(data.total_participants);
+      }
+      if (Array.isArray(data?.voted_participant_ids) && setVotedParticipantIds) {
+        setVotedParticipantIds(data.voted_participant_ids);
       }
     };
 
@@ -91,7 +96,7 @@ export function useSwipeDeckSync({
 
     const handleStateRestore = (data) => {
       console.log('[SwipeDeck] State restore received:', data);
-      const { setCards, setVotesReceived, setQuorumTotal, onAlreadyVoted, locationState } = propsRef.current;
+      const { setCards, setVotesReceived, setQuorumTotal, setVotedParticipantIds, onAlreadyVoted, locationState } = propsRef.current;
       if (Array.isArray(data?.options) && data.options.length > 0 && !locationState?.customCards) {
         setCards(data.options);
       }
@@ -100,6 +105,9 @@ export function useSwipeDeckSync({
       }
       if (data?.total_participants) {
         setQuorumTotal(data.total_participants);
+      }
+      if (Array.isArray(data?.voted_participant_ids) && setVotedParticipantIds) {
+        setVotedParticipantIds(data.voted_participant_ids);
       }
       if (data?.already_voted && onAlreadyVoted) {
         onAlreadyVoted();

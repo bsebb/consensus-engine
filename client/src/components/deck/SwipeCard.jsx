@@ -57,12 +57,29 @@ export default function SwipeCard({
   const [photoIdx, setPhotoIdx] = useState(0);
   const [failedUrls, setFailedUrls] = useState({});
   const [customImgError, setCustomImgError] = useState(false);
+  const [showGestureHint, setShowGestureHint] = useState(() => {
+    try {
+      return !localStorage.getItem('consensus_seen_swipe_hint');
+    } catch {
+      return true;
+    }
+  });
+
+  const dismissGestureHint = () => {
+    setShowGestureHint(false);
+    try {
+      localStorage.setItem('consensus_seen_swipe_hint', 'true');
+    } catch {}
+  };
 
   useEffect(() => {
     setPhotoIdx(0);
     setFailedUrls({});
     setCustomImgError(false);
-  }, [activeCard?.id, activeCard?.name]);
+    if (cardIndex > 1 && showGestureHint) {
+      dismissGestureHint();
+    }
+  }, [activeCard?.id, activeCard?.name, cardIndex]);
 
   const validPhotos = (photos || []).filter((u) => !failedUrls[u]);
   const displayPhoto = (!useRealVenueGallery && customPhoto)
@@ -72,9 +89,9 @@ export default function SwipeCard({
 
   const likeProgress = Math.min(1, Math.max(0, (dragOffset.x - 6) / 64));
   const passProgress = Math.min(1, Math.max(0, (-dragOffset.x - 6) / 64));
-  const isVertical = Math.abs(dragOffset.x) < 65;
-  const vetoProgress = isVertical ? Math.min(1, Math.max(0, (dragOffset.y - 15) / 60)) : 0;
-  const superlikeProgress = isVertical ? Math.min(1, Math.max(0, (-dragOffset.y - 15) / 60)) : 0;
+  const isVertical = Math.abs(dragOffset.x) < 55;
+  const vetoProgress = isVertical ? Math.min(1, Math.max(0, (dragOffset.y - 65) / 70)) : 0;
+  const superlikeProgress = isVertical ? Math.min(1, Math.max(0, (-dragOffset.y - 35) / 65)) : 0;
 
   const enterClass = enterDirection ? `animate-card-fly-in-${enterDirection}` : '';
   const cardTransform = exitDirection === 'right'
@@ -154,6 +171,25 @@ export default function SwipeCard({
           >
             <Star size={16} strokeWidth={2.5} className="fill-amber-300" />
             <span>{t('superlikeAction') || 'SUPERLIKE'}</span>
+          </div>
+        )}
+
+        {/* First-Card Onboarding Gesture Pill */}
+        {cardIndex === 1 && showGestureHint && (
+          <div
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={dismissGestureHint}
+            className="absolute bottom-20 sm:bottom-24 inset-x-4 z-40 py-2 px-3 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white shadow-2xl flex items-center justify-between gap-2 animate-bounce-subtle cursor-pointer select-none"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles size={14} className="text-amber-400 shrink-0" />
+              <span className="text-[11px] font-bold tracking-tight truncate">
+                {t('swipeHintPill') || '👉 Swipe right to Like • Left to Pass • Tap for details'}
+              </span>
+            </div>
+            <span className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center text-xs font-bold shrink-0 transition-colors">
+              ✕
+            </span>
           </div>
         )}
 
