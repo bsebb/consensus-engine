@@ -134,13 +134,16 @@ async function dispatchActivityNotification(eventType, data = {}) {
     let payload = null;
 
     if (eventType === 'room_created') {
-      const { pin, topic, mode, optionCount, initialTableCount, hostId } = data;
+      const { pin, topic, mode, optionCount, initialTableCount, hostId, deviceId } = data;
       const optionsDesc = mode === 'CUSTOM'
         ? `${optionCount || 0} custom choices`
         : `${initialTableCount || 6} on table (${optionCount || 30} in discovery pool)`;
+      const formattedTopic = topic
+        ? String(topic).charAt(0).toUpperCase() + String(topic).slice(1)
+        : 'Places Nearby';
 
       payload = {
-        content: `[ROOM CREATED] **Room Created:** Room was created with ID **#${pin}**`,
+        content: `🟢 **Room #${pin} Created**`,
         embeds: [
           {
             title: `Session #${pin} is Ready`,
@@ -148,30 +151,30 @@ async function dispatchActivityNotification(eventType, data = {}) {
             fields: [
               { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
               { name: 'Mode', value: mode === 'CUSTOM' ? 'Custom Poll' : 'Discovery', inline: true },
-              { name: 'Topic / Category', value: topic || 'Places Nearby', inline: true },
+              { name: 'Category / Topic', value: formattedTopic, inline: true },
               { name: 'Options', value: optionsDesc, inline: true },
-              { name: 'Host ID', value: hostId ? `\`${hostId}\`` : 'Unknown', inline: true },
+              { name: 'Device ID', value: deviceId ? `\`${deviceId}\`` : (hostId ? `\`${String(hostId).slice(0, 12)}...\`` : 'Anonymous'), inline: true },
             ],
-            footer: { text: 'Consensus Engine • Live Activity' },
+            footer: { text: 'NoYouPick • Live Activity' },
             timestamp: new Date().toISOString(),
           },
         ],
       };
     } else if (eventType === 'voting_started') {
-      const { pin, topic, mode, optionCount, voterCount } = data;
+      const { pin, topic, optionCount, voterCount } = data;
       payload = {
-        content: `[VOTING STARTED] **Voting Started:** Room with ID **#${pin}** started voting!`,
+        content: `🗳️ **Voting Started in Room #${pin}**`,
         embeds: [
           {
             title: `Ballots Open for #${pin}`,
             color: 3447003, // Blue (0x3498DB)
             fields: [
               { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
-              { name: 'Options to Swipe', value: `${optionCount || 6} choices`, inline: true },
-              { name: 'Voters', value: `${voterCount || 1} participant(s)`, inline: true },
+              { name: 'Deck Size', value: `${optionCount || 6} choices`, inline: true },
+              { name: 'Voters', value: `${voterCount || 1} participant${(voterCount || 1) === 1 ? '' : 's'}`, inline: true },
               { name: 'Topic', value: topic || 'Where should we go?', inline: false },
             ],
-            footer: { text: 'Consensus Engine • Voting Phase' },
+            footer: { text: 'NoYouPick • Voting Phase' },
             timestamp: new Date().toISOString(),
           },
         ],
@@ -179,19 +182,47 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'decision_reached') {
       const { pin, winnerName, winnerCategory, winnerAddress, voterCount, matchScore } = data;
       payload = {
-        content: `[DECISION REACHED] **Decision Reached:** Room with ID **#${pin}** have reached a decision!`,
+        content: `🏆 **Winner Chosen in Room #${pin}: ${winnerName || 'Consensus Pick'}**`,
         embeds: [
           {
             title: `Winner: ${winnerName || 'Consensus Winner'}`,
             color: 6514417, // Indigo (0x6366F1)
             fields: [
               { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
-              { name: 'Agreement Score', value: `${matchScore || 96}% consensus`, inline: true },
-              { name: 'Ballots Cast', value: `${voterCount || 1} participant(s)`, inline: true },
+              { name: 'Agreement', value: `${matchScore || 96}% consensus`, inline: true },
+              { name: 'Ballots Cast', value: `${voterCount || 1} participant${(voterCount || 1) === 1 ? '' : 's'}`, inline: true },
               { name: 'Category / Vibe', value: winnerCategory || 'Group Choice', inline: true },
-              { name: 'Address / Location', value: winnerAddress || 'Local Venue', inline: false },
+              { name: 'Location', value: winnerAddress || 'Local Venue', inline: false },
             ],
-            footer: { text: 'Consensus Engine • Decision Announced' },
+            footer: { text: 'NoYouPick • Decision Announced' },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+    } else if (eventType === 'feedback_submitted') {
+      const { pin, venueName, satisfactionScore, priceAccuracyScore, comment, deviceId } = data;
+      const satStars = '★'.repeat(Math.max(1, Math.min(5, Number(satisfactionScore) || 5))) + '☆'.repeat(5 - Math.max(1, Math.min(5, Number(satisfactionScore) || 5)));
+      const priceStars = '★'.repeat(Math.max(1, Math.min(5, Number(priceAccuracyScore) || 5))) + '☆'.repeat(5 - Math.max(1, Math.min(5, Number(priceAccuracyScore) || 5)));
+      const fields = [
+        { name: 'Room PIN', value: `\`#${pin || 'N/A'}\``, inline: true },
+        { name: 'Satisfaction', value: `${satStars} (${satisfactionScore}/5)`, inline: true },
+        { name: 'Price Accuracy', value: `${priceStars} (${priceAccuracyScore}/5)`, inline: true },
+      ];
+      if (comment && String(comment).trim()) {
+        fields.push({ name: 'User Note', value: `"${String(comment).trim().slice(0, 300)}"`, inline: false });
+      }
+      if (deviceId) {
+        fields.push({ name: 'Device ID', value: `\`${deviceId}\``, inline: true });
+      }
+
+      payload = {
+        content: `⭐ **Feedback Recorded for Room #${pin}: ${venueName || 'Consensus Winner'}**`,
+        embeds: [
+          {
+            title: `Rated: ${venueName || 'Consensus Winner'}`,
+            color: 16098851, // Amber Gold (0xF5A623)
+            fields,
+            footer: { text: 'NoYouPick • Post-Decision Feedback' },
             timestamp: new Date().toISOString(),
           },
         ],
@@ -199,10 +230,10 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'lobby_closed') {
       const { pin, topic, mode, reason, durationMinutes, voterCount } = data;
       payload = {
-        content: `[LOBBY CLOSED] **Lobby Closed:** Room with ID **#${pin}** has disbanded`,
+        content: `🔒 **Room #${pin} Closed**`,
         embeds: [
           {
-            title: `Room #${pin} Closed`,
+            title: `Room #${pin} Archived`,
             color: 15158332, // Coral/Amber-red (0xE74C3C)
             fields: [
               { name: 'Room PIN', value: `\`#${pin}\``, inline: true },
@@ -212,7 +243,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
               { name: 'Mode', value: mode === 'CUSTOM' ? 'Custom Poll' : 'Discovery', inline: true },
               { name: 'Ballots Cast', value: `${voterCount || 0}`, inline: true },
             ],
-            footer: { text: 'Consensus Engine • Room Lifecycle' },
+            footer: { text: 'NoYouPick • Room Lifecycle' },
             timestamp: new Date().toISOString(),
           },
         ],

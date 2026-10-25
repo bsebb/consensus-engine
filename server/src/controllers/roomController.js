@@ -146,7 +146,7 @@ const createNewRoom = async (req, res) => {
 
   if (mode === 'DISCOVERY') {
     dispatchActivityNotification('room_created', {
-      pin, topic: topicLabel, mode: 'DISCOVERY', optionCount: createdOptions.length, initialTableCount: 6, hostId: host_id,
+      pin, topic: topicLabel, mode: 'DISCOVERY', optionCount: createdOptions.length, initialTableCount: 6, hostId: host_id, deviceId: device_id,
     }).catch(() => {});
 
     return res.status(201).json({
@@ -156,7 +156,7 @@ const createNewRoom = async (req, res) => {
   }
 
   dispatchActivityNotification('room_created', {
-    pin, topic: topicLabel, mode: 'CUSTOM', optionCount: 0, hostId: host_id,
+    pin, topic: topicLabel, mode: 'CUSTOM', optionCount: 0, hostId: host_id, deviceId: device_id,
   }).catch(() => {});
 
   return res.status(201).json({
@@ -552,7 +552,7 @@ const finalizeVoting = async (req, res) => {
 // Afina: process end-of-event venue feedback and trigger analytics recalculation
 const submitFeedback = async (req, res) => {
     const { pin } = req.params;
-    const { participant_id, device_id, option_id, option_name, satisfaction_score, price_accuracy_score } = req.body;
+    const { participant_id, device_id, option_id, option_name, satisfaction_score, price_accuracy_score, comment } = req.body;
 
     if (!participant_id || !option_id || satisfaction_score === undefined || price_accuracy_score === undefined) {
         return res.status(400).json({
@@ -575,13 +575,23 @@ const submitFeedback = async (req, res) => {
         });
     }
 
-    await submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, {
+    const result = await submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, {
         pin,
         device_id,
         option_name,
+        comment,
     });
 
-    return res.status(200).json({ success: true });
+    dispatchActivityNotification('feedback_submitted', {
+        pin,
+        venueName: result?.option?.name || option_name || 'Consensus Winner',
+        satisfactionScore: satisfaction_score,
+        priceAccuracyScore: price_accuracy_score,
+        comment,
+        deviceId: device_id || result?.participant?.deviceId,
+    }).catch(() => {});
+
+    return res.status(200).json({ success: true, feedback_id: result?.feedback?.id });
 };
 
 // Fetch 10 more locations when a room approaches the end of its 30-venue pool

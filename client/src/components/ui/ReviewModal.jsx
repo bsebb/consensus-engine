@@ -45,6 +45,7 @@ export default function ReviewModal({
       option_name: winnerName || 'Consensus Pick',
       satisfaction_score: Number(satisfaction),
       price_accuracy_score: Number(priceAccuracy),
+      comment: comment.trim() || undefined,
     };
 
     // Save locally including comment and winner name

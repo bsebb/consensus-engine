@@ -116,6 +116,7 @@ model Feedback {
   optionId           String
   satisfactionScore  Int
   priceAccuracyScore Int
+  comment            String?
 
   participant        Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   option             Option      @relation(fields: [optionId], references: [id], onDelete: Cascade)

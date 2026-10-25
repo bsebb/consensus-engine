@@ -482,6 +482,9 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
     const optionNameFallback = meta?.option_name && typeof meta.option_name === 'string'
         ? meta.option_name.trim().slice(0, 120)
         : 'Consensus Pick';
+    const cleanComment = meta?.comment && typeof meta.comment === 'string' && meta.comment.trim()
+        ? meta.comment.trim().slice(0, 500)
+        : null;
 
     const executeFeedbackWrite = async () => {
         if (pin) {
@@ -598,6 +601,7 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
                 data: {
                     satisfactionScore: satisfaction_score,
                     priceAccuracyScore: price_accuracy_score,
+                    ...(cleanComment !== null ? { comment: cleanComment } : {}),
                 },
             });
         } else {
@@ -607,6 +611,7 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
                     optionId: option.id,
                     satisfactionScore: satisfaction_score,
                     priceAccuracyScore: price_accuracy_score,
+                    comment: cleanComment,
                 },
             });
         }
@@ -643,7 +648,7 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
             });
         }
 
-        return { feedback, analytics };
+        return { feedback, analytics, option, participant };
     };
 
     try {
