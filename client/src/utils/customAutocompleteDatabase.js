@@ -122,7 +122,7 @@ export const AUTOCOMPLETE_DATABASE = [
   { name: 'Camping & Campfire Night', category: 'activities', subtitle: 'Tents, Roasted Marshmallows & Stargazing', keywords: ['camping', 'campfire', 'outdoors'] },
 ];
 
-import { searchSmartPlaceSuggestions } from './smartPlaceResolver';
+import { searchSmartPlaceSuggestions } from './smartPlaceResolver.js';
 
 /**
  * Fast search and ranking algorithm for custom poll autocomplete.

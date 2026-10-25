@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ListPlus, X, Plus, Trash2, Sparkles, Check, AlertCircle } from 'lucide-react';
+import { ListPlus, X, Trash2, Sparkles, ArrowRight, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../ui/Toast';
 import { triggerHaptic } from '../../utils/haptics';
 import useDrawerGesture from '../ui/useDrawerGesture';
 import Button from '../ui/Button';
+import CustomOptionAutocomplete from '../lobby/CustomOptionAutocomplete';
 import { getStarterPacks, getSuggestedTopics } from './customPollPacks';
 
 export default function CustomPollDrawer({
@@ -15,6 +16,8 @@ export default function CustomPollDrawer({
   setTopic,
   customOptions = [],
   setCustomOptions,
+  onStartRoom,
+  isCreatingRoom = false,
 }) {
   const { lang, t } = useLanguage();
   const { addToast } = useToast();
@@ -22,7 +25,6 @@ export default function CustomPollDrawer({
   const [isClosing, setIsClosing] = useState(false);
 
   const questionInputRef = useRef(null);
-  const optionInputRef = useRef(null);
 
   const handleClose = useCallback(() => {
     if (isClosing) return;
@@ -68,13 +70,16 @@ export default function CustomPollDrawer({
     const clean = String(text || '').trim();
     if (!clean || customOptions.length >= 10) return;
     if (customOptions.some((o) => o.toLowerCase() === clean.toLowerCase())) {
-      addToast({ title: 'Already added', message: `"${clean}" is already in the list`, type: 'info' });
+      addToast({
+        title: t('alreadyAdded') || 'Already added',
+        message: `"${clean}" ${t('alreadyInList') || 'is already in the list'}`,
+        type: 'info',
+      });
       return;
     }
     triggerHaptic('tap');
     setCustomOptions((prev) => [...(Array.isArray(prev) ? prev : []), clean]);
     setNewOptionText('');
-    optionInputRef.current?.focus();
   };
 
   const handleRemoveOption = (index) => {
@@ -86,28 +91,46 @@ export default function CustomPollDrawer({
     triggerHaptic('like');
     if (!topic || !topic.trim()) setTopic(pack.question);
     setCustomOptions(pack.options);
-    addToast({ title: `${pack.title} Loaded`, message: `${pack.options.length} options ready`, type: 'success' });
+    addToast({
+      title: `${pack.title}`,
+      message: `${pack.options.length} ${t('optionsSuffix') || 'options'} ready`,
+      type: 'success',
+    });
   };
 
-  const handleSaveAndDone = () => {
+  const isValid = Boolean(topic && topic.trim().length >= 2 && (customOptions || []).length >= 2);
+
+  const handleLaunchRoom = () => {
     const cleanTopic = (topic || '').trim();
-    if (!cleanTopic) {
+    if (!cleanTopic || cleanTopic.length < 2) {
       triggerHaptic('veto');
-      addToast({ title: t('customQuestionRequired') || 'Question Required', message: 'Please set a question for your custom poll.', type: 'warning' });
+      addToast({
+        title: t('customQuestionRequired') || 'Question Required',
+        message: t('customQuestionRequiredHint') || 'Please set a question for your custom poll.',
+        type: 'warning',
+      });
       questionInputRef.current?.focus();
       return;
     }
     if ((customOptions || []).length < 2) {
       triggerHaptic('veto');
-      addToast({ title: 'Options Needed', message: 'Please add at least 2 options for your group.', type: 'warning' });
-      optionInputRef.current?.focus();
+      addToast({
+        title: t('customOptionsNeeded') || 'Options Needed',
+        message: t('customOptionsNeededHint') || 'Please add at least 2 options for your group.',
+        type: 'warning',
+      });
       return;
     }
+
     triggerHaptic('like');
-    handleClose();
+    if (onStartRoom) {
+      onClose?.();
+      onStartRoom();
+    } else {
+      handleClose();
+    }
   };
 
-  const isValid = Boolean(topic && topic.trim().length >= 2 && customOptions.length >= 2);
   if (!isOpen && !isClosing) return null;
 
   return createPortal(
@@ -124,12 +147,12 @@ export default function CustomPollDrawer({
       <div
         ref={panelRef}
         {...containerProps}
-        className={`w-full sm:max-w-md max-h-[88dvh] sm:max-h-[85vh] bg-[var(--bg-elevated)] glass-surface rounded-t-[32px] sm:rounded-3xl p-5 pt-1 border border-[var(--border-glass)] shadow-[0_24px_64px_rgba(0,0,0,0.4)] flex flex-col gap-3.5 text-[var(--text-primary)] pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:pb-5 ${
+        className={`w-full sm:max-w-md max-h-[90dvh] sm:max-h-[85vh] bg-[var(--bg-elevated)] glass-surface rounded-t-[32px] sm:rounded-3xl p-5 pt-1 border border-[var(--border-glass)] shadow-[0_24px_64px_rgba(0,0,0,0.4)] flex flex-col gap-3.5 text-[var(--text-primary)] pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:pb-5 ${
           isClosing ? 'animate-sheet-down sm:animate-scale-down' : 'animate-sheet-up sm:animate-modal-spring'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Apple Pro-Grade Drag Handle Pill */}
+        {/* Drag Handle Pill */}
         <div {...grabberProps} className="w-full pt-2 pb-0 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none select-none shrink-0" aria-label="Drag down to dismiss">
           <div className="w-10 h-1.2 rounded-full bg-[var(--text-tertiary)]/30 mx-auto my-2 mb-3 cursor-grab" />
         </div>
@@ -142,7 +165,9 @@ export default function CustomPollDrawer({
             </div>
             <div>
               <h2 className="text-base font-extrabold tracking-tight">{t('catCustom') || 'Custom Poll'}</h2>
-              <p className="text-[11px] text-[var(--text-secondary)]">Set a question and choices for your group</p>
+              <p className="text-[11px] text-[var(--text-secondary)]">
+                {t('customDrawerSubtitle') || 'Set a question and choices for your group'}
+              </p>
             </div>
           </div>
           <button
@@ -198,7 +223,7 @@ export default function CustomPollDrawer({
                 <button
                   key={sug}
                   type="button"
-                  onClick={() => { triggerHaptic('tap'); setTopic(sug); optionInputRef.current?.focus(); }}
+                  onClick={() => { triggerHaptic('tap'); setTopic(sug); }}
                   className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-[var(--bg-inset)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all active:scale-[0.97] cursor-pointer"
                 >
                   {sug}
@@ -207,7 +232,7 @@ export default function CustomPollDrawer({
             </div>
           </div>
 
-          {/* Section 2: Options Builder */}
+          {/* Section 2: Options Builder with Autocomplete */}
           <div className="flex flex-col gap-2 pt-2 border-t border-[var(--border-subtle)]">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-semibold text-[var(--text-secondary)]">{t('customAddOptionsLabel') || 'Poll Options'}</span>
@@ -218,38 +243,35 @@ export default function CustomPollDrawer({
               </span>
             </div>
 
-            {/* Text Input + Add Button */}
-            <form onSubmit={(e) => { e.preventDefault(); handleAddOption(newOptionText); }} className="flex items-center gap-2">
-              <input
-                ref={optionInputRef}
-                type="text"
-                value={newOptionText}
-                onChange={(e) => setNewOptionText(e.target.value)}
-                placeholder={customOptions.length >= 10 ? 'Maximum 10 options reached' : t('customAddOptionPlaceholder') || 'Type an option and press Enter...'}
-                disabled={customOptions.length >= 10}
-                className="flex-1 min-h-[42px] px-3.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all disabled:opacity-50"
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={!newOptionText.trim() || customOptions.length >= 10}
-                icon={Plus}
-                className="h-[42px] px-3.5 rounded-xl font-bold shrink-0"
-              >
-                {t('customAddBtn') || 'Add'}
-              </Button>
-            </form>
+            {/* Smart Autocomplete with typo-tolerance, chains, games & movies */}
+            <CustomOptionAutocomplete
+              suggestion={newOptionText}
+              setSuggestion={setNewOptionText}
+              handleAddSuggestion={(e) => {
+                if (e) e.preventDefault();
+                handleAddOption(newOptionText);
+              }}
+              handleQuickAddSuggestion={(name) => {
+                handleAddOption(name);
+              }}
+              topic={topic}
+              existingNames={customOptions}
+              mode="CUSTOM"
+              disabled={customOptions.length >= 10}
+              placeholder={customOptions.length >= 10 ? (t('maxOptionsReached') || 'Maximum 10 options reached') : (t('customSearchPlaceholder') || 'Type or search idea (e.g. McDonald\'s, KFC, Catan)...')}
+            />
 
             {/* Empty State: Quick Starter Chips */}
             {customOptions.length === 0 && (
-              <div className="p-3.5 rounded-2xl bg-[var(--accent-bg)]/5 border border-dashed border-[var(--accent-bg)]/25 flex flex-col gap-2.5 animate-fade-in">
+              <div className="p-3.5 rounded-2xl bg-[var(--accent-bg)]/5 border border-dashed border-[var(--accent-bg)]/25 flex flex-col gap-2.5 animate-fade-in mt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
                     <Sparkles size={14} className="text-[var(--accent-bg)]" />
-                    <span>Quick Starters</span>
+                    <span>{t('quickStarters') || 'Quick Starters'}</span>
                   </span>
-                  <span className="text-[10px] text-[var(--text-tertiary)]">Tap to auto-fill</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">
+                    {t('tapToAutoFill') || 'Tap to auto-fill'}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {starterPacks.map((pack) => {
@@ -269,7 +291,7 @@ export default function CustomPollDrawer({
                             {pack.title}
                           </div>
                           <div className="text-[10px] text-[var(--text-tertiary)] truncate">
-                            {pack.options.length} options
+                            {pack.options.length} {t('optionsSuffix') || 'options'}
                           </div>
                         </div>
                       </button>
@@ -281,7 +303,7 @@ export default function CustomPollDrawer({
 
             {/* Added Options List */}
             {customOptions.length > 0 && (
-              <div className="flex flex-col gap-1.5 max-h-[220px] overflow-y-auto overscroll-contain pr-0.5">
+              <div className="flex flex-col gap-1.5 max-h-[220px] overflow-y-auto overscroll-contain pr-0.5 mt-1">
                 {customOptions.map((opt, idx) => (
                   <div
                     key={`${idx}-${opt}`}
@@ -329,24 +351,40 @@ export default function CustomPollDrawer({
             {customOptions.length > 0 && customOptions.length < 2 && (
               <p className="text-[11px] text-amber-500 font-medium px-1 flex items-center gap-1 pt-0.5">
                 <AlertCircle size={12} className="shrink-0" />
-                <span>Add at least 2 options for your group to vote on.</span>
+                <span>{t('customOptionsNeededHint') || 'Add at least 2 options for your group to vote on.'}</span>
               </p>
             )}
           </div>
         </div>
 
-        {/* Footer Action */}
-        <div className="pt-2 border-t border-[var(--border-subtle)] shrink-0">
+        {/* Footer Actions: 1-Tap Room Launch & Save Draft */}
+        <div className="pt-2 border-t border-[var(--border-subtle)] shrink-0 flex flex-col gap-2">
           <Button
             type="button"
             variant="primary"
             size="md"
-            onClick={handleSaveAndDone}
-            icon={Check}
-            className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_4px_16px_var(--accent-glow)]"
+            onClick={handleLaunchRoom}
+            loading={isCreatingRoom}
+            disabled={isCreatingRoom}
+            icon={ArrowRight}
+            className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)]"
           >
-            {isValid ? `Save Poll (${customOptions.length} ${t('optionsSuffix') || 'options'})` : 'Done'}
+            {isCreatingRoom
+              ? (t('startingRoom') || 'Starting Room...')
+              : isValid
+                ? (t('startVotingRoomWithCount')
+                    ? t('startVotingRoomWithCount').replace('{count}', customOptions.length)
+                    : `${t('startRoom') || 'Start Voting Room'} (${customOptions.length})`)
+                : (t('startRoom') || 'Start Voting Room')}
           </Button>
+
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-full py-1 text-xs font-semibold text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors text-center cursor-pointer"
+          >
+            {t('saveDraftAndClose') || 'Save draft & close'}
+          </button>
         </div>
       </div>
     </div>,

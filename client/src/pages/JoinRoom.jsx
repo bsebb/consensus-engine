@@ -538,7 +538,9 @@ export default function JoinRoom() {
                 icon={ArrowRight}
                 className="w-full h-11 sm:h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-0.5"
               >
-                {t('createRoomBtn')}
+                {isCustomMode && (!customTopic.trim() || customOptions.length < 2)
+                  ? (t('customConfigureBtn') || 'Configure Poll & Start')
+                  : t('createRoomBtn')}
               </Button>
             </div>
           ) : (
@@ -651,6 +653,8 @@ export default function JoinRoom() {
         setTopic={setCustomTopic}
         customOptions={customOptions}
         setCustomOptions={setCustomOptions}
+        onStartRoom={handleStartRoom}
+        isCreatingRoom={isCreatingRoom}
       />
 
       {recentSession && (

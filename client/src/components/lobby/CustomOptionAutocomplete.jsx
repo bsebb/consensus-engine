@@ -5,6 +5,7 @@ import { searchCustomSuggestions, CATEGORY_META } from '../../utils/customAutoco
 import { triggerHaptic } from '../../utils/haptics';
 import { apiUrl } from '../../utils/api';
 import { cacheOptionPoster } from '../../utils/customOptionService';
+import { useLanguage } from '../../context/LanguageContext';
 
 const ICON_MAP = {
   Gamepad2,
@@ -24,7 +25,11 @@ export default function CustomOptionAutocomplete({
   duplicateMatch = null,
   mode = 'CUSTOM',
   disabled = false,
+  placeholder,
+  autoFocus = false,
+  inputClassName = '',
 }) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef(null);
@@ -113,6 +118,9 @@ export default function CustomOptionAutocomplete({
     setSuggestion('');
     setIsOpen(false);
     setActiveIndex(-1);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
   };
 
   const handleCustomSubmit = (e) => {
@@ -124,6 +132,9 @@ export default function CustomOptionAutocomplete({
     handleAddSuggestion(e);
     setIsOpen(false);
     setActiveIndex(-1);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
   };
 
   const handleKeyDown = (e) => {
@@ -152,12 +163,18 @@ export default function CustomOptionAutocomplete({
   const cleanQuery = suggestion.trim();
   const hasExactMatch = suggestions.some((s) => s.name.toLowerCase() === cleanQuery.toLowerCase());
 
+  const effectivePlaceholder = placeholder || (
+    mode === 'CUSTOM'
+      ? (t('customSearchPlaceholder') || 'Type or search idea (e.g. McDonald\'s, KFC, Catan)...')
+      : (t('customAddOptionPlaceholder') || 'Add custom option...')
+  );
+
   return (
     <div ref={containerRef} className="relative w-full">
-      <form onSubmit={handleCustomSubmit} className="flex gap-2">
+      <form onSubmit={handleCustomSubmit} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-tertiary)]">
-            <Search size={14} />
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--text-tertiary)]">
+            <Search size={15} />
           </div>
           <input
             ref={inputRef}
@@ -165,6 +182,7 @@ export default function CustomOptionAutocomplete({
             id="lobby-custom-suggestion"
             aria-label="New candidate suggestion"
             autoComplete="off"
+            autoFocus={autoFocus}
             disabled={disabled}
             value={suggestion}
             onFocus={() => setIsOpen(true)}
@@ -174,8 +192,8 @@ export default function CustomOptionAutocomplete({
               setActiveIndex(-1);
             }}
             onKeyDown={handleKeyDown}
-            placeholder={mode === 'CUSTOM' ? 'Type or search idea (e.g. Fortnite, Padel, Inception)...' : 'Add custom option...'}
-            className="w-full text-xs rounded-xl pl-9 pr-8 py-2.5 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors"
+            placeholder={effectivePlaceholder}
+            className={`w-full text-xs sm:text-sm rounded-xl pl-9.5 pr-8 py-2.5 bg-[var(--bg-inset)] border border-[var(--border-main)] focus:border-[var(--accent-bg)] outline-none text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] transition-colors min-h-[42px] ${inputClassName}`}
           />
           {suggestion && (
             <button
@@ -184,10 +202,10 @@ export default function CustomOptionAutocomplete({
                 setSuggestion('');
                 inputRef.current?.focus();
               }}
-              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-tertiary)] hover:text-[var(--text-primary)] cursor-pointer"
               aria-label="Clear input"
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           )}
         </div>
@@ -198,24 +216,25 @@ export default function CustomOptionAutocomplete({
           size="sm"
           icon={Plus}
           disabled={disabled || !cleanQuery}
+          className="h-[42px] px-3.5 rounded-xl font-bold shrink-0"
         >
-          Add
+          {t('customAddBtn') || 'Add'}
         </Button>
       </form>
 
       {/* Autocomplete Dropdown Popover */}
       {isOpen && !disabled && (suggestions.length > 0 || (cleanQuery && !hasExactMatch)) && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 z-40 bg-[var(--bg-elevated)]/95 backdrop-blur-md border border-[var(--border-main)] rounded-2xl shadow-xl overflow-hidden max-h-72 flex flex-col animate-popover">
-          <div className="p-2 border-b border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider bg-[var(--bg-inset)]/50">
+        <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-[var(--bg-elevated)]/95 backdrop-blur-md border border-[var(--border-main)] rounded-2xl shadow-xl overflow-hidden max-h-72 flex flex-col animate-popover">
+          <div className="p-2 px-3 border-b border-[var(--border-subtle)] flex items-center justify-between text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider bg-[var(--bg-inset)]/50">
             <span className="flex items-center gap-1.5">
               {isSearchingLive ? (
                 <Loader2 size={11} className="animate-spin text-[var(--accent-bg)]" />
               ) : (
                 <Search size={11} className="text-[var(--accent-bg)]" />
               )}
-              <span>{isSearchingLive ? 'Searching...' : cleanQuery ? 'Suggested Matches' : 'Popular Ideas'}</span>
+              <span>{isSearchingLive ? (t('searching') || 'Searching...') : cleanQuery ? (t('suggestedMatches') || 'Suggested Matches') : (t('popularIdeas') || 'Popular Ideas')}</span>
             </span>
-            <span className="text-[10px] lowercase font-normal">tap to add</span>
+            <span className="text-[10px] lowercase font-normal">{t('tapToAdd') || 'tap to add'}</span>
           </div>
 
           <div className="overflow-y-auto no-scrollbar py-1">
@@ -233,15 +252,15 @@ export default function CustomOptionAutocomplete({
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-[var(--text-primary)] truncate block">
-                      Add custom: <span className="text-[var(--accent-bg)]">"{cleanQuery}"</span>
+                      {t('addCustom') || 'Add custom:'} <span className="text-[var(--accent-bg)]">"{cleanQuery}"</span>
                     </span>
                     <span className="text-[10px] text-[var(--text-tertiary)] truncate block">
-                      Custom group candidate
+                      {t('customCandidate') || 'Custom group choice'}
                     </span>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] uppercase">
-                  Add
+                  {t('customAddBtn') || 'Add'}
                 </span>
               </button>
             )}
