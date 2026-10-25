@@ -51,10 +51,10 @@ const REGION_PROFILES = {
     unit: 'km',
     isImperial: false,
     tiers: {
-      1: { short: '< 45 RON', range: '25-45 RON', avg: '~35 RON', maxDisplay: '45 RON', symbolRepeat: '$' },
-      2: { short: '45-100 RON', range: '45-100 RON', avg: '~70 RON', maxDisplay: '100 RON', symbolRepeat: '$$' },
-      3: { short: '100-180 RON', range: '100-180 RON', avg: '~135 RON', maxDisplay: '180 RON', symbolRepeat: '$$$' },
-      4: { short: '180+ RON', range: '180+ RON', avg: '~220 RON', maxDisplay: '220+ RON', symbolRepeat: '$$$$' },
+      1: { short: '< 45 RON', range: '25-45 RON', avg: '~35 RON', maxDisplay: '45 RON', symbolRepeat: '<45 RON', pill: '~35 RON' },
+      2: { short: '45-100 RON', range: '45-100 RON', avg: '~70 RON', maxDisplay: '100 RON', symbolRepeat: '45-100 RON', pill: '~70 RON' },
+      3: { short: '100-180 RON', range: '100-180 RON', avg: '~135 RON', maxDisplay: '180 RON', symbolRepeat: '100-180 RON', pill: '~135 RON' },
+      4: { short: '180+ RON', range: '180+ RON', avg: '~220 RON', maxDisplay: '220+ RON', symbolRepeat: '180+ RON', pill: '~220 RON' },
     },
   },
   MD: {
@@ -64,10 +64,10 @@ const REGION_PROFILES = {
     unit: 'km',
     isImperial: false,
     tiers: {
-      1: { short: '< 150 MDL', range: '80-150 MDL', avg: '~110 MDL', maxDisplay: '150 MDL', symbolRepeat: '$' },
-      2: { short: '150-300 MDL', range: '150-300 MDL', avg: '~180 MDL', maxDisplay: '300 MDL', symbolRepeat: '$$' },
-      3: { short: '300-500 MDL', range: '300-500 MDL', avg: '~350 MDL', maxDisplay: '500 MDL', symbolRepeat: '$$$' },
-      4: { short: '500+ MDL', range: '500+ MDL', avg: '~600 MDL', maxDisplay: '500+ MDL', symbolRepeat: '$$$$' },
+      1: { short: '< 150 MDL', range: '80-150 MDL', avg: '~110 MDL', maxDisplay: '150 MDL', symbolRepeat: '<150 MDL', pill: '~110 MDL' },
+      2: { short: '150-300 MDL', range: '150-300 MDL', avg: '~180 MDL', maxDisplay: '300 MDL', symbolRepeat: '150-300 MDL', pill: '~180 MDL' },
+      3: { short: '300-500 MDL', range: '300-500 MDL', avg: '~350 MDL', maxDisplay: '500 MDL', symbolRepeat: '300-500 MDL', pill: '~350 MDL' },
+      4: { short: '500+ MDL', range: '500+ MDL', avg: '~600 MDL', maxDisplay: '500+ MDL', symbolRepeat: '500+ MDL', pill: '~600 MDL' },
     },
   },
 };
@@ -147,13 +147,24 @@ export function resolveRegionProfile(context = {}) {
 }
 
 /**
- * Formats a price level (1..4) into a concise badge like "$$ • ~$22" or "€€ • ~€22" or "$$ • ~180 MDL"
+ * Formats a price level (1..4) into a concise badge like "$$ • ~$22" or "€€ • ~€22" or "~180 MDL"
  */
 export function formatRegionalPriceBadge(priceLevel = 2, context = {}) {
   const profile = resolveRegionProfile(context);
   const lvl = [1, 2, 3, 4].includes(Number(priceLevel)) ? Number(priceLevel) : 2;
   const tier = profile.tiers[lvl] || profile.tiers[2];
+  if (tier.pill) return tier.pill;
   return `${tier.symbolRepeat} • ${tier.avg}`;
+}
+
+/**
+ * Formats a compact card pill for photo overlays & metrics (e.g. "$$ • ~$22", "€€ • ~€22", "££ • ~£22", "~180 MDL", "~70 RON")
+ */
+export function formatRegionalPricePill(priceLevel = 2, context = {}) {
+  const profile = resolveRegionProfile(context);
+  const lvl = [1, 2, 3, 4].includes(Number(priceLevel)) ? Number(priceLevel) : 2;
+  const tier = profile.tiers[lvl] || profile.tiers[2];
+  return tier.pill || `${tier.symbolRepeat} • ${tier.avg}`;
 }
 
 /**

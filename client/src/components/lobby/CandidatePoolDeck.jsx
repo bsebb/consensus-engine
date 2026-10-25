@@ -14,6 +14,7 @@ import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
 import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
+import { formatRegionalPricePill } from '../../utils/regionFormat';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -107,7 +108,7 @@ function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffl
             <span>{venueRating.rating}</span>
           </div>
           <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-white border border-white/10 tabular-nums">
-            {'$'.repeat(item.price_level || 2)}
+            {formatRegionalPricePill(item.price_level || 2, item)}
           </span>
         </div>
 

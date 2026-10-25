@@ -1,6 +1,7 @@
 import React from 'react';
 import { Database, CheckCircle2, Star, Send, MessageSquarePlus, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { formatRegionalPricePill } from '../../utils/regionFormat';
 import { triggerHaptic } from '../../utils/haptics';
 
 export default function WinnerFeedbackCard({
@@ -106,7 +107,7 @@ export default function WinnerFeedbackCard({
             <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-[var(--text-primary)]">
-                  2. {t('priceAccuracy')} ({'$'.repeat(winner?.price_level || 2)})
+                  2. {t('priceAccuracy')} ({formatRegionalPricePill(winner?.price_level || 2, winner)})
                 </span>
                 <span className="text-[10px] text-[var(--text-tertiary)]">
                   {t('spendAccurateQuestion')}

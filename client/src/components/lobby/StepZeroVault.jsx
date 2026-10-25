@@ -9,9 +9,10 @@ export default function StepZeroVault({
   lockedConstraint,
   budgetLimit,
   onSelectTier,
+  locationContext,
 }) {
   const { t } = useLanguage();
-  const profile = resolveRegionProfile();
+  const profile = resolveRegionProfile(locationContext);
 
   const activeTierIndex = !lockedConstraint
     ? 0
@@ -46,7 +47,7 @@ export default function StepZeroVault({
         {lockedConstraint && (
           <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <Check size={11} className="text-emerald-500" />
-            <span className="tabular-nums">{t('maxBudgetLabel')} {formatRegionalMaxBudget(budgetLimit)}</span>
+            <span className="tabular-nums">{t('maxBudgetLabel')} {formatRegionalMaxBudget(budgetLimit, locationContext)}</span>
           </span>
         )}
       </div>

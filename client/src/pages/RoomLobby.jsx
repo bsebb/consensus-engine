@@ -555,6 +555,7 @@ export default function RoomLobby() {
             lockedConstraint={lockedConstraint}
             budgetLimit={budgetLimit}
             onSelectTier={handleSelectBudgetTier}
+            locationContext={candidatePoolPreview[0] || userGps}
           />
         )}
 

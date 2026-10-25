@@ -7,7 +7,7 @@ import {
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import { useLanguage } from '../context/LanguageContext';
-import { formatRegionalTierShort, formatRegionalRadius } from '../utils/regionFormat';
+import { resolveRegionProfile, formatRegionalTierShort, formatRegionalRadius } from '../utils/regionFormat';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -105,11 +105,12 @@ export default function HostSettings() {
     { label: 'Desserts', icon: Flame, desc: 'Gelato & Bakery' },
   ];
 
+  const hostRegion = resolveRegionProfile(userLocation);
   const priceTiers = [
-    { value: '$', label: '$', desc: formatRegionalTierShort(1, userLocation) },
-    { value: '$$', label: '$$', desc: formatRegionalTierShort(2, userLocation) },
-    { value: '$$$', label: '$$$', desc: formatRegionalTierShort(3, userLocation) },
-    { value: '$$$$', label: '$$$$', desc: formatRegionalTierShort(4, userLocation) },
+    { value: '$', label: hostRegion.tiers[1].symbolRepeat, desc: formatRegionalTierShort(1, userLocation) },
+    { value: '$$', label: hostRegion.tiers[2].symbolRepeat, desc: formatRegionalTierShort(2, userLocation) },
+    { value: '$$$', label: hostRegion.tiers[3].symbolRepeat, desc: formatRegionalTierShort(3, userLocation) },
+    { value: '$$$$', label: hostRegion.tiers[4].symbolRepeat, desc: formatRegionalTierShort(4, userLocation) },
   ];
 
   const radiusPresets = [1, 3, 5, 10];

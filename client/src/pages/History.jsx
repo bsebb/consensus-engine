@@ -18,6 +18,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SettingsModal from '../components/ui/SettingsModal';
 import { useLanguage } from '../context/LanguageContext';
+import { formatRegionalPricePill } from '../utils/regionFormat';
 import { triggerHaptic } from '../utils/haptics';
 
 export default function History() {
@@ -274,7 +275,7 @@ export default function History() {
                           {s.participantsCount || 4} {t('historyVoters')}
                         </span>
                         <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
-                          {'$'.repeat(s.priceLevel || 2)}
+                          {formatRegionalPricePill(s.priceLevel || 2, s)}
                         </span>
                       </div>
 
@@ -330,7 +331,7 @@ export default function History() {
 
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
-                                  {'$'.repeat(opt.priceLevel || 2)}
+                                  {formatRegionalPricePill(opt.priceLevel || 2, opt)}
                                 </span>
                                 {opt.isWinner && (
                                   <CheckCircle2 size={15} className="text-[var(--status-success)] shrink-0" />

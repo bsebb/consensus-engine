@@ -20,6 +20,7 @@ import VenueDetailsModal from './VenueDetailsModal';
 import WinnerFeedbackCard from './WinnerFeedbackCard';
 import { getVenueVibe, getVenueRating, useVenuePhotos } from '../../utils/venueImages';
 import { formatTravelSummary } from '../../utils/location';
+import { formatRegionalPricePill } from '../../utils/regionFormat';
 import { apiUrl } from '../../utils/api';
 import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionService';
 import { useLanguage } from '../../context/LanguageContext';
@@ -312,8 +313,8 @@ export default function ConsensusWinnerView({
 
                 <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                   <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('priceTierLabel')}</span>
-                  <span className="text-base font-bold text-[var(--text-primary)]">
-                    {'$'.repeat(winner?.price_level || 2)}
+                  <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5 tabular-nums">
+                    {formatRegionalPricePill(winner?.price_level || 2, winner)}
                   </span>
                 </div>
 
