@@ -6,8 +6,28 @@ function registerLobbySocketHandlers(io, socket, store) {
     activeLobbies,
     activeVotingSessions,
     disconnectTimeouts,
+    roomSummaryCache,
     getCachedRoomSummary,
   } = store;
+
+  function isCallerHost( lobby, pin, data) {
+    const callerId = data?.participant_id || socket.data.participantId;
+    const tokenToCheck = data?.host_token || socket.data.hostToken;
+    if (tokenToCheck && callerId && verifyHostToken(pin, callerId, tokenToCheck)) {
+      return true;
+    }
+    if (socket.data.isHost) {
+      return true;
+    }
+    if (lobby && callerId && lobby.get(callerId)?.isHost) {
+      return true;
+    }
+    const cachedRoom = roomSummaryCache?.get(pin)?.room;
+    if (cachedRoom && callerId && cachedRoom.hostId === callerId) {
+      return true;
+    }
+    return false;
+  }
 
   // Handle lobby join - join the socket room and emit participant_joined with full roster
   socket.on('join_lobby', async (data) => {
@@ -216,10 +236,14 @@ function registerLobbySocketHandlers(io, socket, store) {
     try {
       const { pin, suggestion, user_name } = data || {};
       if (!pin || !suggestion) return;
+      const lobby = activeLobbies.get(pin);
+      if (!isCallerHost(lobby, pin, data)) {
+        socket.emit('room_error', { message: 'Only the room host can add options.' });
+        return;
+      }
       const clean = String(suggestion).trim().slice(0, 120);
       if (!clean) return;
 
-      const lobby = activeLobbies.get(pin);
       if (lobby) {
         if (!lobby.suggestions) lobby.suggestions = [];
         if (lobby.suggestions.length >= 50) return;
@@ -229,7 +253,7 @@ function registerLobbySocketHandlers(io, socket, store) {
             pin,
             suggestions: lobby.suggestions,
             added: clean,
-            user_name: user_name || 'Participant',
+            user_name: user_name || 'Host',
           });
         }
       }
@@ -240,11 +264,15 @@ function registerLobbySocketHandlers(io, socket, store) {
 
   socket.on('remove_suggestion', (data) => {
     try {
-      const { pin, suggestion } = data;
+      const { pin, suggestion } = data || {};
       if (!pin || !suggestion) return;
+      const lobby = activeLobbies.get(pin);
+      if (!isCallerHost(lobby, pin, data)) {
+        socket.emit('room_error', { message: 'Only the room host can remove options.' });
+        return;
+      }
       const clean = String(suggestion).trim();
 
-      const lobby = activeLobbies.get(pin);
       if (lobby && lobby.suggestions) {
         lobby.suggestions = lobby.suggestions.filter((s) => s.toLowerCase() !== clean.toLowerCase());
         io.to(pin).emit('suggestions_updated', {
@@ -263,6 +291,10 @@ function registerLobbySocketHandlers(io, socket, store) {
       const { pin, count } = data || {};
       if (!pin) return;
       let lobby = activeLobbies.get(pin);
+      if (!isCallerHost(lobby, pin, data)) {
+        socket.emit('room_error', { message: 'Only the room host can add places.' });
+        return;
+      }
       if (!lobby) {
         lobby = new Map();
         lobby.visiblePlacesCount = 12;
@@ -285,6 +317,10 @@ function registerLobbySocketHandlers(io, socket, store) {
       const { pin, option_id } = data || {};
       if (!pin) return;
       let lobby = activeLobbies.get(pin);
+      if (!isCallerHost(lobby, pin, data)) {
+        socket.emit('room_error', { message: 'Only the room host can remove places.' });
+        return;
+      }
       if (!lobby) {
         lobby = new Map();
         lobby.visiblePlacesCount = 6;

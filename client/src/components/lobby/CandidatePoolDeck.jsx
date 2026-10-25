@@ -33,15 +33,17 @@ function CustomOptionCard({ item, idx, topic, handleRemoveSuggestion, isShufflin
         <span className="w-5.5 h-5.5 rounded-full bg-[var(--accent-bg)]/15 text-[var(--accent-bg)] text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums">
           #{idx + 1}
         </span>
-        <button
-          type="button"
-          onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
-          className="w-6 h-6 rounded-full bg-[var(--bg-inset)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
-          title="Remove option"
-          aria-label={`Remove ${item.name}`}
-        >
-          <Trash2 size={12} />
-        </button>
+        {handleRemoveSuggestion && (
+          <button
+            type="button"
+            onClick={() => handleRemoveSuggestion(item.customIndex ?? idx)}
+            className="w-6 h-6 rounded-full bg-[var(--bg-inset)] text-[var(--text-tertiary)] hover:bg-rose-500/15 hover:text-rose-500 border border-[var(--border-subtle)] transition-colors flex items-center justify-center cursor-pointer shrink-0"
+            title="Remove option"
+            aria-label={`Remove ${item.name}`}
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
       </div>
 
       <div className="py-1">
@@ -158,6 +160,7 @@ function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffl
 }
 
 export default function CandidatePoolDeck({
+  isHost = false,
   mode,
   topic = '',
   candidates = [],
@@ -270,8 +273,8 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Custom Mode: Clean, Unobtrusive Input Bar (No Cluttered Idea Library) */}
-      {mode === 'CUSTOM' && (
+      {/* Custom Mode: Clean, Unobtrusive Input Bar (Host Only) */}
+      {mode === 'CUSTOM' && isHost && handleAddSuggestion && (
         <div className="pt-0.5 pb-1">
           <CustomOptionAutocomplete
             suggestion={suggestion}

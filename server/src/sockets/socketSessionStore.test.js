@@ -217,3 +217,77 @@ test('join_lobby enforces per-room deviceId idempotency and reuses existing part
   assert.equal(lastLobbyState.payload.participant_id, 'p-inapp-1');
   assert.equal(lastLobbyState.payload.claimed_participant_id, 'p-safari-2');
 });
+
+test('only host can add or remove custom suggestions and discovery places in lobby', async () => {
+  const { registerLobbySocketHandlers } = require('./lobbySocketHandler');
+  const { issueHostToken } = require('../utils/hostAuth');
+  const pin = '9123';
+  const hostId = 'host-uuid-1';
+  const guestId = 'guest-uuid-2';
+  const hostToken = issueHostToken(pin, hostId);
+
+  const activeLobbies = new Map();
+  const activeVotingSessions = new Map();
+  const disconnectTimeouts = new Map();
+  const roomSummaryCache = new Map([
+    [pin, { room: { id: 'room-1', pin, hostId, status: 'CONFIGURING' }, expiresAt: Date.now() + 60000 }],
+  ]);
+
+  const mockStore = {
+    activeLobbies,
+    activeVotingSessions,
+    disconnectTimeouts,
+    roomSummaryCache,
+    getCachedRoomSummary: async (p) => roomSummaryCache.get(p)?.room || null,
+  };
+
+  const roomEmissions = [];
+  const mockIo = {
+    to: (targetPin) => ({
+      emit: (event, payload) => roomEmissions.push({ targetPin, event, payload }),
+    }),
+  };
+
+  function createMockSocket() {
+    const handlers = {};
+    const directEmissions = [];
+    return {
+      data: {},
+      join: () => {},
+      on: (event, cb) => { handlers[event] = cb; },
+      emit: (event, payload) => directEmissions.push({ event, payload }),
+      trigger: async (event, data) => handlers[event](data),
+      directEmissions,
+    };
+  }
+
+  const hostSocket = createMockSocket();
+  const guestSocket = createMockSocket();
+  registerLobbySocketHandlers(mockIo, hostSocket, mockStore);
+  registerLobbySocketHandlers(mockIo, guestSocket, mockStore);
+
+  await hostSocket.trigger('join_lobby', { pin, participant_id: hostId, host_token: hostToken, user_name: 'Host' });
+  await guestSocket.trigger('join_lobby', { pin, participant_id: guestId, user_name: 'Guest' });
+
+  // Non-host attempts to add suggestion or remove discovery place -> blocked
+  await guestSocket.trigger('add_suggestion', { pin, suggestion: 'Sneaky Option', participant_id: guestId });
+  await guestSocket.trigger('remove_discovery_place', { pin, option_id: 'opt-1', participant_id: guestId });
+
+  const lobby = activeLobbies.get(pin);
+  assert.equal(lobby.suggestions.length, 0, 'Non-host must not be able to add suggestions');
+  assert.equal(Boolean(lobby.removedOptionIds?.has('opt-1')), false, 'Non-host must not be able to remove places');
+  assert.equal(guestSocket.directEmissions.filter((e) => e.event === 'room_error').length, 2);
+
+  // Host adds suggestion, removes suggestion, adds discovery place, and removes discovery place -> allowed
+  await hostSocket.trigger('add_suggestion', { pin, suggestion: 'Host Option', participant_id: hostId, host_token: hostToken });
+  assert.deepEqual(lobby.suggestions, ['Host Option']);
+
+  await hostSocket.trigger('remove_suggestion', { pin, suggestion: 'Host Option', participant_id: hostId, host_token: hostToken });
+  assert.deepEqual(lobby.suggestions, []);
+
+  await hostSocket.trigger('add_discovery_place', { pin, count: 2, participant_id: hostId, host_token: hostToken });
+  assert.equal(lobby.visiblePlacesCount, 8);
+
+  await hostSocket.trigger('remove_discovery_place', { pin, option_id: 'opt-1', participant_id: hostId, host_token: hostToken });
+  assert.equal(lobby.removedOptionIds.has('opt-1'), true);
+});

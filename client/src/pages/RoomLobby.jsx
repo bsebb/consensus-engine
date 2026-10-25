@@ -321,8 +321,11 @@ export default function RoomLobby() {
     return match ? match.name : null;
   }, [suggestion, candidatePoolPreview]);
 
+  const getHostToken = () => (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`consensus_host_token_${pin}`) || undefined : undefined);
+
   const handleAddSuggestion = (e) => {
     e.preventDefault();
+    if (!isHost) return;
     const clean = suggestion.trim();
     if (!clean) return;
 
@@ -339,6 +342,7 @@ export default function RoomLobby() {
       pin,
       suggestion: clean,
       participant_id: participantId,
+      host_token: getHostToken(),
       user_name: currentUserName,
     });
 
@@ -347,19 +351,35 @@ export default function RoomLobby() {
   };
 
   const handleQuickAddSuggestion = (ideaText) => {
+    if (!isHost) return;
     const clean = String(ideaText || '').trim();
     if (!clean || groupPool.some((s) => s.toLowerCase() === clean.toLowerCase())) return;
-    emit('add_suggestion', { pin, suggestion: clean, participant_id: participantId, user_name: currentUserName });
+    emit('add_suggestion', {
+      pin,
+      suggestion: clean,
+      participant_id: participantId,
+      host_token: getHostToken(),
+      user_name: currentUserName,
+    });
     setGroupPool((prev) => [...prev, clean]);
   };
 
   const handleRemoveSuggestion = (idx) => {
+    if (!isHost) return;
     const target = groupPool[idx];
-    if (target) emit('remove_suggestion', { pin, suggestion: target });
+    if (target) {
+      emit('remove_suggestion', {
+        pin,
+        suggestion: target,
+        participant_id: participantId,
+        host_token: getHostToken(),
+      });
+    }
     setGroupPool((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleShuffleCandidates = () => {
+    if (!isHost) return;
     triggerHaptic('selection');
     const shuffleList = (prev) => {
       const copy = [...prev];
@@ -375,7 +395,7 @@ export default function RoomLobby() {
   };
 
   const handleReportClosedVenue = (venue) => {
-    if (!venue?.name) return;
+    if (!isHost || !venue?.name) return;
     setRealOptions((prev) => prev.filter((opt) => opt.name !== venue.name));
     setGroupPool((prev) => prev.filter((name) => name !== venue.name));
     addToast({ title: t('closedReportedTitle'), message: t('closedReportedDesc'), type: 'info' });
@@ -383,11 +403,13 @@ export default function RoomLobby() {
 
   useEffect(() => {
     if (isHost && Array.isArray(location.state?.initialCustomOptions) && location.state.initialCustomOptions.length > 0) {
+      const hostToken = getHostToken();
       location.state.initialCustomOptions.forEach((opt) => {
         emit('add_suggestion', {
           pin,
           suggestion: opt,
           participant_id: participantId,
+          host_token: hostToken,
           user_name: currentUserName,
         });
       });
@@ -420,12 +442,12 @@ export default function RoomLobby() {
     : 0;
 
   const handleAddNextPlace = (count = 1) => {
-    if (mode === 'CUSTOM' || remainingPoolCount <= 0) return;
+    if (!isHost || mode === 'CUSTOM' || remainingPoolCount <= 0) return;
     triggerHaptic('selection');
     const inc = typeof count === 'number' ? count : 1;
     const nextCount = Math.min(activePool.length, visiblePlacesCount + inc);
     setVisiblePlacesCount(nextCount);
-    emit('add_discovery_place', { pin, count: inc });
+    emit('add_discovery_place', { pin, count: inc, participant_id: participantId, host_token: getHostToken() });
 
     // When remaining pool gets low (<= 5 remaining), prefetch 10 more locations in the background!
     if (remainingPoolCount <= 5 && realOptions.length < 50 && !isPrefetchingRef.current) {
@@ -451,11 +473,11 @@ export default function RoomLobby() {
   };
 
   const handleRemovePlace = (item) => {
-    if (!item?.id) return;
+    if (!isHost || !item?.id) return;
     triggerHaptic('tap');
     const strId = String(item.id);
     setRemovedPlaceIds((prev) => new Set([...prev, strId]));
-    emit('remove_discovery_place', { pin, option_id: strId });
+    emit('remove_discovery_place', { pin, option_id: strId, participant_id: participantId, host_token: getHostToken() });
     addToast({ title: 'Place Removed', message: `"${item.name}" removed from table`, type: 'info' });
   };
 
@@ -561,6 +583,7 @@ export default function RoomLobby() {
 
         {/* Curated Places / Custom Options on the Table */}
         <CandidatePoolDeck
+          isHost={isHost}
           mode={mode}
           topic={topic}
           isLoading={loadingOptions}
@@ -570,14 +593,14 @@ export default function RoomLobby() {
           prunedCount={prunedCount}
           suggestion={suggestion}
           setSuggestion={setSuggestion}
-          handleAddSuggestion={handleAddSuggestion}
-          handleQuickAddSuggestion={handleQuickAddSuggestion}
-          handleRemoveSuggestion={handleRemoveSuggestion}
-          handleAddNextPlace={handleAddNextPlace}
-          handleRemovePlace={handleRemovePlace}
+          handleAddSuggestion={isHost ? handleAddSuggestion : undefined}
+          handleQuickAddSuggestion={isHost ? handleQuickAddSuggestion : undefined}
+          handleRemoveSuggestion={isHost ? handleRemoveSuggestion : undefined}
+          handleAddNextPlace={isHost ? handleAddNextPlace : undefined}
+          handleRemovePlace={isHost ? handleRemovePlace : undefined}
           duplicateMatch={duplicateMatch}
-          onShuffle={handleShuffleCandidates}
-          onReportClosed={handleReportClosedVenue}
+          onShuffle={isHost ? handleShuffleCandidates : undefined}
+          onReportClosed={isHost ? handleReportClosedVenue : undefined}
         />
       </main>
 
