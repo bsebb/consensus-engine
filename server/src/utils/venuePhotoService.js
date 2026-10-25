@@ -1,7 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const dns = require('dns').promises;
-const net = require('net');
 
 const SERVER_DATA_DIR = path.join(__dirname, '../../data');
 const ROOT_DATA_DIR = path.join(__dirname, '../../../data');
@@ -27,34 +25,59 @@ const SEED_CACHE = {
   "delice": "https://img.restaurantguru.com/w550/h367/r3f3-interior-Delice-2021-08.jpg",
   "coffeelike": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=85",
   "tucano": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=85",
-  "cremedelacreme": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=85",
-  "coffeemolka": "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=85",
+  "cremedelacreme": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=85",
+  "coffeemolka": "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=900&q=85",
   "dcdonuts": "https://images.unsplash.com/photo-1527515862127-a4fc05baf7a5?auto=format&fit=crop&w=900&q=85",
 
-  // Chișinău verified venues
+  // Chișinău verified venues & activities
   "azasu": "https://qmzxbjlpwqkagcyhcglm.supabase.co/storage/v1/object/public/place-photos/places/google-1778416720729-i713zi6pcod.webp",
   "placinte": "https://visit.chisinau.md/wp-content/uploads/2021/08/la-placinte2-1.jpg",
   "grekofresh": "https://grekofresh.md/wp-content/uploads/2020/10/restraraunt-photo-02-500x330.jpg",
   "box": "https://img.restaurantguru.com/cda1-Restaurant-CHIBOX-photo.jpg",
+  "thebox": "https://img.restaurantguru.com/cda1-Restaurant-CHIBOX-photo.jpg",
   "pannicotta": "https://img.restaurantguru.com/c3db-Cafe-Panna-Cotta-interior-2.jpg",
   "pannicotto": "https://img.restaurantguru.com/c3db-Cafe-Panna-Cotta-interior-2.jpg",
-  "rozmarin": "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0b/08/a3/c9/rozmarin-cafe-interior.jpg?w=500&h=-1&s=1",
-  "osho": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
-  "mipiace": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  "andys": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=85",
-  "pizzamania": "https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?auto=format&fit=crop&w=900&q=85",
-  "pegas": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=85",
+  "rozmarin": "https://images.unsplash.com/photo-1525610553991-2bede1a236e2?auto=format&fit=crop&w=900&q=85",
+  "osho": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=85",
+  "mipiace": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=85",
+  "andys": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=900&q=85",
+  "pizzamania": "https://images.unsplash.com/photo-1590947132387-155cc02f3212?auto=format&fit=crop&w=900&q=85",
+  "pegas": "https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=900&q=85",
   "cineplexloteanu": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=85",
   "cineplexmalldova": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=85",
   "autocinemachisinau": "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&w=900&q=85",
   "privatecinemalounge": "https://images.unsplash.com/photo-1513106580091-1d82408b8cd6?auto=format&fit=crop&w=900&q=85",
   "cinematografulinaerliber": "https://images.unsplash.com/photo-1574267432553-4b4628081c31?auto=format&fit=crop&w=900&q=85",
   "moviehallchisinau": "https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=900&q=85",
-  "marlene": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=900&q=85",
+  "marlene": "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=900&q=85",
   "fuior": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=900&q=85",
   "gioelia": "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=900&q=85",
   "covorbar": "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=900&q=85",
   "trattoriadellanonna": "https://img.restaurantguru.com/c7ae-Ristorante-Trattoria-della-Nonna-interior.jpg",
+  "davidansushi": "https://davidansushi.md/wp-content/uploads/2024/10/davidan-set-1.jpg",
+  "popasuldacilor": "https://visit.chisinau.md/wp-content/uploads/2021/08/p.-dacilor-e1637326780341.jpg",
+
+  // Verified Activities & Entertainment
+  "paintballlegion": "https://images.pexels.com/photos/1839816/pexels-photo-1839816.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "plazabowlingmalldova": "https://images.pexels.com/photos/7429504/pexels-photo-7429504.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "kartingmoldova": "https://images.pexels.com/photos/14182138/pexels-photo-14182138.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "billiardclassic": "https://images.pexels.com/photos/4109685/pexels-photo-4109685.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "escaperoomchisinau": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Escape_Room_by_Midgaard_Event.jpg/960px-Escape_Room_by_Midgaard_Event.jpg",
+  "escapetheroomquest": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Escape_Room_-_%22The_Expedition%22_%28Escape_Quest_Bethesda%29.jpg/960px-Escape_Room_-_%22The_Expedition%22_%28Escape_Quest_Bethesda%29.jpg",
+  "lasertagarena": "https://images.pexels.com/photos/3869074/pexels-photo-3869074.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "cybercityesports": "https://images.pexels.com/photos/9072388/pexels-photo-9072388.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "vrvirtualreality": "https://images.pexels.com/photos/7047331/pexels-photo-7047331.jpeg?auto=compress&cs=tinysrgb&w=900",
+  "boardgame": "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=900&q=85",
+  "jumparenatrampolinepark": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Recoil_Trampoline_Park%2C_Valdosta.jpg/960px-Recoil_Trampoline_Park%2C_Valdosta.jpg",
+  "boulderingclimbinggym": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/The_Cliffs_at_DUMBO.jpg/960px-The_Cliffs_at_DUMBO.jpg",
+  "aquaterrawellnesscenter": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Indoor_pool_and_showers_of_the_spa_at_Amantaka_luxury_Resort_%26_Hotel_in_Luang_Prabang_Laos.jpg/960px-Indoor_pool_and_showers_of_the_spa_at_Amantaka_luxury_Resort_%26_Hotel_in_Luang_Prabang_Laos.jpg",
+  "squashchisinau": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Jupitersports_squash_court_constructed.jpg/960px-Jupitersports_squash_court_constructed.jpg",
+  "padbolarena": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/Court_de_padel_de_Horgues_%28Hautes-Pyr%C3%A9n%C3%A9es%29_1.jpg/960px-Court_de_padel_de_Horgues_%28Hautes-Pyr%C3%A9n%C3%A9es%29_1.jpg",
+  "icearenapatinoar": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Ice_Rink_at_Dubai_Mall%2C_Dubai_%28Ank_Kumar%29_02.jpg/960px-Ice_Rink_at_Dubai_Mall%2C_Dubai_%28Ank_Kumar%29_02.jpg",
+  "archeryrobinhood": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/WA_target_shot_with_a_compound_bow_%28Devizes_Bowmen%29.jpg/960px-WA_target_shot_with_a_compound_bow_%28Devizes_Bowmen%29.jpg",
+  "tabletennistopspin": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Table_Tennis_05.jpg/960px-Table_Tennis_05.jpg",
+  "rollersrollerdrome": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Oaks_Park_Roller_Skating_Rink%2C_2018_-_1.jpg/960px-Oaks_Park_Roller_Skating_Rink%2C_2018_-_1.jpg",
+  "dartschisinau": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/58/Dartboard%2C_Black_Bull%2C_Wetherby_%287th_November_2023%29.jpg/960px-Dartboard%2C_Black_Bull%2C_Wetherby_%287th_November_2023%29.jpg",
 };
 
 const memoryCache = new Map(Object.entries(SEED_CACHE));
@@ -64,7 +87,8 @@ function loadPersistentCache() {
     if (fs.existsSync(CACHE_FILE)) {
       const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
       for (const [k, v] of Object.entries(data)) {
-        if (k && v && typeof v === 'string') {
+        // Seed cache takes precedence over any older file entry
+        if (k && v && typeof v === 'string' && !memoryCache.has(k)) {
           memoryCache.set(k, v);
         }
       }
@@ -72,178 +96,7 @@ function loadPersistentCache() {
   } catch {}
 }
 
-const MAX_CACHE_ENTRIES = 500;
-function setBoundedCache(map, key, value, maxEntries = MAX_CACHE_ENTRIES) {
-  if (map.size >= maxEntries) {
-    const oldestKey = map.keys().next().value;
-    if (oldestKey) map.delete(oldestKey);
-  }
-  map.set(key, value);
-}
-
-function isPrivateIp(ip) {
-  if (!ip) return true;
-  let cleanIp = String(ip).toLowerCase().trim();
-  if (cleanIp.startsWith('::ffff:')) {
-    cleanIp = cleanIp.replace('::ffff:', '');
-  }
-
-  if (net.isIPv4(cleanIp)) {
-    const parts = cleanIp.split('.').map(Number);
-    if (parts.length !== 4 || parts.some(isNaN)) return true;
-    if (parts[0] === 0) return true; // 0.0.0.0/8
-    if (parts[0] === 10) return true; // 10.0.0.0/8
-    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true; // 100.64.0.0/10 (CG-NAT)
-    if (parts[0] === 127) return true; // 127.0.0.0/8 (All Loopback)
-    if (parts[0] === 169 && parts[1] === 254) return true; // 169.254.0.0/16 (Link-local & IMDS)
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true; // 172.16.0.0/12
-    if (parts[0] === 192 && parts[1] === 168) return true; // 192.168.0.0/16
-    if (parts[0] >= 224) return true; // Multicast & Reserved
-    return false;
-  }
-
-  if (net.isIPv6(cleanIp)) {
-    if (cleanIp === '::1' || cleanIp === '::') return true;
-    if (/^f[cd][0-9a-f]{2}:/i.test(cleanIp)) return true; // ULA fc00::/7
-    if (/^fe[89ab][0-9a-f]:/i.test(cleanIp)) return true; // Link-local fe80::/10
-    if (/^::ffff:(?:127|10|169\.254|172\.(?:1[6-9]|2\d|3[01])|192\.168)/i.test(cleanIp)) return true;
-    return false;
-  }
-
-  return true;
-}
-
-async function isSafeExternalUrl(rawUrl) {
-  try {
-    const parsed = new URL(rawUrl);
-    if (parsed.protocol !== 'https:') return false;
-    const host = parsed.hostname.toLowerCase().replace(/^[\[]|[\]]$/g, '');
-
-    if (
-      host === 'localhost' ||
-      host.endsWith('.local') ||
-      host.endsWith('.internal') ||
-      host.endsWith('.corp') ||
-      host.endsWith('.home') ||
-      host.endsWith('.onion')
-    ) {
-      return false;
-    }
-
-    if (net.isIP(host)) {
-      return !isPrivateIp(host);
-    }
-
-    const records = await dns.lookup(host, { all: true }).catch(() => []);
-    if (!records || records.length === 0) return false;
-    for (const rec of records) {
-      if (isPrivateIp(rec.address)) return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-let saveTimeout = null;
-function queueSavePersistentCache() {
-  if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    try {
-      const dir = path.dirname(CACHE_FILE);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      const obj = Object.fromEntries(memoryCache.entries());
-      fs.writeFileSync(CACHE_FILE, JSON.stringify(obj, null, 2), 'utf8');
-    } catch {}
-  }, 1000);
-  if (saveTimeout.unref) saveTimeout.unref();
-}
-
 loadPersistentCache();
-
-/**
- * Searches the web for an authentic venue photo and validates the URL.
- */
-async function fetchOnlineVenuePhoto(name, locality = '', address = '') {
-  if (!name || typeof name !== 'string') return null;
-  const cleanName = name.trim();
-  // Never perform web image queries for street addresses or generic words
-  if (/^(strada|str\.|bd\.|bulevardul|b-dul|calea|șoseaua|soseaua|aleea|ул\.|улица)\b/i.test(cleanName)) {
-    return null;
-  }
-  const loc = locality || (address ? address.split(',').slice(-2).join(' ').trim() : '');
-  const query = `${cleanName} ${loc} venue interior photo`.trim();
-  try {
-    const tokenRes = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(query)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
-      signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
-    });
-    if (!tokenRes.ok) return null;
-    const html = await tokenRes.text();
-    const vqdMatch = html.match(/vqd=([0-9-]+)/);
-    if (!vqdMatch) return null;
-
-    const imgRes = await fetch(
-      `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(query)}&vqd=${vqdMatch[1]}`,
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(3000) : undefined,
-      }
-    );
-    if (!imgRes.ok) return null;
-    const data = await imgRes.json();
-    const results = Array.isArray(data.results) ? data.results : [];
-
-    for (const item of results.slice(0, 5)) {
-      const url = item.image;
-      if (!url || typeof url !== 'string' || !(await isSafeExternalUrl(url))) continue;
-      if (url.includes('lookaside.fbsbx') || url.includes('favicon') || url.includes('icon')) continue;
-
-      try {
-        const probe = await fetch(url, {
-          method: 'GET',
-          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' },
-          redirect: 'error',
-          signal: AbortSignal.timeout ? AbortSignal.timeout(2200) : undefined,
-        });
-        const ct = probe.headers.get('content-type') || '';
-        if (probe.ok && (ct.startsWith('image/') || ct.includes('octet-stream'))) {
-          return url;
-        }
-      } catch {}
-    }
-  } catch {}
-  return null;
-}
-
-const pendingBackgroundLookups = new Set();
-let activeBackgroundWorkers = 0;
-const MAX_CONCURRENT_BG_LOOKUPS = 2;
-const backgroundQueue = [];
-
-function processBackgroundPhotoQueue() {
-  while (activeBackgroundWorkers < MAX_CONCURRENT_BG_LOOKUPS && backgroundQueue.length > 0) {
-    const task = backgroundQueue.shift();
-    if (!task) break;
-    activeBackgroundWorkers++;
-    fetchOnlineVenuePhoto(task.name, task.locality, task.address)
-      .then((onlinePhoto) => {
-        if (onlinePhoto) {
-          setBoundedCache(memoryCache, task.cKey, onlinePhoto);
-          queueSavePersistentCache();
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        pendingBackgroundLookups.delete(task.cKey);
-        activeBackgroundWorkers--;
-        if (backgroundQueue.length > 0) {
-          setImmediate(processBackgroundPhotoQueue);
-        }
-      });
-  }
-}
 
 function resolveCachedVenuePhotoSync(name = '') {
   const cleanName = String(name || '').trim();
@@ -256,61 +109,31 @@ function resolveCachedVenuePhotoSync(name = '') {
   }
 
   for (const [key, cachedUrl] of memoryCache.entries()) {
-    if (cKey === key || (cKey.length >= 4 && key.length >= 4 && (cKey.includes(key) || key.includes(cKey)))) {
+    if (cKey === key || (cKey.length >= 6 && key.length >= 6 && (cKey.includes(key) || key.includes(cKey)))) {
       return cachedUrl;
     }
   }
   return null;
 }
 
-function queueBackgroundPhotoEnrichment(name = '', locality = '', address = '') {
-  const cleanName = String(name || '').trim();
-  if (!cleanName) return;
-  const cKey = getCanonicalVenueKey(cleanName);
-  if (!cKey || memoryCache.has(cKey) || pendingBackgroundLookups.has(cKey) || backgroundQueue.length >= 100) {
-    return;
-  }
-  pendingBackgroundLookups.add(cKey);
-  backgroundQueue.push({ cKey, name: cleanName, locality, address });
-  setImmediate(processBackgroundPhotoQueue);
+/**
+ * Resolves a verified photo for a venue from the curated persistent cache.
+ * Does NOT perform blind web scraping so unverified classifieds/real-estate images never pollute cards.
+ */
+async function resolveVenuePhoto(name = '') {
+  return resolveCachedVenuePhotoSync(name);
 }
 
 /**
- * Resolves a real photo for a venue, using the persistent cache or dynamic lookup.
+ * Batch resolves verified photos for a list of candidates from in-memory cache in <1ms.
  */
-async function resolveVenuePhoto(name = '', locality = '', address = '', category = '') {
-  const cached = resolveCachedVenuePhotoSync(name);
-  if (cached) return cached;
-
-  const cleanName = String(name || '').trim();
-  const cKey = getCanonicalVenueKey(cleanName);
-  if (!cKey) return null;
-
-  const onlinePhoto = await fetchOnlineVenuePhoto(cleanName, locality, address);
-  if (onlinePhoto) {
-    setBoundedCache(memoryCache, cKey, onlinePhoto);
-    queueSavePersistentCache();
-    return onlinePhoto;
-  }
-
-  return null;
-}
-
-/**
- * Batch resolves photos for a list of candidates from in-memory cache in <1ms
- * and queues any uncached venues for non-blocking background enrichment.
- */
-async function resolveVenuePhotosBatch(venues = [], locality = '') {
+async function resolveVenuePhotosBatch(venues = []) {
   if (!Array.isArray(venues) || venues.length === 0) return venues;
 
   return venues.map((v) => {
     if (v.photo_url) return v;
     const cachedPhoto = resolveCachedVenuePhotoSync(v.name);
-    if (cachedPhoto) {
-      return { ...v, photo_url: cachedPhoto };
-    }
-    queueBackgroundPhotoEnrichment(v.name, locality || v.address, v.address);
-    return { ...v, photo_url: null };
+    return { ...v, photo_url: cachedPhoto || null };
   });
 }
 

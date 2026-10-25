@@ -394,14 +394,43 @@ export const SMART_PLACE_DIRECTORY = [
     ],
   },
   {
-    canonicalName: 'Laser Tag & VR Arena',
-    category: 'Fun & Distractions • Arcade',
+    canonicalName: 'Laser Tag Arena',
+    category: 'Fun & Distractions • Laser Tag',
     priceLevel: 2,
-    vibe: 'Tactical Laser Tag, VR Simulators & Arcade',
-    aliases: ['laser tag', 'lasertag', 'vr club', 'arcade', 'cyber city'],
+    vibe: 'Tactical Laser Tag, Neon Labyrinth & Arcade',
+    aliases: ['laser tag', 'lasertag', 'laser arena', 'arcade'],
     branches: [
       { name: 'Laser Tag Arena', address: 'Bd. Mircea cel Bătrân 14, Chișinău', lat: 47.0460, lng: 28.8820 },
+    ],
+  },
+  {
+    canonicalName: 'VR Club Virtual Reality',
+    category: 'Fun & Distractions • VR Arena',
+    priceLevel: 2,
+    vibe: 'Multiplayer VR Headsets & Co-Op Simulators',
+    aliases: ['vr club', 'virtual reality', 'vr arena', 'vr headset'],
+    branches: [
       { name: 'VR Club Centru', address: 'Str. Pușkin 32, Chișinău', lat: 47.0240, lng: 28.8350 },
+    ],
+  },
+  {
+    canonicalName: 'Cyber City Esports Lounge',
+    category: 'Fun & Distractions • Esports & PC Gaming',
+    priceLevel: 2,
+    vibe: '240Hz PC Battle Stations & PS5 Lounge',
+    aliases: ['cyber city', 'cybercity', 'esports lounge', 'pc gaming', 'internet cafe'],
+    branches: [
+      { name: 'Cyber City Esports Lounge', address: 'Str. Ismail 45, Chișinău', lat: 47.0180, lng: 28.8450 },
+    ],
+  },
+  {
+    canonicalName: 'Paintball Club Legion',
+    category: 'Fun & Distractions • Tactical Paintball',
+    priceLevel: 3,
+    vibe: 'Tactical Woodsball Field, Bunkers & Markers',
+    aliases: ['paintball', 'paintball club', 'paintball legion', 'airsoft'],
+    branches: [
+      { name: 'Paintball Club Legion', address: 'Pădurea Sculeanca, Chișinău', lat: 47.0510, lng: 28.7750 },
     ],
   },
   {
