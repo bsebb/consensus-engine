@@ -210,7 +210,7 @@ export function getPersistentDeviceId() {
 
 export const getDeviceId = getPersistentDeviceId;
 
-function generateRandomUuid() {
+export function generateRandomUuid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }

@@ -8,6 +8,7 @@ import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import { useLanguage } from '../context/LanguageContext';
 import { resolveRegionProfile, formatRegionalTierShort, formatRegionalRadius } from '../utils/regionFormat';
+import { generateRandomUuid } from '../utils/deviceId';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -156,11 +157,12 @@ export default function HostSettings() {
     const userName = localStorage.getItem('consensus_user_name') || 'Host';
 
     try {
+      const freshHostParticipantId = generateRandomUuid();
       const response = await fetch(apiUrl('/api/v1/rooms'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          host_id: participantId,
+          host_id: freshHostParticipantId,
           device_id: deviceId,
           host_device_id: deviceId,
           mode,
@@ -175,7 +177,7 @@ export default function HostSettings() {
       if (response.ok) {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
-        setRoomParticipantId(generatedPin, participantId);
+        setRoomParticipantId(generatedPin, freshHostParticipantId);
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
         if (realRoom.host_token) {
           sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);

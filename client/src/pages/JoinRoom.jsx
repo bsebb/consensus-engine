@@ -21,6 +21,7 @@ import {
   saveUserLocation,
 } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
+import { generateRandomUuid } from '../utils/deviceId';
 import BrandLogo from '../components/ui/BrandLogo';
 import CustomPollDrawer from '../components/home/CustomPollDrawer';
 import JoinPinForm from '../components/home/JoinPinForm';
@@ -188,11 +189,12 @@ export default function JoinRoom() {
     }
 
     try {
+      const freshHostParticipantId = generateRandomUuid();
       const response = await fetch(apiUrl('/api/v1/rooms'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          host_id: participantId,
+          host_id: freshHostParticipantId,
           device_id: deviceId,
           host_device_id: deviceId,
           mode: roomMode,
@@ -208,7 +210,7 @@ export default function JoinRoom() {
       if (response.ok) {
         const realRoom = await response.json();
         const generatedPin = realRoom.pin;
-        setRoomParticipantId(generatedPin, participantId);
+        setRoomParticipantId(generatedPin, freshHostParticipantId);
         sessionStorage.setItem(`consensus_host_${generatedPin}`, 'true');
         if (realRoom.host_token) {
           sessionStorage.setItem(`consensus_host_token_${generatedPin}`, realRoom.host_token);
