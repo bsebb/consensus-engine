@@ -12,10 +12,10 @@ const REGION_PROFILES = {
     unit: 'mi',
     isImperial: true,
     tiers: {
-      1: { short: '< $15', range: '$8-$15', avg: '~$12', maxDisplay: '$15', symbolRepeat: '$' },
-      2: { short: '$15-$30', range: '$15-$30', avg: '~$22', maxDisplay: '$30', symbolRepeat: '$$' },
-      3: { short: '$30-$60', range: '$30-$60', avg: '~$45', maxDisplay: '$60', symbolRepeat: '$$$' },
-      4: { short: '$60+', range: '$60+', avg: '~$80', maxDisplay: '$80+', symbolRepeat: '$$$$' },
+      1: { short: '< $15', range: '$8-$15', avg: '~$12', maxDisplay: '$15', symbolRepeat: '<$15' },
+      2: { short: '$15-$30', range: '$15-$30', avg: '~$22', maxDisplay: '$30', symbolRepeat: '<$30' },
+      3: { short: '$30-$60', range: '$30-$60', avg: '~$45', maxDisplay: '$60', symbolRepeat: '<$60' },
+      4: { short: '$60+', range: '$60+', avg: '~$80', maxDisplay: '$80+', symbolRepeat: '$60+' },
     },
   },
   GB: {
@@ -25,10 +25,10 @@ const REGION_PROFILES = {
     unit: 'mi',
     isImperial: true,
     tiers: {
-      1: { short: '< £15', range: '£8-£15', avg: '~£12', maxDisplay: '£15', symbolRepeat: '£' },
-      2: { short: '£15-£30', range: '£15-£30', avg: '~£22', maxDisplay: '£30', symbolRepeat: '££' },
-      3: { short: '£30-£55', range: '£30-£55', avg: '~£42', maxDisplay: '£55', symbolRepeat: '£££' },
-      4: { short: '£55+', range: '£55+', avg: '~£75', maxDisplay: '£75+', symbolRepeat: '££££' },
+      1: { short: '< £15', range: '£8-£15', avg: '~£12', maxDisplay: '£15', symbolRepeat: '<£15' },
+      2: { short: '£15-£30', range: '£15-£30', avg: '~£22', maxDisplay: '£30', symbolRepeat: '<£30' },
+      3: { short: '£30-£55', range: '£30-£55', avg: '~£42', maxDisplay: '£55', symbolRepeat: '<£55' },
+      4: { short: '£55+', range: '£55+', avg: '~£75', maxDisplay: '£75+', symbolRepeat: '£55+' },
     },
   },
   EU: {
@@ -38,10 +38,10 @@ const REGION_PROFILES = {
     unit: 'km',
     isImperial: false,
     tiers: {
-      1: { short: '< €15', range: '€8-€15', avg: '~€12', maxDisplay: '€15', symbolRepeat: '€' },
-      2: { short: '€15-€30', range: '€15-€30', avg: '~€22', maxDisplay: '€30', symbolRepeat: '€€' },
-      3: { short: '€30-€60', range: '€30-€60', avg: '~€45', maxDisplay: '€60', symbolRepeat: '€€€' },
-      4: { short: '€60+', range: '€60+', avg: '~€75', maxDisplay: '€75+', symbolRepeat: '€€€€' },
+      1: { short: '< €15', range: '€8-€15', avg: '~€12', maxDisplay: '€15', symbolRepeat: '<€15' },
+      2: { short: '€15-€30', range: '€15-€30', avg: '~€22', maxDisplay: '€30', symbolRepeat: '<€30' },
+      3: { short: '€30-€60', range: '€30-€60', avg: '~€45', maxDisplay: '€60', symbolRepeat: '<€60' },
+      4: { short: '€60+', range: '€60+', avg: '~€75', maxDisplay: '€75+', symbolRepeat: '€60+' },
     },
   },
   RO: {
@@ -52,8 +52,8 @@ const REGION_PROFILES = {
     isImperial: false,
     tiers: {
       1: { short: '< 45 RON', range: '25-45 RON', avg: '~35 RON', maxDisplay: '45 RON', symbolRepeat: '<45 RON', pill: '~35 RON' },
-      2: { short: '45-100 RON', range: '45-100 RON', avg: '~70 RON', maxDisplay: '100 RON', symbolRepeat: '45-100 RON', pill: '~70 RON' },
-      3: { short: '100-180 RON', range: '100-180 RON', avg: '~135 RON', maxDisplay: '180 RON', symbolRepeat: '100-180 RON', pill: '~135 RON' },
+      2: { short: '45-100 RON', range: '45-100 RON', avg: '~70 RON', maxDisplay: '100 RON', symbolRepeat: '<100 RON', pill: '~70 RON' },
+      3: { short: '100-180 RON', range: '100-180 RON', avg: '~135 RON', maxDisplay: '180 RON', symbolRepeat: '<180 RON', pill: '~135 RON' },
       4: { short: '180+ RON', range: '180+ RON', avg: '~220 RON', maxDisplay: '220+ RON', symbolRepeat: '180+ RON', pill: '~220 RON' },
     },
   },
@@ -65,8 +65,8 @@ const REGION_PROFILES = {
     isImperial: false,
     tiers: {
       1: { short: '< 150 MDL', range: '80-150 MDL', avg: '~110 MDL', maxDisplay: '150 MDL', symbolRepeat: '<150 MDL', pill: '~110 MDL' },
-      2: { short: '150-300 MDL', range: '150-300 MDL', avg: '~180 MDL', maxDisplay: '300 MDL', symbolRepeat: '150-300 MDL', pill: '~180 MDL' },
-      3: { short: '300-500 MDL', range: '300-500 MDL', avg: '~350 MDL', maxDisplay: '500 MDL', symbolRepeat: '300-500 MDL', pill: '~350 MDL' },
+      2: { short: '150-300 MDL', range: '150-300 MDL', avg: '~180 MDL', maxDisplay: '300 MDL', symbolRepeat: '<300 MDL', pill: '~180 MDL' },
+      3: { short: '300-500 MDL', range: '300-500 MDL', avg: '~350 MDL', maxDisplay: '500 MDL', symbolRepeat: '<500 MDL', pill: '~350 MDL' },
       4: { short: '500+ MDL', range: '500+ MDL', avg: '~600 MDL', maxDisplay: '500+ MDL', symbolRepeat: '500+ MDL', pill: '~600 MDL' },
     },
   },

@@ -65,13 +65,13 @@ export default function JoinRoom() {
   const { participantId, deviceId, setRoomParticipantId } = useSocket();
   const { addToast } = useToast();
 
-  // Auto-populate PIN from URL query param if present (e.g. ?pin=1234)
+  // Auto-navigate directly into the Lobby if a 4-digit PIN is passed in the URL (?pin=1234)
   useEffect(() => {
     const pinParam = searchParams.get('pin');
     if (pinParam && /^\d{4}$/.test(pinParam)) {
-      setActiveTab('join');
+      navigate(`/lobby/${pinParam}`, { replace: true });
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   // Load recent session from history, wake up backend, and restore saved coordinates if present
   useEffect(() => {

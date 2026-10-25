@@ -238,7 +238,7 @@ export default function RoomLobby() {
   };
 
   const handleShareInvite = async () => {
-    const inviteUrl = `${window.location.origin}/?pin=${pin}`;
+    const inviteUrl = `${window.location.origin}/lobby/${pin}`;
     triggerHaptic('tap');
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {

@@ -34,7 +34,7 @@ export default function SegmentedControl({
       padding: '3px',
       trackRadius: pill ? '9999px' : '14px',
       innerRadius: pill ? '9999px' : '11px',
-      btn: 'py-2 px-3 min-h-[38px] text-xs sm:text-sm font-semibold',
+      btn: 'py-2 px-1.5 sm:px-3 min-h-[38px] text-[11px] sm:text-sm font-semibold',
       text: 'text-sm',
     },
     lg: {
@@ -115,7 +115,7 @@ export default function SegmentedControl({
             }`}
           >
             {Icon && <Icon size={14} className="shrink-0" />}
-            <span className="tabular-nums tracking-tight truncate">{opt.label}</span>
+            <span className="tabular-nums tracking-tight whitespace-nowrap">{opt.label}</span>
             {opt.sub && (
               <span className={`text-[10px] tabular-nums font-normal shrink-0 ${isSelected && isAccent ? 'text-white/80' : 'text-[var(--text-tertiary)]'}`}>
                 {opt.sub}
