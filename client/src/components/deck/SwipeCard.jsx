@@ -368,13 +368,11 @@ export default function SwipeCard({
                   onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); onOpenDetails?.(safePhotoIdx); }}
                   className="absolute bottom-16 inset-x-4 z-20 flex items-center cursor-pointer"
                 >
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/75 hover:bg-black/85 backdrop-blur-md text-[11px] font-semibold text-white/95 border border-white/15 shadow-sm max-w-full truncate transition-colors">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/85 backdrop-blur-md text-[11px] font-semibold text-white border border-white/15 shadow-sm transition-colors">
                     <Camera size={11} className="text-emerald-400 shrink-0" />
                     <span className="font-bold text-emerald-300 tabular-nums shrink-0">{safePhotoIdx + 1}/{validSlides.length}</span>
                     <span className="text-white/50 shrink-0">•</span>
-                    <span className="font-bold text-white shrink-0">{activeSlide.label}</span>
-                    <span className="text-white/60 shrink-0">-</span>
-                    <span className="truncate text-white/85">{activeSlide.detail}</span>
+                    <span className="font-bold text-white">{activeSlide.label}</span>
                   </span>
                 </div>
               )}

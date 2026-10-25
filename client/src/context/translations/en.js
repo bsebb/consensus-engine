@@ -371,5 +371,10 @@ export const en = {
   discoverySearchActivities: 'Add an activity (e.g. Bowling, Cinema, VR)...',
   addedBadge: 'Added',
   soloOrInviteHint: 'Share the code above to vote with friends, or start solo anytime',
+  vetoUsedTitle: 'Veto Already Used (1/round)',
+  vetoUsedDesc: 'You get 1 Veto per round so no one can block every spot. Use Pass instead!',
+  superlikeUsedTitle: 'Superlike Already Used (1/round)',
+  superlikeUsedDesc: 'You get 1 Superlike per round for your #1 favorite. Use Like instead!',
+  photoHighlight: 'Photo Highlight',
 };
 

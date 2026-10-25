@@ -3,12 +3,20 @@ import { X, Heart, Star, Flame, RotateCcw } from 'lucide-react';
 import { triggerHaptic } from '../../utils/haptics';
 import { useLanguage } from '../../context/LanguageContext';
 
-export default function SwipeControls({ handleVote, handleUndo, canUndo = false }) {
+export default function SwipeControls({
+  handleVote,
+  handleUndo,
+  canUndo = false,
+  vetoesRemaining = 1,
+  superlikesRemaining = 1,
+}) {
   const { t } = useLanguage();
+  const hasVeto = vetoesRemaining > 0;
+  const hasSuper = superlikesRemaining > 0;
 
   return (
     <div className="w-full max-w-md mx-auto px-4 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-center shrink-0 select-none z-20">
-      <div className="flex items-center justify-between gap-1.5 sm:gap-2.5 px-3 py-1.5 rounded-3xl bg-[var(--bg-elevated)]/90 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 px-3.5 py-2 rounded-3xl bg-[var(--bg-elevated)]/92 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
         {/* Undo Action */}
         <div className="flex flex-col items-center gap-0.5">
           <button
@@ -54,7 +62,7 @@ export default function SwipeControls({ handleVote, handleUndo, canUndo = false 
           </span>
         </div>
 
-        {/* Veto Action */}
+        {/* Veto Action (1 per round quota) */}
         <div className="flex flex-col items-center gap-0.5">
           <button
             type="button"
@@ -62,18 +70,32 @@ export default function SwipeControls({ handleVote, handleUndo, canUndo = false 
               triggerHaptic('veto');
               handleVote?.(-100);
             }}
-            aria-label="Veto option"
-            title="Veto option (ArrowDown)"
-            className="w-11 h-11 rounded-2xl bg-[var(--bg-surface)] hover:bg-red-600/10 border border-[var(--border-main)] hover:border-red-500/50 text-red-500 flex items-center justify-center shadow-2xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+            aria-label={`Veto option (${vetoesRemaining} left)`}
+            title={hasVeto ? 'Veto option (1 per round)' : 'Veto already used this round'}
+            className={`relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all duration-150 cursor-pointer ${
+              hasVeto
+                ? 'bg-[var(--bg-surface)] hover:bg-red-600/10 border-[var(--border-main)] hover:border-red-500/50 text-red-500 shadow-2xs hover:scale-105 active:scale-95'
+                : 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-45 scale-95'
+            }`}
           >
             <Flame size={18} strokeWidth={2.3} />
+            <span
+              data-testid="veto-quota-badge"
+              className={`absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-[10px] font-black flex items-center justify-center tabular-nums shadow-2xs ${
+                hasVeto
+                  ? 'bg-red-500 text-white'
+                  : 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-tertiary)]'
+              }`}
+            >
+              {vetoesRemaining}
+            </span>
           </button>
-          <span className="text-[10px] font-bold text-red-500/80 tracking-tight">
+          <span className={`text-[10px] font-bold tracking-tight ${hasVeto ? 'text-red-500/80' : 'text-[var(--text-tertiary)] opacity-60'}`}>
             {t('ctrlVeto') || 'Veto'}
           </span>
         </div>
 
-        {/* Superlike Action */}
+        {/* Superlike Action (1 per round quota) */}
         <div className="flex flex-col items-center gap-0.5">
           <button
             type="button"
@@ -81,13 +103,27 @@ export default function SwipeControls({ handleVote, handleUndo, canUndo = false 
               triggerHaptic('superlike');
               handleVote?.(2);
             }}
-            aria-label="Superlike option"
-            title="Superlike (ArrowUp)"
-            className="w-11 h-11 rounded-2xl bg-[var(--bg-surface)] hover:bg-amber-400/10 border border-[var(--border-main)] hover:border-amber-400/50 text-amber-500 flex items-center justify-center shadow-2xs hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+            aria-label={`Superlike option (${superlikesRemaining} left)`}
+            title={hasSuper ? 'Superlike option (1 per round)' : 'Superlike already used this round'}
+            className={`relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all duration-150 cursor-pointer ${
+              hasSuper
+                ? 'bg-[var(--bg-surface)] hover:bg-amber-400/10 border-[var(--border-main)] hover:border-amber-400/50 text-amber-500 shadow-2xs hover:scale-105 active:scale-95'
+                : 'bg-[var(--bg-inset)] border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-45 scale-95'
+            }`}
           >
-            <Star size={18} strokeWidth={2.3} className="fill-amber-400/20" />
+            <Star size={18} strokeWidth={2.3} className={hasSuper ? 'fill-amber-400/20' : ''} />
+            <span
+              data-testid="superlike-quota-badge"
+              className={`absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-[10px] font-black flex items-center justify-center tabular-nums shadow-2xs ${
+                hasSuper
+                  ? 'bg-amber-500 text-black'
+                  : 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-tertiary)]'
+              }`}
+            >
+              {superlikesRemaining}
+            </span>
           </button>
-          <span className="text-[10px] font-bold text-amber-500/80 tracking-tight">
+          <span className={`text-[10px] font-bold tracking-tight ${hasSuper ? 'text-amber-500/80' : 'text-[var(--text-tertiary)] opacity-60'}`}>
             {t('ctrlSuper') || 'Super'}
           </span>
         </div>

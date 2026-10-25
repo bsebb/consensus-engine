@@ -129,7 +129,6 @@ export default function VenueDetailsModal({
   const { rating, reviewCount } = getVenueRating(venue.name, venue.category);
   const priceLevel = venue.price_level || 2;
   const levelLabel = priceLevel === 1 ? t('budgetLevel1') : priceLevel === 2 ? t('budgetLevel2') : priceLevel === 3 ? t('budgetLevel3') : t('budgetLevel4');
-  const priceDesc = `${formatRegionalPriceBadge(priceLevel, venue)} • ${levelLabel}`;
 
   const distKm = venue.road_distance_km || venue.distance_km;
   const distDisplay = formatRegionalDistance(distKm, venue);
@@ -253,57 +252,56 @@ export default function VenueDetailsModal({
           </div>
         </div>
 
-        <div className="absolute bottom-3 inset-x-4 flex items-end justify-between gap-2 z-10 pointer-events-none">
+        <div className="absolute bottom-3.5 inset-x-4 flex items-end justify-between gap-2 z-10 pointer-events-none">
           <div className="min-w-0 w-full">
-            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--accent-bg)] text-white text-[11px] font-bold shadow-xs">
-                {vibe}
-              </span>
-              {activeSlide && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/95 text-[11px] font-semibold border border-white/15 truncate max-w-full">
-                  <span className="font-bold text-emerald-300">{activeSlide.label}</span>
-                  <span className="text-white/50">-</span>
-                  <span className="truncate text-white/85">{activeSlide.detail}</span>
-                </span>
-              )}
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">{venue.name}</h2>
+            <span className="text-xs font-bold text-amber-300 tracking-wide block mb-0.5">
+              {venue.category || vibe}
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-white leading-tight break-words">
+              {venue.name}
+            </h2>
           </div>
         </div>
       </div>
 
-      {/* Full 4-Photo Interactive Gallery Strip with Slide Labels & Captions */}
+      {/* Clean Visual Thumbnail Strip + Full Readable Photo Caption */}
       {validSlides.length > 1 && (
-        <div className="px-4 py-2.5 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex flex-col gap-1.5 shrink-0">
+        <div className="px-4 py-3 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex flex-col gap-2.5 shrink-0">
           <div className="grid grid-cols-4 gap-2">
             {validSlides.slice(0, 4).map((slide, idx) => (
               <button
                 key={slide.url || idx}
                 type="button"
                 onClick={() => { triggerHaptic('tap'); setActivePhotoIdx(idx); }}
-                className={`relative h-12 rounded-xl overflow-hidden border-2 transition-all cursor-pointer flex flex-col justify-end text-left ${
-                  idx === safeIdx ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/25 shadow-sm' : 'border-transparent opacity-70 hover:opacity-100'
+                aria-label={`Photo ${idx + 1}: ${slide.label}`}
+                className={`relative h-13 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                  idx === safeIdx
+                    ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/30 shadow-xs scale-[1.02]'
+                    : 'border-transparent opacity-65 hover:opacity-100'
                 }`}
               >
                 <img
                   src={slide.url}
                   alt={`${venue.name} - ${slide.label}`}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="w-full h-full object-cover"
                   onError={(e) => { if (fallbackPhoto && e.currentTarget.src !== fallbackPhoto) e.currentTarget.src = fallbackPhoto; }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <span className="relative z-10 px-1.5 pb-1 text-[10px] font-bold text-white truncate w-full leading-tight">
-                  {idx + 1}. {slide.label}
-                </span>
               </button>
             ))}
           </div>
           {activeSlide && (
-            <div className="flex items-center justify-between gap-2 text-[11px] text-[var(--text-secondary)] px-0.5">
-              <span className="truncate"><strong className="text-[var(--text-primary)]">{activeSlide.label}:</strong> {activeSlide.detail}</span>
-              <span className="text-[10px] text-[var(--text-tertiary)] shrink-0 font-semibold tabular-nums">
-                {t('tapToViewPhotos')} ({safeIdx + 1}/{validSlides.length})
-              </span>
+            <div className="px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex flex-col gap-0.5 text-left">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-extrabold text-[var(--text-primary)]">
+                  {activeSlide.label}
+                </span>
+                <span className="text-[10px] font-bold text-[var(--accent-bg)] tabular-nums shrink-0">
+                  {safeIdx + 1} / {validSlides.length}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed break-words">
+                {activeSlide.detail}
+              </p>
             </div>
           )}
         </div>
@@ -318,8 +316,8 @@ export default function VenueDetailsModal({
                 <Star size={18} className="fill-[var(--accent-bg)] text-[var(--accent-bg)]" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-base font-bold text-[var(--text-primary)] leading-tight truncate">{venue.name}</span>
-                <span className="text-xs text-[var(--text-secondary)] font-medium truncate mt-0.5">{t('customPoll') || 'Custom Poll Option'}</span>
+                <span className="text-base font-bold text-[var(--text-primary)] leading-tight break-words">{venue.name}</span>
+                <span className="text-xs text-[var(--text-secondary)] font-medium mt-0.5">{t('customPoll') || 'Custom Poll Option'}</span>
               </div>
             </div>
             <a
@@ -335,47 +333,43 @@ export default function VenueDetailsModal({
           </div>
         ) : (
           <>
-            <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2.5">
-              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0">
-                    {isWalkable ? <Footprints size={17} /> : <Car size={17} />}
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-black text-[var(--text-primary)] leading-tight tabular-nums">
-                      {distDisplay ? (isWalkable ? `~${walkMin} min • ${distDisplay}` : `~${driveMin} min • ${distDisplay}`) : t('localVenue')}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-secondary)] font-medium truncate">
-                      {distKm != null ? (isWalkable ? `${t('walking')} (${t('shortDrive').replace('{time}', driveMin)})` : `${t('byCar')} • ${t('viaStreets')}`) : t('centralArea')}
-                    </span>
-                  </div>
+            {/* Clean 2-Card Summary Grid: Travel Time & Budget */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] flex items-center justify-center shrink-0 mt-0.5">
+                  {isWalkable ? <Footprints size={16} /> : <Car size={16} />}
                 </div>
-                <div className="min-w-0 min-[400px]:text-right">
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-tertiary)] block">{t('estimatedSpend')}</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)]">{priceDesc}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent-bg)]/10 text-[var(--accent-bg)] text-xs font-bold border border-[var(--accent-bg)]/20 shadow-xs tabular-nums">
-                  <Car size={13} />
-                  <span>{driveMin != null ? `~${driveMin} min via OSRM` : 'OSRM Live Routing'}</span>
-                </span>
-                {isWalkable && walkMin != null && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)] text-xs font-semibold border border-[var(--border-subtle)] tabular-nums">
-                    <Footprints size={13} className="text-emerald-500" />
-                    <span>~{walkMin} min walk</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)]">
+                    {isWalkable ? t('walking') : t('byCar')}
                   </span>
-                )}
+                  <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] leading-snug tabular-nums mt-0.5">
+                    {distDisplay ? (isWalkable ? `~${walkMin} min • ${distDisplay}` : `~${driveMin} min • ${distDisplay}`) : t('localVenue')}
+                  </span>
+                </div>
               </div>
 
-              {venue.address && (
-                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                  <MapPin size={13} className="text-[var(--accent-bg)] shrink-0" />
-                  <span className="font-medium break-words min-w-0">{venue.address}</span>
-                </div>
-              )}
+              <div className="p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col justify-center">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)]">
+                  {t('estimatedSpend')}
+                </span>
+                <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] leading-snug tabular-nums mt-0.5">
+                  {formatRegionalPriceBadge(priceLevel, venue)}
+                </span>
+                <span className="text-[11px] text-[var(--text-secondary)] font-medium leading-tight mt-0.5">
+                  {levelLabel}
+                </span>
+              </div>
             </div>
+
+            {venue.address && (
+              <div className="px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex items-start gap-2.5 text-xs text-[var(--text-secondary)]">
+                <MapPin size={14} className="text-[var(--accent-bg)] shrink-0 mt-0.5" />
+                <span className="font-medium leading-snug break-words min-w-0 text-[var(--text-primary)]">
+                  {venue.address}
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2 pt-0.5">
               <a

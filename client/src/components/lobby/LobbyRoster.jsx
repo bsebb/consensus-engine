@@ -17,13 +17,10 @@ function getLocalizedTopic(rawTopic, t) {
 }
 
 export default function LobbyRoster({
-  pin,
   topic,
   participants = [],
   candidateCount = 0,
-  isHost = false,
   handleShareInvite,
-  handleCopyPin,
   setQrModalOpen,
 }) {
   const { t } = useLanguage();
@@ -43,40 +40,40 @@ export default function LobbyRoster({
   const isDeckReady = candidateCount >= 2;
 
   return (
-    <section className="shrink-0 p-3.5 sm:p-5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
+    <section className="shrink-0 p-3.5 sm:p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
       {/* Topic & Invite Bar */}
-      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[var(--border-subtle)]">
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
         <div className="flex flex-col text-left min-w-0 flex-1">
-          <h2 className="text-lg sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-snug flex items-center">
+          <h2 className="text-lg sm:text-xl font-black text-[var(--text-primary)] tracking-tight leading-snug flex items-center">
             {displayTopic}
           </h2>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={onQr}
-            className="w-9 h-9 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-all cursor-pointer active:scale-[0.95]"
+            className="w-8.5 h-8.5 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-all cursor-pointer active:scale-[0.95]"
             title={t('shareQr')}
             aria-label={t('shareQr')}
           >
-            <QrCode size={15} />
+            <QrCode size={14} />
           </button>
           <button
             type="button"
             onClick={onShare}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[var(--accent-bg)] text-white hover:opacity-90 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-[0.95]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--accent-bg)] text-white hover:opacity-90 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-[0.95]"
             title={t('inviteFriends')}
             aria-label={t('inviteFriends')}
           >
-            <Share2 size={13} />
-            <span className="hidden min-[380px]:inline">{t('inviteFriends')}</span>
+            <Share2 size={12} />
+            <span>{t('inviteFriends')}</span>
           </button>
         </div>
       </div>
 
       {/* Live Collaboration Friends & Readiness Bar */}
-      <div className="flex items-center justify-between gap-3 pt-0.5">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 min-w-0">
           <div className="flex items-center -space-x-1.5 shrink-0">
             {participants.map((p, idx) => (
@@ -137,28 +134,10 @@ export default function LobbyRoster({
             )}
             <span className="tabular-nums">
               {participants.length} {t('inRoomPrefix')}
-              {isDeckReady ? ` - ${isHost ? 'Ready' : 'Connected'}` : ''}
             </span>
           </div>
         </div>
       </div>
-
-      {participants.length === 1 && (
-        <div className="text-[11px] text-[var(--text-tertiary)] flex items-center justify-between gap-2 pt-1.5 border-t border-[var(--border-subtle)]/60">
-          <span className="truncate">
-            {t('soloOrInviteHint') || `Share code #${pin || ''} to vote with friends, or start solo anytime`}
-          </span>
-          {handleCopyPin && pin && (
-            <button
-              type="button"
-              onClick={handleCopyPin}
-              className="text-[11px] font-bold text-[var(--accent-bg)] hover:underline shrink-0 cursor-pointer"
-            >
-              #{pin}
-            </button>
-          )}
-        </div>
-      )}
     </section>
   );
 }

@@ -254,6 +254,10 @@ test('Flow 1: Discovery Room Creation, Category Pools & Activity Gallery Verific
         assert.equal(typeof card.lat, 'number', `Parsed card "${card.name}" must have numeric lat`);
         assert.equal(typeof card.lng, 'number', `Parsed card "${card.name}" must have numeric lng`);
         assert.ok(card.photo_url && card.photo_url.startsWith('https://'), `Parsed card "${card.name}" must have photo_url`);
+        assert.ok(
+          !/^parc(ul)?\s+/i.test(card.name),
+          `Public park "${card.name}" must never leak into ${category} room options`
+        );
       }
     }
   });

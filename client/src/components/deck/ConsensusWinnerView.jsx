@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Navigation, ExternalLink, BarChart3, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-  CheckCircle2, Star, RotateCcw, MapPin, Route, Info, Sparkles, Compass, Share2, Heart, Camera,
+  CheckCircle2, Star, RotateCcw, MapPin, Route, Info, Sparkles, Compass, Share2, Heart,
 } from 'lucide-react';
 import Button from '../ui/Button';
 import VenueDetailsModal from './VenueDetailsModal';
@@ -32,7 +32,7 @@ export default function ConsensusWinnerView({
   const isRoutable = Boolean(winner?.isRoutablePlace || (winner?.address && winner?.address !== 'Added by group'));
   const useRealVenueDisplay = !isCustomWinner || isRoutable;
 
-  const { primaryPhoto, photoSlides, isRealPhoto, fallbackPhoto } = useVenuePhotos(
+  const { primaryPhoto, photoSlides, fallbackPhoto } = useVenuePhotos(
     useRealVenueDisplay ? winner?.name : '',
     useRealVenueDisplay ? winner?.address : '',
     useRealVenueDisplay ? winner?.category : '',
@@ -244,7 +244,7 @@ export default function ConsensusWinnerView({
         ) : (
           /* Discovery Venue 4-Photo Interactive Hero & Strip */
           <>
-            <div className="relative h-[clamp(180px,27dvh,236px)] w-full bg-[var(--bg-inset)] overflow-hidden select-none">
+            <div className="relative h-[clamp(196px,29dvh,252px)] w-full bg-[var(--bg-inset)] overflow-hidden select-none">
               <img
                 key={heroPhotoUrl}
                 src={heroPhotoUrl}
@@ -256,7 +256,7 @@ export default function ConsensusWinnerView({
                   if (nextUrl && e.currentTarget.src !== nextUrl) e.currentTarget.src = nextUrl;
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/15 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/20 pointer-events-none" />
 
               {validSlides.length > 1 && (
                 <div className="absolute top-2.5 inset-x-4 flex items-center gap-1.5 z-20">
@@ -280,7 +280,7 @@ export default function ConsensusWinnerView({
                     type="button"
                     onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx((prev) => (prev > 0 ? prev - 1 : validSlides.length - 1)); }}
                     aria-label="Previous photo"
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
+                    className="absolute left-2.5 top-[42%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
                   >
                     <ChevronLeft size={16} strokeWidth={2.5} />
                   </button>
@@ -288,7 +288,7 @@ export default function ConsensusWinnerView({
                     type="button"
                     onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx((prev) => (prev + 1) % validSlides.length); }}
                     aria-label="Next photo"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
+                    className="absolute right-2.5 top-[42%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
                   >
                     <ChevronRight size={16} strokeWidth={2.5} />
                   </button>
@@ -307,19 +307,11 @@ export default function ConsensusWinnerView({
                 </div>
               </div>
 
-              <div className="absolute bottom-3 inset-x-3.5 text-left flex flex-wrap items-end justify-between gap-2 z-10">
+              <div className="absolute bottom-3.5 inset-x-4 text-left flex items-end justify-between gap-2.5 z-10">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-semibold text-amber-300">
-                      {isRealPhoto ? `${winnerVibe} • ${t('realVenuePhoto')}` : winnerVibe}
-                    </span>
-                    {activeSlide && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-[10px] font-semibold text-emerald-300 border border-white/15">
-                        <Camera size={10} />
-                        <span>{safeWinnerIdx + 1}/{validSlides.length} • {activeSlide.label}</span>
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-xs font-bold text-amber-300 block">
+                    {winner?.category || winnerVibe}
+                  </span>
                   <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-0.5 truncate">{winner?.name}</h2>
                   <div className="flex items-center gap-1.5 text-xs text-zinc-200 mt-0.5">
                     <MapPin size={13} className="text-amber-400 shrink-0" />
@@ -330,41 +322,52 @@ export default function ConsensusWinnerView({
                 <button
                   type="button"
                   onClick={() => setDetailsOpen(true)}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/65 hover:bg-black/80 backdrop-blur-md border border-white/25 text-white text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <Info size={13} />
-                  <span>{t('detailsAndRoute')}</span>
+                  <span>{t('details') || 'Details'}</span>
                 </button>
               </div>
             </div>
 
             {validSlides.length > 1 && (
-              <div className="px-4 py-2 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] grid grid-cols-4 gap-2">
-                {validSlides.slice(0, 4).map((slide, idx) => (
-                  <button
-                    key={slide.url || idx}
-                    type="button"
-                    onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx(idx); }}
-                    className={`relative h-11 rounded-xl overflow-hidden border-2 transition-all cursor-pointer flex items-end text-left ${
-                      idx === safeWinnerIdx ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/20 shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img
-                      src={slide.url}
-                      alt={`${winner?.name} - ${slide.label}`}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => { if (fallbackPhoto && e.currentTarget.src !== fallbackPhoto) e.currentTarget.src = fallbackPhoto; }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
-                    <span className="relative z-10 px-1.5 pb-0.5 text-[10px] font-bold text-white truncate w-full">{slide.label}</span>
-                  </button>
-                ))}
+              <div className="px-4 py-2.5 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex flex-col gap-1.5">
+                <div className="grid grid-cols-4 gap-2">
+                  {validSlides.slice(0, 4).map((slide, idx) => (
+                    <button
+                      key={slide.url || idx}
+                      type="button"
+                      onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx(idx); }}
+                      aria-label={`Photo ${idx + 1}: ${slide.label}`}
+                      className={`relative h-12 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                        idx === safeWinnerIdx ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/25 shadow-xs' : 'border-transparent opacity-65 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={slide.url}
+                        alt={`${winner?.name} - ${slide.label}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { if (fallbackPhoto && e.currentTarget.src !== fallbackPhoto) e.currentTarget.src = fallbackPhoto; }}
+                      />
+                    </button>
+                  ))}
+                </div>
+                {activeSlide && (
+                  <div className="flex items-center justify-between gap-2 text-left px-0.5">
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      <strong className="text-[var(--text-primary)]">{activeSlide.label}:</strong> {activeSlide.detail}
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--accent-bg)] tabular-nums shrink-0">
+                      {safeWinnerIdx + 1}/{validSlides.length}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </>
         )}
 
-        <div className="p-4 flex flex-col items-center gap-3.5">
+        <div className="p-4 flex flex-col items-center gap-3">
           {isCustomWinner && !isRoutable ? (
             <div className="grid grid-cols-2 gap-2.5 w-full">
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
@@ -378,27 +381,27 @@ export default function ConsensusWinnerView({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2 w-full">
-                <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('groupMatch')}</span>
-                  <span className="text-base font-black text-emerald-500 tabular-nums">{matchScore}%</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('priceTierLabel')}</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5 tabular-nums">
+              <div className="grid grid-cols-2 gap-2.5 w-full">
+                <div className="flex flex-col items-start justify-center px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-left">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)]">
+                    {t('priceTierLabel')}
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] mt-0.5 tabular-nums">
                     {formatRegionalPricePill(winner?.price_level || 2, winner)}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setDetailsOpen(true)}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer active:scale-[0.98]"
+                  className="flex flex-col items-start justify-center px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer active:scale-[0.98] text-left"
                 >
-                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)] flex items-center gap-1">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)] flex items-center gap-1">
                     <Route size={10} className="text-[var(--accent-bg)]" />
                     <span>{t('roadRoute')}</span>
                   </span>
-                  <span className="text-xs font-bold text-[var(--text-primary)] max-w-full px-1 tabular-nums mt-0.5 leading-snug">{travelSummary}</span>
+                  <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] tabular-nums mt-0.5 leading-snug">
+                    {travelSummary}
+                  </span>
                 </button>
               </div>
 

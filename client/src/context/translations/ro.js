@@ -371,5 +371,10 @@ export const ro = {
   discoverySearchActivities: 'Adaugă o activitate (ex. Bowling, Cinema, VR)...',
   addedBadge: 'Adăugat',
   soloOrInviteHint: 'Trimite codul prietenilor sau începe votul acum',
+  vetoUsedTitle: 'Veto deja folosit (1/rundă)',
+  vetoUsedDesc: 'Ai 1 singur Veto pe rundă pentru a evita blocarea tuturor opțiunilor. Folosește Nu!',
+  superlikeUsedTitle: 'Superlike deja folosit (1/rundă)',
+  superlikeUsedDesc: 'Ai 1 singur Superlike pe rundă pentru opțiunea preferată. Folosește Da!',
+  photoHighlight: 'Detalii foto',
 };
 

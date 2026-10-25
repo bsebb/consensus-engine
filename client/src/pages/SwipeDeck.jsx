@@ -173,8 +173,38 @@ export default function SwipeDeck() {
   const [isDragging, setIsDragging] = useState(false);
   const rafId = useRef(null);
 
+  const vetoesUsed = useMemo(() => myVotes.filter((v) => v.score === -100).length, [myVotes]);
+  const superlikesUsed = useMemo(() => myVotes.filter((v) => v.score === 2).length, [myVotes]);
+  const vetoesRemaining = Math.max(0, 1 - vetoesUsed);
+  const superlikesRemaining = Math.max(0, 1 - superlikesUsed);
+
   const handleVote = useCallback((score) => {
     if (currentIndex >= cards.length || exitDirection || enterDirection) return;
+
+    if (score === -100 && vetoesRemaining <= 0) {
+      triggerHaptic('veto');
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+      addToast({
+        title: t('vetoUsedTitle') || 'Veto Already Used (1/round)',
+        message: t('vetoUsedDesc') || 'You get 1 Veto per round so no one can block every spot. Use Pass instead!',
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (score === 2 && superlikesRemaining <= 0) {
+      triggerHaptic('tap');
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+      addToast({
+        title: t('superlikeUsedTitle') || 'Superlike Already Used (1/round)',
+        message: t('superlikeUsedDesc') || 'You get 1 Superlike per round for your #1 favorite. Use Like instead!',
+        type: 'info',
+      });
+      return;
+    }
+
     const dir = score === 1 ? 'right' : score === -100 ? 'down' : score === 2 ? 'up' : 'left';
     setExitDirection(dir);
     setIsDragging(false);
@@ -199,7 +229,7 @@ export default function SwipeDeck() {
         });
       }
     }, 220);
-  }, [cards, currentIndex, exitDirection, enterDirection, pin, emit, participantId, currentUserName]);
+  }, [cards, currentIndex, exitDirection, enterDirection, vetoesRemaining, superlikesRemaining, addToast, t, pin, emit, participantId, currentUserName]);
 
   const handleUndo = useCallback(() => {
     if (currentIndex <= 0 || exitDirection || enterDirection) return;
@@ -541,6 +571,8 @@ export default function SwipeDeck() {
             cardReviewCount={cardReviewCount}
             cardPriceDesc={cardPriceDesc}
             cardWalkDesc={cardWalkDesc}
+            vetoesRemaining={vetoesRemaining}
+            superlikesRemaining={superlikesRemaining}
             onOpenDetails={(idx = 0) => {
               setSelectedPhotoIdx(typeof idx === 'number' ? idx : 0);
               setActiveTab('details');
@@ -554,6 +586,7 @@ export default function SwipeDeck() {
             initialPhotoIdx={selectedPhotoIdx}
             onClose={() => setActiveTab('swipe')}
             onVote={handleVote}
+            vetoesRemaining={vetoesRemaining}
             onReportClosed={handleReportClosedCard}
           />
         </>
@@ -565,6 +598,8 @@ export default function SwipeDeck() {
           handleVote={handleVote}
           handleUndo={handleUndo}
           canUndo={currentIndex > 0}
+          vetoesRemaining={vetoesRemaining}
+          superlikesRemaining={superlikesRemaining}
         />
       )}
 

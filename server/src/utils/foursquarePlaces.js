@@ -59,8 +59,7 @@ const THEME_MAPPINGS = [
   { match: /bar|pub|beer|wine|cocktail/, key: 'bars', query: 'bar' },
   { match: /dessert|sweet|bakery|gelato/, key: 'desserts', query: 'bakery' },
   { match: /burger|pizza|fast|street/, key: 'fast_food', query: 'fast food burger pizza' },
-  { match: /game|arcade|bowling|billiard/, key: 'entertainment', query: 'games arcade bowling' },
-  { match: /park|outdoor|nature/, key: 'outdoors', query: 'park garden' },
+  { match: /game|arcade|bowling|billiard|paintball|karting|escape|laser|vr|fun|distract|activit|trampoline|climbing|roller|archery|darts|padbol|squash/, key: 'activities', query: 'bowling karting billiard escape room arcade' },
   { match: /music|concert|club|jazz/, key: 'nightlife', query: 'live music lounge' },
   { match: /spa|wellness|sauna/, key: 'wellness', query: 'spa sauna wellness' },
 ];
@@ -91,9 +90,14 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
     /\b(gas station|petrol|fuel|peco|rompetrol|lukoil|petrom|bemol|vento|car wash|auto service|tire)\b/i,
     /\b(pharmacy|farmacie|hospital|spital|clinic|clinica|dentist|bank|banca|atm|poșta|post office)\b/i,
     /\b(school|școala|liceul|gimnaziul|university|kindergarten|grădinița|cemetery|cimitir)\b/i,
-    /\b(hotel|hostel|motel|apartments|residence|monument|memorial|cernobâl|fountain|havuz|bridge|podul|playground|loc de joacă|ruinele|scuarul)\b/i,
+    /\b(hotel|hostel|motel|apartments|residence|monument|memorial|cernobâl|fountain|havuz|bridge|podul|playground|loc de joacă|ruinele|scuarul|stadion|stadium|prim[aă]ria)\b/i,
     /\b(winery|vineyard|vinărie|crama|château|chateau)\b/i,
   ];
+
+  // Block public municipal parks (e.g. "Parc Făgureni", "Parcul Central") unless they are an actual cafe/restaurant/terrace
+  if (/\b(parc|parcul|public park|city park)\b/i.test(nameLower) && !/\b(cafe|café|restaurant|terasa|terrace|bar|pub|bistro|pizza|grill)\b/i.test(nameLower)) {
+    return false;
+  }
 
   // Allow Chateau Vartely in Orhei only for restaurants/bars when close by, block industrial wineries for cafes/desserts
   for (const pat of bannedPatterns) {
@@ -115,6 +119,10 @@ function isRelevantFoursquarePlace(place, categoryKey, allowTownHospitality = fa
 
   if (categoryKey === 'cinema') {
     return /\b(cinema|movie|theater|theatre|film|multiplex|cineplex|autocinema|cinematograf)\b/i.test(combined);
+  }
+
+  if (categoryKey === 'activities' || categoryKey === 'entertainment') {
+    return /\b(bowling|billiard|snooker|paintball|karting|kart|escape|laser|vr|virtual|arcade|esports|gaming|cyber|roller|trampoline|jump|climbing|bouldering|archery|darts|squash|padbol|ice arena|patinoar|spa|wellness|board game)\b/i.test(combined);
   }
 
   if (allowTownHospitality) {
@@ -235,6 +243,9 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
       if (Array.isArray(items)) {
         for (const item of items) {
           if (!item.name || item.lat == null || item.lon == null) continue;
+          if (item.type === 'park' || item.type === 'garden' || item.type === 'administrative' || item.type === 'residential' || /\b(parc|parcul)\b/i.test(item.name)) {
+            continue;
+          }
           const addrObj = item.address || {};
           const locality = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || addrObj.suburb || '';
           const street = [addrObj.road, addrObj.house_number].filter(Boolean).join(' ');
@@ -445,7 +456,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   };
 
   try {
-    const townOsmPromise = categoryKey !== 'cinema'
+    const townOsmPromise = (categoryKey !== 'cinema' && categoryKey !== 'activities')
       ? getTownOsmHospitalityPlaces(centerLat, centerLng, categoryKey).catch(() => [])
       : Promise.resolve([]);
 
@@ -474,7 +485,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
       const allRingCandidates = results.flat();
       ingestCandidates(allRingCandidates, ringRadius, false);
 
-      if (accumulatedVenues.size < TARGET_PLACES && categoryKey !== 'cinema') {
+      if (accumulatedVenues.size < TARGET_PLACES && categoryKey !== 'cinema' && categoryKey !== 'activities') {
         ingestCandidates(allRingCandidates, ringRadius, true);
       }
 

@@ -79,7 +79,16 @@ async function searchExpandedOsmVenues(lat, lng, theme = 'restaurant', isExactGp
       const data = await res.json();
       if (!Array.isArray(data) || data.length === 0) continue;
 
-      const valid = data.filter((d) => d.name && d.lat != null && d.lon != null);
+      const valid = data.filter(
+        (d) =>
+          d.name &&
+          d.lat != null &&
+          d.lon != null &&
+          d.type !== 'park' &&
+          d.type !== 'garden' &&
+          d.type !== 'administrative' &&
+          !/\b(parc|parcul|public park)\b/i.test(d.name)
+      );
       if (valid.length === 0) continue;
 
       const candidates = valid.slice(0, targetCount).map((d) => {

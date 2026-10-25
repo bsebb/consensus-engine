@@ -32,9 +32,9 @@ export default function StepZeroVault({
   const activeTier = tiers[activeTierIndex] || tiers[0];
 
   return (
-    <section className="shrink-0 p-3 sm:p-4 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2.5 shadow-2xs">
+    <section className="shrink-0 p-3 sm:p-3.5 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex flex-col gap-2 shadow-2xs">
       <div className="flex flex-wrap gap-2 items-center justify-between px-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <ShieldCheck size={14} className="text-[var(--accent-bg)] shrink-0" />
           <h3 className="text-xs font-bold text-[var(--text-primary)]">
             {t('priceFilter')}
@@ -44,10 +44,14 @@ export default function StepZeroVault({
           </span>
         </div>
 
-        {lockedConstraint && (
+        {lockedConstraint ? (
           <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <Check size={11} className="text-emerald-500" />
             <span className="tabular-nums">{t('maxBudgetLabel')} {formatRegionalMaxBudget(budgetLimit, locationContext)}</span>
+          </span>
+        ) : (
+          <span className="text-[11px] text-[var(--text-tertiary)] truncate max-w-[180px]">
+            {activeTier.desc}
           </span>
         )}
       </div>
@@ -69,11 +73,6 @@ export default function StepZeroVault({
         variant="accent"
         size="md"
       />
-
-      {/* Human Explanatory Subtitle */}
-      <div className="px-1 text-[11px] text-[var(--text-tertiary)] flex items-center justify-between">
-        <span className="truncate">{activeTier.desc}</span>
-      </div>
     </section>
   );
 }

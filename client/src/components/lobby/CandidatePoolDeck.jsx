@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  LayoutGrid, PlusCircle, ShieldCheck, Plus, Shuffle, Sparkles, CheckCircle2,
+  LayoutGrid, PlusCircle, ShieldCheck, Plus, Shuffle,
 } from 'lucide-react';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
@@ -97,42 +97,25 @@ export default function CandidatePoolDeck({
             </button>
           )}
 
-          {mode !== 'CUSTOM' && handleAddNextPlace && (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  triggerHaptic('tap');
-                  handleAddNextPlace(1);
-                }}
-                disabled={remainingPoolCount <= 0}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
-                title="Add next venue from pool"
-              >
-                <Plus size={13} strokeWidth={2.5} />
-                <span>{t('addPlace')}</span>
-              </button>
-
-              {remainingPoolCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic('like');
-                    handleAddNextPlace(remainingPoolCount <= 3 ? remainingPoolCount : 3);
-                  }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-inset)] hover:bg-[var(--accent-bg)]/15 border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--accent-bg)] transition-all cursor-pointer active:scale-95 touch-manipulation shadow-2xs"
-                  title={`Add ${remainingPoolCount <= 3 ? `all ${remainingPoolCount}` : '3'} venues to table`}
-                >
-                  <span>+{remainingPoolCount <= 3 ? `${remainingPoolCount} All` : '3 All'}</span>
-                </button>
-              )}
-            </div>
+          {mode !== 'CUSTOM' && handleAddNextPlace && remainingPoolCount > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('tap');
+                handleAddNextPlace(1);
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--accent-bg)]/12 hover:bg-[var(--accent-bg)]/20 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] text-xs font-bold transition-all cursor-pointer active:scale-95 touch-manipulation"
+              title="Add next venue from pool"
+            >
+              <Plus size={13} strokeWidth={2.5} />
+              <span>{t('addPlace')}</span>
+            </button>
           )}
         </div>
       </div>
 
       {lockedConstraint && prunedCount > 0 && mode !== 'CUSTOM' && (
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 font-medium">
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400 font-medium">
           <div className="flex items-center gap-2">
             <ShieldCheck size={15} className="text-amber-500 shrink-0" />
             <span>{prunedCount} {t('spotsFilteredNotice')}</span>
@@ -144,7 +127,7 @@ export default function CandidatePoolDeck({
       )}
 
       {handleAddSuggestion && (
-        <div className="pt-0.5 pb-1">
+        <div className="pt-0.5">
           <CustomOptionAutocomplete
             suggestion={suggestion}
             setSuggestion={setSuggestion}
@@ -159,24 +142,6 @@ export default function CandidatePoolDeck({
             disabled={mode === 'CUSTOM' ? candidates.length >= 16 : false}
             onOptionAdded={handleOptionAddedToRail}
           />
-        </div>
-      )}
-
-      {activeHighlightName && (
-        <div
-          data-testid="instant-added-feedback"
-          className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-emerald-500/12 border border-emerald-500/30 text-xs font-semibold text-emerald-700 dark:text-emerald-300 animate-scale-up"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-            <span className="truncate">
-              Added <span className="font-extrabold">"{activeHighlightName}"</span> to the top of the deck
-            </span>
-          </div>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold shrink-0">
-            <Sparkles size={9} />
-            <span>Group Pick</span>
-          </span>
         </div>
       )}
 
