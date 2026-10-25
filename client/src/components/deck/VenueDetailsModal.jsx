@@ -22,6 +22,7 @@ import CleanStreetMiniMap from './CleanStreetMiniMap';
 import { markVenueClosedClient } from '../../utils/reportedVenuesClient';
 import { triggerHaptic } from '../../utils/haptics';
 import useDrawerGesture from '../ui/useDrawerGesture';
+import { useVenueInsights } from '../../hooks/useVenueInsights';
 
 export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onReportClosed, inline = false }) {
   const { t } = useLanguage();
@@ -34,6 +35,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
     venue?.category,
     venue?.photo_url
   );
+  const { insights } = useVenueInsights(isOpen || inline ? venue?.name : '');
 
   const handlePrevPhoto = () => {
     if (!photos || photos.length <= 1) return;
@@ -460,6 +462,58 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
                 venueName={venue.name}
                 address={venue.address}
               />
+            )}
+
+            {/* Live NoYouPick Community Pulse & Voter Reviews */}
+            {insights?.found && insights.totalReviews > 0 && (
+              <div className="p-3.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Star size={14} className="fill-amber-400 text-amber-400 shrink-0" />
+                    <span className="text-xs font-extrabold text-[var(--text-primary)]">
+                      NoYouPick Voter Feedback
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold tabular-nums">
+                    {insights.totalReviews} {insights.totalReviews === 1 ? 'voter review' : 'voter reviews'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">Satisfaction</span>
+                    <span className="text-xs font-black text-amber-500 tabular-nums">★ {insights.satisfactionAvg}/5</span>
+                  </div>
+                  <div className="px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">Price Accuracy</span>
+                    <span className="text-xs font-black text-emerald-500 tabular-nums">★ {insights.priceAccuracyAvg}/5</span>
+                  </div>
+                </div>
+
+                {insights.recentReviews?.some((r) => r.comment) && (
+                  <div className="flex flex-col gap-1.5 pt-1">
+                    {insights.recentReviews
+                      .filter((r) => r.comment)
+                      .slice(0, 3)
+                      .map((rev) => (
+                        <div
+                          key={rev.id}
+                          className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex flex-col gap-1 text-xs"
+                        >
+                          <div className="flex items-center justify-between text-[10px] text-[var(--text-tertiary)] font-semibold">
+                            <span className="text-amber-500 font-bold">
+                              {'★'.repeat(Math.max(1, Math.min(5, Number(rev.satisfactionScore) || 5)))}
+                            </span>
+                            <span>Verified Voter</span>
+                          </div>
+                          <p className="text-xs text-[var(--text-primary)] font-medium leading-snug">
+                            "{rev.comment}"
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Outdated / Closed Venue Flag */}

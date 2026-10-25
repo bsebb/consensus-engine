@@ -138,6 +138,22 @@ app.get('/api/v1/venue-photos', async (req, res) => {
   }
 });
 
+// Community reviews & aggregated analytics endpoint for any venue
+app.get('/api/v1/venues/insights', async (req, res) => {
+  try {
+    const { getVenueCommunityInsights } = require('./db/helpers');
+    const name = String(req.query.name || '').trim();
+    if (!name) {
+      return res.json({ success: true, found: false, totalReviews: 0, recentReviews: [] });
+    }
+    const insights = await getVenueCommunityInsights(name);
+    res.set('Cache-Control', 'public, max-age=15');
+    return res.json({ success: true, ...insights });
+  } catch {
+    return res.json({ success: false, found: false, totalReviews: 0, recentReviews: [] });
+  }
+});
+
 // Ephemeral Crowd-Sourced Self-Healing: report closed/outdated venue
 app.post('/api/v1/venues/report-closed', sensitiveLimiter, (req, res) => {
   try {

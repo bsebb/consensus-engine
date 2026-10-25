@@ -3,7 +3,7 @@ const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
 const { resolveRegionalFallback, isInsideMoldovaRegion, calculateDistance } = require('../utils/fallbackVenues');
 const { filterReportedVenues } = require('../utils/reportedVenues');
-const { getCachedVenuesByGrid, saveCachedVenuesBulk } = require('../../db/helpers');
+const { getCachedVenuesByGrid, saveCachedVenuesBulk, getCommunityAnalyticsByNameMap } = require('../../db/helpers');
 
 // High-speed in-memory discovery deck cache (30-min TTL) for sub-millisecond room creation at 1000+ CCU
 const discoveryDeckCache = new Map();
@@ -219,6 +219,23 @@ async function discoverDiscoveryVenues({
 
   const finalPlaces = places || [];
   if (finalPlaces.length > 0) {
+    try {
+      const analyticsMap = await getCommunityAnalyticsByNameMap();
+      if (analyticsMap && analyticsMap.size > 0) {
+        for (const p of finalPlaces) {
+          const a = analyticsMap.get(String(p.name || '').toLowerCase().trim());
+          if (a) {
+            p.community_rating = Number(a.satisfactionAvg.toFixed(1));
+            p.community_reviews = a.totalReviews;
+          }
+        }
+        finalPlaces.sort((a, b) => {
+          const boostA = a.community_rating ? (a.community_rating >= 4.2 ? 1 : a.community_rating <= 2.5 ? -1 : 0) : 0;
+          const boostB = b.community_rating ? (b.community_rating >= 4.2 ? 1 : b.community_rating <= 2.5 ? -1 : 0) : 0;
+          return boostB - boostA;
+        });
+      }
+    } catch {}
     setDiscoveryCache(cacheKey, finalPlaces);
     if (!persistedGridKeys.has(gridKey)) {
       persistedGridKeys.add(gridKey);

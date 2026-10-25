@@ -26,6 +26,7 @@ import { useCustomOptionPhoto, isLogoImage } from '../../utils/customOptionServi
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../ui/Toast';
 import { triggerHaptic } from '../../utils/haptics';
+import { invalidateClientVenueInsights } from '../../hooks/useVenueInsights';
 
 export default function ConsensusWinnerView({
   mode,
@@ -66,11 +67,13 @@ export default function ConsensusWinnerView({
   const [priceAccuracyScore, setPriceAccuracyScore] = useState(0);
   const [telemetrySubmitted, setTelemetrySubmitted] = useState(Boolean(userRating && userRating > 0));
   const [isSubmittingTelemetry, setIsSubmittingTelemetry] = useState(false);
+  const [insightsRefreshKey, setInsightsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (userRating && userRating > 0) {
       setSatisfactionScore(userRating);
       setTelemetrySubmitted(true);
+      setInsightsRefreshKey((prev) => prev + 1);
     }
   }, [userRating]);
 
@@ -144,6 +147,8 @@ export default function ConsensusWinnerView({
         }
       }
       if (handleInlineRate) handleInlineRate(finalSat);
+      invalidateClientVenueInsights(winner?.name);
+      setInsightsRefreshKey((prev) => prev + 1);
       setTelemetrySubmitted(true);
       addToast({
         title: isCustomWinner ? 'Poll Feedback Saved' : t('feedbackSaved') || 'Rating Saved',
@@ -463,6 +468,7 @@ export default function ConsensusWinnerView({
         setPriceAccuracyScore={setPriceAccuracyScore}
         handleSubmitTelemetry={handleSubmitTelemetry}
         setIsReviewOpen={setIsReviewOpen}
+        insightsRefreshKey={insightsRefreshKey}
       />
 
       {/* Start New Room Action */}

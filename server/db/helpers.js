@@ -47,6 +47,17 @@ global.__prisma = prisma;
 // Survives lobby eviction and prevents redundant INSERT/ON CONFLICT DO UPDATE queries across socket reconnects.
 const persistedParticipantCache = new Map();
 const MAX_PERSISTED_CACHE_SIZE = 10000;
+const venueInsightsCache = new Map();
+let communityAnalyticsMapCache = { map: null, expiresAt: 0 };
+
+function invalidateVenueInsightsCache(venueName) {
+    communityAnalyticsMapCache.expiresAt = 0;
+    if (venueName && typeof venueName === 'string') {
+        venueInsightsCache.delete(venueName.toLowerCase().trim());
+    } else {
+        venueInsightsCache.clear();
+    }
+}
 
 function markParticipantPersisted(roomId, participantId, deviceId, resolvedRecord) {
     if (persistedParticipantCache.size >= MAX_PERSISTED_CACHE_SIZE) {
@@ -648,6 +659,7 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
             });
         }
 
+        invalidateVenueInsightsCache(option.name);
         return { feedback, analytics, option, participant };
     };
 
@@ -712,6 +724,126 @@ async function saveCachedVenuesBulk(gridKey, places = []) {
     }
 }
 
+async function getVenueCommunityInsights(venueName) {
+    const cleanName = String(venueName || '').trim();
+    if (!cleanName) {
+        return { found: false, totalReviews: 0, satisfactionAvg: null, priceAccuracyAvg: null, recentReviews: [] };
+    }
+    const cacheKey = cleanName.toLowerCase();
+    const cached = venueInsightsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.data;
+    }
+
+    try {
+        const [feedbacks, analyticsRows] = await Promise.all([
+            prisma.feedback.findMany({
+                where: {
+                    option: {
+                        name: { equals: cleanName, mode: 'insensitive' },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 25,
+                select: {
+                    id: true,
+                    satisfactionScore: true,
+                    priceAccuracyScore: true,
+                    comment: true,
+                    createdAt: true,
+                },
+            }),
+            prisma.venueAnalytics.findMany({
+                where: {
+                    name: { equals: cleanName, mode: 'insensitive' },
+                },
+            }),
+        ]);
+
+        let totalReviews = feedbacks.length;
+        let satisfactionAvg = null;
+        let priceAccuracyAvg = null;
+
+        if (feedbacks.length > 0) {
+            const satSum = feedbacks.reduce((acc, f) => acc + (Number(f.satisfactionScore) || 5), 0);
+            const priceSum = feedbacks.reduce((acc, f) => acc + (Number(f.priceAccuracyScore) || 5), 0);
+            satisfactionAvg = Number((satSum / feedbacks.length).toFixed(1));
+            priceAccuracyAvg = Number((priceSum / feedbacks.length).toFixed(1));
+        }
+
+        if (analyticsRows.length > 0) {
+            const analyticsTotal = analyticsRows.reduce((acc, a) => acc + (Number(a.totalReviews) || 0), 0);
+            if (analyticsTotal > totalReviews) {
+                const weightedSat = analyticsRows.reduce((acc, a) => acc + (Number(a.satisfactionAvg) || 5) * (Number(a.totalReviews) || 1), 0);
+                const weightedPrice = analyticsRows.reduce((acc, a) => acc + (Number(a.truePriceAvg) || 5) * (Number(a.totalReviews) || 1), 0);
+                totalReviews = analyticsTotal;
+                satisfactionAvg = Number((weightedSat / analyticsTotal).toFixed(1));
+                priceAccuracyAvg = Number((weightedPrice / analyticsTotal).toFixed(1));
+            }
+        }
+
+        const recentReviews = feedbacks
+            .slice(0, 6)
+            .map((f) => ({
+                id: f.id,
+                satisfactionScore: f.satisfactionScore,
+                priceAccuracyScore: f.priceAccuracyScore,
+                comment: f.comment || null,
+                createdAt: f.createdAt,
+            }));
+
+        const data = {
+            found: totalReviews > 0,
+            venueName: cleanName,
+            totalReviews,
+            satisfactionAvg,
+            priceAccuracyAvg,
+            recentReviews,
+        };
+
+        venueInsightsCache.set(cacheKey, { data, expiresAt: Date.now() + 60000 });
+        return data;
+    } catch {
+        return { found: false, totalReviews: 0, satisfactionAvg: null, priceAccuracyAvg: null, recentReviews: [] };
+    }
+}
+
+async function getCommunityAnalyticsByNameMap() {
+    if (communityAnalyticsMapCache.map && communityAnalyticsMapCache.expiresAt > Date.now()) {
+        return communityAnalyticsMapCache.map;
+    }
+    const map = new Map();
+    try {
+        const rows = await prisma.venueAnalytics.findMany({
+            take: 300,
+            orderBy: { updatedAt: 'desc' },
+        });
+        for (const r of rows) {
+            if (!r?.name) continue;
+            const key = r.name.toLowerCase().trim();
+            const existing = map.get(key);
+            if (!existing) {
+                map.set(key, {
+                    satisfactionAvg: Number(r.satisfactionAvg) || 5,
+                    truePriceAvg: Number(r.truePriceAvg) || 5,
+                    totalReviews: Number(r.totalReviews) || 1,
+                });
+            } else {
+                const combinedCount = existing.totalReviews + (Number(r.totalReviews) || 1);
+                map.set(key, {
+                    satisfactionAvg: ((existing.satisfactionAvg * existing.totalReviews) + (Number(r.satisfactionAvg) || 5) * (Number(r.totalReviews) || 1)) / combinedCount,
+                    truePriceAvg: ((existing.truePriceAvg * existing.totalReviews) + (Number(r.truePriceAvg) || 5) * (Number(r.totalReviews) || 1)) / combinedCount,
+                    totalReviews: combinedCount,
+                });
+            }
+        }
+        communityAnalyticsMapCache = { map, expiresAt: Date.now() + 120000 };
+    } catch {
+        // Non-fatal fallback
+    }
+    return map;
+}
+
 module.exports = {
     prisma,
     persistedParticipantCache,
@@ -719,6 +851,9 @@ module.exports = {
     ensureRoomPersisted,
     getCachedVenuesByGrid,
     saveCachedVenuesBulk,
+    getVenueCommunityInsights,
+    getCommunityAnalyticsByNameMap,
+    invalidateVenueInsightsCache,
     createRoom,
     createParticipant,
     createOption,

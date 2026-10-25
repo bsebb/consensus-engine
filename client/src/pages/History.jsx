@@ -13,20 +13,36 @@ import {
   CheckCircle2,
   Award,
   Settings,
+  Star,
+  MessageSquarePlus,
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SettingsModal from '../components/ui/SettingsModal';
+import ReviewModal from '../components/ui/ReviewModal';
 import { useLanguage } from '../context/LanguageContext';
+import { useSocket } from '../context/SocketContext';
 import { formatRegionalPricePill } from '../utils/regionFormat';
 import { triggerHaptic } from '../utils/haptics';
 
 export default function History() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { deviceId, getRoomParticipantId } = useSocket();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [storedSessions, setStoredSessions] = useState(null);
   const [expandedPin, setExpandedPin] = useState(null);
+  const [userFeedbacks, setUserFeedbacks] = useState([]);
+  const [activeReviewSession, setActiveReviewSession] = useState(null);
+
+  const loadUserFeedbacks = () => {
+    try {
+      const fb = JSON.parse(localStorage.getItem('consensus_feedbacks') || '[]');
+      setUserFeedbacks(Array.isArray(fb) ? fb : []);
+    } catch {
+      setUserFeedbacks([]);
+    }
+  };
 
   // High-fidelity baseline entries dynamically localized for first-time visitors
   const sampleSessions = useMemo(() => [
@@ -61,6 +77,7 @@ export default function History() {
   ], [t]);
 
   useEffect(() => {
+    loadUserFeedbacks();
     try {
       const stored = JSON.parse(localStorage.getItem('consensus_history') || '[]');
       if (Array.isArray(stored) && stored.length > 0) {
@@ -216,6 +233,11 @@ export default function History() {
               const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
                 `${s.winner} restaurant`
               )}`;
+              const myReview = userFeedbacks.find(
+                (fb) =>
+                  (fb.pin && String(fb.pin) === String(s.pin)) ||
+                  String(fb.winner_name || fb.option_name || '').toLowerCase().trim() === String(s.winner || '').toLowerCase().trim()
+              );
 
               return (
                 <div
@@ -277,6 +299,12 @@ export default function History() {
                         <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
                           {formatRegionalPricePill(s.priceLevel || 2, s)}
                         </span>
+                        {myReview && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[11px] font-bold tabular-nums">
+                            <Star size={10} className="fill-amber-400 text-amber-400" />
+                            <span>{myReview.satisfaction_score || 5}/5</span>
+                          </span>
+                        )}
                       </div>
 
                       <span className="text-xs font-semibold text-[var(--accent-bg)]">
@@ -342,6 +370,45 @@ export default function History() {
                         </div>
                       </div>
 
+                      {/* User's Saved Review Banner or Rate Prompt */}
+                      {myReview ? (
+                        <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-2 text-xs">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              <Star size={12} className="fill-amber-400 text-amber-400 shrink-0" />
+                              <span>Your Rating: {myReview.satisfaction_score || 5}/5</span>
+                            </span>
+                            {myReview.comment && (
+                              <span className="text-[11px] text-[var(--text-secondary)] italic truncate mt-0.5">
+                                "{myReview.comment}"
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              triggerHaptic('tap');
+                              setActiveReviewSession(s);
+                            }}
+                            className="shrink-0 px-2.5 py-1 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-primary)] cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic('tap');
+                            setActiveReviewSession(s);
+                          }}
+                          className="w-full p-2.5 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-dashed border-[var(--border-main)] flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--accent-bg)] transition-colors cursor-pointer"
+                        >
+                          <MessageSquarePlus size={14} />
+                          <span>{t('rateSpotTitle')?.replace('{name}', s.winner) || `Rate ${s.winner}`}</span>
+                        </button>
+                      )}
+
                       {/* Balanced 2-Column Action Buttons */}
                       <div className="grid grid-cols-2 gap-2 pt-1">
                         <a
@@ -389,6 +456,20 @@ export default function History() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      {/* Direct Review Modal from History */}
+      <ReviewModal
+        isOpen={Boolean(activeReviewSession)}
+        onClose={() => setActiveReviewSession(null)}
+        onSubmitted={() => {
+          loadUserFeedbacks();
+        }}
+        pin={activeReviewSession?.pin}
+        winnerName={activeReviewSession?.winner}
+        optionId={activeReviewSession?.winnerDetails?.id || `winner_${activeReviewSession?.pin || 'hist'}`}
+        participantId={activeReviewSession?.pin ? getRoomParticipantId(activeReviewSession.pin) : 'history_user'}
+        deviceId={deviceId}
       />
     </div>
   );

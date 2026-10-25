@@ -3,6 +3,7 @@ import { Star, X, CheckCircle2, ThumbsUp } from 'lucide-react';
 import Button from './Button';
 import { apiUrl } from '../../utils/api';
 import { useLanguage } from '../../context/LanguageContext';
+import { invalidateClientVenueInsights } from '../../hooks/useVenueInsights';
 
 export default function ReviewModal({
   isOpen = false,
@@ -74,10 +75,11 @@ export default function ReviewModal({
       console.info('[ReviewModal] Backend feedback endpoint offline, saved locally');
     }
 
+    invalidateClientVenueInsights(winnerName);
     setLoading(false);
     setSubmitted(true);
     if (onSubmitted) {
-      onSubmitted(Number(satisfaction));
+      onSubmitted(Number(satisfaction), Number(priceAccuracy), comment.trim());
     }
     setTimeout(() => {
       handleClose();

@@ -3,6 +3,7 @@ import { Database, CheckCircle2, Star, Send, MessageSquarePlus, ChevronDown } fr
 import { useLanguage } from '../../context/LanguageContext';
 import { formatRegionalPricePill } from '../../utils/regionFormat';
 import { triggerHaptic } from '../../utils/haptics';
+import { useVenueInsights } from '../../hooks/useVenueInsights';
 
 export default function WinnerFeedbackCard({
   isCustomWinner = false,
@@ -15,8 +16,10 @@ export default function WinnerFeedbackCard({
   setPriceAccuracyScore,
   handleSubmitTelemetry,
   setIsReviewOpen,
+  insightsRefreshKey = 0,
 }) {
   const { t } = useLanguage();
+  const { insights } = useVenueInsights(winner?.name, insightsRefreshKey);
 
   return (
     <details open className="group w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
@@ -30,9 +33,15 @@ export default function WinnerFeedbackCard({
               <span className="text-xs font-black uppercase tracking-wider text-[var(--accent-bg)]">
                 {t('communityDataTitle')}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
-                {t('quickRating')}
-              </span>
+              {insights?.found && insights.totalReviews > 0 ? (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold tabular-nums">
+                  ★ {insights.satisfactionAvg}/5 ({insights.totalReviews})
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold">
+                  {t('quickRating')}
+                </span>
+              )}
             </div>
             <h3 className="text-sm font-black text-[var(--text-primary)] mt-0.5">
               {isCustomWinner
@@ -163,6 +172,30 @@ export default function WinnerFeedbackCard({
               <span>{t('fullForm')}</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {insights?.found && insights.recentReviews?.some((r) => r.comment) && (
+        <div className="pt-2 border-t border-[var(--border-subtle)] flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">
+            Recent Voter Notes
+          </span>
+          {insights.recentReviews
+            .filter((r) => r.comment)
+            .slice(0, 3)
+            .map((rev) => (
+              <div
+                key={rev.id}
+                className="p-2.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] flex items-start justify-between gap-2 text-xs"
+              >
+                <p className="text-xs text-[var(--text-primary)] font-medium leading-snug">
+                  "{rev.comment}"
+                </p>
+                <span className="text-[11px] font-bold text-amber-500 shrink-0 tabular-nums">
+                  ★ {rev.satisfactionScore}/5
+                </span>
+              </div>
+            ))}
         </div>
       )}
       </div>
