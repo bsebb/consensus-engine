@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noyoupick-pwa-v30';
+const CACHE_NAME = 'noyoupick-pwa-v31';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -110,4 +110,43 @@ self.addEventListener('fetch', (event) => {
         })
     );
   }
+});
+
+let reminderTimer = null;
+
+self.addEventListener('message', (event) => {
+  const data = event.data || {};
+  if (data.type === 'SCHEDULE_CHECKIN_REMINDER' && data.winnerName) {
+    if (reminderTimer) clearTimeout(reminderTimer);
+    const delayMs = Math.max(5000, Number(data.delayMs) || 90 * 60 * 1000);
+    reminderTimer = setTimeout(() => {
+      if (self.registration && self.registration.showNotification) {
+        self.registration.showNotification(`How was ${data.winnerName}? ⭐`, {
+          body: `Tap to leave a quick 1-tap rating for your group pick!`,
+          icon: '/pwa-192x192.png',
+          badge: '/favicon.ico',
+          tag: `nyp-checkin-${data.pin || 'latest'}`,
+          data: { url: `/?ratePin=${encodeURIComponent(data.pin || '')}` },
+        }).catch(() => {});
+      }
+    }, delayMs);
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification?.data?.url || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(targetUrl).catch(() => {});
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
 });

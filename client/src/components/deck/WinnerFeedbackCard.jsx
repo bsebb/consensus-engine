@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, CheckCircle2, Star, Send, MessageSquarePlus, ChevronDown } from 'lucide-react';
+import { Database, CheckCircle2, Star, Send, MessageSquarePlus, ChevronDown, Bell } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatRegionalPricePill } from '../../utils/regionFormat';
 import { triggerHaptic } from '../../utils/haptics';
@@ -17,6 +17,8 @@ export default function WinnerFeedbackCard({
   handleSubmitTelemetry,
   setIsReviewOpen,
   insightsRefreshKey = 0,
+  reminderScheduled = false,
+  onScheduleReminder,
 }) {
   const { t } = useLanguage();
   const { insights } = useVenueInsights(winner?.name, insightsRefreshKey);
@@ -172,6 +174,23 @@ export default function WinnerFeedbackCard({
               <span>{t('fullForm')}</span>
             </button>
           </div>
+
+          {/* Post-Visit Reminder Option ("Haven't gone yet? Remind me later") */}
+          {onScheduleReminder && (
+            <button
+              type="button"
+              onClick={onScheduleReminder}
+              disabled={reminderScheduled}
+              className="w-full py-2 px-3 rounded-xl bg-[var(--bg-inset)]/70 hover:bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-[11px] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-75"
+            >
+              <Bell size={12} className={reminderScheduled ? 'text-emerald-500' : 'text-[var(--accent-bg)]'} />
+              <span>
+                {reminderScheduled
+                  ? 'Reminder set! We’ll ask how it went next time you open NoYouPick.'
+                  : 'Heading there now? Remind me to rate it after we go'}
+              </span>
+            </button>
+          )}
         </div>
       )}
 

@@ -27,6 +27,12 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../ui/Toast';
 import { triggerHaptic } from '../../utils/haptics';
 import { invalidateClientVenueInsights } from '../../hooks/useVenueInsights';
+import {
+  savePendingCheckin,
+  schedulePostVisitReminder,
+  recordLocalFeedback,
+  getPendingCheckin,
+} from '../../utils/checkinReminder';
 
 export default function ConsensusWinnerView({
   mode,
@@ -68,6 +74,17 @@ export default function ConsensusWinnerView({
   const [telemetrySubmitted, setTelemetrySubmitted] = useState(Boolean(userRating && userRating > 0));
   const [isSubmittingTelemetry, setIsSubmittingTelemetry] = useState(false);
   const [insightsRefreshKey, setInsightsRefreshKey] = useState(0);
+  const [reminderScheduled, setReminderScheduled] = useState(() => Boolean(getPendingCheckin()?.reminderRequested));
+
+  useEffect(() => {
+    if (winner?.name && !telemetrySubmitted) {
+      savePendingCheckin({
+        pin,
+        winnerName: winner.name,
+        optionId: winner.id || `winner_${pin}`,
+      });
+    }
+  }, [pin, winner?.name, winner?.id, telemetrySubmitted]);
 
   useEffect(() => {
     if (userRating && userRating > 0) {
@@ -146,6 +163,15 @@ export default function ConsensusWinnerView({
           throw new Error(`HTTP ${res.status}`);
         }
       }
+      recordLocalFeedback({
+        pin,
+        winnerName: winner?.name || 'Consensus Pick',
+        optionId: winner?.id || `winner_${pin}`,
+        participantId,
+        deviceId,
+        satisfactionScore: finalSat,
+        priceAccuracyScore: finalPrice,
+      });
       if (handleInlineRate) handleInlineRate(finalSat);
       invalidateClientVenueInsights(winner?.name);
       setInsightsRefreshKey((prev) => prev + 1);
@@ -168,6 +194,22 @@ export default function ConsensusWinnerView({
     } finally {
       setIsSubmittingTelemetry(false);
     }
+  };
+
+  const handleScheduleReminder = async () => {
+    triggerHaptic('like');
+    await schedulePostVisitReminder({
+      pin,
+      winnerName: winner?.name || 'Consensus Pick',
+      optionId: winner?.id || `winner_${pin}`,
+      delayMinutes: 90,
+    });
+    setReminderScheduled(true);
+    addToast({
+      title: 'Post-Visit Reminder Set',
+      message: `We'll prompt you to rate ${winner?.name} after your outing!`,
+      type: 'success',
+    });
   };
 
   const handleStartAnother = () => {
@@ -469,6 +511,8 @@ export default function ConsensusWinnerView({
         handleSubmitTelemetry={handleSubmitTelemetry}
         setIsReviewOpen={setIsReviewOpen}
         insightsRefreshKey={insightsRefreshKey}
+        reminderScheduled={reminderScheduled}
+        onScheduleReminder={handleScheduleReminder}
       />
 
       {/* Start New Room Action */}

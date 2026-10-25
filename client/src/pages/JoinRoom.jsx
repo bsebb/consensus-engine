@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight, Clock, Utensils, Coffee, Wine, Film, IceCream,
-  ListPlus, User, Settings, History, MapPin, Globe,
+  ListPlus, User, Settings, History, MapPin, Globe, Star, MessageSquarePlus,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -11,6 +11,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
+import ReviewModal from '../components/ui/ReviewModal';
 import LanguageMenuModal from '../components/ui/LanguageMenuModal';
 import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
 import LobbyLoadingView from '../components/lobby/LobbyLoadingView';
@@ -22,6 +23,8 @@ import {
 } from '../utils/location';
 import { triggerHaptic } from '../utils/haptics';
 import { generateRandomUuid } from '../utils/deviceId';
+import { hasUserRatedSession, recordLocalFeedback, getPendingCheckin } from '../utils/checkinReminder';
+import { invalidateClientVenueInsights } from '../hooks/useVenueInsights';
 import BrandLogo from '../components/ui/BrandLogo';
 import CustomPollDrawer from '../components/home/CustomPollDrawer';
 import JoinPinForm from '../components/home/JoinPinForm';
@@ -47,6 +50,12 @@ export default function JoinRoom() {
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isJoiningRoom, setIsJoiningRoom] = useState(false);
   const [recentSession, setRecentSession] = useState(null);
+  const [recentRating, setRecentRating] = useState(null);
+  const [checkinModalOpen, setCheckinModalOpen] = useState(false);
+
+  const navigate = useNavigate();
+  const { participantId, deviceId, setRoomParticipantId, getRoomParticipantId } = useSocket();
+  const { addToast } = useToast();
 
   // Quick setup & universal location states
   const [selectedCategory, setSelectedCategory] = useState('Restaurants');
@@ -61,24 +70,39 @@ export default function JoinRoom() {
   });
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  const navigate = useNavigate();
-  const { participantId, deviceId, setRoomParticipantId } = useSocket();
-  const { addToast } = useToast();
-
   // Auto-navigate directly into the Lobby if a 4-digit PIN is passed in the URL (?pin=1234)
   useEffect(() => {
     const pinParam = searchParams.get('pin');
     if (pinParam && /^\d{4}$/.test(pinParam)) {
       navigate(`/lobby/${pinParam}`, { replace: true });
+      return;
+    }
+    const ratePinParam = searchParams.get('ratePin');
+    if (ratePinParam) {
+      setCheckinModalOpen(true);
     }
   }, [searchParams, navigate]);
 
-  // Load recent session from history, wake up backend, and restore saved coordinates if present
+  // Load recent session from history or pending check-in, wake up backend, and restore saved coordinates
   useEffect(() => {
     try {
       const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
+      const pending = getPendingCheckin();
       if (Array.isArray(history) && history.length > 0) {
-        setRecentSession(history[0]);
+        const latest = history[0];
+        const wName = typeof latest.winner === 'object' && latest.winner !== null
+          ? latest.winner.name || latest.winner.id || 'Recent Spot'
+          : String(latest.winner || 'Recent Spot');
+        setRecentSession(latest);
+        const existingRating = hasUserRatedSession(latest.pin, wName);
+        setRecentRating(existingRating ? Number(existingRating.satisfaction_score) || 5 : null);
+      } else if (pending && pending.winnerName) {
+        setRecentSession({
+          pin: pending.pin,
+          winner: pending.winnerName,
+          winnerDetails: { id: pending.optionId, name: pending.winnerName },
+        });
+        setRecentRating(null);
       }
     } catch (err) {
       console.warn('[JoinRoom] Local history check:', err);
@@ -238,6 +262,53 @@ export default function JoinRoom() {
       addToast({ title: 'Connection Error', message: 'Could not reach server to create room. Please check your connection.', type: 'error' });
     }
     setIsCreatingRoom(false);
+  };
+
+  const recentWinnerName = recentSession
+    ? (typeof recentSession.winner === 'object' && recentSession.winner !== null
+        ? recentSession.winner.name || recentSession.winner.id || 'Recent Spot'
+        : String(recentSession.winner || 'Recent Spot'))
+    : '';
+
+  const handleQuickHomeRate = async (stars) => {
+    if (!recentSession || !recentWinnerName) return;
+    triggerHaptic('like');
+    setRecentRating(stars);
+    const targetPin = recentSession.pin;
+    const targetOptionId = recentSession.winnerDetails?.id || `winner_${targetPin || 'home'}`;
+    const targetPid = (targetPin && getRoomParticipantId ? getRoomParticipantId(targetPin) : null) || participantId || 'anon_user';
+
+    recordLocalFeedback({
+      pin: targetPin,
+      winnerName: recentWinnerName,
+      optionId: targetOptionId,
+      participantId: targetPid,
+      deviceId,
+      satisfactionScore: stars,
+      priceAccuracyScore: stars,
+    });
+    invalidateClientVenueInsights(recentWinnerName);
+
+    if (targetPin) {
+      fetch(apiUrl(`/api/v1/rooms/${targetPin}/feedback`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: targetPid,
+          device_id: deviceId || undefined,
+          option_id: targetOptionId,
+          option_name: recentWinnerName,
+          satisfaction_score: stars,
+          price_accuracy_score: stars,
+        }),
+      }).catch(() => {});
+    }
+
+    addToast({
+      title: t('feedbackSaved') || 'Rating Saved',
+      message: `Rated ${recentWinnerName} ${stars}/5 ★`,
+      type: 'success',
+    });
   };
 
   const isCustomMode = selectedCategory === 'Custom';
@@ -480,27 +551,67 @@ export default function JoinRoom() {
           )}
         </div>
 
-        {/* Recent Decision Shortcut */}
+        {/* Post-Visit 1-Tap Return Check-In Banner / Recent Decision Shortcut */}
         {recentSession && (
-          <div className="w-full mt-2.5 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between shadow-2xs shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <Clock size={14} className="text-[var(--text-tertiary)] shrink-0" />
-              <div className="text-xs truncate">
-                <span className="text-[var(--text-tertiary)]">{t('lastWinnerPrefix')}: </span>
-                <span className="font-bold text-[var(--text-primary)]">
-                  {typeof recentSession.winner === 'object' && recentSession.winner !== null
-                    ? recentSession.winner.name || recentSession.winner.id || 'Recent Spot'
-                    : String(recentSession.winner || 'Recent Spot')}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/history')}
-              className="text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer shrink-0 ml-2"
-            >
-              {t('seeAll')}
-            </button>
+          <div className="w-full mt-2.5 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between gap-2 shadow-2xs shrink-0">
+            {!recentRating ? (
+              <>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-bg)]">
+                    How did it go?
+                  </span>
+                  <span className="text-xs font-extrabold text-[var(--text-primary)] truncate">
+                    Rate {recentWinnerName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => handleQuickHomeRate(star)}
+                      aria-label={`Rate ${recentWinnerName} ${star} stars`}
+                      className="w-7 h-7 rounded-lg bg-[var(--bg-inset)] hover:bg-amber-500/15 border border-[var(--border-subtle)] flex items-center justify-center text-amber-400 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Star size={13} className="fill-amber-400 text-amber-400" />
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('tap');
+                      setCheckinModalOpen(true);
+                    }}
+                    title="Leave a note"
+                    className="w-7 h-7 rounded-lg bg-[var(--bg-inset)] hover:bg-[var(--accent-bg)]/15 border border-[var(--border-subtle)] flex items-center justify-center text-[var(--accent-bg)] transition-colors cursor-pointer ml-0.5"
+                  >
+                    <MessageSquarePlus size={13} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Clock size={14} className="text-[var(--text-tertiary)] shrink-0" />
+                  <div className="text-xs truncate flex items-center gap-1.5">
+                    <span className="text-[var(--text-tertiary)]">{t('lastWinnerPrefix')}:</span>
+                    <span className="font-bold text-[var(--text-primary)] truncate">
+                      {recentWinnerName}
+                    </span>
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-bold shrink-0">
+                      ★ {recentRating}/5
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/history')}
+                  className="text-xs font-semibold text-[var(--accent-bg)] hover:underline cursor-pointer shrink-0 ml-2"
+                >
+                  {t('seeAll')}
+                </button>
+              </>
+            )}
           </div>
         )}
       </main>
@@ -541,6 +652,21 @@ export default function JoinRoom() {
         customOptions={customOptions}
         setCustomOptions={setCustomOptions}
       />
+
+      {recentSession && (
+        <ReviewModal
+          isOpen={checkinModalOpen}
+          onClose={() => setCheckinModalOpen(false)}
+          onSubmitted={(satScore) => {
+            setRecentRating(satScore || 5);
+          }}
+          pin={recentSession.pin}
+          winnerName={recentWinnerName}
+          optionId={recentSession.winnerDetails?.id || `winner_${recentSession.pin || 'home'}`}
+          participantId={(recentSession.pin && getRoomParticipantId ? getRoomParticipantId(recentSession.pin) : null) || participantId || 'anon_user'}
+          deviceId={deviceId}
+        />
+      )}
     </div>
   );
 }
