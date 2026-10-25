@@ -560,12 +560,61 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
     }
 }
 
+async function getCachedVenuesByGrid(gridKey, limit = 50) {
+    if (!gridKey || !prisma?.cachedVenue) return [];
+    try {
+        return await prisma.cachedVenue.findMany({
+            where: { gridKey: String(gridKey) },
+            take: limit,
+        });
+    } catch {
+        return [];
+    }
+}
+
+async function saveCachedVenuesBulk(gridKey, places = []) {
+    if (!gridKey || !Array.isArray(places) || places.length === 0 || !prisma?.cachedVenue) return;
+    try {
+        const records = places
+            .filter((p) => p && p.name && p.lat != null && p.lng != null)
+            .map((p) => {
+                const normName = String(p.name).toLowerCase().trim().replace(/[^a-z0-9\u00C0-\u024F\u0400-\u04FF]+/g, '_');
+                const placeKey = `${gridKey}:${normName}`.slice(0, 140);
+                const rawPhoto = typeof p.photo_url === 'string'
+                    ? p.photo_url
+                    : (p.photo_url && typeof p.photo_url.photo_url === 'string' ? p.photo_url.photo_url : null);
+                return {
+                    gridKey: String(gridKey),
+                    placeKey,
+                    name: String(p.name).slice(0, 120),
+                    category: String(p.category || 'Restaurant').slice(0, 80),
+                    address: p.address ? String(p.address).slice(0, 180) : null,
+                    locality: p.locality ? String(p.locality).slice(0, 80) : null,
+                    lat: Number(p.lat),
+                    lng: Number(p.lng),
+                    priceLevel: typeof p.priceLevel === 'number' ? p.priceLevel : 2,
+                    rating: typeof p.rating === 'number' ? p.rating : 4.5,
+                    reviews: typeof p.reviews === 'number' ? p.reviews : 120,
+                    photoUrl: rawPhoto ? String(rawPhoto).slice(0, 500) : null,
+                };
+            });
+        if (records.length === 0) return;
+        await prisma.cachedVenue.createMany({
+            data: records,
+            skipDuplicates: true,
+        });
+    } catch {
+        // Non-fatal background cache persistence
+    }
+}
 
 module.exports = {
     prisma,
     persistedParticipantCache,
     registerPendingRoomWrite,
     ensureRoomPersisted,
+    getCachedVenuesByGrid,
+    saveCachedVenuesBulk,
     createRoom,
     createParticipant,
     createOption,

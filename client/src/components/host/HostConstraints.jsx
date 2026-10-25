@@ -3,6 +3,7 @@ import { MapPin, Navigation, Minus, Plus, ArrowRight } from 'lucide-react';
 import RangeSlider from '../ui/RangeSlider';
 import SegmentedControl from '../ui/SegmentedControl';
 import { useLanguage } from '../../context/LanguageContext';
+import { formatRegionalRadius } from '../../utils/regionFormat';
 
 export default function HostConstraints({
   mode,
@@ -22,6 +23,7 @@ export default function HostConstraints({
   setDeckSize,
 }) {
   const { t } = useLanguage();
+  const radiusLabel = formatRegionalRadius(radiusKm, userLocation);
 
   return (
     <div className="accordion-drawer-inner p-3.5 pt-0 border-t border-[var(--border-subtle)]/50 mt-1 flex flex-col gap-3.5">
@@ -32,14 +34,14 @@ export default function HostConstraints({
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-[var(--text-secondary)]">{t('searchRadius')}</span>
               <span className="font-mono text-xs font-extrabold text-[var(--accent-bg)]">
-                {radiusKm.toFixed(1)} km
+                {radiusLabel}
               </span>
             </div>
 
             <SegmentedControl
               options={radiusPresets.map((preset) => ({
                 value: preset,
-                label: `${preset} km`,
+                label: formatRegionalRadius(preset, userLocation),
               }))}
               value={radiusKm}
               onChange={setRadiusKm}
@@ -53,7 +55,7 @@ export default function HostConstraints({
               value={radiusKm}
               onChange={setRadiusKm}
               label={t('searchRadius')}
-              valueDisplay={`${radiusKm.toFixed(1)} km`}
+              valueDisplay={radiusLabel}
             />
           </div>
 

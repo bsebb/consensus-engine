@@ -15,6 +15,7 @@ import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
 import { apiUrl } from '../utils/api';
 import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
 import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
+import { formatRegionalPriceBadge } from '../utils/regionFormat';
 import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 import { filterOutReportedVenues } from '../utils/reportedVenuesClient';
@@ -434,9 +435,9 @@ export default function SwipeDeck() {
   const cardRating = activeRating.rating;
   const cardReviewCount = activeRating.reviewCount;
   const cardPriceDesc = activeCard
-    ? (activeCard.price_level === 1 ? '$ • ~110 MDL' : activeCard.price_level === 3 ? '$$$ • ~350 MDL' : activeCard.price_level === 4 ? '$$$$ • ~600 MDL' : '$$ • ~180 MDL')
-    : '$$ • ~180 MDL';
-  const cardWalkDesc = activeCard ? formatTravelSummary(activeCard, lang) : (lang === 'ro' ? 'Locație în apropiere' : lang === 'ru' ? 'Место поблизости' : 'Local Spot');
+    ? formatRegionalPriceBadge(activeCard.price_level || 2, activeCard)
+    : formatRegionalPriceBadge(2);
+  const cardWalkDesc = activeCard ? formatTravelSummary(activeCard, lang) : formatTravelSummary(null, lang);
 
   const mapsDirUrl = consensusResult.winner
     ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(

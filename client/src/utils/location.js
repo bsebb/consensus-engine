@@ -2,6 +2,7 @@
  * Universal Geolocation, Reverse Geocoder & Hexagonal Grid Anchor Resolver.
  * Works in any city, town, or neighborhood without clamping to a single city.
  */
+import { formatRegionalDistance } from './regionFormat';
 
 /**
  * Haversine distance in kilometers between two coordinates.
@@ -33,9 +34,12 @@ export const POPULAR_LOCATIONS = [
   { title: 'Bălți', subtitle: 'Moldova', label: 'Bălți, Moldova', lat: 47.7617, lng: 27.9289, type: 'city' },
   { title: 'Strășeni', subtitle: 'Moldova', label: 'Strășeni, Moldova', lat: 47.1414, lng: 28.6108, type: 'city' },
   { title: 'Orhei', subtitle: 'Moldova', label: 'Orhei, Moldova', lat: 47.3853, lng: 28.8242, type: 'city' },
-  { title: 'Jersey City', subtitle: 'New Jersey, USA', label: 'Jersey City, NJ, USA', lat: 40.7178, lng: -74.0431, type: 'city' },
-  { title: 'Newark', subtitle: 'New Jersey, USA', label: 'Newark, NJ, USA', lat: 40.7357, lng: -74.1724, type: 'city' },
   { title: 'New York', subtitle: 'New York, USA', label: 'New York, NY, USA', lat: 40.7128, lng: -74.0060, type: 'city' },
+  { title: 'Jersey City', subtitle: 'New Jersey, USA', label: 'Jersey City, NJ, USA', lat: 40.7178, lng: -74.0431, type: 'city' },
+  { title: 'London', subtitle: 'United Kingdom', label: 'London, UK', lat: 51.5074, lng: -0.1278, type: 'city' },
+  { title: 'Paris', subtitle: 'France', label: 'Paris, France', lat: 48.8566, lng: 2.3522, type: 'city' },
+  { title: 'Berlin', subtitle: 'Germany', label: 'Berlin, Germany', lat: 52.5200, lng: 13.4050, type: 'city' },
+  { title: 'Madrid', subtitle: 'Spain', label: 'Madrid, Spain', lat: 40.4168, lng: -3.7038, type: 'city' },
   { title: 'Bucharest', subtitle: 'Romania', label: 'Bucharest, Romania', lat: 44.4268, lng: 26.1025, type: 'city' },
 ];
 
@@ -326,25 +330,46 @@ export async function fetchRoadRouteMetrics(userLat, userLng, venues = []) {
 }
 
 /**
- * Formats road distance and walking/driving time into a clear human-friendly string.
+ * Formats road distance and walking/driving time into a clear human-friendly string
+ * using regional distance units (miles for US/UK, kilometers elsewhere).
  */
 export function formatTravelSummary(item, lang = 'en') {
+  const localSpotMap = {
+    ro: 'Locație în apropiere',
+    ru: 'Место поблизости',
+    fr: 'Lieu à proximité',
+    de: 'Ort in der Nähe',
+    es: 'Lugar cercano',
+    en: 'Local Spot',
+  };
   if (!item) {
-    return lang === 'ro' ? 'Locație în apropiere' : lang === 'ru' ? 'Место поблизости' : 'Local Spot';
+    return localSpotMap[lang] || localSpotMap.en;
   }
   const dist = item.distance_km;
   if (dist == null) {
-    return item.address ? item.address.split(',')[0] : (lang === 'ro' ? 'Zonă centrală' : lang === 'ru' ? 'В центре' : 'Local Area');
+    if (item.address) return item.address.split(',')[0];
+    return localSpotMap[lang] || localSpotMap.en;
   }
+  const distLabel = formatRegionalDistance(dist, {
+    lat: item.lat,
+    lng: item.lng,
+    address: item.address,
+  });
   const walkMin = item.walk_minutes || Math.max(2, Math.round(dist * 12.5));
   const driveMin = item.drive_minutes || Math.max(2, Math.round(dist * 2.2));
   if (dist <= 1.5) {
-    if (lang === 'ro') return `${dist} km • ~${walkMin} min pe jos`;
-    if (lang === 'ru') return `${dist} км • ~${walkMin} мин пешком`;
-    return `${dist} km • ~${walkMin} min walk`;
+    if (lang === 'ro') return `${distLabel} • ~${walkMin} min pe jos`;
+    if (lang === 'ru') return `${distLabel} • ~${walkMin} мин пешком`;
+    if (lang === 'fr') return `${distLabel} • ~${walkMin} min à pied`;
+    if (lang === 'de') return `${distLabel} • ~${walkMin} Min. zu Fuß`;
+    if (lang === 'es') return `${distLabel} • ~${walkMin} min a pie`;
+    return `${distLabel} • ~${walkMin} min walk`;
   }
-  if (lang === 'ro') return `${dist} km • ~${driveMin} min cu mașina`;
-  if (lang === 'ru') return `${dist} км • ~${driveMin} мин на авто`;
-  return `${dist} km • ~${driveMin} min drive`;
+  if (lang === 'ro') return `${distLabel} • ~${driveMin} min cu mașina`;
+  if (lang === 'ru') return `${distLabel} • ~${driveMin} мин на авто`;
+  if (lang === 'fr') return `${distLabel} • ~${driveMin} min en voiture`;
+  if (lang === 'de') return `${distLabel} • ~${driveMin} Min. Fahrt`;
+  if (lang === 'es') return `${distLabel} • ~${driveMin} min en coche`;
+  return `${distLabel} • ~${driveMin} min drive`;
 }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { ShieldCheck, Check } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { triggerHaptic } from '../../utils/haptics';
+import { resolveRegionProfile, formatRegionalMaxBudget } from '../../utils/regionFormat';
 import SegmentedControl from '../ui/SegmentedControl';
 
 export default function StepZeroVault({
@@ -10,6 +11,7 @@ export default function StepZeroVault({
   onSelectTier,
 }) {
   const { t } = useLanguage();
+  const profile = resolveRegionProfile();
 
   const activeTierIndex = !lockedConstraint
     ? 0
@@ -20,10 +22,10 @@ export default function StepZeroVault({
     : 3;
 
   const tiers = [
-    { id: 'all', label: t('budgetAll') || 'Toate', limit: 600, isFiltered: false, desc: t('budgetDescAll') },
-    { id: '1', label: '$', limit: 150, isFiltered: true, desc: t('budgetDesc1') },
-    { id: '2', label: '$$', limit: 300, isFiltered: true, desc: t('budgetDesc2') },
-    { id: '3', label: '$$$', limit: 450, isFiltered: true, desc: t('budgetDesc3') },
+    { id: 'all', label: t('budgetAll') || 'All', limit: 600, isFiltered: false, desc: t('budgetDescAll') },
+    { id: '1', label: profile.tiers[1].symbolRepeat, limit: 150, isFiltered: true, desc: `${t('budgetDesc1')} (${profile.tiers[1].short})` },
+    { id: '2', label: profile.tiers[2].symbolRepeat, limit: 300, isFiltered: true, desc: `${t('budgetDesc2')} (${profile.tiers[2].short})` },
+    { id: '3', label: profile.tiers[3].symbolRepeat, limit: 450, isFiltered: true, desc: `${t('budgetDesc3')} (${profile.tiers[3].short})` },
   ];
 
   const activeTier = tiers[activeTierIndex] || tiers[0];
@@ -44,7 +46,7 @@ export default function StepZeroVault({
         {lockedConstraint && (
           <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
             <Check size={11} className="text-emerald-500" />
-            <span className="tabular-nums">{t('maxBudgetLabel')} {budgetLimit} MDL</span>
+            <span className="tabular-nums">{t('maxBudgetLabel')} {formatRegionalMaxBudget(budgetLimit)}</span>
           </span>
         )}
       </div>

@@ -127,3 +127,24 @@ model Feedback {
   @@index([optionId])
   @@map("feedbacks")
 }
+
+model CachedVenue {
+  id         String   @id @default(uuid())
+  gridKey    String
+  placeKey   String   @unique
+  name       String
+  category   String
+  address    String?
+  locality   String?
+  lat        Float
+  lng        Float
+  priceLevel Int      @default(2)
+  rating     Float    @default(4.5)
+  reviews    Int      @default(120)
+  photoUrl   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([gridKey])
+  @@map("cached_venues")
+}

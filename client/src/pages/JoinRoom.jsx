@@ -1,18 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  ArrowRight,
-  Clock,
-  Utensils,
-  Coffee,
-  Wine,
-  Film,
-  IceCream,
-  ListPlus,
-  User,
-  Settings,
-  History,
-  MapPin,
+  ArrowRight, Clock, Utensils, Coffee, Wine, Film, IceCream,
+  ListPlus, User, Settings, History, MapPin, Globe,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,6 +11,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import SettingsModal from '../components/ui/SettingsModal';
+import LanguageMenuModal from '../components/ui/LanguageMenuModal';
 import UberLocationSearchModal from '../components/location/UberLocationSearchModal';
 import LobbyLoadingView from '../components/lobby/LobbyLoadingView';
 import { apiUrl } from '../utils/api';
@@ -49,6 +40,7 @@ export default function JoinRoom() {
   ], [t]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(hasUrlPin ? 'join' : 'create');
   const [name, setName] = useState(() => localStorage.getItem('consensus_user_name') || '');
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
@@ -277,12 +269,13 @@ export default function JoinRoom() {
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => setLanguageMenuOpen(true)}
             aria-label={t('langTitle')}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] border border-[var(--border-main)] transition-colors cursor-pointer"
             title={t('langTitle')}
           >
-            <span>{lang === 'ro' ? '🇲🇩 RO' : lang === 'ru' ? '🇷🇺 RU' : '🇺🇸 EN'}</span>
+            <Globe size={12} className="text-[var(--accent-bg)]" />
+            <span className="font-mono font-bold uppercase">{lang}</span>
           </button>
           <button
             type="button"
@@ -520,6 +513,11 @@ export default function JoinRoom() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <LanguageMenuModal
+        isOpen={languageMenuOpen}
+        onClose={() => setLanguageMenuOpen(false)}
       />
 
       <UberLocationSearchModal

@@ -1,11 +1,13 @@
 const { fetchGooglePlaces } = require('../utils/googlePlaces');
 const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
-const { resolveRegionalFallback, isInsideMoldovaRegion } = require('../utils/fallbackVenues');
+const { resolveRegionalFallback, isInsideMoldovaRegion, calculateDistance } = require('../utils/fallbackVenues');
 const { filterReportedVenues } = require('../utils/reportedVenues');
+const { getCachedVenuesByGrid, saveCachedVenuesBulk } = require('../../db/helpers');
 
 // High-speed in-memory discovery deck cache (30-min TTL) for sub-millisecond room creation at 1000+ CCU
 const discoveryDeckCache = new Map();
+const persistedGridKeys = new Set();
 const DISCOVERY_CACHE_TTL_MS = 30 * 60 * 1000;
 const MAX_DISCOVERY_CACHE_SIZE = 500;
 
@@ -15,6 +17,20 @@ function setDiscoveryCache(key, places) {
     if (oldest) discoveryDeckCache.delete(oldest);
   }
   discoveryDeckCache.set(key, { places, expiresAt: Date.now() + DISCOVERY_CACHE_TTL_MS });
+}
+
+function getGridKey(theme = 'restaurant', lat = 47.0225, lng = 28.8340) {
+  const normTheme = String(theme).toLowerCase().trim();
+  const cat = normTheme.includes('cinema') ? 'cinema'
+    : normTheme.includes('cafe') ? 'cafes'
+    : normTheme.includes('bar') ? 'bars'
+    : normTheme.includes('dessert') ? 'desserts'
+    : normTheme.includes('activit') ? 'activities'
+    : 'restaurants';
+  // Round to 0.05 deg (~5km grid cell) so nearby users in the same city share the DB venue cache
+  const gLat = (Math.round(Number(lat) * 20) / 20).toFixed(2);
+  const gLng = (Math.round(Number(lng) * 20) / 20).toFixed(2);
+  return `${cat}_${gLat}_${gLng}`;
 }
 
 function buildOptionRecords(places = [], roomId) {
@@ -59,6 +75,8 @@ async function discoverDiscoveryVenues({
     return filterReportedVenues(cachedDeck.places);
   }
 
+  const gridKey = getGridKey(theme, normLat, normLng);
+
   const hasGoogleKey = Boolean(
     (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
   );
@@ -67,8 +85,8 @@ async function discoverDiscoveryVenues({
 
   let places = [];
 
-  // Fast Path: When no paid third-party API keys are configured and coordinates are within the curated Moldova region,
-  // resolve directly from the in-memory spatial catalog in <1ms and warm OSM towns asynchronously in the background.
+  // Fast Path 1: When no paid third-party API keys are configured and coordinates are within the curated Moldova region,
+  // resolve directly from the in-memory spatial catalog in <1ms and persist to Neon cached_venues in the background.
   if (!hasGoogleKey && !hasGeoapifyKey && !hasFoursquareKey && isInsideMoldovaRegion(normLat, normLng)) {
     const instantPlaces = await resolveRegionalFallback(
       theme,
@@ -81,7 +99,44 @@ async function discoverDiscoveryVenues({
     const cleaned = filterReportedVenues(instantPlaces || []);
     if (cleaned.length > 0) {
       setDiscoveryCache(cacheKey, cleaned);
+      if (!persistedGridKeys.has(gridKey)) {
+        persistedGridKeys.add(gridKey);
+        saveCachedVenuesBulk(gridKey, cleaned).catch(() => {});
+      }
       return cleaned;
+    }
+  }
+
+  // Fast Path 2: L2 Persistent Neon Database Cache for any city/location worldwide
+  const dbCachedVenues = await getCachedVenuesByGrid(gridKey, targetPlaces);
+  if (Array.isArray(dbCachedVenues) && dbCachedVenues.length >= Math.min(6, targetPlaces)) {
+    const hydratedFromDb = dbCachedVenues.map((row) => {
+      const distMeters = calculateDistance(normLat, normLng, row.lat, row.lng);
+      const roadMeters = Math.round(distMeters * 1.24);
+      const distKm = is_exact_gps ? Math.max(0.1, Number((roadMeters / 1000).toFixed(1))) : null;
+      return {
+        name: row.name,
+        fsq_id: `db_${row.id.slice(0, 8)}`,
+        fsq_place_id: `db_${row.id.slice(0, 8)}`,
+        category: row.category,
+        priceLevel: row.priceLevel ?? 2,
+        lat: row.lat,
+        lng: row.lng,
+        distance_meters: roadMeters,
+        distance_km: distKm,
+        address: row.address || row.locality || 'Local Venue',
+        locality: row.locality || '',
+        rating: row.rating ?? 4.5,
+        reviews: row.reviews ?? 120,
+        photo_url: row.photoUrl || null,
+      };
+    }).sort((a, b) => a.distance_meters - b.distance_meters);
+
+    const cleanedDb = filterReportedVenues(hydratedFromDb);
+    if (cleanedDb.length > 0) {
+      setDiscoveryCache(cacheKey, cleanedDb);
+      persistedGridKeys.add(gridKey);
+      return cleanedDb;
     }
   }
 
@@ -132,7 +187,11 @@ async function discoverDiscoveryVenues({
   places = filterReportedVenues(places || []);
 
   // Backfill up to targetPlaces using strict radius-bounded regional fallback
-  if (!places || places.length < targetPlaces) {
+  // (For international searches outside Moldova, only query expanded OSM if fewer than 6 places were found)
+  const shouldBackfill = isInsideMoldovaRegion(normLat, normLng)
+    ? (!places || places.length < targetPlaces)
+    : (!places || places.length < 6);
+  if (shouldBackfill) {
     try {
       const fallbacks = await resolveRegionalFallback(
         theme,
@@ -161,6 +220,10 @@ async function discoverDiscoveryVenues({
   const finalPlaces = places || [];
   if (finalPlaces.length > 0) {
     setDiscoveryCache(cacheKey, finalPlaces);
+    if (!persistedGridKeys.has(gridKey)) {
+      persistedGridKeys.add(gridKey);
+      saveCachedVenuesBulk(gridKey, finalPlaces).catch(() => {});
+    }
   }
   return finalPlaces;
 }

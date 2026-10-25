@@ -1,25 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
-  Compass,
-  Utensils,
-  Coffee,
-  Wine,
-  Film,
-  Dumbbell,
-  Users,
-  ArrowRight,
-  Minus,
-  Plus,
-  Flame,
-  ChevronDown,
-  Settings,
-  Layers,
+  ArrowLeft, Compass, Utensils, Coffee, Wine, Film, Dumbbell, Users,
+  ArrowRight, Minus, Plus, Flame, ChevronDown, Settings, Layers,
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext';
 import { useToast } from '../components/ui/Toast';
 import { useLanguage } from '../context/LanguageContext';
+import { formatRegionalTierShort, formatRegionalRadius } from '../utils/regionFormat';
 import ThemeToggle from '../components/ThemeToggle';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -118,10 +106,10 @@ export default function HostSettings() {
   ];
 
   const priceTiers = [
-    { value: '$', label: '$', desc: '<150 MDL' },
-    { value: '$$', label: '$$', desc: '150-300 MDL' },
-    { value: '$$$', label: '$$$', desc: '300-500 MDL' },
-    { value: '$$$$', label: '$$$$', desc: '500+ MDL' },
+    { value: '$', label: '$', desc: formatRegionalTierShort(1, userLocation) },
+    { value: '$$', label: '$$', desc: formatRegionalTierShort(2, userLocation) },
+    { value: '$$$', label: '$$$', desc: formatRegionalTierShort(3, userLocation) },
+    { value: '$$$$', label: '$$$$', desc: formatRegionalTierShort(4, userLocation) },
   ];
 
   const radiusPresets = [1, 3, 5, 10];
@@ -433,7 +421,7 @@ export default function HostSettings() {
 
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-lg bg-[var(--bg-inset)] text-[10px] font-mono font-bold text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                {mode === 'DISCOVERY' ? `${radiusKm} km · ${priceTier}` : `${suggestionLimit} options`}
+                {mode === 'DISCOVERY' ? `${formatRegionalRadius(radiusKm, userLocation)} · ${priceTier}` : `${suggestionLimit} options`}
               </span>
               <ChevronDown
                 size={16}

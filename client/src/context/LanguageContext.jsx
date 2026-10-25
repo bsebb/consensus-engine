@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { TRANSLATIONS } from './translations';
+import { TRANSLATIONS, SUPPORTED_LANGUAGES } from './translations';
 
 const LanguageContext = createContext();
 
-export { TRANSLATIONS };
+export { TRANSLATIONS, SUPPORTED_LANGUAGES };
 
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(() => {

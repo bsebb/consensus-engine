@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { getVenueRating, getVenueVibe, useVenuePhotos } from '../../utils/venueImages';
+import { formatRegionalPriceBadge, formatRegionalDistance } from '../../utils/regionFormat';
 import { useLanguage } from '../../context/LanguageContext';
 import CleanStreetMiniMap from './CleanStreetMiniMap';
 import { markVenueClosedClient } from '../../utils/reportedVenuesClient';
@@ -123,7 +124,7 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
   const { rating, reviewCount } = getVenueRating(venue.name, venue.category);
   const vibe = getVenueVibe(venue.name, venue.category);
   const priceLevel = venue.price_level || 2;
-  const priceDesc =
+  const levelLabel =
     priceLevel === 1
       ? t('budgetLevel1')
       : priceLevel === 2
@@ -131,8 +132,10 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
       : priceLevel === 3
       ? t('budgetLevel3')
       : t('budgetLevel4');
+  const priceDesc = `${formatRegionalPriceBadge(priceLevel, venue)} • ${levelLabel}`;
 
   const distKm = venue.road_distance_km || venue.distance_km;
+  const distDisplay = formatRegionalDistance(distKm, venue);
   const walkMin = venue.walk_minutes || (distKm != null ? Math.max(2, Math.round(distKm * 12.5)) : null);
   const driveMin = venue.drive_minutes || (distKm != null ? Math.max(2, Math.round(distKm * 2.2)) : null);
   const isWalkable = distKm != null && distKm <= 1.5;
@@ -377,10 +380,10 @@ export default function VenueDetailsModal({ venue, isOpen, onClose, onVote, onRe
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-black text-[var(--text-primary)] leading-tight tabular-nums">
-                      {distKm != null
+                      {distDisplay
                         ? isWalkable
-                          ? `~${walkMin} min • ${distKm} km`
-                          : `~${driveMin} min • ${distKm} km`
+                          ? `~${walkMin} min • ${distDisplay}`
+                          : `~${driveMin} min • ${distDisplay}`
                         : t('localVenue')}
                     </span>
                     <span className="text-[11px] text-[var(--text-secondary)] font-medium truncate">

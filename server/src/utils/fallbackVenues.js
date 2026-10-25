@@ -1,7 +1,20 @@
 const { resolveVenuePhotosBatch } = require('./venuePhotoService');
 const { CATEGORIZED_FALLBACKS, CHISINAU_CENTER, STRASENI_CENTER } = require('../data/curatedVenues');
 
-function formatPriceLabel(price) {
+function formatPriceLabel(price, lat = null, lng = null) {
+  const isMoldova = isInsideMoldovaRegion(lat, lng);
+  if (!isMoldova) {
+    const isAmericas = lng != null && Number(lng) < -30;
+    const isUk = lat != null && lng != null && Number(lat) >= 49.9 && Number(lat) <= 60.9 && Number(lng) >= -8.6 && Number(lng) <= 1.8;
+    const sym = isAmericas ? '$' : isUk ? '£' : '€';
+    const map = {
+      1: `${sym} (Budget: <${sym}15)`,
+      2: `${sym}${sym} (Moderate: ${sym}15-${sym}30)`,
+      3: `${sym}${sym}${sym} (Upscale: ${sym}30-${sym}60)`,
+      4: `${sym}${sym}${sym}${sym} (Fine Dining: ${sym}60+)`,
+    };
+    return map[price] || map[2];
+  }
   const map = {
     1: "$ (Budget: ~80-150 MDL)",
     2: "$$ (Moderate: ~150-300 MDL)",
@@ -115,11 +128,10 @@ async function resolveRegionalFallback(
   radius = 5000
 ) {
   // If coordinates are outside Moldova, resolve genuine regional venues via expanded radius search
+  // and never mix in Moldova-specific fallback venues for international locations
   if (!isInsideMoldovaRegion(centerLat, centerLng)) {
     const regionalVenues = await searchExpandedOsmVenues(centerLat, centerLng, theme, isExactGps, targetCount);
-    if (regionalVenues.length > 0) {
-      return regionalVenues.slice(0, targetCount);
-    }
+    return regionalVenues.slice(0, targetCount);
   }
 
   const key = theme.toLowerCase().includes('cinema') ? 'cinema' :

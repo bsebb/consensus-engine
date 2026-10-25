@@ -18,6 +18,7 @@ import { useToast } from './Toast';
 import SpringToggle from './SpringToggle';
 import { triggerHaptic } from '../../utils/haptics';
 import SegmentedControl from './SegmentedControl';
+import { LanguageGridPicker } from './LanguageMenuModal';
 import useDrawerGesture from './useDrawerGesture';
 
 export default function SettingsModal({ isOpen, onClose }) {
@@ -154,22 +155,13 @@ export default function SettingsModal({ isOpen, onClose }) {
 
         {/* Scrollable Body Content */}
         <div className="flex-1 overflow-y-auto pr-0.5 flex flex-col gap-4 touch-pan-y overscroll-contain">
-          {/* Section 1: Language Picker */}
+          {/* Section 1: Language Picker (6 Spoken Languages) */}
           <section className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
               <Globe size={12} />
               <span>{t('langTitle')}</span>
             </span>
-            <SegmentedControl
-              options={[
-                { value: 'en', label: 'English' },
-                { value: 'ro', label: 'Română' },
-                { value: 'ru', label: 'Русский' },
-              ]}
-              value={lang}
-              onChange={setLang}
-              size="sm"
-            />
+            <LanguageGridPicker />
           </section>
 
           {/* Section 2: Accent Theme Color */}
