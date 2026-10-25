@@ -208,7 +208,7 @@ export default function ConsensusWinnerView({
       <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner && !isRoutable ? (
           customWinnerPhoto && !customImgErr ? (
-            <div className={`relative h-[clamp(170px,26dvh,224px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
+            <div className={`relative h-[clamp(160px,23dvh,210px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
               <img
                 src={customWinnerPhoto}
                 alt={winner?.name}
@@ -245,7 +245,7 @@ export default function ConsensusWinnerView({
         ) : (
           /* Discovery Venue 4-Photo Interactive Hero & Strip */
           <>
-            <div className="relative h-[clamp(196px,29dvh,252px)] w-full bg-[var(--bg-inset)] overflow-hidden select-none">
+            <div className="relative h-[clamp(175px,25dvh,230px)] w-full bg-[var(--bg-inset)] overflow-hidden select-none">
               <img
                 key={heroPhotoUrl}
                 src={heroPhotoUrl}

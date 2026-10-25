@@ -19,7 +19,7 @@ export default function LobbyDock({
   const itemUnit = mode === 'CUSTOM' ? (t('optionsLabel') || 'options') : (t('placesLabel') || 'places');
 
   return (
-    <div className="fixed bottom-0 inset-x-0 p-3.5 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[var(--bg-root)] via-[var(--bg-root)]/92 to-transparent pointer-events-none z-30">
+    <div className="fixed bottom-0 inset-x-0 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[var(--bg-root)] via-[var(--bg-root)]/95 to-transparent pointer-events-none z-30">
       <div className="max-w-md mx-auto pointer-events-auto">
         {isVotingActive ? (
           <button

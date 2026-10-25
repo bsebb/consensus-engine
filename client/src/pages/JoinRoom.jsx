@@ -45,8 +45,8 @@ export default function JoinRoom() {
   const hasUrlPin = Boolean(searchParams.get('pin') && /^\d{4}$/.test(searchParams.get('pin')));
 
   const categories = useMemo(() => [
-    { id: 'Restaurants', theme: 'restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic'), wide: true },
-    { id: 'Fun & Distractions', theme: 'activities', title: t('catFun') || 'Fun & Distractions', desc: t('catFunDesc') || 'Bowling, games & nightlife', icon: Sparkles, topic: t('catFunTopic') || 'What are we doing for fun?', wide: true },
+    { id: 'Restaurants', theme: 'restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic'), wide: false },
+    { id: 'Fun & Distractions', theme: 'activities', title: t('catFun') || 'Fun & Distractions', desc: t('catFunDesc') || 'Bowling, games & nightlife', icon: Sparkles, topic: t('catFunTopic') || 'What are we doing for fun?', wide: false },
     { id: 'Cafes', theme: 'cafes', title: t('catCafes'), desc: t('catCafesDesc'), icon: Coffee, topic: t('catCafesTopic'), wide: false },
     { id: 'Bars & Pubs', theme: 'bars', title: t('catBars'), desc: t('catBarsDesc'), icon: Wine, topic: t('catBarsTopic'), wide: false },
     { id: 'Desserts', theme: 'desserts', title: t('catDesserts'), desc: t('catDessertsDesc'), icon: IceCream, topic: t('catDessertsTopic'), wide: false },
@@ -296,29 +296,29 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between px-4 sm:px-6 safe-pt-page pb-safe h-full min-h-0 overflow-hidden select-none">
+    <div className="flex-1 flex flex-col justify-between px-3.5 sm:px-6 safe-pt-page pb-[max(0.6rem,env(safe-area-inset-bottom))] h-full min-h-0 overflow-hidden select-none">
       <JoinRoomHeader
         onOpenLanguage={() => setLanguageMenuOpen(true)}
         onOpenHistory={() => navigate('/history')}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <main className="w-full flex-1 min-h-0 flex flex-col justify-center items-center max-w-md mx-auto py-1 overflow-hidden">
-        <div className="text-center mb-2.5 sm:mb-3.5 h-[48px] max-h-[48px] shrink-0 flex flex-col justify-center items-center px-2 overflow-hidden select-none">
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--text-primary)] truncate whitespace-nowrap max-w-full leading-tight">
+      <main className="w-full flex-1 min-h-0 flex flex-col justify-center items-center max-w-md mx-auto py-0.5 overflow-y-auto no-scrollbar overscroll-contain">
+        <div className="text-center mb-1 sm:mb-2 shrink-0 flex flex-col justify-center items-center px-2 select-none">
+          <h1 className="text-base sm:text-2xl font-black tracking-tight text-[var(--text-primary)] truncate whitespace-nowrap max-w-full leading-tight">
             {activeTab === 'create' ? (isCustomMode && customTopic.trim() ? customTopic.trim() : activeCatObj.topic) : t('joinWithCode')}
           </h1>
-          <p className="text-xs sm:text-sm text-[var(--text-secondary)] truncate whitespace-nowrap max-w-full leading-normal mt-0.5">
+          <p className="text-[11px] sm:text-sm text-[var(--text-secondary)] truncate whitespace-nowrap max-w-full leading-normal mt-0.5">
             {activeTab === 'create' ? (isCustomMode && customOptions.length > 0 ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready` : activeCatObj.desc) : t('roomCodeHint')}
           </p>
         </div>
 
-        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-3.5 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 shrink-0">
+        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-2.5 sm:p-4 flex flex-col gap-2 sm:gap-2.5 shrink-0">
           <SegmentedControl
             options={[{ value: 'create', label: t('startPick') }, { value: 'join', label: t('joinWithCode') }]}
             value={activeTab}
             onChange={setActiveTab}
-            size="md"
+            size="sm"
           />
 
           <div className="flex flex-col gap-1">

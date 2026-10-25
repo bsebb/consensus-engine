@@ -34,7 +34,7 @@ export default function RecentRoomsDrawer({
     <>
       {/* Active Room 1-Tap Rejoin Banner */}
       {activePin && /^\d{4}$/.test(activePin) && (
-        <div className="w-full mt-2 px-3 py-2 rounded-2xl bg-[var(--accent-bg)]/10 border border-[var(--accent-bg)]/25 flex items-center justify-between gap-2 shadow-2xs shrink-0">
+        <div className="w-full mt-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl bg-[var(--accent-bg)]/10 border border-[var(--accent-bg)]/25 flex items-center justify-between gap-2 shadow-2xs shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="relative flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -60,7 +60,7 @@ export default function RecentRoomsDrawer({
 
       {/* Post-Visit 1-Tap Return Check-In Banner / Recent Decision Shortcut */}
       {recentSession && (
-        <div className="w-full mt-2 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between gap-2 shadow-2xs shrink-0">
+        <div className="w-full mt-1.5 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] flex items-center justify-between gap-2 shadow-2xs shrink-0">
           {!recentRating ? (
             <>
               <div className="flex flex-col min-w-0">

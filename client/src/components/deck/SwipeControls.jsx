@@ -15,8 +15,8 @@ export default function SwipeControls({
   const hasSuper = superlikesRemaining > 0;
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-center shrink-0 select-none z-20">
-      <div className="flex items-center justify-between gap-2 sm:gap-3 px-3.5 py-2 rounded-3xl bg-[var(--bg-elevated)]/92 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+    <div className="w-full max-w-md mx-auto px-3.5 sm:px-4 pt-0.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] flex items-center justify-center shrink-0 select-none z-20">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-3 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-3xl bg-[var(--bg-elevated)]/95 backdrop-blur-xl border border-[var(--border-main)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
         {/* Undo Action */}
         <div className="flex flex-col items-center gap-0.5">
           <button

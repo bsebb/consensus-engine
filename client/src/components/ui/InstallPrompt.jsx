@@ -17,27 +17,35 @@ export default function InstallPrompt() {
 
     if (isStandalone) return;
 
-    // 2. Check dismissal cooldown (24h)
+    // 2. Never show during active voting or lobby to preserve focused mobile screen real estate
+    const pathname = window.location.pathname || '';
+    if (pathname.includes('/deck') || pathname.includes('/lobby')) {
+      setShowPrompt(false);
+      return;
+    }
+
+    // 3. Check dismissal cooldown (48h)
     const dismissedAt = localStorage.getItem('pwa_prompt_dismissed');
     if (dismissedAt) {
       const elapsed = Date.now() - Number(dismissedAt);
-      if (elapsed < 24 * 60 * 60 * 1000) return;
+      if (elapsed < 48 * 60 * 60 * 1000) return;
     }
 
-    // 3. Detect Apple Safari
+    // 4. Detect Apple Safari
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isAppleDevice = /iphone|ipad|ipod/.test(userAgent);
     const isSafari = /safari/.test(userAgent) && !/chrome|crios|fxios/.test(userAgent);
 
     if (isAppleDevice && isSafari) {
+      // Gentle delay so initial layout settles cleanly
       const timer = setTimeout(() => {
         setIsIOSDevice(true);
         setShowPrompt(true);
-      }, 0);
+      }, 2500);
       return () => clearTimeout(timer);
     }
 
-    // 4. Android / Chromium beforeinstallprompt handler
+    // 5. Android / Chromium beforeinstallprompt handler
     const handleBeforeInstall = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);

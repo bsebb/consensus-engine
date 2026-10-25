@@ -10,7 +10,7 @@ import { triggerHaptic } from '../../utils/haptics';
 
 export default function SwipeCard({
   mode, topic, cardIndex = 1, activeCard, dragOffset, exitDirection, enterDirection,
-  isDragging, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
+  isDragging, cardRef, handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel,
   cardRating, cardReviewCount, cardPriceDesc, cardWalkDesc, onOpenDetails,
 }) {
   const { t } = useLanguage();
@@ -118,8 +118,9 @@ export default function SwipeCard({
     : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.05}deg)`;
 
   return (
-    <main className="px-4 py-1.5 flex flex-col justify-center flex-1 min-h-0 max-w-md mx-auto w-full select-none">
+    <main className="px-3 sm:px-4 py-0.5 sm:py-1 flex flex-col justify-center flex-1 min-h-0 max-w-md mx-auto w-full select-none swipe-card-viewport">
       <div
+        ref={cardRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -135,7 +136,7 @@ export default function SwipeCard({
           touchAction: 'none',
           willChange: isDragging ? 'transform' : 'auto',
         }}
-        className={`w-full flex-1 max-h-none sm:max-h-[640px] min-h-0 rounded-3xl bg-[var(--bg-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.14)] border border-[var(--border-main)] relative my-auto cursor-grab active:cursor-grabbing flex flex-col overflow-hidden ${enterClass}`}
+        className={`w-full flex-1 min-h-0 rounded-3xl bg-[var(--bg-elevated)] shadow-[0_16px_40px_rgba(0,0,0,0.12)] border border-[var(--border-main)] relative my-auto cursor-grab active:cursor-grabbing flex flex-col overflow-hidden touch-none select-none ${enterClass}`}
       >
         {likeProgress > 0 && (
           <div
@@ -176,9 +177,8 @@ export default function SwipeCard({
 
         {cardIndex === 1 && showGestureHint && (
           <div
-            onPointerDown={(e) => e.stopPropagation()}
             onClick={dismissGestureHint}
-            className="absolute bottom-20 sm:bottom-24 inset-x-4 z-40 py-2 px-3 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white shadow-2xl flex items-center justify-between gap-2 animate-bounce-subtle cursor-pointer select-none"
+            className="absolute bottom-16 sm:bottom-20 inset-x-4 z-40 py-2 px-3 rounded-full bg-black/85 backdrop-blur-xl border border-white/20 text-white shadow-2xl flex items-center justify-between gap-2 animate-bounce-subtle cursor-pointer select-none"
           >
             <div className="flex items-center gap-2 min-w-0">
               <Sparkles size={14} className="text-amber-400 shrink-0" />
@@ -199,20 +199,24 @@ export default function SwipeCard({
                 <img
                   src={customPhoto}
                   alt={activeCard?.name}
-                  className={isLogoImage(customPhoto) ? 'w-full h-full object-contain p-10 pb-24' : 'w-full h-full object-cover'}
+                  className={`${isLogoImage(customPhoto) ? 'w-full h-full object-contain p-10 pb-24' : 'w-full h-full object-cover'} pointer-events-none select-none`}
                   draggable="false"
                   onError={() => setCustomImgError(true)}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10" />
-                <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/10 pointer-events-none" />
+                <div className="absolute top-4 inset-x-4 flex items-center justify-between z-10 pointer-events-none">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-xs font-semibold text-white border border-white/10 max-w-[85%] truncate">
                     <Layers size={12} className="text-amber-400 shrink-0" />
                     <span className="truncate">{topic || 'Custom Poll'}</span>
                   </span>
                 </div>
                 <div
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => { triggerHaptic('tap'); onOpenDetails?.(0); }}
+                  onClick={(e) => {
+                    if (Math.hypot(dragOffset.x, dragOffset.y) > 8) return;
+                    e.stopPropagation();
+                    triggerHaptic('tap');
+                    onOpenDetails?.(0);
+                  }}
                   className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-10 cursor-pointer group"
                   title="Tap for option details"
                 >
@@ -222,7 +226,7 @@ export default function SwipeCard({
                   </div>
                 </div>
               </div>
-              <div className="px-4 py-2.5 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-4 text-xs font-medium text-[var(--text-tertiary)] shrink-0">
+              <div className="px-4 py-2 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-4 text-xs font-medium text-[var(--text-tertiary)] shrink-0">
                 <div className="flex items-center gap-2">
                   <span>{t('swipeRightApprove')}</span>
                   <span>•</span>
@@ -231,8 +235,11 @@ export default function SwipeCard({
                 {onOpenDetails && (
                   <button
                     type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); onOpenDetails(0); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('tap');
+                      onOpenDetails(0);
+                    }}
                     aria-label="View option details"
                     className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
                   >
@@ -244,19 +251,23 @@ export default function SwipeCard({
             </>
           ) : (
             <div className="flex-1 min-h-0 flex flex-col justify-between p-6 text-center bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-inset)]">
-              <div className="flex items-center justify-center">
+              <div className="flex items-center justify-center pointer-events-none">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)]/12 text-[var(--accent-bg)] text-xs font-bold truncate max-w-[85%]">
                   <Layers size={12} />
                   <span className="truncate">{topic || 'Custom Poll'}</span>
                 </span>
               </div>
               <div
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => { triggerHaptic('tap'); onOpenDetails?.(0); }}
+                onClick={(e) => {
+                  if (Math.hypot(dragOffset.x, dragOffset.y) > 8) return;
+                  e.stopPropagation();
+                  triggerHaptic('tap');
+                  onOpenDetails?.(0);
+                }}
                 className="my-auto py-8 px-2 flex flex-col items-center gap-3 cursor-pointer group"
                 title="Tap for option details"
               >
-                <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs group-hover:scale-105 transition-transform">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--accent-bg)]/12 border border-[var(--accent-bg)]/25 text-[var(--accent-bg)] flex items-center justify-center text-xl font-bold tabular-nums shadow-xs group-hover:scale-105 transition-transform pointer-events-none">
                   #{cardIndex}
                 </div>
                 <div className="flex items-center gap-1.5 justify-center">
@@ -273,8 +284,11 @@ export default function SwipeCard({
                 {onOpenDetails && (
                   <button
                     type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); onOpenDetails(0); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('tap');
+                      onOpenDetails(0);
+                    }}
                     aria-label="View option details"
                     className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
                   >
@@ -290,13 +304,13 @@ export default function SwipeCard({
             <div
               onPointerDown={handlePhotoSurfacePointerDown}
               onPointerUp={handlePhotoSurfacePointerUp}
-              className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden"
+              className="relative flex-1 min-h-0 w-full bg-[var(--bg-inset)] overflow-hidden touch-none select-none"
             >
               <img
                 key={displayPhoto}
                 src={displayPhoto}
                 alt={activeCard?.name || 'Venue'}
-                className="w-full h-full object-cover animate-[fadeIn_0.22s_ease-out]"
+                className="w-full h-full object-cover animate-[fadeIn_0.22s_ease-out] pointer-events-none select-none"
                 draggable="false"
                 onError={(e) => {
                   const fallbackNext = validSlides[(safePhotoIdx + 1) % validSlides.length]?.url || fallbackPhoto;
@@ -312,7 +326,6 @@ export default function SwipeCard({
                     <button
                       key={slide.url || idx}
                       type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); setPhotoIdx(idx); }}
                       aria-label={`View photo ${idx + 1}: ${slide.label}`}
                       className={`h-1.5 flex-1 rounded-full transition-all cursor-pointer ${
@@ -331,7 +344,6 @@ export default function SwipeCard({
                 <>
                   <button
                     type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); setPhotoIdx((prev) => (prev > 0 ? prev - 1 : validSlides.length - 1)); }}
                     aria-label="Previous photo"
                     className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
@@ -340,7 +352,6 @@ export default function SwipeCard({
                   </button>
                   <button
                     type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); setPhotoIdx((prev) => (prev + 1) % validSlides.length); }}
                     aria-label="Next photo"
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
@@ -363,8 +374,12 @@ export default function SwipeCard({
 
               {validSlides.length > 1 && (
                 <div
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); setPhotoIdx((prev) => (prev + 1) % validSlides.length); }}
+                  onClick={(e) => {
+                    if (Math.hypot(dragOffset.x, dragOffset.y) > 8) return;
+                    e.stopPropagation();
+                    triggerHaptic('tap');
+                    setPhotoIdx((prev) => (prev + 1) % validSlides.length);
+                  }}
                   className="absolute bottom-16 inset-x-4 z-20 flex items-center cursor-pointer"
                 >
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/85 backdrop-blur-md text-[11px] font-semibold text-white border border-white/15 shadow-sm transition-colors">
@@ -375,8 +390,12 @@ export default function SwipeCard({
               )}
 
               <div
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); onOpenDetails?.(safePhotoIdx); }}
+                onClick={(e) => {
+                  if (Math.hypot(dragOffset.x, dragOffset.y) > 8) return;
+                  e.stopPropagation();
+                  triggerHaptic('tap');
+                  onOpenDetails?.(safePhotoIdx);
+                }}
                 className="absolute bottom-3.5 inset-x-4 text-left flex flex-col gap-1 z-20 cursor-pointer group"
                 title="Tap for venue details, map & 4-photo gallery"
               >
@@ -391,7 +410,7 @@ export default function SwipeCard({
               </div>
             </div>
 
-            <div className="px-4 py-2.5 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-left shrink-0">
+            <div className="px-3.5 sm:px-4 py-2 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-left shrink-0">
               <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-secondary)] min-w-0 truncate">
                 <span className="font-semibold text-[var(--text-primary)] tabular-nums">{cardPriceDesc}</span>
                 <span className="text-[var(--text-tertiary)]">•</span>
@@ -403,10 +422,13 @@ export default function SwipeCard({
               {onOpenDetails && (
                 <button
                   type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); onOpenDetails(safePhotoIdx); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic('tap');
+                    onOpenDetails(safePhotoIdx);
+                  }}
                   aria-label="View details and 4-photo gallery"
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-inset)] border border-[var(--border-main)] text-[var(--text-primary)] text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
                 >
                   <Camera size={13} className="text-[var(--accent-bg)]" />
                   <span>{t('details')}</span>

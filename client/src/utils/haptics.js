@@ -42,7 +42,7 @@ let persistentHapticLabel = null;
 let persistentHapticInput = null;
 
 function ensurePersistentHapticSwitch() {
-  if (typeof document === 'undefined' || !document.body) return null;
+  if (typeof document === 'undefined' || !document.body || !isHapticsEnabled()) return null;
   if (persistentHapticLabel && persistentHapticInput) return persistentHapticLabel;
 
   const id = 'ios-global-haptic-switch';
@@ -92,7 +92,7 @@ function ensurePersistentHapticSwitch() {
 }
 
 function fireIOSSwitch() {
-  if (typeof document === 'undefined' || !document.body) return;
+  if (typeof document === 'undefined' || !document.body || !isHapticsEnabled()) return;
   try {
     const label = ensurePersistentHapticSwitch();
     if (label) {
@@ -103,23 +103,28 @@ function fireIOSSwitch() {
 
 /**
  * Synchronizes all active iOS WebKit switch triggers in the DOM with the user preference.
- * When disabled, switches are disabled with pointer-events: none so touches never trigger the Taptic Engine.
+ * When disabled, removes all switch triggers from the DOM so hardware Taptic Engine is never invoked.
  */
 export function updateIosHapticsState() {
   if (typeof document === 'undefined') return;
   const enabled = isHapticsEnabled();
   const triggers = document.querySelectorAll('[data-haptic-trigger]');
-  for (let i = 0; i < triggers.length; i++) {
-    const el = triggers[i];
-    if (enabled) {
-      el.style.pointerEvents = 'auto';
-      el.style.cursor = 'pointer';
-      el.removeAttribute('disabled');
-    } else {
-      el.style.pointerEvents = 'none';
-      el.style.cursor = 'default';
-      el.setAttribute('disabled', 'true');
-      el.checked = false;
+  if (!enabled) {
+    for (let i = 0; i < triggers.length; i++) {
+      triggers[i].remove();
+    }
+    const globalInput = document.getElementById('ios-global-haptic-switch');
+    if (globalInput) globalInput.remove();
+    const globalLabel = document.getElementById('ios-global-haptic-label');
+    if (globalLabel) globalLabel.remove();
+    persistentHapticInput = null;
+    persistentHapticLabel = null;
+  } else {
+    // Re-attach triggers to all interactive elements
+    const selector = 'button, [role="button"], .category-tile, .spring-toggle, [data-haptic]';
+    const nodes = document.querySelectorAll(selector);
+    for (let i = 0; i < nodes.length; i++) {
+      hapticTrigger(nodes[i]);
     }
   }
 }
@@ -133,6 +138,7 @@ export function updateIosHapticsState() {
  */
 export function hapticTrigger(el) {
   if (!el || typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (!isHapticsEnabled()) return;
 
   // Verify iOS / iPadOS WebKit platform
   const isIOS =
@@ -142,8 +148,6 @@ export function hapticTrigger(el) {
 
   if (!isIOS) return;
   if (el.querySelector?.('[data-haptic-trigger]')) return;
-
-  const enabled = isHapticsEnabled();
 
   const n = document.createElement('input');
   n.type = 'checkbox';
@@ -161,15 +165,11 @@ export function hapticTrigger(el) {
     opacity: '0.0001',
     borderRadius: 'inherit',
     touchAction: 'manipulation',
-    cursor: enabled ? 'pointer' : 'default',
-    pointerEvents: enabled ? 'auto' : 'none',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
     zIndex: '2',
   });
   n.style.setProperty('-webkit-tap-highlight-color', 'transparent');
-
-  if (!enabled) {
-    n.setAttribute('disabled', 'true');
-  }
 
   if (getComputedStyle(el).position === 'static') {
     el.style.position = 'relative';

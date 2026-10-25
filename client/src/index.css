@@ -749,6 +749,32 @@ button:active:not(:disabled),
   transform: translateX(-50%);
   width: min(calc(100% - 24px), 420px);
 }
+
+/* Bulletproof Mobile Touch Dragging & iOS WebKit Viewport Locks */
+body[data-swiping-active="true"] {
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  overscroll-behavior: none !important;
+}
+
+body[data-swiping-active="true"] * {
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.swipe-card-viewport {
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  touch-action: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .places-rail { scroll-behavior: auto; }
   [data-drawer-panel] { animation-duration: 1ms !important; }

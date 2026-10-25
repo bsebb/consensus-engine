@@ -1,4 +1,4 @@
-# NoYouPick — Product Decisions & Personal Release Plan
+# NoYouPick - Product Decisions & Personal Release Plan
 **Team Name**: `NoYouPickTheTeamName`  
 **Product**: NoYouPick (Live at [noyoupick.org](https://www.noyoupick.org))  
 **Framework**: [AI Hero Grill-Me Product Discovery Protocol](https://www.aihero.dev/skills-grill-me)  
@@ -40,12 +40,12 @@ flowchart LR
 
 ## 2. Target Market & Beachhead Persona
 
-### 2.1 Beachhead Audience: Gen Z & Young Socialites (18–28)
+### 2.1 Beachhead Audience: Gen Z & Young Socialites (18-28)
 - **Profile**: University students, young professionals, flatmates, and friend groups in urban hubs who socialize in groups of 3 to 8 multiple times per week.
-- **Pain Point**: Spends 20–45 minutes daily or every weekend debating dinner spots, bars, movie nights, or party activities.
+- **Pain Point**: Spends 20-45 minutes daily or every weekend debating dinner spots, bars, movie nights, or party activities.
 - **Why They Love NoYouPick**:
   1. **Zero Registration**: Nobody has to download an app from the App Store or create an account; just click a link or enter a 4-digit PIN in Safari/Chrome.
-  2. **Privacy from Peer Pressure**: Votes are private until consensus is revealed—introverts can pass or veto expensive places without awkwardness.
+  2. **Privacy from Peer Pressure**: Votes are private until consensus is revealed - introverts can pass or veto expensive places without awkwardness.
   3. **Multi-Branch Accuracy**: Automatically routes to the nearest McDonald's, KFC, Andy's Pizza, or Star Kebab branch without manual address searching.
 
 ### 2.2 Secondary Personas
@@ -86,7 +86,7 @@ graph TD
 ### 4.1 Primary Organic Channel: TikTok & Instagram Reels Skits
 - **Creative Angle**: Relatable humor illustrating the universal awkwardness of group dining indecision:
   - *Skit Format*: 4 friends sitting in a parked car starving for 40 minutes saying *"I don't know, what do you want?"* $\rightarrow$ One friend opens NoYouPick, sends a PIN $\rightarrow$ 42 seconds later they are driving to Andy's Pizza.
-  - *Call to Action*: *"Try it tonight with your friends — noyoupick.org"*.
+  - *Call to Action*: *"Try it tonight with your friends - noyoupick.org"*.
 - **Creator Partnerships**: Micro-influencers in target metropolitan hubs (food bloggers, university campus creators) hosting live consensus showdowns with their followers.
 
 ### 4.2 Built-In Viral Coefficient ($K > 1.2$)
@@ -203,6 +203,6 @@ Our mentor and growth team will measure launch performance against three primary
 ## 10. Summary for Mentor Action
 
 With all key product, marketing, and release decisions locked in:
-1. **Marketing Plan Integration**: The mentor can directly structure creative campaigns around the **"car indecision skit"** viral hook, targeting the **18–28 Gen Z dining/hangout beachhead**.
+1. **Marketing Plan Integration**: The mentor can directly structure creative campaigns around the **"car indecision skit"** viral hook, targeting the **18-28 Gen Z dining/hangout beachhead**.
 2. **Release Plan Scheduling**: The mentor can formalize the **2-Phase Fast Launch** timeline, focusing on 7 days of tight mentor polish and testing followed immediately by the public viral push.
 3. **Technical Health**: The product is deployed live in production on Render and Vercel at [noyoupick.org](https://www.noyoupick.org), passing all automated verification tests.

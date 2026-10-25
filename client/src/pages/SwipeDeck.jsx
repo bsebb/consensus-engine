@@ -12,6 +12,7 @@ import VenueDetailsModal from '../components/deck/VenueDetailsModal';
 import DeckHeader from '../components/deck/DeckHeader';
 import LeaveDeckModal from '../components/deck/LeaveDeckModal';
 import { useSwipeDeckSync } from '../hooks/useSwipeDeckSync';
+import { useDeckGestures } from '../hooks/useDeckGestures';
 import { apiUrl } from '../utils/api';
 import { getVenueRating, deduplicateVenues } from '../utils/venueImages';
 import { calculateDistanceKm, getSavedExactGps, fetchRoadRouteMetrics, formatTravelSummary } from '../utils/location';
@@ -61,7 +62,6 @@ export default function SwipeDeck() {
   const [myVotes, setMyVotes] = useState([]);
   const [exitDirection, setExitDirection] = useState(null);
   const [enterDirection, setEnterDirection] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showWinner, setShowWinner] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -168,11 +168,6 @@ export default function SwipeDeck() {
     setActiveTab('swipe');
   }, []);
 
-  // Hardware Pointer Gesture Engine
-  const pointerStart = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const rafId = useRef(null);
-
   const vetoesUsed = useMemo(() => myVotes.filter((v) => v.score === -100).length, [myVotes]);
   const superlikesUsed = useMemo(() => myVotes.filter((v) => v.score === 2).length, [myVotes]);
   const vetoesRemaining = Math.max(0, 1 - vetoesUsed);
@@ -183,8 +178,6 @@ export default function SwipeDeck() {
 
     if (score === -100 && vetoesRemaining <= 0) {
       triggerHaptic('veto');
-      setIsDragging(false);
-      setDragOffset({ x: 0, y: 0 });
       addToast({
         title: t('vetoUsedTitle') || 'Veto Already Used (1/round)',
         message: t('vetoUsedDesc') || 'You get 1 Veto per round so no one can block every spot. Use Pass instead!',
@@ -195,8 +188,6 @@ export default function SwipeDeck() {
 
     if (score === 2 && superlikesRemaining <= 0) {
       triggerHaptic('tap');
-      setIsDragging(false);
-      setDragOffset({ x: 0, y: 0 });
       addToast({
         title: t('superlikeUsedTitle') || 'Superlike Already Used (1/round)',
         message: t('superlikeUsedDesc') || 'You get 1 Superlike per round for your #1 favorite. Use Like instead!',
@@ -207,7 +198,6 @@ export default function SwipeDeck() {
 
     const dir = score === 1 ? 'right' : score === -100 ? 'down' : score === 2 ? 'up' : 'left';
     setExitDirection(dir);
-    setIsDragging(false);
     setActiveTab('swipe');
     triggerHaptic(score === 1 ? 'like' : score === -100 ? 'veto' : score === 2 ? 'superlike' : 'pass');
 
@@ -217,7 +207,6 @@ export default function SwipeDeck() {
       const nextIdx = currentIndex + 1;
       setCurrentIndex(nextIdx);
       setExitDirection(null);
-      setDragOffset({ x: 0, y: 0 });
 
       if (pin && typeof emit === 'function') {
         emit('voting_step_progress', {
@@ -231,64 +220,35 @@ export default function SwipeDeck() {
     }, 220);
   }, [cards, currentIndex, exitDirection, enterDirection, vetoesRemaining, superlikesRemaining, addToast, t, pin, emit, participantId, currentUserName]);
 
+  // Touch and pointer gesture tracking via useDeckGestures
+  const {
+    isDragging,
+    dragOffset,
+    setDragOffset,
+    cardRef,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    resetDrag,
+  } = useDeckGestures({
+    isSwiping,
+    onVote: handleVote,
+    exitDirection,
+  });
+
   const handleUndo = useCallback(() => {
     if (currentIndex <= 0 || exitDirection || enterDirection) return;
     const lastVote = myVotes[myVotes.length - 1];
     const prevDir = lastVote?.direction || (lastVote?.score === 1 ? 'right' : lastVote?.score === -100 ? 'down' : lastVote?.score === 2 ? 'up' : 'left');
     triggerHaptic('tap');
+    resetDrag();
     setEnterDirection(prevDir);
     setMyVotes((prev) => prev.slice(0, -1));
     setCurrentIndex((prev) => Math.max(0, prev - 1));
-    setDragOffset({ x: 0, y: 0 });
     setActiveTab('swipe');
     setTimeout(() => setEnterDirection(null), 360);
-  }, [currentIndex, exitDirection, enterDirection, myVotes]);
-
-  const handlePointerDown = (e) => {
-    if (exitDirection || currentIndex >= cards.length) return;
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-    pointerStart.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
-    setIsDragging(true);
-  };
-
-  const handlePointerMove = (e) => {
-    if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
-    const diffX = e.clientX - pointerStart.current.x;
-    const diffY = e.clientY - pointerStart.current.y;
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => setDragOffset({ x: diffX, y: diffY }));
-  };
-
-  const handlePointerUp = (e) => {
-    if (!pointerStart.current || pointerStart.current.pointerId !== e.pointerId) return;
-    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    const diffX = e.clientX - pointerStart.current.x;
-    const diffY = e.clientY - pointerStart.current.y;
-    pointerStart.current = null;
-    setIsDragging(false);
-
-    if (diffX > 70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
-      handleVote(1);
-    } else if (diffX < -70 && Math.abs(diffX) > Math.abs(diffY) * 0.6) {
-      handleVote(-1);
-    } else if (diffY > 115 && Math.abs(diffY) > Math.abs(diffX) * 1.4) {
-      handleVote(-100);
-    } else if (diffY < -80 && Math.abs(diffY) > Math.abs(diffX) * 1.2) {
-      handleVote(2);
-    } else {
-      setDragOffset({ x: 0, y: 0 });
-    }
-  };
-
-  const handlePointerCancel = (e) => {
-    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    pointerStart.current = null;
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-  };
+  }, [currentIndex, exitDirection, enterDirection, myVotes, resetDrag]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -575,10 +535,11 @@ export default function SwipeDeck() {
             exitDirection={exitDirection}
             enterDirection={enterDirection}
             isDragging={isDragging}
+            cardRef={cardRef}
             handlePointerDown={handlePointerDown}
             handlePointerMove={handlePointerMove}
             handlePointerUp={handlePointerUp}
-            handlePointerCancel={handlePointerCancel}
+            handlePointerCancel={handlePointerCancel || resetDrag}
             cardRating={cardRating}
             cardReviewCount={cardReviewCount}
             cardPriceDesc={cardPriceDesc}

@@ -1,63 +1,18 @@
 const crypto = require('crypto');
-const { PrismaClient } = require('@prisma/client');
-
-function getSafeDatabaseUrl() {
-    const rawUrl = (process.env.DATABASE_URL || '').trim();
-    if (!rawUrl) return undefined;
-    try {
-        const parsed = new URL(rawUrl);
-        // When using Neon's pooled endpoint (-pooler), enable PgBouncer transaction mode compatibility in Prisma
-        if (parsed.hostname.includes('-pooler.') && !parsed.searchParams.has('pgbouncer')) {
-            parsed.searchParams.set('pgbouncer', 'true');
-        }
-        // On serverless/free-tier PostgreSQL (Neon, Supabase, Render), balance concurrency and pool limits
-        if (!parsed.searchParams.has('connection_limit')) {
-            const defaultLimit = parsed.hostname.includes('-pooler.') ? '15' : '5';
-            parsed.searchParams.set('connection_limit', defaultLimit);
-        }
-        if (!parsed.searchParams.has('pool_timeout')) {
-            parsed.searchParams.set('pool_timeout', '15');
-        }
-        if (!parsed.searchParams.has('connect_timeout')) {
-            parsed.searchParams.set('connect_timeout', '15');
-        }
-        return parsed.toString();
-    } catch {
-        return rawUrl;
-    }
-}
-
-const safeUrl = getSafeDatabaseUrl();
-const prisma = global.__prisma || new PrismaClient(
-    safeUrl
-        ? {
-            datasources: {
-                db: { url: safeUrl },
-            },
-            log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-        }
-        : {
-            log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-        }
-);
-
-global.__prisma = prisma;
+const { prisma } = require('./prismaClient');
+const {
+    getCachedVenuesByGrid,
+    saveCachedVenuesBulk,
+    getVenueCommunityInsights,
+    getCommunityAnalyticsByNameMap,
+    invalidateVenueInsightsCache,
+    submitVenueFeedback,
+} = require('./venueCache');
 
 // Global in-memory set of persisted participant keys (`${roomId}:${participantId}` and `${roomId}:dev:${deviceId}`)
 // Survives lobby eviction and prevents redundant INSERT/ON CONFLICT DO UPDATE queries across socket reconnects.
 const persistedParticipantCache = new Map();
 const MAX_PERSISTED_CACHE_SIZE = 10000;
-const venueInsightsCache = new Map();
-let communityAnalyticsMapCache = { map: null, expiresAt: 0 };
-
-function invalidateVenueInsightsCache(venueName) {
-    communityAnalyticsMapCache.expiresAt = 0;
-    if (venueName && typeof venueName === 'string') {
-        venueInsightsCache.delete(venueName.toLowerCase().trim());
-    } else {
-        venueInsightsCache.clear();
-    }
-}
 
 function markParticipantPersisted(roomId, participantId, deviceId, resolvedRecord) {
     if (persistedParticipantCache.size >= MAX_PERSISTED_CACHE_SIZE) {
@@ -302,72 +257,43 @@ async function createVotesBulk(votesData) {
     }
 }
 
+async function fetchRoomOrThrow(whereClause, includeVotes = false) {
+    const key = whereClause.id || whereClause.pin;
+    await ensureRoomPersisted(key);
+    const room = await prisma.room.findUnique({
+        where: whereClause,
+        include: {
+            participants: includeVotes ? { include: { votes: true } } : true,
+            options: true,
+        },
+    });
+    if (!room) throw new Error("Room not found");
+    return room;
+}
+
 async function getRoomById(roomId) {
     try {
-        await ensureRoomPersisted(roomId);
-        const room = await prisma.room.findUnique({
-            where: { id: roomId },
-            include: {
-                participants: {
-                    include: { votes: true } 
-                },
-                options: true,
-            },
-        });
-        if (!room) {
-            throw new Error("Room not found");
-        }
-        return room;
+        return await fetchRoomOrThrow({ id: roomId }, true);
     } catch (error) {
-        if (error.message !== "Room not found") {
-            console.error(error);
-        }
+        if (error.message !== "Room not found") console.error(error);
         throw error;
     }
 }
 
 async function getRoomByPin(pin) {
     try {
-        await ensureRoomPersisted(pin);
-        const room = await prisma.room.findUnique({
-            where: { pin },
-            include: {
-                participants: true,
-                options: true,
-            },
-        });
-        if (!room) {
-            throw new Error("Room not found");
-        }
-        return room;
+        return await fetchRoomOrThrow({ pin }, false);
     } catch (error) {
-        if (error.message !== "Room not found") {
-            console.error(error);
-        }
+        if (error.message !== "Room not found") console.error(error);
         throw error;
     }
 }
 
 async function getRoomWithVotesByPin(pin) {
     try {
-        await ensureRoomPersisted(pin);
-        const room = await prisma.room.findUnique({
-            where: { pin },
-            include: {
-                participants: {
-                    include: { votes: true }
-                },
-                options: true,
-            },
-        });
-        if (!room) {
-            throw new Error("Room not found");
-        }
-        return room;
+        return await fetchRoomOrThrow({ pin }, true);
     } catch (error) {
-        if (error.message !== "Room not found") {
-            console.error(error);
-        }
+        if (error.message !== "Room not found") console.error(error);
         throw error;
     }
 }
@@ -449,12 +375,7 @@ async function updateParticipantBudget(participantId, budgetCap, deviceId = null
 async function pruneOptionsByBudget(roomId, maxPriceLevel) {
     try {
         await prisma.option.deleteMany({
-            where: {
-                roomId,
-                priceLevel: {
-                    gt: maxPriceLevel,
-                },
-            },
+            where: { roomId, priceLevel: { gt: maxPriceLevel } },
         });
     } catch (error) {
         console.error(error);
@@ -462,392 +383,19 @@ async function pruneOptionsByBudget(roomId, maxPriceLevel) {
     }
 }
 
-
-
 //Lilia: count unique participants who have submitted votes in a room
 async function countVotedParticipants(roomId) {
     try {
         const result = await prisma.vote.findMany({
-            where: {
-                participant: {
-                    roomId,
-                },
-            },
-            select: {
-                participantId: true,
-            },
+            where: { participant: { roomId } },
+            select: { participantId: true },
             distinct: ['participantId'],
         });
-
         return result.length;
     } catch (error) {
         console.error(error);
         throw new Error("Failed to count voted participants");
     }
-}
-
-
-
-/** AFINA:
- * Records user feedback and atomically recalculates continuous venue analytics.
- * Self-heals missing Option or Participant records (e.g. Custom Polls, pruned options, or multi-room sessions)
- * and avoids long-lived interactive transactions over PgBouncer transaction-mode poolers.
- */
-async function submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, meta = {}) {
-    const cleanDeviceId = meta?.device_id && typeof meta.device_id === 'string' ? meta.device_id.trim().slice(0, 64) : null;
-    const pin = meta?.pin ? String(meta.pin).trim() : null;
-    const optionNameFallback = meta?.option_name && typeof meta.option_name === 'string'
-        ? meta.option_name.trim().slice(0, 120)
-        : 'Consensus Pick';
-    const cleanComment = meta?.comment && typeof meta.comment === 'string' && meta.comment.trim()
-        ? meta.comment.trim().slice(0, 500)
-        : null;
-
-    const executeFeedbackWrite = async () => {
-        if (pin) {
-            await ensureRoomPersisted(pin);
-        }
-
-        let roomByPin = null;
-        if (pin) {
-            roomByPin = await prisma.room.findUnique({ where: { pin } }).catch(() => null);
-        }
-
-        let option = option_id
-            ? await prisma.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
-            : null;
-
-        let targetRoomId = roomByPin?.id || option?.roomId || null;
-
-        // If option belongs to a different room than `pin`, prefer the option in `targetRoomId`
-        if (option && targetRoomId && option.roomId !== targetRoomId) {
-            option = null;
-        }
-
-        let participant = participant_id
-            ? await prisma.participant.findUnique({ where: { id: String(participant_id) } }).catch(() => null)
-            : null;
-
-        // If the participant ID belonged to a previous room session, do not cross-link rooms
-        if (participant && targetRoomId && participant.roomId !== targetRoomId) {
-            participant = null;
-        }
-
-        if (!participant && targetRoomId && cleanDeviceId) {
-            participant = await prisma.participant.findFirst({
-                where: { roomId: targetRoomId, deviceId: cleanDeviceId },
-            });
-        }
-
-        if (!participant && targetRoomId) {
-            participant = await prisma.participant.findFirst({
-                where: { roomId: targetRoomId },
-            });
-        }
-
-        if (!targetRoomId && participant) {
-            targetRoomId = participant.roomId;
-        }
-
-        // If option wasn't found by UUID (e.g. custom poll option or fallback card), find by name in room or create it
-        if (!option && targetRoomId) {
-            option = await prisma.option.findFirst({
-                where: {
-                    roomId: targetRoomId,
-                    name: { equals: optionNameFallback, mode: 'insensitive' },
-                },
-            });
-            if (!option) {
-                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(option_id || ''));
-                const existingOptWithId = isUuid
-                    ? await prisma.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
-                    : null;
-                const safeOptionId = isUuid && !existingOptWithId ? String(option_id) : crypto.randomUUID();
-                option = await prisma.option.create({
-                    data: {
-                        id: safeOptionId,
-                        roomId: targetRoomId,
-                        name: optionNameFallback,
-                        source: 'USER_CUSTOM',
-                        googlePlaceId: String(option_id || `custom_${safeOptionId}`).slice(0, 180),
-                        priceLevel: 2,
-                    },
-                });
-            }
-        }
-
-        if (!option) {
-            throw new Error("Option not found for analytics.");
-        }
-
-        const placeId = option.googlePlaceId || option.id;
-
-        // Ensure participant exists in target room (and has deviceId backfilled)
-        if (!participant) {
-            const derivedId = participant_id
-                ? deriveRoomParticipantUuid(option.roomId, String(participant_id))
-                : crypto.randomUUID();
-            participant = await prisma.participant.upsert({
-                where: { id: derivedId },
-                update: {
-                    ...(cleanDeviceId ? { deviceId: cleanDeviceId } : {}),
-                },
-                create: {
-                    id: derivedId,
-                    roomId: option.roomId,
-                    deviceId: cleanDeviceId,
-                },
-            });
-        } else if (cleanDeviceId && !participant.deviceId) {
-            participant = await prisma.participant.update({
-                where: { id: participant.id },
-                data: { deviceId: cleanDeviceId },
-            }).catch(() => participant);
-        }
-
-        let feedback = await prisma.feedback.findFirst({
-            where: {
-                participantId: participant.id,
-                optionId: option.id,
-            },
-        });
-
-        if (feedback) {
-            feedback = await prisma.feedback.update({
-                where: { id: feedback.id },
-                data: {
-                    satisfactionScore: satisfaction_score,
-                    priceAccuracyScore: price_accuracy_score,
-                    ...(cleanComment !== null ? { comment: cleanComment } : {}),
-                },
-            });
-        } else {
-            feedback = await prisma.feedback.create({
-                data: {
-                    participantId: participant.id,
-                    optionId: option.id,
-                    satisfactionScore: satisfaction_score,
-                    priceAccuracyScore: price_accuracy_score,
-                    comment: cleanComment,
-                },
-            });
-        }
-
-        const existingAnalytics = await prisma.venueAnalytics.findUnique({
-            where: { googlePlaceId: placeId },
-        });
-
-        let analytics;
-        if (!existingAnalytics) {
-            analytics = await prisma.venueAnalytics.create({
-                data: {
-                    googlePlaceId: placeId,
-                    name: option.name,
-                    satisfactionAvg: satisfaction_score,
-                    truePriceAvg: price_accuracy_score,
-                    totalReviews: 1,
-                },
-            }).catch(async () => {
-                return prisma.venueAnalytics.findUnique({ where: { googlePlaceId: placeId } });
-            });
-        } else {
-            const newCount = existingAnalytics.totalReviews + 1;
-            const newSatAvg = ((existingAnalytics.satisfactionAvg * existingAnalytics.totalReviews) + satisfaction_score) / newCount;
-            const newPriceAvg = ((existingAnalytics.truePriceAvg * existingAnalytics.totalReviews) + price_accuracy_score) / newCount;
-
-            analytics = await prisma.venueAnalytics.update({
-                where: { id: existingAnalytics.id },
-                data: {
-                    satisfactionAvg: newSatAvg,
-                    truePriceAvg: newPriceAvg,
-                    totalReviews: newCount,
-                },
-            });
-        }
-
-        invalidateVenueInsightsCache(option.name);
-        return { feedback, analytics, option, participant };
-    };
-
-    try {
-        return await executeFeedbackWrite();
-    } catch (firstError) {
-        // Retry once if Neon serverless PgBouncer recycled an idle connection
-        try {
-            return await executeFeedbackWrite();
-        } catch (retryError) {
-            console.error('[submitVenueFeedback] Failed:', retryError);
-            throw new Error("Failed to process venue feedback and update analytics.");
-        }
-    }
-}
-
-async function getCachedVenuesByGrid(gridKey, limit = 50) {
-    if (!gridKey || !prisma?.cachedVenue) return [];
-    try {
-        return await prisma.cachedVenue.findMany({
-            where: { gridKey: String(gridKey) },
-            take: limit,
-        });
-    } catch {
-        return [];
-    }
-}
-
-async function saveCachedVenuesBulk(gridKey, places = []) {
-    if (!gridKey || !Array.isArray(places) || places.length === 0 || !prisma?.cachedVenue) return;
-    try {
-        const records = places
-            .filter((p) => p && p.name && p.lat != null && p.lng != null)
-            .map((p) => {
-                const normName = String(p.name).toLowerCase().trim().replace(/[^a-z0-9\u00C0-\u024F\u0400-\u04FF]+/g, '_');
-                const placeKey = `${gridKey}:${normName}`.slice(0, 140);
-                const rawPhoto = typeof p.photo_url === 'string'
-                    ? p.photo_url
-                    : (p.photo_url && typeof p.photo_url.photo_url === 'string' ? p.photo_url.photo_url : null);
-                return {
-                    gridKey: String(gridKey),
-                    placeKey,
-                    name: String(p.name).slice(0, 120),
-                    category: String(p.category || 'Restaurant').slice(0, 80),
-                    address: p.address ? String(p.address).slice(0, 180) : null,
-                    locality: p.locality ? String(p.locality).slice(0, 80) : null,
-                    lat: Number(p.lat),
-                    lng: Number(p.lng),
-                    priceLevel: typeof p.priceLevel === 'number' ? p.priceLevel : 2,
-                    rating: typeof p.rating === 'number' ? p.rating : 4.5,
-                    reviews: typeof p.reviews === 'number' ? p.reviews : 120,
-                    photoUrl: rawPhoto ? String(rawPhoto).slice(0, 500) : null,
-                };
-            });
-        if (records.length === 0) return;
-        await prisma.cachedVenue.createMany({
-            data: records,
-            skipDuplicates: true,
-        });
-    } catch {
-        // Non-fatal background cache persistence
-    }
-}
-
-async function getVenueCommunityInsights(venueName) {
-    const cleanName = String(venueName || '').trim();
-    if (!cleanName) {
-        return { found: false, totalReviews: 0, satisfactionAvg: null, priceAccuracyAvg: null, recentReviews: [] };
-    }
-    const cacheKey = cleanName.toLowerCase();
-    const cached = venueInsightsCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-        return cached.data;
-    }
-
-    try {
-        const [feedbacks, analyticsRows] = await Promise.all([
-            prisma.feedback.findMany({
-                where: {
-                    option: {
-                        name: { equals: cleanName, mode: 'insensitive' },
-                    },
-                },
-                orderBy: { createdAt: 'desc' },
-                take: 25,
-                select: {
-                    id: true,
-                    satisfactionScore: true,
-                    priceAccuracyScore: true,
-                    comment: true,
-                    createdAt: true,
-                },
-            }),
-            prisma.venueAnalytics.findMany({
-                where: {
-                    name: { equals: cleanName, mode: 'insensitive' },
-                },
-            }),
-        ]);
-
-        let totalReviews = feedbacks.length;
-        let satisfactionAvg = null;
-        let priceAccuracyAvg = null;
-
-        if (feedbacks.length > 0) {
-            const satSum = feedbacks.reduce((acc, f) => acc + (Number(f.satisfactionScore) || 5), 0);
-            const priceSum = feedbacks.reduce((acc, f) => acc + (Number(f.priceAccuracyScore) || 5), 0);
-            satisfactionAvg = Number((satSum / feedbacks.length).toFixed(1));
-            priceAccuracyAvg = Number((priceSum / feedbacks.length).toFixed(1));
-        }
-
-        if (analyticsRows.length > 0) {
-            const analyticsTotal = analyticsRows.reduce((acc, a) => acc + (Number(a.totalReviews) || 0), 0);
-            if (analyticsTotal > totalReviews) {
-                const weightedSat = analyticsRows.reduce((acc, a) => acc + (Number(a.satisfactionAvg) || 5) * (Number(a.totalReviews) || 1), 0);
-                const weightedPrice = analyticsRows.reduce((acc, a) => acc + (Number(a.truePriceAvg) || 5) * (Number(a.totalReviews) || 1), 0);
-                totalReviews = analyticsTotal;
-                satisfactionAvg = Number((weightedSat / analyticsTotal).toFixed(1));
-                priceAccuracyAvg = Number((weightedPrice / analyticsTotal).toFixed(1));
-            }
-        }
-
-        const recentReviews = feedbacks
-            .slice(0, 6)
-            .map((f) => ({
-                id: f.id,
-                satisfactionScore: f.satisfactionScore,
-                priceAccuracyScore: f.priceAccuracyScore,
-                comment: f.comment || null,
-                createdAt: f.createdAt,
-            }));
-
-        const data = {
-            found: totalReviews > 0,
-            venueName: cleanName,
-            totalReviews,
-            satisfactionAvg,
-            priceAccuracyAvg,
-            recentReviews,
-        };
-
-        venueInsightsCache.set(cacheKey, { data, expiresAt: Date.now() + 60000 });
-        return data;
-    } catch {
-        return { found: false, totalReviews: 0, satisfactionAvg: null, priceAccuracyAvg: null, recentReviews: [] };
-    }
-}
-
-async function getCommunityAnalyticsByNameMap() {
-    if (communityAnalyticsMapCache.map && communityAnalyticsMapCache.expiresAt > Date.now()) {
-        return communityAnalyticsMapCache.map;
-    }
-    const map = new Map();
-    try {
-        const rows = await prisma.venueAnalytics.findMany({
-            take: 300,
-            orderBy: { updatedAt: 'desc' },
-        });
-        for (const r of rows) {
-            if (!r?.name) continue;
-            const key = r.name.toLowerCase().trim();
-            const existing = map.get(key);
-            if (!existing) {
-                map.set(key, {
-                    satisfactionAvg: Number(r.satisfactionAvg) || 5,
-                    truePriceAvg: Number(r.truePriceAvg) || 5,
-                    totalReviews: Number(r.totalReviews) || 1,
-                });
-            } else {
-                const combinedCount = existing.totalReviews + (Number(r.totalReviews) || 1);
-                map.set(key, {
-                    satisfactionAvg: ((existing.satisfactionAvg * existing.totalReviews) + (Number(r.satisfactionAvg) || 5) * (Number(r.totalReviews) || 1)) / combinedCount,
-                    truePriceAvg: ((existing.truePriceAvg * existing.totalReviews) + (Number(r.truePriceAvg) || 5) * (Number(r.totalReviews) || 1)) / combinedCount,
-                    totalReviews: combinedCount,
-                });
-            }
-        }
-        communityAnalyticsMapCache = { map, expiresAt: Date.now() + 120000 };
-    } catch {
-        // Non-fatal fallback
-    }
-    return map;
 }
 
 module.exports = {

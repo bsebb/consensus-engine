@@ -143,7 +143,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
         : 'Places Nearby';
 
       payload = {
-        content: `🟢 **Room #${pin} Created**`,
+        content: `[ROOM] **Room #${pin} Created**`,
         embeds: [
           {
             title: `Session #${pin} is Ready`,
@@ -163,7 +163,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'voting_started') {
       const { pin, topic, optionCount, voterCount } = data;
       payload = {
-        content: `🗳️ **Voting Started in Room #${pin}**`,
+        content: `[VOTING] **Voting Started in Room #${pin}**`,
         embeds: [
           {
             title: `Ballots Open for #${pin}`,
@@ -182,7 +182,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'decision_reached') {
       const { pin, winnerName, winnerCategory, winnerAddress, voterCount, matchScore } = data;
       payload = {
-        content: `🏆 **Winner Chosen in Room #${pin}: ${winnerName || 'Consensus Pick'}**`,
+        content: `[WINNER] **Winner Chosen in Room #${pin}: ${winnerName || 'Consensus Pick'}**`,
         embeds: [
           {
             title: `Winner: ${winnerName || 'Consensus Winner'}`,
@@ -201,8 +201,8 @@ async function dispatchActivityNotification(eventType, data = {}) {
       };
     } else if (eventType === 'feedback_submitted') {
       const { pin, venueName, satisfactionScore, priceAccuracyScore, comment, deviceId } = data;
-      const satStars = '★'.repeat(Math.max(1, Math.min(5, Number(satisfactionScore) || 5))) + '☆'.repeat(5 - Math.max(1, Math.min(5, Number(satisfactionScore) || 5)));
-      const priceStars = '★'.repeat(Math.max(1, Math.min(5, Number(priceAccuracyScore) || 5))) + '☆'.repeat(5 - Math.max(1, Math.min(5, Number(priceAccuracyScore) || 5)));
+      const satStars = '*'.repeat(Math.max(1, Math.min(5, Number(satisfactionScore) || 5)));
+      const priceStars = '*'.repeat(Math.max(1, Math.min(5, Number(priceAccuracyScore) || 5)));
       const fields = [
         { name: 'Room PIN', value: `\`#${pin || 'N/A'}\``, inline: true },
         { name: 'Satisfaction', value: `${satStars} (${satisfactionScore}/5)`, inline: true },
@@ -216,7 +216,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
       }
 
       payload = {
-        content: `⭐ **Feedback Recorded for Room #${pin}: ${venueName || 'Consensus Winner'}**`,
+        content: `[FEEDBACK] **Feedback Recorded for Room #${pin}: ${venueName || 'Consensus Winner'}**`,
         embeds: [
           {
             title: `Rated: ${venueName || 'Consensus Winner'}`,
@@ -230,7 +230,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     } else if (eventType === 'lobby_closed') {
       const { pin, topic, mode, reason, durationMinutes, voterCount } = data;
       payload = {
-        content: `🔒 **Room #${pin} Closed**`,
+        content: `[CLOSED] **Room #${pin} Closed**`,
         embeds: [
           {
             title: `Room #${pin} Archived`,
