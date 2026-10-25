@@ -7,6 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 export default function ReviewModal({
   isOpen = false,
   onClose,
+  onSubmitted,
   pin,
   winnerName,
   optionId,
@@ -74,6 +75,9 @@ export default function ReviewModal({
 
     setLoading(false);
     setSubmitted(true);
+    if (onSubmitted) {
+      onSubmitted(Number(satisfaction));
+    }
     setTimeout(() => {
       handleClose();
     }, 1800);

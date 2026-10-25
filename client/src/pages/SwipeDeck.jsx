@@ -157,15 +157,6 @@ export default function SwipeDeck() {
 
   const handleInlineRate = (rating) => {
     setUserRating(rating);
-    addToast({ title: 'Rating Saved', message: `You rated this decision ${rating} stars`, type: 'success' });
-    const winnerId = serverWinner?.id || cards[0]?.id;
-    if (winnerId) {
-      fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participant_id: participantId, option_id: winnerId, satisfaction_score: rating, price_accuracy_score: rating }),
-      }).catch((err) => console.warn('[SwipeDeck] Inline rating feedback offline:', err));
-    }
   };
 
   const handleReportClosedCard = useCallback((venue) => {
@@ -545,6 +536,7 @@ export default function SwipeDeck() {
       <ReviewModal
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}
+        onSubmitted={(satScore) => setUserRating(satScore || 5)}
         pin={pin}
         winnerName={consensusResult.winner?.name}
         optionId={consensusResult.winner?.id}

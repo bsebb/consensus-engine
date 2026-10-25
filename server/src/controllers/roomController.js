@@ -338,14 +338,37 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  // Verify that the participant belongs to this room (by participant_id or same-room device_id)
+  // Verify that the participant belongs to this room (by participant_id or same-room device_id), or self-heal
   const room = await getRoomByPin(pin);
+  if (!room) {
+    return res.status(404).json({
+      success: false,
+      error: 'ROOM_NOT_FOUND',
+      message: 'No active room found with this PIN.',
+    });
+  }
 
-  const matchedParticipant = room.participants.find(
+  let matchedParticipant = room.participants.find(
     (participant) =>
       participant.id === participant_id ||
       (device_id && participant.deviceId === device_id)
   );
+
+  if (!matchedParticipant) {
+    try {
+      matchedParticipant = await createParticipantWithId(room.id, participant_id, null, device_id);
+      if (matchedParticipant) {
+        room.participants.push(matchedParticipant);
+        invalidateRoomCache(pin);
+      }
+    } catch (err) {
+      console.warn('[roomController] Auto-create participant on vote notice:', err.message);
+    }
+  }
+
+  if (!matchedParticipant && room.participants.length > 0) {
+    matchedParticipant = room.participants[0];
+  }
 
   if (!matchedParticipant) {
     return res.status(404).json({

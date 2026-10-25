@@ -19,7 +19,7 @@ export default function WinnerFeedbackCard({
   const { t } = useLanguage();
 
   return (
-    <details className="group w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
+    <details open className="group w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-sm p-4 flex flex-col gap-3.5 text-left relative overflow-hidden">
       <summary className="flex items-start justify-between gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-2xl bg-[var(--accent-bg)] text-white flex items-center justify-center shrink-0 shadow-xs">

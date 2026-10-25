@@ -64,8 +64,15 @@ export default function ConsensusWinnerView({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [satisfactionScore, setSatisfactionScore] = useState(userRating || 0);
   const [priceAccuracyScore, setPriceAccuracyScore] = useState(0);
-  const [telemetrySubmitted, setTelemetrySubmitted] = useState(false);
+  const [telemetrySubmitted, setTelemetrySubmitted] = useState(Boolean(userRating && userRating > 0));
   const [isSubmittingTelemetry, setIsSubmittingTelemetry] = useState(false);
+
+  useEffect(() => {
+    if (userRating && userRating > 0) {
+      setSatisfactionScore(userRating);
+      setTelemetrySubmitted(true);
+    }
+  }, [userRating]);
 
   useEffect(() => {
     triggerHaptic('victory');
@@ -85,7 +92,6 @@ export default function ConsensusWinnerView({
     triggerHaptic('tap');
     setSatisfactionScore(score);
     if (priceAccuracyScore === 0) setPriceAccuracyScore(score);
-    if (handleInlineRate) handleInlineRate(score);
   };
 
   const handleShareWinner = async () => {
@@ -114,6 +120,8 @@ export default function ConsensusWinnerView({
   const handleSubmitTelemetry = async () => {
     const finalSat = satisfactionScore || 5;
     const finalPrice = priceAccuracyScore || finalSat;
+    setSatisfactionScore(finalSat);
+    setPriceAccuracyScore(finalPrice);
     setIsSubmittingTelemetry(true);
     triggerHaptic('like');
 
@@ -135,6 +143,7 @@ export default function ConsensusWinnerView({
           throw new Error(`HTTP ${res.status}`);
         }
       }
+      if (handleInlineRate) handleInlineRate(finalSat);
       setTelemetrySubmitted(true);
       addToast({
         title: isCustomWinner ? 'Poll Feedback Saved' : t('feedbackSaved') || 'Rating Saved',

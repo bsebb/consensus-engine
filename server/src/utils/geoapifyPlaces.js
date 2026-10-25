@@ -59,7 +59,7 @@ function mapThemeToGeoapifyCategories(theme = '') {
     return 'catering.bar,catering.pub';
   }
   if (norm.includes('dessert') || norm.includes('sweet') || norm.includes('bakery') || norm.includes('ice cream')) {
-    return 'catering.ice_cream,commercial.pastry,commercial.bakery';
+    return 'catering.ice_cream,catering.cafe';
   }
   if (norm.includes('fast') || norm.includes('burger') || norm.includes('pizza') || norm.includes('shawarma')) {
     return 'catering.fast_food,catering.restaurant.pizza';

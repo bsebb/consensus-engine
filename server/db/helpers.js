@@ -472,9 +472,9 @@ async function countVotedParticipants(roomId) {
 
 
 /** AFINA:
- * Records user feedback and atomically recalculates continuous venue analytics
- * using Prisma transactions to prevent race conditions during concurrent voting.
- * Self-heals missing Option or Participant records (e.g. Custom Polls or pruned options).
+ * Records user feedback and atomically recalculates continuous venue analytics.
+ * Self-heals missing Option or Participant records (e.g. Custom Polls, pruned options, or multi-room sessions)
+ * and avoids long-lived interactive transactions over PgBouncer transaction-mode poolers.
  */
 async function submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, meta = {}) {
     const cleanDeviceId = meta?.device_id && typeof meta.device_id === 'string' ? meta.device_id.trim().slice(0, 64) : null;
@@ -483,145 +483,179 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
         ? meta.option_name.trim().slice(0, 120)
         : 'Consensus Pick';
 
-    try {
+    const executeFeedbackWrite = async () => {
         if (pin) {
             await ensureRoomPersisted(pin);
         }
 
-        return await prisma.$transaction(async (tx) => {
-            let option = option_id
-                ? await tx.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
-                : null;
+        let roomByPin = null;
+        if (pin) {
+            roomByPin = await prisma.room.findUnique({ where: { pin } }).catch(() => null);
+        }
 
-            let targetRoomId = option?.roomId || null;
-            if (!targetRoomId && pin) {
-                const roomByPin = await tx.room.findUnique({ where: { pin } });
-                if (roomByPin) targetRoomId = roomByPin.id;
-            }
+        let option = option_id
+            ? await prisma.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
+            : null;
 
-            let participant = participant_id
-                ? await tx.participant.findUnique({ where: { id: String(participant_id) } }).catch(() => null)
-                : null;
+        let targetRoomId = roomByPin?.id || option?.roomId || null;
 
-            if (!participant && targetRoomId && cleanDeviceId) {
-                participant = await tx.participant.findFirst({
-                    where: { roomId: targetRoomId, deviceId: cleanDeviceId },
-                });
-            }
+        // If option belongs to a different room than `pin`, prefer the option in `targetRoomId`
+        if (option && targetRoomId && option.roomId !== targetRoomId) {
+            option = null;
+        }
 
-            if (!targetRoomId && participant) {
-                targetRoomId = participant.roomId;
-            }
+        let participant = participant_id
+            ? await prisma.participant.findUnique({ where: { id: String(participant_id) } }).catch(() => null)
+            : null;
 
-            // If option wasn't found by UUID (e.g. custom poll option or previously filtered option), find by name in room or create it
-            if (!option && targetRoomId) {
-                option = await tx.option.findFirst({
-                    where: {
-                        roomId: targetRoomId,
-                        name: optionNameFallback,
-                    },
-                });
-                if (!option) {
-                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(option_id || ''));
-                    option = await tx.option.create({
-                        data: {
-                            ...(isUuid ? { id: String(option_id) } : {}),
-                            roomId: targetRoomId,
-                            name: optionNameFallback,
-                            source: 'USER_CUSTOM',
-                            googlePlaceId: String(option_id || `custom_${crypto.randomUUID()}`).slice(0, 180),
-                            priceLevel: 2,
-                        },
-                    });
-                }
-            }
+        // If the participant ID belonged to a previous room session, do not cross-link rooms
+        if (participant && targetRoomId && participant.roomId !== targetRoomId) {
+            participant = null;
+        }
 
-            if (!option) {
-                throw new Error("Option not found for analytics.");
-            }
+        if (!participant && targetRoomId && cleanDeviceId) {
+            participant = await prisma.participant.findFirst({
+                where: { roomId: targetRoomId, deviceId: cleanDeviceId },
+            });
+        }
 
-            const placeId = option.googlePlaceId || option.id;
+        if (!participant && targetRoomId) {
+            participant = await prisma.participant.findFirst({
+                where: { roomId: targetRoomId },
+            });
+        }
 
-            // Ensure participant exists in database (and has deviceId backfilled) to satisfy foreign key constraint
-            if (!participant) {
-                const isParticipantUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(participant_id || ''));
-                participant = await tx.participant.create({
-                    data: {
-                        ...(isParticipantUuid ? { id: String(participant_id) } : {}),
-                        roomId: option.roomId,
-                        deviceId: cleanDeviceId,
-                    },
-                });
-            } else if (cleanDeviceId && !participant.deviceId) {
-                participant = await tx.participant.update({
-                    where: { id: participant.id },
-                    data: { deviceId: cleanDeviceId },
-                });
-            }
+        if (!targetRoomId && participant) {
+            targetRoomId = participant.roomId;
+        }
 
-            // Recording individual user feedback (findFirst + update or create)
-            let feedback = await tx.feedback.findFirst({
+        // If option wasn't found by UUID (e.g. custom poll option or fallback card), find by name in room or create it
+        if (!option && targetRoomId) {
+            option = await prisma.option.findFirst({
                 where: {
-                    participantId: participant.id,
-                    optionId: option.id,
+                    roomId: targetRoomId,
+                    name: { equals: optionNameFallback, mode: 'insensitive' },
                 },
             });
-
-            if (feedback) {
-                feedback = await tx.feedback.update({
-                    where: { id: feedback.id },
+            if (!option) {
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(option_id || ''));
+                const existingOptWithId = isUuid
+                    ? await prisma.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
+                    : null;
+                const safeOptionId = isUuid && !existingOptWithId ? String(option_id) : crypto.randomUUID();
+                option = await prisma.option.create({
                     data: {
-                        satisfactionScore: satisfaction_score,
-                        priceAccuracyScore: price_accuracy_score,
-                    },
-                });
-            } else {
-                feedback = await tx.feedback.create({
-                    data: {
-                        participantId: participant.id,
-                        optionId: option.id,
-                        satisfactionScore: satisfaction_score,
-                        priceAccuracyScore: price_accuracy_score,
+                        id: safeOptionId,
+                        roomId: targetRoomId,
+                        name: optionNameFallback,
+                        source: 'USER_CUSTOM',
+                        googlePlaceId: String(option_id || `custom_${safeOptionId}`).slice(0, 180),
+                        priceLevel: 2,
                     },
                 });
             }
+        }
 
-            const existingAnalytics = await tx.venueAnalytics.findUnique({
-                where: { googlePlaceId: placeId },
+        if (!option) {
+            throw new Error("Option not found for analytics.");
+        }
+
+        const placeId = option.googlePlaceId || option.id;
+
+        // Ensure participant exists in target room (and has deviceId backfilled)
+        if (!participant) {
+            const derivedId = participant_id
+                ? deriveRoomParticipantUuid(option.roomId, String(participant_id))
+                : crypto.randomUUID();
+            participant = await prisma.participant.upsert({
+                where: { id: derivedId },
+                update: {
+                    ...(cleanDeviceId ? { deviceId: cleanDeviceId } : {}),
+                },
+                create: {
+                    id: derivedId,
+                    roomId: option.roomId,
+                    deviceId: cleanDeviceId,
+                },
             });
+        } else if (cleanDeviceId && !participant.deviceId) {
+            participant = await prisma.participant.update({
+                where: { id: participant.id },
+                data: { deviceId: cleanDeviceId },
+            }).catch(() => participant);
+        }
 
-            let analytics;
-
-            if (!existingAnalytics) {
-                analytics = await tx.venueAnalytics.create({
-                    data: {
-                        googlePlaceId: placeId,
-                        name: option.name,
-                        satisfactionAvg: satisfaction_score,
-                        truePriceAvg: price_accuracy_score,
-                        totalReviews: 1,
-                    },
-                });
-            } else {
-                const newCount = existingAnalytics.totalReviews + 1;
-                const newSatAvg = ((existingAnalytics.satisfactionAvg * existingAnalytics.totalReviews) + satisfaction_score) / newCount;
-                const newPriceAvg = ((existingAnalytics.truePriceAvg * existingAnalytics.totalReviews) + price_accuracy_score) / newCount;
-
-                analytics = await tx.venueAnalytics.update({
-                    where: { id: existingAnalytics.id },
-                    data: {
-                        satisfactionAvg: newSatAvg,
-                        truePriceAvg: newPriceAvg,
-                        totalReviews: newCount,
-                    },
-                });
-            }
-
-            return { feedback, analytics };
+        let feedback = await prisma.feedback.findFirst({
+            where: {
+                participantId: participant.id,
+                optionId: option.id,
+            },
         });
-    } catch (error) {
-        console.error(error);
-        throw new Error("Failed to process venue feedback and update analytics.");
+
+        if (feedback) {
+            feedback = await prisma.feedback.update({
+                where: { id: feedback.id },
+                data: {
+                    satisfactionScore: satisfaction_score,
+                    priceAccuracyScore: price_accuracy_score,
+                },
+            });
+        } else {
+            feedback = await prisma.feedback.create({
+                data: {
+                    participantId: participant.id,
+                    optionId: option.id,
+                    satisfactionScore: satisfaction_score,
+                    priceAccuracyScore: price_accuracy_score,
+                },
+            });
+        }
+
+        const existingAnalytics = await prisma.venueAnalytics.findUnique({
+            where: { googlePlaceId: placeId },
+        });
+
+        let analytics;
+        if (!existingAnalytics) {
+            analytics = await prisma.venueAnalytics.create({
+                data: {
+                    googlePlaceId: placeId,
+                    name: option.name,
+                    satisfactionAvg: satisfaction_score,
+                    truePriceAvg: price_accuracy_score,
+                    totalReviews: 1,
+                },
+            }).catch(async () => {
+                return prisma.venueAnalytics.findUnique({ where: { googlePlaceId: placeId } });
+            });
+        } else {
+            const newCount = existingAnalytics.totalReviews + 1;
+            const newSatAvg = ((existingAnalytics.satisfactionAvg * existingAnalytics.totalReviews) + satisfaction_score) / newCount;
+            const newPriceAvg = ((existingAnalytics.truePriceAvg * existingAnalytics.totalReviews) + price_accuracy_score) / newCount;
+
+            analytics = await prisma.venueAnalytics.update({
+                where: { id: existingAnalytics.id },
+                data: {
+                    satisfactionAvg: newSatAvg,
+                    truePriceAvg: newPriceAvg,
+                    totalReviews: newCount,
+                },
+            });
+        }
+
+        return { feedback, analytics };
+    };
+
+    try {
+        return await executeFeedbackWrite();
+    } catch (firstError) {
+        // Retry once if Neon serverless PgBouncer recycled an idle connection
+        try {
+            return await executeFeedbackWrite();
+        } catch (retryError) {
+            console.error('[submitVenueFeedback] Failed:', retryError);
+            throw new Error("Failed to process venue feedback and update analytics.");
+        }
     }
 }
 
