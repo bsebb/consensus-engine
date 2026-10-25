@@ -212,7 +212,6 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
   const viewbox = `${(lng - dLng).toFixed(5)},${(lat + dLat).toFixed(5)},${(lng + dLng).toFixed(5)},${(lat - dLat).toFixed(5)}`;
 
   const primaryTerm = categoryKey === 'cafes' ? 'cafe' : categoryKey === 'bars' ? 'bar' : categoryKey === 'desserts' ? 'bakery' : categoryKey === 'cinema' ? 'cinema' : 'restaurant';
-  const terms = primaryTerm === 'restaurant' ? ['restaurant', 'cafe'] : [primaryTerm, 'restaurant'];
   const allPlaces = [];
 
   const mapOsmTypeToLabel = (osmType, term) => {
@@ -222,46 +221,42 @@ async function getTownOsmHospitalityPlaces(lat, lng, categoryKey = 'restaurants'
     return osmType === 'cinema' || term === 'cinema' ? 'Movie Theater' : osmType === 'fast_food' ? 'Casual Dining' : 'Restaurant';
   };
 
-  for (let i = 0; i < terms.length; i++) {
-    const term = terms[i];
-    if (i > 0) {
-      await new Promise((r) => setTimeout(r, 700));
-    }
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(term)}&viewbox=${viewbox}&bounded=1&limit=25&addressdetails=1&accept-language=en,ro`;
-      const res = await fetch(url, {
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)',
-        },
-        signal: AbortSignal.timeout ? AbortSignal.timeout(3500) : undefined,
-      });
-      if (!res.ok) continue;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(primaryTerm)}&viewbox=${viewbox}&bounded=1&limit=30&addressdetails=1&accept-language=en,ro`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'NoYouPick/1.0 (https://noyoupick.org)',
+      },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(1800) : undefined,
+    });
+    if (res.ok) {
       const items = await res.json();
-      if (!Array.isArray(items)) continue;
-      for (const item of items) {
-        if (!item.name || item.lat == null || item.lon == null) continue;
-        const addrObj = item.address || {};
-        const locality = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || addrObj.suburb || '';
-        const street = [addrObj.road, addrObj.house_number].filter(Boolean).join(' ');
-        const formattedAddr = [street, locality].filter(Boolean).join(', ') || item.display_name?.split(',').slice(0, 2).join(', ') || 'Local Area';
-        const catLabel = mapOsmTypeToLabel(item.type, term);
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (!item.name || item.lat == null || item.lon == null) continue;
+          const addrObj = item.address || {};
+          const locality = addrObj.city || addrObj.town || addrObj.village || addrObj.municipality || addrObj.suburb || '';
+          const street = [addrObj.road, addrObj.house_number].filter(Boolean).join(' ');
+          const formattedAddr = [street, locality].filter(Boolean).join(', ') || item.display_name?.split(',').slice(0, 2).join(', ') || 'Local Area';
+          const catLabel = mapOsmTypeToLabel(item.type, primaryTerm);
 
-        allPlaces.push({
-          fsq_id: `osm_${item.place_id}`,
-          name: item.name,
-          latitude: parseFloat(item.lat),
-          longitude: parseFloat(item.lon),
-          categories: [{ name: catLabel, short_name: catLabel }],
-          location: {
-            address: formattedAddr,
-            locality,
-          },
-        });
+          allPlaces.push({
+            fsq_id: `osm_${item.place_id}`,
+            name: item.name,
+            latitude: parseFloat(item.lat),
+            longitude: parseFloat(item.lon),
+            categories: [{ name: catLabel, short_name: catLabel }],
+            location: {
+              address: formattedAddr,
+              locality,
+            },
+          });
+        }
       }
-    } catch {
-      // Ignore individual term timeout
     }
+  } catch {
+    // Ignore individual term timeout
   }
 
   if (allPlaces.length > 0) {
@@ -285,7 +280,7 @@ const fetchFoursquarePlaces = async (param1 = "restaurant", param2 = 5000) => {
   const latitude = isObj ? param1.latitude : null;
   const longitude = isObj ? param1.longitude : null;
   let isExactGps = isObj ? Boolean(param1.is_exact_gps) : false;
-  const targetPlaces = isObj && param1.targetPlaces ? Math.max(3, Math.min(30, Number(param1.targetPlaces))) : 6;
+  const targetPlaces = isObj && param1.targetPlaces ? Math.max(3, Math.min(50, Number(param1.targetPlaces))) : 6;
 
   const DEFAULT_LAT = 47.0225;
   const DEFAULT_LNG = 28.8340;
@@ -542,47 +537,27 @@ async function fetchRealVenuePhotos(name = '', address = '', category = '') {
 }
 
 /**
- * Queries OSRM (Open Source Routing Machine) to replace straight-line Haversine distances
- * with actual street/road network distances and travel durations.
+ * Enriches straight-line Haversine distances with urban street-network estimates
+ * immediately in 0ms without blocking room creation on external OSRM table queries.
  */
 async function enrichVenuesWithRoadDistances(centerLat, centerLng, venues, isExactGps) {
   if (!Array.isArray(venues) || venues.length === 0 || centerLat == null || centerLng == null) {
     return venues;
   }
-  const withCoords = venues.filter((v) => v.lat != null && v.lng != null);
-  if (withCoords.length === 0) return venues;
-
-  try {
-    const coordPairs = [`${centerLng},${centerLat}`, ...withCoords.map((v) => `${v.lng},${v.lat}`)].join(';');
-    const url = `https://router.project-osrm.org/table/v1/driving/${coordPairs}?sources=0&annotations=distance,duration`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined,
-    });
-    if (!res.ok) return venues;
-    const data = await res.json();
-    const roadDistances = data?.distances?.[0];
-    const driveDurations = data?.durations?.[0];
-    if (!Array.isArray(roadDistances)) return venues;
-
-    return venues.map((v) => {
-      const idx = withCoords.findIndex((wc) => wc.name === v.name && wc.lat === v.lat);
-      if (idx === -1) return v;
-      const roadMeters = roadDistances[idx + 1];
-      const driveSec = driveDurations?.[idx + 1];
-      if (typeof roadMeters !== 'number' || isNaN(roadMeters) || roadMeters <= 0) return v;
-
-      const roadKm = Math.max(0.1, Number((roadMeters / 1000).toFixed(1)));
-      return {
-        ...v,
-        distance_meters: Math.round(roadMeters),
-        distance_km: isExactGps ? roadKm : null,
-        drive_minutes: typeof driveSec === 'number' ? Math.max(2, Math.round(driveSec / 60)) : Math.max(2, Math.round(roadKm * 2.2)),
-        walk_minutes: Math.max(2, Math.round(roadMeters / 78)),
-      };
-    });
-  } catch {
-    return venues;
-  }
+  return venues.map((v) => {
+    const rawMeters = typeof v.distance_meters === 'number' && v.distance_meters > 0
+      ? v.distance_meters
+      : (v.lat != null && v.lng != null ? calculateHaversineDistance(centerLat, centerLng, v.lat, v.lng) : 1200);
+    const roadMeters = Math.round(rawMeters * 1.24);
+    const roadKm = Math.max(0.1, Number((roadMeters / 1000).toFixed(1)));
+    return {
+      ...v,
+      distance_meters: roadMeters,
+      distance_km: isExactGps ? roadKm : null,
+      drive_minutes: Math.max(2, Math.round(roadKm * 2.2)),
+      walk_minutes: Math.max(2, Math.round(roadMeters / 78)),
+    };
+  });
 }
 
 module.exports = {

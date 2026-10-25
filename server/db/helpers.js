@@ -6,13 +6,20 @@ function getSafeDatabaseUrl() {
     if (!rawUrl) return undefined;
     try {
         const parsed = new URL(rawUrl);
-        // On free-tier PostgreSQL (Neon, Supabase, Render), prevent connection exhaustion
-        // by capping connection_limit to 5 (default in Prisma without pgbouncer can spawn 10-20 per process)
+        // When using Neon's pooled endpoint (-pooler), enable PgBouncer transaction mode compatibility in Prisma
+        if (parsed.hostname.includes('-pooler.') && !parsed.searchParams.has('pgbouncer')) {
+            parsed.searchParams.set('pgbouncer', 'true');
+        }
+        // On serverless/free-tier PostgreSQL (Neon, Supabase, Render), balance concurrency and pool limits
         if (!parsed.searchParams.has('connection_limit')) {
-            parsed.searchParams.set('connection_limit', '5');
+            const defaultLimit = parsed.hostname.includes('-pooler.') ? '15' : '5';
+            parsed.searchParams.set('connection_limit', defaultLimit);
         }
         if (!parsed.searchParams.has('pool_timeout')) {
-            parsed.searchParams.set('pool_timeout', '10');
+            parsed.searchParams.set('pool_timeout', '15');
+        }
+        if (!parsed.searchParams.has('connect_timeout')) {
+            parsed.searchParams.set('connect_timeout', '15');
         }
         return parsed.toString();
     } catch {
@@ -34,9 +41,7 @@ const prisma = global.__prisma || new PrismaClient(
         }
 );
 
-if (process.env.NODE_ENV !== 'production') {
-    global.__prisma = prisma;
-}
+global.__prisma = prisma;
 
 // Global in-memory set of persisted participant keys (`${roomId}:${participantId}` and `${roomId}:dev:${deviceId}`)
 // Survives lobby eviction and prevents redundant INSERT/ON CONFLICT DO UPDATE queries across socket reconnects.
@@ -57,10 +62,32 @@ function markParticipantPersisted(roomId, participantId, deviceId, resolvedRecor
     }
 }
 
-async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null) {
+// Track in-flight background room persistence promises so any immediate DB read/write awaits completion
+const pendingRoomWrites = new Map();
+
+function registerPendingRoomWrite(roomId, pin, promise) {
+    if (!promise) return;
+    if (roomId) pendingRoomWrites.set(String(roomId), promise);
+    if (pin) pendingRoomWrites.set(String(pin), promise);
+    promise.finally(() => {
+        if (roomId) pendingRoomWrites.delete(String(roomId));
+        if (pin) pendingRoomWrites.delete(String(pin));
+    });
+}
+
+async function ensureRoomPersisted(key) {
+    if (!key) return;
+    const pending = pendingRoomWrites.get(String(key));
+    if (pending) {
+        await pending.catch(() => {});
+    }
+}
+
+async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null, preGeneratedId = null) {
     try {
         const room = await prisma.room.create({
             data: {
+                ...(preGeneratedId ? { id: preGeneratedId } : {}),
                 hostId,
                 hostDeviceId: hostDeviceId ? String(hostDeviceId).slice(0, 64) : null,
                 pin,
@@ -90,10 +117,20 @@ async function createParticipant(roomId, budgetCap, deviceId = null) {
         throw new Error("Failed to create participant");
     }
 }
+function deriveRoomParticipantUuid(roomId, participantId) {
+    const hex = crypto.createHash('sha256').update(`${roomId}:${participantId}`).digest('hex');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
 // Create or reuse a participant without triggering redundant ON CONFLICT DO UPDATE writes on reconnects
-async function createParticipantWithId(roomId, participantId, budgetCap = null, deviceId = null) {
+async function createParticipantWithId(roomId, participantId, budgetCap = null, deviceId = null, options = {}) {
     const cleanDeviceId = deviceId && typeof deviceId === 'string' ? deviceId.trim().slice(0, 64) : null;
+    const isNewRoom = Boolean(options && options.isNewRoom);
+    let targetId = participantId;
     try {
+        if (!isNewRoom) {
+            await ensureRoomPersisted(roomId);
+        }
         if (budgetCap === null) {
             if (cleanDeviceId && persistedParticipantCache.has(`${roomId}:dev:${cleanDeviceId}`)) {
                 return persistedParticipantCache.get(`${roomId}:dev:${cleanDeviceId}`);
@@ -104,7 +141,8 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null, 
         }
 
         // 1. Per-room device idempotency: if the same (roomId, deviceId) already joined this room, reuse that participant slot
-        if (cleanDeviceId) {
+        // (Skipped when isNewRoom=true since a freshly created room has 0 existing participants)
+        if (cleanDeviceId && !isNewRoom) {
             const existingByDevice = await prisma.participant.findFirst({
                 where: { roomId, deviceId: cleanDeviceId },
             });
@@ -122,16 +160,51 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null, 
             }
         }
 
-        // 2. Check if participantId already exists to avoid unnecessary UPDATE write locks
-        const existingById = await prisma.participant.findUnique({
-            where: { id: participantId },
+        // 2. Fast-path insert: attempt direct creation first (saves a round-trip on every new room / new participant)
+        try {
+            const created = await prisma.participant.create({
+                data: {
+                    id: targetId,
+                    roomId,
+                    deviceId: cleanDeviceId,
+                    budgetCap,
+                },
+            });
+            markParticipantPersisted(roomId, created.id, created.deviceId, created);
+            return created;
+        } catch (insertErr) {
+            if (insertErr.code !== 'P2002') throw insertErr;
+        }
+
+        // 3. P2002 conflict resolution: participantId already exists in DB
+        let existingById = await prisma.participant.findUnique({
+            where: { id: targetId },
         });
+        if (existingById && existingById.roomId !== roomId) {
+            // Caller passed a global participantId already used in another room; scope deterministically to this roomId
+            targetId = deriveRoomParticipantUuid(roomId, participantId);
+            existingById = await prisma.participant.findUnique({
+                where: { id: targetId },
+            });
+            if (!existingById) {
+                const scopedCreated = await prisma.participant.create({
+                    data: {
+                        id: targetId,
+                        roomId,
+                        deviceId: cleanDeviceId,
+                        budgetCap,
+                    },
+                });
+                markParticipantPersisted(roomId, scopedCreated.id, scopedCreated.deviceId, scopedCreated);
+                return scopedCreated;
+            }
+        }
         if (existingById) {
             const needsDeviceBackfill = cleanDeviceId && !existingById.deviceId;
             const needsBudgetUpdate = budgetCap !== null && existingById.budgetCap !== budgetCap;
             if (needsDeviceBackfill || needsBudgetUpdate) {
                 const updated = await prisma.participant.update({
-                    where: { id: participantId },
+                    where: { id: existingById.id },
                     data: {
                         ...(needsDeviceBackfill ? { deviceId: cleanDeviceId } : {}),
                         ...(needsBudgetUpdate ? { budgetCap } : {}),
@@ -143,24 +216,8 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null, 
             markParticipantPersisted(roomId, existingById.id, existingById.deviceId, existingById);
             return existingById;
         }
-
-        // 3. Create new participant record once (safe against concurrent inserts via P2002 fallback)
-        const created = await prisma.participant.create({
-            data: {
-                id: participantId,
-                roomId,
-                deviceId: cleanDeviceId,
-                budgetCap,
-            },
-        });
-        markParticipantPersisted(roomId, created.id, created.deviceId, created);
-        return created;
+        return null;
     } catch (error) {
-        if (error.code === 'P2002') {
-            const fallback = await prisma.participant.findUnique({ where: { id: participantId } }).catch(() => null);
-            if (fallback) markParticipantPersisted(roomId, fallback.id, fallback.deviceId, fallback);
-            return fallback;
-        }
         console.error(error);
         throw new Error("Failed to create participant with ID");
     }
@@ -227,6 +284,7 @@ async function createVotesBulk(votesData) {
 
 async function getRoomById(roomId) {
     try {
+        await ensureRoomPersisted(roomId);
         const room = await prisma.room.findUnique({
             where: { id: roomId },
             include: {
@@ -250,6 +308,7 @@ async function getRoomById(roomId) {
 
 async function getRoomByPin(pin) {
     try {
+        await ensureRoomPersisted(pin);
         const room = await prisma.room.findUnique({
             where: { pin },
             include: {
@@ -271,6 +330,7 @@ async function getRoomByPin(pin) {
 
 async function getRoomWithVotesByPin(pin) {
     try {
+        await ensureRoomPersisted(pin);
         const room = await prisma.room.findUnique({
             where: { pin },
             include: {
@@ -295,6 +355,7 @@ async function getRoomWithVotesByPin(pin) {
 // Lightweight query without nested joins for fast socket room validation & auth checks
 async function getRoomSummaryByPin(pin) {
     try {
+        await ensureRoomPersisted(pin);
         const room = await prisma.room.findUnique({
             where: { pin },
             select: {
@@ -503,6 +564,8 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
 module.exports = {
     prisma,
     persistedParticipantCache,
+    registerPendingRoomWrite,
+    ensureRoomPersisted,
     createRoom,
     createParticipant,
     createOption,

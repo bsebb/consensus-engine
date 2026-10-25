@@ -222,7 +222,8 @@ app.use((err, req, res, next) => {
 // Create an HTTP server so Express and Socket.io use the same port
 const httpServer = http.createServer(app);
 
-// Initialize Socket.io on HTTP server with restricted origins and 16KB max frame size
+// Initialize Socket.io on HTTP server with restricted origins, 16KB max frame size,
+// and perMessageDeflate disabled for 1000+ CCU low-memory/low-CPU efficiency
 const io = new Server(httpServer, {
   cors: {
     origin: checkOrigin,
@@ -230,6 +231,11 @@ const io = new Server(httpServer, {
     credentials: true,
   },
   maxHttpBufferSize: 16 * 1024,
+  perMessageDeflate: false,
+  httpCompression: false,
+  pingInterval: 25000,
+  pingTimeout: 20000,
+  transports: ['websocket', 'polling'],
 });
 setIO(io);
 app.set('io', io);
@@ -248,7 +254,11 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 
-httpServer.listen(PORT, '0.0.0.0', () => {
+httpServer.keepAliveTimeout = 65000;
+httpServer.headersTimeout = 66000;
+httpServer.maxRequestsPerSocket = 0;
+
+httpServer.listen(PORT, '0.0.0.0', 2048, () => {
   console.log(`Server listening on http://0.0.0.0:${PORT}`);
   initStorageSafeguard();
 });

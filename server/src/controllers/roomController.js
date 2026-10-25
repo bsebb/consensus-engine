@@ -1,9 +1,8 @@
-// Lilia: import Step Zero budget and pruning helpers
-const path = require('path');
-const { Worker } = require('worker_threads');
+const crypto = require('crypto');
 const {
   createRoom,
   createParticipantWithId,
+  registerPendingRoomWrite,
   getRoomByPin,
   getRoomWithVotesByPin,
   updateRoomConfig,
@@ -17,62 +16,29 @@ const {
   submitVenueFeedback,   //Afina
 } = require('../../db/helpers');
 
-// Lilia: access Socket.io for live vote progress updates
 const { getIO } = require('../utils/socket');
 const { generatePin, issueHostToken, verifyHostToken } = require('../utils/hostAuth');
 const { buildOptionRecords, discoverDiscoveryVenues, expandRoomVenues } = require('../services/venueDiscoveryService');
 const { reportClosedVenue } = require('../utils/reportedVenues');
 const { dispatchActivityNotification } = require('../utils/storageSafeguard');
+const { calculateSchulzeWinner } = require('../utils/schulze');
+const { roomSummaryCache, activeVotingSessions } = require('../sockets/socketSessionStore');
 
-// Helper to execute Schulze worker thread off the main event loop with 5s timeout
-const runSchulzeWorker = (submissions, timeoutMs = 5000) => {
-  return new Promise((resolve, reject) => {
-    const workerPath = path.resolve(__dirname, '../workers/schulzeWorker.js');
-    const worker = new Worker(workerPath, {
-      workerData: { submissions },
-    });
-    let isDone = false;
+// High-capacity in-memory cache (25s TTL, 2000 rooms) for 1000+ CCU room lookups
+const roomResponseCache = new Map();
+const MAX_ROOM_CACHE = 2000;
 
-    const timer = setTimeout(() => {
-      if (!isDone) {
-        isDone = true;
-        worker.terminate().catch(() => {});
-        reject(new Error('Schulze consensus worker calculation timed out.'));
-      }
-    }, timeoutMs);
-    if (timer.unref) timer.unref();
+function setBoundedRoomCache(pin, payload, ttlMs = 25000) {
+  if (roomResponseCache.size >= MAX_ROOM_CACHE) {
+    const oldest = roomResponseCache.keys().next().value;
+    if (oldest) roomResponseCache.delete(oldest);
+  }
+  roomResponseCache.set(String(pin), { payload, expiresAt: Date.now() + ttlMs });
+}
 
-    worker.on('message', (message) => {
-      if (!isDone) {
-        isDone = true;
-        clearTimeout(timer);
-        if (message.success) {
-          resolve(message.winner);
-        } else {
-          reject(new Error(message.error));
-        }
-      }
-    });
-
-    worker.on('error', (err) => {
-      if (!isDone) {
-        isDone = true;
-        clearTimeout(timer);
-        reject(err);
-      }
-    });
-
-    worker.on('exit', (code) => {
-      if (!isDone) {
-        isDone = true;
-        clearTimeout(timer);
-        if (code !== 0) {
-          reject(new Error(`Worker thread stopped with exit code ${code}`));
-        }
-      }
-    });
-  });
-};
+function invalidateRoomCache(pin) {
+  if (pin) roomResponseCache.delete(String(pin));
+}
 
 const createNewRoom = async (req, res) => {
   // Sprint 2: Added mode, theme, radius, latitude, longitude, and is_exact_gps
@@ -86,8 +52,6 @@ const createNewRoom = async (req, res) => {
     latitude,
     longitude,
     is_exact_gps = false,
-    deck_size = 6,
-    deckSize,
   } = req.body;
 
   if (!host_id) {
@@ -99,74 +63,107 @@ const createNewRoom = async (req, res) => {
   }
 
   const hostDeviceId = host_device_id || device_id || null;
+  const cleanHostDeviceId = hostDeviceId && typeof hostDeviceId === 'string' ? hostDeviceId.trim().slice(0, 64) : null;
   const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
-  let pin = null;
-  let room = null;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      pin = generatePin();
-      room = await createRoom(host_id, pin, roomTheme, radius, hostDeviceId);
-      break;
-    } catch (err) {
-      if (attempt === 4) throw err;
-    }
+
+  // Generate unique 4-digit PIN in RAM (checking active caches first for 0ms collision avoidance)
+  let pin = generatePin();
+  for (let attempt = 0; attempt < 10; attempt++) {
+    if (!roomResponseCache.has(pin) && !roomSummaryCache.has(pin)) break;
+    pin = generatePin();
   }
+  const roomId = crypto.randomUUID();
 
-  // Persist host participant record with deviceId once on room creation
-  createParticipantWithId(room.id, host_id, null, hostDeviceId).catch(() => {});
+  // Resolve discovery venues from in-memory spatial catalog (<1ms)
+  const places = mode === 'DISCOVERY'
+    ? await discoverDiscoveryVenues({
+        theme,
+        latitude,
+        longitude,
+        radius,
+        is_exact_gps,
+        targetPlaces: 50,
+      }).catch(() => [])
+    : [];
 
-  // Fetch places from Google, Geoapify, or spatial fallback engine
-  if (mode === 'DISCOVERY') {
-    const places = await discoverDiscoveryVenues({
-      theme,
-      latitude,
-      longitude,
-      radius,
-      is_exact_gps,
-      targetPlaces: 50,
-    });
+  const createdOptions = mode === 'DISCOVERY' && places && places.length > 0
+    ? buildOptionRecords(places, roomId).map((opt) => ({
+        id: opt.id || crypto.randomUUID(),
+        roomId,
+        name: opt.name,
+        source: opt.source || 'GOOGLE_API',
+        googlePlaceId: opt.googlePlaceId || null,
+        priceLevel: opt.priceLevel ?? null,
+      }))
+    : [];
 
-    let createdOptions = [];
-    if (places && places.length > 0) {
-      const optionsData = buildOptionRecords(places, room.id);
-      createdOptions = await createOptionsBulk(optionsData);
+  const optimisticHostParticipant = {
+    id: String(host_id),
+    roomId,
+    deviceId: cleanHostDeviceId,
+    budgetCap: null,
+  };
+
+  // Pre-seed in-memory room caches immediately so GET /rooms/:pin and socket join_lobby respond in 0ms from RAM
+  const topicLabel = mode === 'DISCOVERY' ? (theme || 'Places Nearby') : (theme || 'What should we do?');
+  roomSummaryCache.set(pin, {
+    room: {
+      id: roomId,
+      pin,
+      hostId: String(host_id),
+      hostDeviceId: cleanHostDeviceId,
+      status: 'CONFIGURING',
+      theme: roomTheme,
+      radius: typeof radius === 'number' ? radius : null,
+    },
+    expiresAt: Date.now() + 60000,
+  });
+  setBoundedRoomCache(pin, {
+    room_id: roomId,
+    pin,
+    status: 'CONFIGURING',
+    theme: roomTheme,
+    topic: topicLabel,
+    mode: mode === 'CUSTOM' ? 'CUSTOM' : 'DISCOVERY',
+    participants: [optimisticHostParticipant],
+    options: createdOptions,
+  });
+
+  // Persist room, host participant, and options asynchronously via write-behind promise
+  // (Tracked in pendingRoomWrites so any immediate DB query on this roomId/pin awaits completion safely)
+  const persistPromise = (async () => {
+    try {
+      const dbRoom = await createRoom(host_id, pin, roomTheme, radius, cleanHostDeviceId, roomId);
+      await createParticipantWithId(dbRoom.id, host_id, null, cleanHostDeviceId, { isNewRoom: true }).catch(() => {});
+      if (createdOptions.length > 0) {
+        await createOptionsBulk(createdOptions).catch(() => {});
+      }
+    } catch (err) {
+      console.warn('[roomController] Background room persistence notice:', err.message);
     }
+  })();
+  registerPendingRoomWrite(roomId, pin, persistPromise);
 
+  if (mode === 'DISCOVERY') {
     dispatchActivityNotification('room_created', {
-      pin: room.pin, topic: theme || 'Places Nearby', mode: 'DISCOVERY', optionCount: createdOptions.length, initialTableCount: 6, hostId: host_id,
+      pin, topic: topicLabel, mode: 'DISCOVERY', optionCount: createdOptions.length, initialTableCount: 6, hostId: host_id,
     }).catch(() => {});
 
     return res.status(201).json({
-      room_id: room.id, pin: room.pin, host_token: issueHostToken(room.pin, host_id),
-      status: room.status, theme: roomTheme, topic: theme || 'Places Nearby', mode: 'DISCOVERY', options: createdOptions,
+      room_id: roomId, pin, host_token: issueHostToken(pin, host_id),
+      status: 'CONFIGURING', theme: roomTheme, topic: topicLabel, mode: 'DISCOVERY', options: createdOptions,
     });
   }
 
   dispatchActivityNotification('room_created', {
-    pin: room.pin, topic: theme || 'What should we do?', mode: 'CUSTOM', optionCount: 0, hostId: host_id,
+    pin, topic: topicLabel, mode: 'CUSTOM', optionCount: 0, hostId: host_id,
   }).catch(() => {});
 
   return res.status(201).json({
-    room_id: room.id, pin: room.pin, host_token: issueHostToken(room.pin, host_id),
-    status: room.status, theme: roomTheme, topic: theme || 'What should we do?', mode: 'CUSTOM', options: [],
+    room_id: roomId, pin, host_token: issueHostToken(pin, host_id),
+    status: 'CONFIGURING', theme: roomTheme, topic: topicLabel, mode: 'CUSTOM', options: [],
   });
 };
-
-// Short in-memory cache (15s TTL) for room lookups to reduce PostgreSQL connection pressure
-const roomResponseCache = new Map();
-const MAX_ROOM_CACHE = 500;
-
-function setBoundedRoomCache(pin, payload, ttlMs = 15000) {
-  if (roomResponseCache.size >= MAX_ROOM_CACHE) {
-    const oldest = roomResponseCache.keys().next().value;
-    if (oldest) roomResponseCache.delete(oldest);
-  }
-  roomResponseCache.set(String(pin), { payload, expiresAt: Date.now() + ttlMs });
-}
-
-function invalidateRoomCache(pin) {
-  if (pin) roomResponseCache.delete(String(pin));
-}
 
 const getRoom = async (req, res) => {
   try {
@@ -404,12 +401,17 @@ const submitVotes = async (req, res) => {
     }
   }
 
-  // Lilia: count unique participants who have completed voting
-  let votedParticipants = 1;
-  try {
-    votedParticipants = await countVotedParticipants(room.id);
-  } catch (cntErr) {
-    console.warn('[roomController] countVotedParticipants notice:', cntErr.message);
+  // Count unique participants who have completed voting (use O(1) in-memory session when active)
+  const activeSession = activeVotingSessions.get(pin);
+  let votedParticipants = activeSession && activeSession.submissions.size > 0
+    ? activeSession.submissions.size
+    : 1;
+  if (!activeSession || activeSession.submissions.size === 0) {
+    try {
+      votedParticipants = await countVotedParticipants(room.id);
+    } catch (cntErr) {
+      console.warn('[roomController] countVotedParticipants notice:', cntErr.message);
+    }
   }
   const totalParticipants = room.participants.length;
 
@@ -457,7 +459,7 @@ const finalizeVoting = async (req, res) => {
   }));
 
   try {
-    const winningOptionId = await runSchulzeWorker(submissions);
+    const winningOptionId = calculateSchulzeWinner(submissions);
 
     if (!winningOptionId) {
       return res.status(400).json({

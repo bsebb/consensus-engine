@@ -6,55 +6,55 @@ const { createRateLimiter } = require('../src/utils/rateLimiter');
 
 const roomCreateLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 25,
+  max: 120,
   message: 'Too many rooms created from this IP. Please wait a minute before creating another.',
 });
 
 const pinLookupLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 60,
+  max: 600,
   message: 'Too many PIN lookups. Please slow down.',
 });
 
 const finalizeLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 15,
+  max: 120,
   message: 'Too many finalize requests. Please wait a moment.',
 });
 
 const morePlacesLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 15,
+  max: 120,
   message: 'Too many requests for more places. Please wait a moment.',
 });
 
 const reportClosedLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 10,
+  max: 30,
   message: 'Too many reports submitted. Please wait a moment.',
 });
 
 const voteLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 30,
+  max: 300,
   message: 'Too many vote submissions. Please slow down.',
 });
 
 const constraintLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 20,
+  max: 200,
   message: 'Too many constraint updates. Please slow down.',
 });
 
 const feedbackLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 15,
+  max: 120,
   message: 'Too many feedback submissions. Please slow down.',
 });
 
 const configLimiter = createRateLimiter({
   windowMs: 60000,
-  max: 20,
+  max: 200,
   message: 'Too many configuration updates. Please slow down.',
 });
 

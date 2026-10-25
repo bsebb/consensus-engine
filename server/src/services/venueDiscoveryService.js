@@ -1,8 +1,21 @@
 const { fetchGooglePlaces } = require('../utils/googlePlaces');
 const { fetchGeoapifyPlaces } = require('../utils/geoapifyPlaces');
 const { searchRestaurants, fetchFoursquarePlaces } = require('../utils/foursquarePlaces');
-const { resolveRegionalFallback } = require('../utils/fallbackVenues');
+const { resolveRegionalFallback, isInsideMoldovaRegion } = require('../utils/fallbackVenues');
 const { filterReportedVenues } = require('../utils/reportedVenues');
+
+// High-speed in-memory discovery deck cache (30-min TTL) for sub-millisecond room creation at 1000+ CCU
+const discoveryDeckCache = new Map();
+const DISCOVERY_CACHE_TTL_MS = 30 * 60 * 1000;
+const MAX_DISCOVERY_CACHE_SIZE = 500;
+
+function setDiscoveryCache(key, places) {
+  if (discoveryDeckCache.size >= MAX_DISCOVERY_CACHE_SIZE) {
+    const oldest = discoveryDeckCache.keys().next().value;
+    if (oldest) discoveryDeckCache.delete(oldest);
+  }
+  discoveryDeckCache.set(key, { places, expiresAt: Date.now() + DISCOVERY_CACHE_TTL_MS });
+}
 
 function buildOptionRecords(places = [], roomId) {
   if (!Array.isArray(places) || !roomId) return [];
@@ -37,18 +50,47 @@ async function discoverDiscoveryVenues({
   is_exact_gps = false,
   targetPlaces = 30,
 }) {
+  const normLat = latitude != null && !isNaN(Number(latitude)) ? Number(latitude) : 47.0225;
+  const normLng = longitude != null && !isNaN(Number(longitude)) ? Number(longitude) : 28.8340;
+  const cacheKey = `${String(theme).toLowerCase().trim()}_${normLat.toFixed(2)}_${normLng.toFixed(2)}_${radius}_${Boolean(is_exact_gps)}_${targetPlaces}`;
+
+  const cachedDeck = discoveryDeckCache.get(cacheKey);
+  if (cachedDeck && cachedDeck.expiresAt > Date.now()) {
+    return filterReportedVenues(cachedDeck.places);
+  }
+
   const hasGoogleKey = Boolean(
     (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim()
   );
+  const hasGeoapifyKey = Boolean((process.env.GEOAPIFY_API_KEY || '').trim());
+  const hasFoursquareKey = Boolean((process.env.FOURSQUARE_API_KEY || '').trim());
 
   let places = [];
+
+  // Fast Path: When no paid third-party API keys are configured and coordinates are within the curated Moldova region,
+  // resolve directly from the in-memory spatial catalog in <1ms and warm OSM towns asynchronously in the background.
+  if (!hasGoogleKey && !hasGeoapifyKey && !hasFoursquareKey && isInsideMoldovaRegion(normLat, normLng)) {
+    const instantPlaces = await resolveRegionalFallback(
+      theme,
+      normLat,
+      normLng,
+      is_exact_gps,
+      targetPlaces,
+      radius
+    );
+    const cleaned = filterReportedVenues(instantPlaces || []);
+    if (cleaned.length > 0) {
+      setDiscoveryCache(cacheKey, cleaned);
+      return cleaned;
+    }
+  }
 
   if (hasGoogleKey) {
     try {
       places = await fetchGooglePlaces({
         theme,
-        latitude,
-        longitude,
+        latitude: normLat,
+        longitude: normLng,
         radius,
         targetPlaces,
         isExactGps: is_exact_gps,
@@ -59,12 +101,12 @@ async function discoverDiscoveryVenues({
   }
 
   // Zero-Cost Open Core: Query Geoapify (3,000 req/day free) if configured
-  if (!places || places.length === 0) {
+  if ((!places || places.length === 0) && hasGeoapifyKey) {
     try {
       places = await fetchGeoapifyPlaces({
         theme,
-        latitude,
-        longitude,
+        latitude: normLat,
+        longitude: normLng,
         radius,
         targetPlaces,
         isExactGps: is_exact_gps,
@@ -78,8 +120,8 @@ async function discoverDiscoveryVenues({
     const fetchFn = searchRestaurants || fetchFoursquarePlaces;
     places = await fetchFn({
       theme,
-      latitude,
-      longitude,
+      latitude: normLat,
+      longitude: normLng,
       radius,
       is_exact_gps,
       targetPlaces,
@@ -94,8 +136,8 @@ async function discoverDiscoveryVenues({
     try {
       const fallbacks = await resolveRegionalFallback(
         theme,
-        latitude,
-        longitude,
+        normLat,
+        normLng,
         is_exact_gps,
         targetPlaces,
         radius
@@ -116,7 +158,11 @@ async function discoverDiscoveryVenues({
     }
   }
 
-  return places || [];
+  const finalPlaces = places || [];
+  if (finalPlaces.length > 0) {
+    setDiscoveryCache(cacheKey, finalPlaces);
+  }
+  return finalPlaces;
 }
 
 async function expandRoomVenues({

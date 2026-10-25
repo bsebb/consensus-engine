@@ -192,7 +192,7 @@ export async function detectUserGps({ forceRefresh = false } = {}) {
   try {
     let pos;
     try {
-      pos = await getBrowserPos(true, 5000);
+      pos = await getBrowserPos(false, 1800);
     } catch (err) {
       if (err?.code === 1) {
         return {
@@ -205,11 +205,10 @@ export async function detectUserGps({ forceRefresh = false } = {}) {
           source: 'none',
         };
       }
-      pos = await getBrowserPos(false, 4500);
+      pos = await getBrowserPos(true, 2200);
     }
 
     const { latitude, longitude, accuracy } = pos.coords;
-    const label = (await reverseGeocode(latitude, longitude)) || 'Current Location';
 
     const payload = {
       status: 'exact',
@@ -217,12 +216,20 @@ export async function detectUserGps({ forceRefresh = false } = {}) {
       lng: longitude,
       accuracy: accuracy ? Math.round(accuracy) : null,
       isExact: true,
-      label,
+      label: 'Current Location',
       source: 'gps',
       ts: Date.now(),
     };
 
     saveUserLocation(payload);
+
+    // Resolve human-readable city label asynchronously without blocking room creation
+    reverseGeocode(latitude, longitude).then((resolvedLabel) => {
+      if (resolvedLabel) {
+        saveUserLocation({ ...payload, label: resolvedLabel });
+      }
+    }).catch(() => {});
+
     return payload;
   } catch (err) {
     return {

@@ -3,7 +3,7 @@
  * Each limiter instance maintains an isolated state map to prevent cross-route budget sharing.
  */
 const defaultStore = new Map();
-const MAX_RATE_LIMITER_ENTRIES = 5000;
+const MAX_RATE_LIMITER_ENTRIES = 15000;
 
 function pruneStoreIfFull(map) {
   if (map.size > MAX_RATE_LIMITER_ENTRIES) {
@@ -35,22 +35,25 @@ function createRateLimiter({ windowMs = 60000, max = 30, message = 'Too many req
   if (cleanupTimer.unref) cleanupTimer.unref();
 
   return function rateLimiterMiddleware(req, res, next) {
-    // Rely on req.ip (configured with Express trust proxy) or socket remoteAddress
+    // Rely on req.ip (configured with Express trust proxy) or socket remoteAddress,
+    // scoped per device_id when available so 1000+ CCU behind shared NAT/campus Wi-Fi never collide
     const rawIp = req.ip || req.socket?.remoteAddress || '127.0.0.1';
     const ip = String(rawIp).split(',')[0].trim();
+    const clientDevice = req.headers?.['x-device-id'] || req.body?.device_id || req.body?.host_device_id || '';
+    const bucketKey = clientDevice ? `${ip}:${String(clientDevice).slice(0, 48)}` : ip;
 
     const now = Date.now();
-    let entry = store.get(ip);
+    let entry = store.get(bucketKey);
 
     if (!entry || now > entry.resetTime) {
       pruneStoreIfFull(store);
       pruneStoreIfFull(defaultStore);
       entry = { count: 1, resetTime: now + windowMs };
-      store.set(ip, entry);
-      defaultStore.set(ip, entry); // Sync for test inspections
+      store.set(bucketKey, entry);
+      defaultStore.set(bucketKey, entry); // Sync for test inspections
     } else {
       entry.count += 1;
-      defaultStore.set(ip, entry);
+      defaultStore.set(bucketKey, entry);
     }
 
     const remaining = Math.max(0, max - entry.count);

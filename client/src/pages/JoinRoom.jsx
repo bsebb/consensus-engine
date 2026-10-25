@@ -102,6 +102,18 @@ export default function JoinRoom() {
       return () => {
         mounted = false;
       };
+    } else if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      let mounted = true;
+      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+        if (mounted && status.state === 'granted') {
+          detectUserGps().then((res) => {
+            if (mounted && res && res.isExact) setGpsState(res);
+          });
+        }
+      }).catch(() => {});
+      return () => {
+        mounted = false;
+      };
     }
   }, []);
 
@@ -171,11 +183,16 @@ export default function JoinRoom() {
     let isExactGps = Boolean(gpsState.isExact && lat != null && lng != null);
 
     if (!isCustomMode && (lat == null || lng == null)) {
-      const fresh = await detectUserGps();
-      setGpsState(fresh);
-      lat = fresh.lat;
-      lng = fresh.lng;
-      isExactGps = Boolean(fresh.isExact && lat != null && lng != null);
+      const fresh = await Promise.race([
+        detectUserGps(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 250)),
+      ]);
+      if (fresh && fresh.lat != null && fresh.lng != null) {
+        setGpsState(fresh);
+        lat = fresh.lat;
+        lng = fresh.lng;
+        isExactGps = Boolean(fresh.isExact && lat != null && lng != null);
+      }
     }
 
     try {

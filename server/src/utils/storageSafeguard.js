@@ -1,16 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-
-let prisma = global.__prisma;
-if (!prisma) {
-  prisma = new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL
-      ? `${process.env.DATABASE_URL}${process.env.DATABASE_URL.includes('?') ? '&' : '?'}connection_limit=5&pool_timeout=10`
-      : undefined,
-  });
-  if (process.env.NODE_ENV !== 'production') {
-    global.__prisma = prisma;
-  }
-}
+const { prisma } = require('../../db/helpers');
 
 // Cooldown tracker to prevent alert spamming (max 1 alert per 6 hours)
 let lastAlertTimestamp = 0;

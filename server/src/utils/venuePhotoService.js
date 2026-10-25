@@ -217,29 +217,75 @@ async function fetchOnlineVenuePhoto(name, locality = '', address = '') {
   return null;
 }
 
-/**
- * Resolves a real photo for a venue, using the persistent cache or dynamic lookup.
- */
-async function resolveVenuePhoto(name = '', locality = '', address = '', category = '') {
+const pendingBackgroundLookups = new Set();
+let activeBackgroundWorkers = 0;
+const MAX_CONCURRENT_BG_LOOKUPS = 2;
+const backgroundQueue = [];
+
+function processBackgroundPhotoQueue() {
+  while (activeBackgroundWorkers < MAX_CONCURRENT_BG_LOOKUPS && backgroundQueue.length > 0) {
+    const task = backgroundQueue.shift();
+    if (!task) break;
+    activeBackgroundWorkers++;
+    fetchOnlineVenuePhoto(task.name, task.locality, task.address)
+      .then((onlinePhoto) => {
+        if (onlinePhoto) {
+          setBoundedCache(memoryCache, task.cKey, onlinePhoto);
+          queueSavePersistentCache();
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        pendingBackgroundLookups.delete(task.cKey);
+        activeBackgroundWorkers--;
+        if (backgroundQueue.length > 0) {
+          setImmediate(processBackgroundPhotoQueue);
+        }
+      });
+  }
+}
+
+function resolveCachedVenuePhotoSync(name = '') {
   const cleanName = String(name || '').trim();
   if (!cleanName) return null;
-
   const cKey = getCanonicalVenueKey(cleanName);
   if (!cKey) return null;
 
-  // 1. Instant cache hit
   if (memoryCache.has(cKey)) {
     return memoryCache.get(cKey);
   }
 
-  // Check substring root match against cached keys
   for (const [key, cachedUrl] of memoryCache.entries()) {
     if (cKey === key || (cKey.length >= 4 && key.length >= 4 && (cKey.includes(key) || key.includes(cKey)))) {
       return cachedUrl;
     }
   }
+  return null;
+}
 
-  // 2. Dynamic online search
+function queueBackgroundPhotoEnrichment(name = '', locality = '', address = '') {
+  const cleanName = String(name || '').trim();
+  if (!cleanName) return;
+  const cKey = getCanonicalVenueKey(cleanName);
+  if (!cKey || memoryCache.has(cKey) || pendingBackgroundLookups.has(cKey) || backgroundQueue.length >= 100) {
+    return;
+  }
+  pendingBackgroundLookups.add(cKey);
+  backgroundQueue.push({ cKey, name: cleanName, locality, address });
+  setImmediate(processBackgroundPhotoQueue);
+}
+
+/**
+ * Resolves a real photo for a venue, using the persistent cache or dynamic lookup.
+ */
+async function resolveVenuePhoto(name = '', locality = '', address = '', category = '') {
+  const cached = resolveCachedVenuePhotoSync(name);
+  if (cached) return cached;
+
+  const cleanName = String(name || '').trim();
+  const cKey = getCanonicalVenueKey(cleanName);
+  if (!cKey) return null;
+
   const onlinePhoto = await fetchOnlineVenuePhoto(cleanName, locality, address);
   if (onlinePhoto) {
     setBoundedCache(memoryCache, cKey, onlinePhoto);
@@ -251,31 +297,26 @@ async function resolveVenuePhoto(name = '', locality = '', address = '', categor
 }
 
 /**
- * Batch resolves photos for a list of candidates in parallel without delaying the caller.
+ * Batch resolves photos for a list of candidates from in-memory cache in <1ms
+ * and queues any uncached venues for non-blocking background enrichment.
  */
 async function resolveVenuePhotosBatch(venues = [], locality = '') {
   if (!Array.isArray(venues) || venues.length === 0) return venues;
 
-  const enriched = await Promise.all(
-    venues.map(async (v) => {
-      if (v.photo_url) return v;
-      try {
-        const photo = await resolveVenuePhoto(v.name, locality || v.address, v.address, v.category);
-        return {
-          ...v,
-          photo_url: photo || null,
-        };
-      } catch {
-        return v;
-      }
-    })
-  );
-
-  return enriched;
+  return venues.map((v) => {
+    if (v.photo_url) return v;
+    const cachedPhoto = resolveCachedVenuePhotoSync(v.name);
+    if (cachedPhoto) {
+      return { ...v, photo_url: cachedPhoto };
+    }
+    queueBackgroundPhotoEnrichment(v.name, locality || v.address, v.address);
+    return { ...v, photo_url: null };
+  });
 }
 
 module.exports = {
   resolveVenuePhoto,
+  resolveCachedVenuePhotoSync,
   resolveVenuePhotosBatch,
   getCanonicalVenueKey,
 };
