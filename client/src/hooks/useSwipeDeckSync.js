@@ -20,28 +20,34 @@ export function useSwipeDeckSync({
   setServerPairwise,
   setShowWinner,
   onAlreadyVoted,
+  isConnected = false,
   emit,
   on,
   off,
 }) {
-  const lastRoomJoinEmitTsRef = useRef(0);
-
   // Ensure socket is registered in the room on mount and reconnection
   useEffect(() => {
     if (!pin) return;
     const registerSocket = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      const now = Date.now();
-      if (now - lastRoomJoinEmitTsRef.current < 1500) return;
-      lastRoomJoinEmitTsRef.current = now;
       emit('join_room', { pin, participant_id: participantId, device_id: deviceId, is_host: isHost });
     };
+
     registerSocket();
     on('connect', registerSocket);
+
+    // Self-healing synchronization every 4s while swiping or awaiting quorum
+    const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        registerSocket();
+      }
+    }, 4000);
+
     return () => {
+      clearInterval(syncInterval);
       off('connect', registerSocket);
     };
-  }, [pin, participantId, deviceId, isHost, emit, on, off]);
+  }, [pin, participantId, deviceId, isHost, isConnected, emit, on, off]);
 
   const propsRef = useRef({});
   useEffect(() => {

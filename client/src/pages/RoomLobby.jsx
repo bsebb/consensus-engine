@@ -205,7 +205,7 @@ export default function RoomLobby() {
     currentUserName, isHost, setIsHost, setIsVotingActive, onTransitionToDeck: handleTransitionToDeck,
     locationState: location.state, participants, lockedConstraint, budgetLimit,
     setMode, setTopic, setGroupSize, setGroupPool, setParticipants,
-    setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions, navigate, emit, on, off, addToast,
+    setVisiblePlacesCount, setRemovedPlaceIds, setRealOptions, navigate, isConnected, emit, on, off, addToast,
   });
 
   const handleCopyPin = async () => {

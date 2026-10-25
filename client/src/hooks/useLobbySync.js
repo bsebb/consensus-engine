@@ -23,6 +23,7 @@ export function useLobbySync({
   setRemovedPlaceIds,
   setRealOptions,
   navigate,
+  isConnected = false,
   emit,
   on,
   off,
@@ -52,6 +53,7 @@ export function useLobbySync({
     setRemovedPlaceIds,
     setRealOptions,
     navigate,
+    isConnected,
     emit,
     on,
     off,
@@ -59,18 +61,12 @@ export function useLobbySync({
   };
 
   const hasNavigatedToDeckRef = useRef(false);
-  const lastJoinEmitTsRef = useRef(0);
 
   useEffect(() => {
     if (!pin) return;
     hasNavigatedToDeckRef.current = false;
 
     const sendJoin = () => {
-      const now = Date.now();
-      // Debounce rapid socket connect/mount signals within 1.5s to prevent redundant join emissions
-      if (now - lastJoinEmitTsRef.current < 1500) return;
-      lastJoinEmitTsRef.current = now;
-
       const { currentUserName: uName, locationState: lState, participantId: currentPid, deviceId: currentDeviceId } = propsRef.current;
       const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
       emit('join_lobby', {
@@ -87,8 +83,16 @@ export function useLobbySync({
       });
     };
 
+    // Always emit join immediately on mount, on socket connection, and on reconnection
     sendJoin();
     on('connect', sendJoin);
+
+    // Self-healing synchronization every 3.5s while tab is visible in the lobby
+    const syncInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        sendJoin();
+      }
+    }, 3500);
 
     const handleParticipantJoined = (data) => {
       const {
@@ -343,6 +347,7 @@ export function useLobbySync({
     on('room_error', handleRoomError);
 
     return () => {
+      clearInterval(syncInterval);
       off('connect', sendJoin);
       off('participant_joined', handleParticipantJoined);
       off('lobby_state', handleParticipantJoined);
@@ -354,5 +359,5 @@ export function useLobbySync({
       off('voting_started', handleVotingStarted);
       off('room_error', handleRoomError);
     };
-  }, [pin, emit, on, off]);
+  }, [pin, isConnected, emit, on, off]);
 }

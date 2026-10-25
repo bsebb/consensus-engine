@@ -9,6 +9,7 @@ const SERVER_URL = API_BASE_URL;
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const socketRef = useRef(null);
+  const pendingEmitsRef = useRef([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
 
@@ -33,6 +34,12 @@ export function SocketProvider({ children }) {
       console.log('[Socket] Connected to server:', socketInstance.id, 'via', SERVER_URL || 'default proxy');
       setIsConnected(true);
       setConnectionError(null);
+      while (pendingEmitsRef.current.length > 0) {
+        const item = pendingEmitsRef.current.shift();
+        if (item) {
+          socketInstance.emit(item.event, item.payload);
+        }
+      }
     });
 
     socketInstance.on('disconnect', (reason) => {
@@ -57,10 +64,12 @@ export function SocketProvider({ children }) {
   }, []);
 
   const emit = useCallback((event, payload) => {
-    if (socketRef.current) {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit(event, payload);
+    } else if (socketRef.current) {
       socketRef.current.emit(event, payload);
     } else {
-      console.log(`[Socket:Offline Mock] Emitted '${event}':`, payload);
+      pendingEmitsRef.current.push({ event, payload });
     }
   }, []);
 

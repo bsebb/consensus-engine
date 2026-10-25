@@ -323,6 +323,7 @@ export default function SwipeDeck() {
     setCards, setVotesReceived, setQuorumTotal, setVotedParticipantIds, setServerWinner,
     setServerMatchScore, setServerPairwise, setShowWinner,
     onAlreadyVoted: () => setCurrentIndex(cards.length),
+    isConnected,
     emit, on, off,
   });
 
