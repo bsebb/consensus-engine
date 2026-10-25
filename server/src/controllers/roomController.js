@@ -286,20 +286,11 @@ const submitConstraints = async (req, res) => {
     });
   }
 
-  // Lilia: save the participant's budget limit
-  await updateParticipantBudget(matchedParticipant.id, max_price_level);
-
-  // Lilia: find the strictest budget limit among all participants
-  const updatedRoom = await getRoomByPin(pin);
-
-  const budgetLimits = updatedRoom.participants
-    .map((participant) => participant.budgetCap)
-    .filter((budget) => budget !== null);
-
-  const groupMaxPriceLevel = Math.min(...budgetLimits);
-
-  // Lilia: remove restaurants that exceed the group's strictest budget
-  await pruneOptionsByBudget(updatedRoom.id, groupMaxPriceLevel);
+  // Lilia: save the participant's budget limit (and backfill deviceId if missing) without destructively deleting room options
+  await updateParticipantBudget(matchedParticipant.id, max_price_level, device_id);
+  if (device_id && !room.hostDeviceId && room.hostId === matchedParticipant.id) {
+    await updateRoomConfig(room.id, { hostDeviceId: String(device_id).trim().slice(0, 64) }).catch(() => {});
+  }
   invalidateRoomCache(pin);
 
   return res.status(200).json({
@@ -365,21 +356,45 @@ const submitVotes = async (req, res) => {
   }
 
   const effectiveParticipantId = matchedParticipant.id;
+  if (device_id && !matchedParticipant.deviceId) {
+    await updateParticipantBudget(effectiveParticipantId, matchedParticipant.budgetCap, device_id).catch(() => {});
+  }
+  if (device_id && !room.hostDeviceId && room.hostId === effectiveParticipantId) {
+    await updateRoomConfig(room.id, { hostDeviceId: String(device_id).trim().slice(0, 64) }).catch(() => {});
+  }
 
-  // Map submitted options to registered room options by ID or name
+  // Map submitted options to registered room options by ID or name, auto-registering any custom/missing options
   const roomOptionIds = new Set(room.options.map((option) => option.id));
   const optionByName = new Map(room.options.map((option) => [option.name.toLowerCase().trim(), option.id]));
+  const missingOptionsToCreate = [];
 
   const validRankings = rankings
     .map((r) => {
       if (!r) return null;
       let targetId = null;
+      const rawName = String(r.name || r.option_id || '')
+        .replace(/^custom-\d+-/i, '')
+        .trim()
+        .slice(0, 120);
+      const nameKey = rawName.toLowerCase();
+
       if (roomOptionIds.has(r.option_id)) {
         targetId = r.option_id;
-      } else if (r.name && optionByName.has(String(r.name).toLowerCase().trim())) {
-        targetId = optionByName.get(String(r.name).toLowerCase().trim());
-      } else if (optionByName.has(String(r.option_id).toLowerCase().trim())) {
-        targetId = optionByName.get(String(r.option_id).toLowerCase().trim());
+      } else if (nameKey && optionByName.has(nameKey)) {
+        targetId = optionByName.get(nameKey);
+      } else if (rawName) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(r.option_id || ''));
+        targetId = isUuid ? r.option_id : crypto.randomUUID();
+        roomOptionIds.add(targetId);
+        optionByName.set(nameKey, targetId);
+        missingOptionsToCreate.push({
+          id: targetId,
+          roomId: room.id,
+          name: rawName,
+          source: 'USER_CUSTOM',
+          googlePlaceId: String(r.option_id || targetId).slice(0, 180),
+          priceLevel: 2,
+        });
       }
       if (!targetId) return null;
       return {
@@ -389,6 +404,11 @@ const submitVotes = async (req, res) => {
       };
     })
     .filter(Boolean);
+
+  if (missingOptionsToCreate.length > 0) {
+    await createOptionsBulk(missingOptionsToCreate).catch(() => {});
+    invalidateRoomCache(pin);
+  }
 
   if (validRankings.length > 0) {
     try {
@@ -508,7 +528,8 @@ const finalizeVoting = async (req, res) => {
 
 // Afina: process end-of-event venue feedback and trigger analytics recalculation
 const submitFeedback = async (req, res) => {
-    const { participant_id, option_id, satisfaction_score, price_accuracy_score } = req.body;
+    const { pin } = req.params;
+    const { participant_id, device_id, option_id, option_name, satisfaction_score, price_accuracy_score } = req.body;
 
     if (!participant_id || !option_id || satisfaction_score === undefined || price_accuracy_score === undefined) {
         return res.status(400).json({
@@ -531,7 +552,11 @@ const submitFeedback = async (req, res) => {
         });
     }
 
-    await submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score);
+    await submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, {
+        pin,
+        device_id,
+        option_name,
+    });
 
     return res.status(200).json({ success: true });
 };

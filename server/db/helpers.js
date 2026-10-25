@@ -136,7 +136,10 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null, 
                 return persistedParticipantCache.get(`${roomId}:dev:${cleanDeviceId}`);
             }
             if (persistedParticipantCache.has(`${roomId}:${participantId}`)) {
-                return persistedParticipantCache.get(`${roomId}:${participantId}`);
+                const cached = persistedParticipantCache.get(`${roomId}:${participantId}`);
+                if (!cleanDeviceId || cached?.deviceId) {
+                    return cached;
+                }
             }
         }
 
@@ -406,14 +409,18 @@ async function updateRoomConfig(roomId, updateData) {
     }
 }
 
-//Lilia: update the participant's budget limit for Step Zero
-async function updateParticipantBudget(participantId, budgetCap) {
+//Lilia: update the participant's budget limit for Step Zero (and backfill deviceId if missing)
+async function updateParticipantBudget(participantId, budgetCap, deviceId = null) {
     try {
+        const cleanDeviceId = deviceId && typeof deviceId === 'string' ? deviceId.trim().slice(0, 64) : null;
         const participant = await prisma.participant.update({
             where: { id: participantId },
-            data: { budgetCap },
+            data: {
+                budgetCap,
+                ...(cleanDeviceId ? { deviceId: cleanDeviceId } : {}),
+            },
         });
-
+        markParticipantPersisted(participant.roomId, participant.id, participant.deviceId, participant);
         return participant;
     } catch (error) {
         console.error(error);
@@ -467,13 +474,67 @@ async function countVotedParticipants(roomId) {
 /** AFINA:
  * Records user feedback and atomically recalculates continuous venue analytics
  * using Prisma transactions to prevent race conditions during concurrent voting.
+ * Self-heals missing Option or Participant records (e.g. Custom Polls or pruned options).
  */
-async function submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score) {
+async function submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, meta = {}) {
+    const cleanDeviceId = meta?.device_id && typeof meta.device_id === 'string' ? meta.device_id.trim().slice(0, 64) : null;
+    const pin = meta?.pin ? String(meta.pin).trim() : null;
+    const optionNameFallback = meta?.option_name && typeof meta.option_name === 'string'
+        ? meta.option_name.trim().slice(0, 120)
+        : 'Consensus Pick';
+
     try {
+        if (pin) {
+            await ensureRoomPersisted(pin);
+        }
+
         return await prisma.$transaction(async (tx) => {
-            const option = await tx.option.findUnique({
-                where: { id: option_id }
-            });
+            let option = option_id
+                ? await tx.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
+                : null;
+
+            let targetRoomId = option?.roomId || null;
+            if (!targetRoomId && pin) {
+                const roomByPin = await tx.room.findUnique({ where: { pin } });
+                if (roomByPin) targetRoomId = roomByPin.id;
+            }
+
+            let participant = participant_id
+                ? await tx.participant.findUnique({ where: { id: String(participant_id) } }).catch(() => null)
+                : null;
+
+            if (!participant && targetRoomId && cleanDeviceId) {
+                participant = await tx.participant.findFirst({
+                    where: { roomId: targetRoomId, deviceId: cleanDeviceId },
+                });
+            }
+
+            if (!targetRoomId && participant) {
+                targetRoomId = participant.roomId;
+            }
+
+            // If option wasn't found by UUID (e.g. custom poll option or previously filtered option), find by name in room or create it
+            if (!option && targetRoomId) {
+                option = await tx.option.findFirst({
+                    where: {
+                        roomId: targetRoomId,
+                        name: optionNameFallback,
+                    },
+                });
+                if (!option) {
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(option_id || ''));
+                    option = await tx.option.create({
+                        data: {
+                            ...(isUuid ? { id: String(option_id) } : {}),
+                            roomId: targetRoomId,
+                            name: optionNameFallback,
+                            source: 'USER_CUSTOM',
+                            googlePlaceId: String(option_id || `custom_${crypto.randomUUID()}`).slice(0, 180),
+                            priceLevel: 2,
+                        },
+                    });
+                }
+            }
 
             if (!option) {
                 throw new Error("Option not found for analytics.");
@@ -481,25 +542,29 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
 
             const placeId = option.googlePlaceId || option.id;
 
-            // Ensure participant exists in database to satisfy foreign key constraint
-            let participant = await tx.participant.findUnique({
-                where: { id: participant_id }
-            });
+            // Ensure participant exists in database (and has deviceId backfilled) to satisfy foreign key constraint
             if (!participant) {
+                const isParticipantUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(participant_id || ''));
                 participant = await tx.participant.create({
                     data: {
-                        id: participant_id,
-                        roomId: option.roomId
-                    }
+                        ...(isParticipantUuid ? { id: String(participant_id) } : {}),
+                        roomId: option.roomId,
+                        deviceId: cleanDeviceId,
+                    },
+                });
+            } else if (cleanDeviceId && !participant.deviceId) {
+                participant = await tx.participant.update({
+                    where: { id: participant.id },
+                    data: { deviceId: cleanDeviceId },
                 });
             }
 
             // Recording individual user feedback (findFirst + update or create)
             let feedback = await tx.feedback.findFirst({
                 where: {
-                    participantId: participant_id,
-                    optionId: option_id
-                }
+                    participantId: participant.id,
+                    optionId: option.id,
+                },
             });
 
             if (feedback) {
@@ -507,22 +572,22 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
                     where: { id: feedback.id },
                     data: {
                         satisfactionScore: satisfaction_score,
-                        priceAccuracyScore: price_accuracy_score
-                    }
+                        priceAccuracyScore: price_accuracy_score,
+                    },
                 });
             } else {
                 feedback = await tx.feedback.create({
                     data: {
-                        participantId: participant_id,
-                        optionId: option_id,
+                        participantId: participant.id,
+                        optionId: option.id,
                         satisfactionScore: satisfaction_score,
-                        priceAccuracyScore: price_accuracy_score
-                    }
+                        priceAccuracyScore: price_accuracy_score,
+                    },
                 });
             }
 
             const existingAnalytics = await tx.venueAnalytics.findUnique({
-                where: { googlePlaceId: placeId }
+                where: { googlePlaceId: placeId },
             });
 
             let analytics;
@@ -534,8 +599,8 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
                         name: option.name,
                         satisfactionAvg: satisfaction_score,
                         truePriceAvg: price_accuracy_score,
-                        totalReviews: 1
-                    }
+                        totalReviews: 1,
+                    },
                 });
             } else {
                 const newCount = existingAnalytics.totalReviews + 1;
@@ -547,8 +612,8 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
                     data: {
                         satisfactionAvg: newSatAvg,
                         truePriceAvg: newPriceAvg,
-                        totalReviews: newCount
-                    }
+                        totalReviews: newCount,
+                    },
                 });
             }
 

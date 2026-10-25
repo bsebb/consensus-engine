@@ -333,7 +333,7 @@ export default function SwipeDeck() {
 
   const handleBackClick = () => {
     if (showWinner) {
-      navigate(`/lobby/${pin}`);
+      handleLeaveRoom();
     } else {
       setLeaveModalOpen(true);
     }
@@ -487,6 +487,7 @@ export default function SwipeDeck() {
           navigate={navigate}
           pin={pin}
           participantId={participantId}
+          deviceId={deviceId}
           emit={emit}
           vetoCount={consensusResult.vetoCount}
         />
@@ -548,6 +549,7 @@ export default function SwipeDeck() {
         winnerName={consensusResult.winner?.name}
         optionId={consensusResult.winner?.id}
         participantId={participantId}
+        deviceId={deviceId}
       />
 
       {/* Leave Deck Confirmation Action Sheet */}

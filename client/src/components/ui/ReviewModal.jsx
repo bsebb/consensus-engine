@@ -11,6 +11,7 @@ export default function ReviewModal({
   winnerName,
   optionId,
   participantId,
+  deviceId,
 }) {
   const { t } = useLanguage();
   const [satisfaction, setSatisfaction] = useState(5);
@@ -37,8 +38,10 @@ export default function ReviewModal({
     setLoading(true);
 
     const feedbackPayload = {
-      participant_id: participantId,
+      participant_id: participantId || 'anon_user',
+      device_id: deviceId || undefined,
       option_id: optionId || 'local-option',
+      option_name: winnerName || 'Consensus Pick',
       satisfaction_score: Number(satisfaction),
       price_accuracy_score: Number(priceAccuracy),
     };

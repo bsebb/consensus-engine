@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Layers, MapPin } from 'lucide-react';
+import { ArrowLeft, Home, Layers, MapPin } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 import SegmentedControl from '../ui/SegmentedControl';
 import { useLanguage } from '../../context/LanguageContext';
@@ -27,10 +27,10 @@ export default function DeckHeader({
             type="button"
             onClick={onBackClick}
             className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-[0.96]"
-            aria-label="Back to Lobby or Leave"
+            aria-label={showWinner ? t('home') : 'Back to Lobby or Leave'}
           >
-            <ArrowLeft size={14} />
-            <span>{t('lobby')}</span>
+            {showWinner ? <Home size={14} /> : <ArrowLeft size={14} />}
+            <span>{showWinner ? t('home') : t('lobby')}</span>
           </button>
         </div>
 

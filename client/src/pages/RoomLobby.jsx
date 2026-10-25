@@ -123,6 +123,14 @@ export default function RoomLobby() {
       })
       .then((data) => {
         if (data) {
+          if (data.status === 'RESOLVED') {
+            ['consensus_active_pin', `consensus_host_${pin}`, `consensus_pause_voting_${pin}`].forEach((k) => {
+              localStorage.removeItem(k);
+              sessionStorage.removeItem(k);
+            });
+            navigate('/');
+            return;
+          }
           if (data.mode) setMode(data.mode);
           const safeTopic = (data.topic && data.topic !== 'custom' && data.topic !== 'poll')
             ? data.topic

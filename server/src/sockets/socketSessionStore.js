@@ -150,6 +150,22 @@ async function resolveAndBroadcastWinner(io, pin) {
 
   console.log(`[Socket] Consensus resolved for room ${pin}: "${winningOption.name}" won across ${submissionsArray.length} ballots!`);
 
+  // Immediately mark the room as RESOLVED in PostgreSQL so GET /rooms/:pin reflects completion
+  if (prisma?.room) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(winningOption.id || ''));
+    prisma.room.updateMany({
+      where: { pin },
+      data: {
+        status: 'RESOLVED',
+        ...(isUuid ? { winnerOptionId: winningOption.id } : {}),
+      },
+    }).catch(() => {});
+  }
+  const cachedSummary = roomSummaryCache.get(pin);
+  if (cachedSummary?.room) {
+    cachedSummary.room.status = 'RESOLVED';
+  }
+
   await dispatchActivityNotification('decision_reached', {
     pin,
     winnerName: winningOption.name,
@@ -216,7 +232,7 @@ async function disbandLobby(io, pin, reason = 'All participants left the room') 
 
   try {
     if (prisma?.room) {
-      await prisma.room.update({
+      await prisma.room.updateMany({
         where: { pin },
         data: { status: 'RESOLVED' },
       }).catch(() => {});

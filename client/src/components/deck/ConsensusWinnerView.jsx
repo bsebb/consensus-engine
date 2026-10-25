@@ -41,6 +41,7 @@ export default function ConsensusWinnerView({
   navigate,
   pin,
   participantId,
+  deviceId,
   emit,
 }) {
   const { addToast } = useToast();
@@ -116,30 +117,41 @@ export default function ConsensusWinnerView({
     triggerHaptic('like');
 
     try {
-      if (pin && winner?.id) {
-        await fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
+      if (pin && (winner?.id || winner?.name)) {
+        const res = await fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             participant_id: participantId || 'anon_user',
-            option_id: winner.id,
+            device_id: deviceId || undefined,
+            option_id: winner?.id || `winner_${pin}`,
+            option_name: winner?.name || 'Consensus Pick',
             satisfaction_score: finalSat,
             price_accuracy_score: finalPrice,
           }),
         });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
       }
-    } catch (err) {
-      console.warn('[ConsensusWinnerView] Telemetry sync notice:', err);
-    } finally {
-      setIsSubmittingTelemetry(false);
       setTelemetrySubmitted(true);
       addToast({
-        title: isCustomWinner ? 'Poll Feedback Saved' : 'Rating Saved',
+        title: isCustomWinner ? 'Poll Feedback Saved' : t('feedbackSaved') || 'Rating Saved',
         message: isCustomWinner
           ? `Recorded ${finalSat}/5 group satisfaction for "${winner?.name}".`
           : `Recorded ${finalSat}/5 satisfaction & ${finalPrice}/5 price accuracy for ${winner?.name}.`,
         type: 'success',
       });
+    } catch (err) {
+      console.warn('[ConsensusWinnerView] Telemetry sync notice:', err);
+      setTelemetrySubmitted(true);
+      addToast({
+        title: t('feedbackSaved') || 'Rating Saved',
+        message: t('thanksFeedback') || 'Thank you for sharing your feedback!',
+        type: 'info',
+      });
+    } finally {
+      setIsSubmittingTelemetry(false);
     }
   };
 
