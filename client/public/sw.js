@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noyoupick-pwa-v24';
+const CACHE_NAME = 'noyoupick-pwa-v25';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -70,26 +70,44 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First with Cache Fallback for smooth offline & fresh updates
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        if (event.request.mode === 'navigate') {
+  // For SPA document navigations (/lobby/1234, /deck/1234, /), serve network index.html with cached SPA fallback
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
           const fallback = (await caches.match('/index.html')) || (await caches.match('/'));
           if (fallback) return fallback;
-        }
-        return new Response('Network unavailable', { status: 503, statusText: 'Offline' });
-      })
-  );
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        })
+    );
+    return;
+  }
+
+  // Only intercept known static root files; let the browser handle everything else natively
+  if (STATIC_ASSETS.includes(url.pathname)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        })
+    );
+  }
 });

@@ -6,17 +6,28 @@
  */
 
 let audioCtx = null;
-let silentAudioEl = null;
+let iosAudioUnlocked = false;
 
 export function unlockIosAudioSession() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || iosAudioUnlocked) return;
   try {
-    if (!silentAudioEl) {
-      silentAudioEl = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
-      silentAudioEl.volume = 0.001;
-      silentAudioEl.setAttribute('playsinline', 'true');
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
     }
-    silentAudioEl.play().catch(() => {});
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    // Play a 1-sample silent buffer via Web Audio API (zero network/CSP overhead)
+    const buffer = audioCtx.createBuffer(1, 1, 22050);
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    if (source.start) {
+      source.start(0);
+    }
+    iosAudioUnlocked = true;
   } catch {}
 }
 

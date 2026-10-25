@@ -55,6 +55,28 @@ export default function SwipeDeck() {
   const hasCustomCards = Boolean(location.state?.customCards);
   const categoryFromState = location.state?.category;
 
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState('swipe');
+  const [myVotes, setMyVotes] = useState([]);
+  const [exitDirection, setExitDirection] = useState(null);
+  const [enterDirection, setEnterDirection] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [showWinner, setShowWinner] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reveal') === 'true' || params.get('winner') === 'true') return true;
+    }
+    return Boolean(location.state?.resolved);
+  });
+  const [serverWinner, setServerWinner] = useState(null);
+  const [serverPairwise, setServerPairwise] = useState(null);
+  const [serverMatchScore, setServerMatchScore] = useState(null);
+  const [votesReceived, setVotesReceived] = useState(1);
+  const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [userRating, setUserRating] = useState(0);
+  const [condorcetOpen, setCondorcetOpen] = useState(false);
+
   useEffect(() => {
     if (!hasCustomCards && pin && !showWinner) {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
@@ -109,28 +131,6 @@ export default function SwipeDeck() {
     });
     return () => { cancelled = true; };
   }, [cards.length, mode]);
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState('swipe');
-  const [myVotes, setMyVotes] = useState([]);
-  const [exitDirection, setExitDirection] = useState(null);
-  const [enterDirection, setEnterDirection] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [showWinner, setShowWinner] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('reveal') === 'true' || params.get('winner') === 'true') return true;
-    }
-    return Boolean(location.state?.resolved);
-  });
-  const [serverWinner, setServerWinner] = useState(null);
-  const [serverPairwise, setServerPairwise] = useState(null);
-  const [serverMatchScore, setServerMatchScore] = useState(null);
-  const [votesReceived, setVotesReceived] = useState(1);
-  const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [userRating, setUserRating] = useState(0);
-  const [condorcetOpen, setCondorcetOpen] = useState(false);
 
   useEffect(() => {
     if (currentIndex >= cards.length && !showWinner && quorumTotal <= 1 && cards.length > 0) {
