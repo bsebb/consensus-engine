@@ -277,8 +277,8 @@ export function resolveSmartCustomVenue(rawName, topic = '', userGps = null) {
       price_level: entry.priceLevel || 2,
       vibe: entry.vibe,
       address: isNearKnownBranch
-        ? `Nearest: ${nearestBranch.address}`
-        : `Nearest ${entry.canonicalName} (${cityLabel})`,
+        ? nearestBranch.address
+        : cityLabel,
       lat: isNearKnownBranch ? nearestBranch.lat : null,
       lng: isNearKnownBranch ? nearestBranch.lng : null,
       distance_km: roadDistKm,
@@ -297,10 +297,10 @@ export function resolveSmartCustomVenue(rawName, topic = '', userGps = null) {
     return {
       canonicalName: cleanRaw,
       matchedBranchName: cleanRaw,
-      category: 'Local Spot & Dining',
+      category: 'Group Pick',
       price_level: 2,
-      vibe: 'Group Dining & Hangout Spot',
-      address: `Nearest ${cleanRaw} • ${cityLabel}`,
+      vibe: 'Local Spot',
+      address: cityLabel,
       lat: null,
       lng: null,
       distance_km: null,

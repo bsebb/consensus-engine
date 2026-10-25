@@ -741,8 +741,8 @@ button:active:not(:disabled),
 .places-rail > * { scroll-snap-align: start; min-width: 0; }
 .places-rail:focus-visible { outline: 2px solid var(--accent-bg); outline-offset: 4px; border-radius: 16px; }
 .venue-details-body > * { flex-shrink: 0; }
-.venue-details-body { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
-.winner-scroll { padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); }
+.venue-details-body { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); scrollbar-gutter: stable; }
+.winner-scroll { padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); scrollbar-gutter: stable; }
 .toast-stack {
   top: calc(env(safe-area-inset-top, 0px) + 64px);
   left: 50%;

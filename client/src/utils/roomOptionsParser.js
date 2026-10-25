@@ -149,8 +149,10 @@ export function buildCandidatePool({
       if (existingInPool) {
         return {
           ...existingInPool,
-          name: smart ? smart.canonicalName : existingInPool.name,
-          address: smart?.address || existingInPool.address,
+          name: existingInPool.name || (smart ? smart.canonicalName : cleanName),
+          address: existingInPool.address && existingInPool.address !== 'Local Venue'
+            ? existingInPool.address
+            : (smart?.address || existingInPool.address),
           distance_km: existingInPool.distance_km ?? smart?.distance_km ?? null,
           drive_minutes: existingInPool.drive_minutes ?? smart?.drive_minutes ?? null,
           walk_minutes: existingInPool.walk_minutes ?? smart?.walk_minutes ?? null,
@@ -255,30 +257,35 @@ export function buildInitialSwipeCards({ locationState, mode = 'DISCOVERY', topi
       }
 
       const isCustomItem = Boolean(item.isCustom || mode === 'CUSTOM');
-      const liveDist = isCustomItem
-        ? (smart?.distance_km ?? null)
-        : typeof item.distance_km === 'number'
-          ? item.distance_km
-          : savedGps && item.lat != null && item.lng != null
-            ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
-            : null;
+      const hasRealVenueData = !isCustomItem && item.address && item.address !== 'Local Venue' && item.address !== 'Added by group';
+      const effectiveSmart = hasRealVenueData ? null : smart;
+
+      const liveDist = typeof item.distance_km === 'number'
+        ? item.distance_km
+        : savedGps && item.lat != null && item.lng != null
+          ? calculateDistanceKm(savedGps.lat, savedGps.lng, item.lat, item.lng)
+          : (effectiveSmart?.distance_km ?? null);
 
       return {
         id: item.id || `option-${idx}`,
-        name: smart ? smart.canonicalName : (item.name || `Option ${idx + 1}`),
+        name: effectiveSmart ? effectiveSmart.canonicalName : (item.name || `Option ${idx + 1}`),
         originalName: item.name,
-        category: smart ? smart.category : (isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite')),
-        tags: smart ? [smart.category, 'Top Pick'] : (item.tags || ['Top Pick']),
+        category: item.category && item.category !== 'Local Favorite' && item.category !== 'Group Suggestion'
+          ? item.category
+          : (effectiveSmart ? effectiveSmart.category : (isCustomItem ? 'Custom Poll Option' : (item.category || 'Local Favorite'))),
+        tags: item.tags && item.tags.length > 0 ? item.tags : (effectiveSmart ? [effectiveSmart.category, 'Top Pick'] : ['Top Pick']),
         distance_km: liveDist,
-        drive_minutes: smart?.drive_minutes ?? (isCustomItem ? null : (item.drive_minutes ?? null)),
-        walk_minutes: smart?.walk_minutes ?? (isCustomItem ? null : (item.walk_minutes ?? null)),
-        lat: smart?.lat ?? (isCustomItem ? null : (item.lat ?? null)),
-        lng: smart?.lng ?? (isCustomItem ? null : (item.lng ?? null)),
-        price_level: smart?.price_level ?? (typeof item.price_level === 'number' ? item.price_level : 2),
-        address: smart?.address ?? (isCustomItem ? '' : (item.address || 'Local Venue')),
-        isRoutablePlace: Boolean(smart?.isRoutablePlace || item.isRoutablePlace),
-        googleMapsUrl: smart?.googleMapsUrl || item.googleMapsUrl,
-        appleMapsUrl: smart?.appleMapsUrl || item.appleMapsUrl,
+        drive_minutes: item.drive_minutes ?? effectiveSmart?.drive_minutes ?? null,
+        walk_minutes: item.walk_minutes ?? effectiveSmart?.walk_minutes ?? null,
+        lat: item.lat ?? effectiveSmart?.lat ?? null,
+        lng: item.lng ?? effectiveSmart?.lng ?? null,
+        price_level: typeof item.price_level === 'number' ? item.price_level : (effectiveSmart?.price_level ?? 2),
+        address: item.address && item.address !== 'Local Venue' && item.address !== 'Added by group'
+          ? item.address
+          : (effectiveSmart?.address ?? (isCustomItem ? '' : (item.address || 'Local Venue'))),
+        isRoutablePlace: Boolean(item.isRoutablePlace || effectiveSmart?.isRoutablePlace || (!isCustomItem && item.lat != null)),
+        googleMapsUrl: item.googleMapsUrl || effectiveSmart?.googleMapsUrl,
+        appleMapsUrl: item.appleMapsUrl || effectiveSmart?.appleMapsUrl,
         photo_url: item.photo_url || (isCustomItem ? resolveCuratedOptionPhoto(item.name) : null),
         isCustom: isCustomItem,
       };

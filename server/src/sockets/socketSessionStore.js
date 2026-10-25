@@ -49,12 +49,7 @@ async function resolveAndBroadcastWinner(io, pin) {
     };
     io.to(pin).emit('winner_announced', resolvedPayload);
     io.to(pin).emit('consensus_reached', resolvedPayload);
-    io.to(pin).emit('MATCH_FOUND', {
-      pin,
-      winningOptionId: session.winner.id,
-      winning_option: session.winner,
-      winner: session.winner,
-    });
+    io.to(pin).emit('MATCH_FOUND', resolvedPayload);
     return;
   }
 
@@ -124,10 +119,11 @@ async function resolveAndBroadcastWinner(io, pin) {
     let winVotes = 0;
     let lossVotes = 0;
     for (const sub of submissionsArray) {
-      const vWin = sub.votes?.find((v) => v.option_id === winningOption.id)?.score || 0;
-      const vRival = sub.votes?.find((v) => v.option_id === rival.id)?.score || 0;
+      const vWin = sub.votes?.find((v) => v.option_id === winningOption.id)?.score ?? 0;
+      const vRival = sub.votes?.find((v) => v.option_id === rival.id)?.score ?? 0;
       if (vWin > vRival) winVotes++;
       else if (vRival > vWin) lossVotes++;
+      else if (vWin > 0) winVotes++;
     }
     return {
       opponent: rival.name,
@@ -191,13 +187,7 @@ async function resolveAndBroadcastWinner(io, pin) {
 
   io.to(pin).emit('winner_announced', consensusPayload);
   io.to(pin).emit('consensus_reached', consensusPayload);
-
-  io.to(pin).emit('MATCH_FOUND', {
-    pin,
-    winningOptionId: winningOption.id,
-    winning_option: winningOption,
-    winner: winningOption,
-  });
+  io.to(pin).emit('MATCH_FOUND', consensusPayload);
 
   // Evict resolved session and disband lobby after 30 minutes
   const evictionTimer = setTimeout(() => {

@@ -432,28 +432,39 @@ export default function SwipeDeck() {
     const winner = consensusResult.winner;
     if (!winner || !cards || cards.length === 0) return [];
 
-    return cards.filter((c) => c.id !== winner.id).map((rival, idx) => {
-      const seed = winner.name.length + rival.name.length + idx;
-      const votesFor = Math.max(3, totalParticipants - (seed % 2));
-      const votesAgainst = Math.max(0, totalParticipants - votesFor);
-      return { opponent: rival.name, score: `${votesFor}-${votesAgainst}`, margin: `Beat ${rival.name} (${votesFor}-${votesAgainst})` };
+    const winVoteObj = myVotes.find((v) => v.option_id === winner.id || v.name === winner.name);
+    const winScore = winVoteObj ? winVoteObj.score : 1;
+
+    return cards.filter((c) => c.id !== winner.id && c.name !== winner.name).map((rival) => {
+      const rivalVoteObj = myVotes.find((v) => v.option_id === rival.id || v.name === rival.name);
+      const rivalScore = rivalVoteObj ? rivalVoteObj.score : -1;
+      const votesFor = winScore >= rivalScore ? 1 : 0;
+      const votesAgainst = rivalScore > winScore ? 1 : 0;
+      return {
+        opponent: rival.name,
+        score: `${votesFor}-${votesAgainst}`,
+        margin: `Preferred over ${rival.name} (${votesFor}-${votesAgainst})`,
+      };
     });
-  }, [serverPairwise, consensusResult.winner, cards, totalParticipants]);
+  }, [serverPairwise, consensusResult.winner, cards, myVotes]);
 
   useEffect(() => {
     if (showWinner && consensusResult.winner) {
       triggerHaptic('match');
       try {
         const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
-        const optionsList = cards.map((c) => ({
-          name: c.name,
-          category: c.category || 'Venue',
-          priceLevel: c.price_level || 2,
-          isWinner: c.name === consensusResult.winner.name,
-          duelMargin: c.name === consensusResult.winner.name
-            ? 'Consensus Winner'
-            : `Defeated by ${consensusResult.winner.name} (${Math.max(3, totalParticipants - 1)}-1)`,
-        }));
+        const optionsList = cards.map((c) => {
+          const pw = pairwiseBreakdown.find((p) => p.opponent === c.name);
+          return {
+            name: c.name,
+            category: c.category || 'Venue',
+            priceLevel: c.price_level || 2,
+            isWinner: c.name === consensusResult.winner.name,
+            duelMargin: c.name === consensusResult.winner.name
+              ? 'Consensus Winner'
+              : `Defeated by ${consensusResult.winner.name} (${pw ? pw.score : '1-0'})`,
+          };
+        });
 
         const entry = {
           pin, topic, winner: consensusResult.winner.name,
@@ -498,7 +509,7 @@ export default function SwipeDeck() {
 
   return (
     <div
-      className={`flex-1 flex flex-col h-full max-h-full min-h-0 overflow-hidden justify-between select-none ${
+      className={`flex-1 flex flex-col h-full max-h-full min-h-0 overflow-hidden ${showWinner ? 'justify-start' : 'justify-between'} select-none ${
         !showWinner && currentIndex < cards.length && activeTab !== 'details'
           ? 'touch-none'
           : 'touch-pan-y'

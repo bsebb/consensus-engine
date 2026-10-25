@@ -95,9 +95,8 @@ export default function SwipeCard({
       const rect = e.currentTarget.getBoundingClientRect();
       const relX = e.clientX - rect.left;
       triggerHaptic('tap');
-      if (relX < rect.width * 0.36) setPhotoIdx((prev) => (prev > 0 ? prev - 1 : validSlides.length - 1));
-      else if (relX > rect.width * 0.64) setPhotoIdx((prev) => (prev + 1) % validSlides.length);
-      else onOpenDetails?.(safePhotoIdx);
+      if (relX < rect.width * 0.45) setPhotoIdx((prev) => (prev > 0 ? prev - 1 : validSlides.length - 1));
+      else setPhotoIdx((prev) => (prev + 1) % validSlides.length);
     }
   };
 
@@ -353,7 +352,7 @@ export default function SwipeCard({
 
               <div className={`absolute ${validSlides.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10 pointer-events-none`}>
                 <span className="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-semibold text-white border border-white/10 truncate max-w-[60%]">
-                  {vibeSubtitle || activeCard?.category || 'Local Venue'}
+                  {activeCard?.category || vibeSubtitle || t('localVenue')}
                 </span>
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/10 tabular-nums">
                   <Star size={13} className="fill-amber-300 text-amber-300" />
@@ -362,17 +361,15 @@ export default function SwipeCard({
                 </div>
               </div>
 
-              {activeSlide && (
+              {validSlides.length > 1 && (
                 <div
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); onOpenDetails?.(safePhotoIdx); }}
+                  onClick={(e) => { e.stopPropagation(); triggerHaptic('tap'); setPhotoIdx((prev) => (prev + 1) % validSlides.length); }}
                   className="absolute bottom-16 inset-x-4 z-20 flex items-center cursor-pointer"
                 >
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 hover:bg-black/85 backdrop-blur-md text-[11px] font-semibold text-white border border-white/15 shadow-sm transition-colors">
                     <Camera size={11} className="text-emerald-400 shrink-0" />
-                    <span className="font-bold text-emerald-300 tabular-nums shrink-0">{safePhotoIdx + 1}/{validSlides.length}</span>
-                    <span className="text-white/50 shrink-0">•</span>
-                    <span className="font-bold text-white">{activeSlide.label}</span>
+                    <span className="font-bold text-emerald-300 tabular-nums shrink-0">{safePhotoIdx + 1} / {validSlides.length}</span>
                   </span>
                 </div>
               )}

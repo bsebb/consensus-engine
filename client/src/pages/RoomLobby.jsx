@@ -466,7 +466,8 @@ export default function RoomLobby() {
         </div>
       )}
 
-      <main className="px-4 pt-3 pb-32 flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full">
+      <main className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-3 pb-32">
+        <div className="max-w-md mx-auto w-full flex flex-col gap-3">
         {isVotingActive && (
           <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs animate-[fadeIn_0.2s_ease-out]">
             <div className="flex items-center gap-2">
@@ -507,6 +508,7 @@ export default function RoomLobby() {
           onShuffle={isHost ? handleShuffleCandidates : undefined}
           onReportClosed={isHost ? handleReportClosedVenue : undefined}
         />
+        </div>
       </main>
 
       <LobbyDock

@@ -376,5 +376,8 @@ export const en = {
   superlikeUsedTitle: 'Superlike Already Used (1/round)',
   superlikeUsedDesc: 'You get 1 Superlike per round for your #1 favorite. Use Like instead!',
   photoHighlight: 'Photo Highlight',
+  saveFavorite: 'Save Favorite',
+  savedSpot: 'Saved Spot',
+  runnerUpRematch: 'Runner-Up Rematch',
 };
 

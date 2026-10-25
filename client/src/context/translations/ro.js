@@ -376,5 +376,8 @@ export const ro = {
   superlikeUsedTitle: 'Superlike deja folosit (1/rundă)',
   superlikeUsedDesc: 'Ai 1 singur Superlike pe rundă pentru opțiunea preferată. Folosește Da!',
   photoHighlight: 'Detalii foto',
+  saveFavorite: 'Salvează favorit',
+  savedSpot: 'Salvat la favorite',
+  runnerUpRematch: 'Revanșă locul 2',
 };
 

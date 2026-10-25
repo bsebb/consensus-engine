@@ -202,7 +202,8 @@ export default function ConsensusWinnerView({
   };
 
   return (
-    <main className="winner-scroll px-4 py-3 pb-6 flex flex-col items-center gap-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)]">
+    <main className="winner-scroll w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 py-3 pb-8">
+      <div className="max-w-md mx-auto w-full flex flex-col items-center gap-3.5 animate-[fadeIn_0.25s_ease-out]">
       {/* Winner Hero Card */}
       <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner && !isRoutable ? (
@@ -331,37 +332,27 @@ export default function ConsensusWinnerView({
             </div>
 
             {validSlides.length > 1 && (
-              <div className="px-4 py-2.5 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex flex-col gap-1.5">
+              <div className="px-4 py-2.5 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)]">
                 <div className="grid grid-cols-4 gap-2">
                   {validSlides.slice(0, 4).map((slide, idx) => (
                     <button
                       key={slide.url || idx}
                       type="button"
                       onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx(idx); }}
-                      aria-label={`Photo ${idx + 1}: ${slide.label}`}
+                      aria-label={`Photo ${idx + 1}`}
                       className={`relative h-12 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
                         idx === safeWinnerIdx ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/25 shadow-xs' : 'border-transparent opacity-65 hover:opacity-100'
                       }`}
                     >
                       <img
                         src={slide.url}
-                        alt={`${winner?.name} - ${slide.label}`}
+                        alt={`${winner?.name} - ${idx + 1}`}
                         className="w-full h-full object-cover"
                         onError={(e) => { if (fallbackPhoto && e.currentTarget.src !== fallbackPhoto) e.currentTarget.src = fallbackPhoto; }}
                       />
                     </button>
                   ))}
                 </div>
-                {activeSlide && (
-                  <div className="flex items-center justify-between gap-2 text-left px-0.5">
-                    <span className="text-xs text-[var(--text-secondary)]">
-                      <strong className="text-[var(--text-primary)]">{activeSlide.label}:</strong> {activeSlide.detail}
-                    </span>
-                    <span className="text-[10px] font-bold text-[var(--accent-bg)] tabular-nums shrink-0">
-                      {safeWinnerIdx + 1}/{validSlides.length}
-                    </span>
-                  </div>
-                )}
               </div>
             )}
           </>
@@ -390,11 +381,7 @@ export default function ConsensusWinnerView({
                     {formatRegionalPricePill(winner?.price_level || 2, winner)}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDetailsOpen(true)}
-                  className="flex flex-col items-start justify-center px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border border-[var(--border-subtle)] transition-colors cursor-pointer active:scale-[0.98] text-left"
-                >
+                <div className="flex flex-col items-start justify-center px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-left">
                   <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)] flex items-center gap-1">
                     <Route size={10} className="text-[var(--accent-bg)]" />
                     <span>{t('roadRoute')}</span>
@@ -402,7 +389,7 @@ export default function ConsensusWinnerView({
                   <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] tabular-nums mt-0.5 leading-snug">
                     {travelSummary}
                   </span>
-                </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 w-full">
@@ -448,13 +435,13 @@ export default function ConsensusWinnerView({
             <button
               type="button"
               onClick={handleToggleFavorite}
-              aria-label={isFavorite ? 'Saved to Favorites' : 'Save to Favorites'}
+              aria-label={isFavorite ? t('savedSpot') : t('saveFavorite')}
               className={`py-2.5 px-3 rounded-2xl border flex items-center justify-center gap-1.5 text-xs font-bold transition-all active:scale-[0.98] cursor-pointer ${
                 isFavorite ? 'bg-rose-500/12 border-rose-500/35 text-rose-500' : 'bg-[var(--bg-inset)] hover:bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-primary)]'
               }`}
             >
               <Heart size={14} className={isFavorite ? 'fill-rose-500 text-rose-500 shrink-0' : 'text-rose-500 shrink-0'} />
-              <span className="truncate">{isFavorite ? 'Saved Spot' : 'Save Favorite'}</span>
+              <span className="truncate">{isFavorite ? t('savedSpot') : t('saveFavorite')}</span>
             </button>
           </div>
 
@@ -531,7 +518,7 @@ export default function ConsensusWinnerView({
             icon={Sparkles}
             className="w-full rounded-2xl active:scale-[0.98] transition-transform"
           >
-            Runner-Up Rematch
+            {t('runnerUpRematch')}
           </Button>
         )}
         <Button
@@ -553,6 +540,7 @@ export default function ConsensusWinnerView({
           onClose={() => setDetailsOpen(false)}
         />
       )}
+      </div>
     </main>
   );
 }

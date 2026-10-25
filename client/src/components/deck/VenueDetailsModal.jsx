@@ -264,16 +264,16 @@ export default function VenueDetailsModal({
         </div>
       </div>
 
-      {/* Clean Visual Thumbnail Strip + Full Readable Photo Caption */}
+      {/* Clean Visual Thumbnail Strip */}
       {validSlides.length > 1 && (
-        <div className="px-4 py-3 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] flex flex-col gap-2.5 shrink-0">
+        <div className="px-4 py-2.5 bg-[var(--bg-inset)] border-b border-[var(--border-subtle)] shrink-0">
           <div className="grid grid-cols-4 gap-2">
             {validSlides.slice(0, 4).map((slide, idx) => (
               <button
                 key={slide.url || idx}
                 type="button"
                 onClick={() => { triggerHaptic('tap'); setActivePhotoIdx(idx); }}
-                aria-label={`Photo ${idx + 1}: ${slide.label}`}
+                aria-label={`Photo ${idx + 1}`}
                 className={`relative h-13 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
                   idx === safeIdx
                     ? 'border-[var(--accent-bg)] ring-2 ring-[var(--accent-bg)]/30 shadow-xs scale-[1.02]'
@@ -282,28 +282,13 @@ export default function VenueDetailsModal({
               >
                 <img
                   src={slide.url}
-                  alt={`${venue.name} - ${slide.label}`}
+                  alt={`${venue.name} - ${idx + 1}`}
                   className="w-full h-full object-cover"
                   onError={(e) => { if (fallbackPhoto && e.currentTarget.src !== fallbackPhoto) e.currentTarget.src = fallbackPhoto; }}
                 />
               </button>
             ))}
           </div>
-          {activeSlide && (
-            <div className="px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex flex-col gap-0.5 text-left">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold text-[var(--text-primary)]">
-                  {activeSlide.label}
-                </span>
-                <span className="text-[10px] font-bold text-[var(--accent-bg)] tabular-nums shrink-0">
-                  {safeIdx + 1} / {validSlides.length}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed break-words">
-                {activeSlide.detail}
-              </p>
-            </div>
-          )}
         </div>
       )}
 

@@ -376,5 +376,8 @@ export const ru = {
   superlikeUsedTitle: 'Суперлайк уже использован (1/раунд)',
   superlikeUsedDesc: 'Доступен 1 Суперлайк за раунд для главного фаворита. Используйте Да!',
   photoHighlight: 'О фото',
+  saveFavorite: 'В избранное',
+  savedSpot: 'Сохранено',
+  runnerUpRematch: 'Реванш (топ-2)',
 };
 
