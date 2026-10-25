@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Plus, X, Gamepad2, Trophy, Film, Utensils, Compass, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { searchCustomSuggestions, CATEGORY_META } from '../../utils/customAutocompleteDatabase';
+import { inferDiscoveryDomain } from '../../utils/smartPlaceResolver';
 import { triggerHaptic } from '../../utils/haptics';
 import { apiUrl } from '../../utils/api';
 import { cacheOptionPoster } from '../../utils/customOptionService';
@@ -21,6 +22,8 @@ export default function CustomOptionAutocomplete({
   handleAddSuggestion,
   handleQuickAddSuggestion,
   topic = '',
+  category = '',
+  extraPoolOptions = [],
   existingNames = [],
   duplicateMatch = null,
   mode = 'CUSTOM',
@@ -28,6 +31,7 @@ export default function CustomOptionAutocomplete({
   placeholder,
   autoFocus = false,
   inputClassName = '',
+  onOptionAdded,
 }) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -37,10 +41,12 @@ export default function CustomOptionAutocomplete({
   const [liveSuggestions, setLiveSuggestions] = useState([]);
   const [isSearchingLive, setIsSearchingLive] = useState(false);
 
+  const activeDomain = useMemo(() => inferDiscoveryDomain(category || topic), [category, topic]);
+
   // Debounced live query to server for Steam games, movies, and custom topics
   useEffect(() => {
     const clean = suggestion.trim();
-    if (clean.length < 2) {
+    if (clean.length < 2 || (mode !== 'CUSTOM' && activeDomain !== 'activities')) {
       setLiveSuggestions([]);
       setIsSearchingLive(false);
       return;
@@ -77,11 +83,15 @@ export default function CustomOptionAutocomplete({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [suggestion, topic]);
+  }, [suggestion, topic, mode, activeDomain]);
 
   // Combined suggestions: instant local curated matches + live search results
   const suggestions = useMemo(() => {
-    const local = searchCustomSuggestions(suggestion, topic, existingNames);
+    const local = searchCustomSuggestions(suggestion, topic, existingNames, {
+      mode,
+      category,
+      extraPoolOptions,
+    });
     const existingSet = new Set(existingNames.map((n) => n.toLowerCase().trim()));
     const localNames = new Set(local.map((l) => l.name.toLowerCase().trim()));
 
@@ -90,7 +100,7 @@ export default function CustomOptionAutocomplete({
     );
 
     return [...local, ...filteredLive].slice(0, 8);
-  }, [suggestion, topic, existingNames, liveSuggestions]);
+  }, [suggestion, topic, category, mode, extraPoolOptions, existingNames, liveSuggestions]);
 
   // Handle clicking outside to dismiss the popover
   useEffect(() => {
@@ -115,6 +125,7 @@ export default function CustomOptionAutocomplete({
     if (handleQuickAddSuggestion) {
       handleQuickAddSuggestion(item.name);
     }
+    onOptionAdded?.(item.name);
     setSuggestion('');
     setIsOpen(false);
     setActiveIndex(-1);
@@ -129,7 +140,9 @@ export default function CustomOptionAutocomplete({
       handleSelectOption(suggestions[activeIndex]);
       return;
     }
+    const addedText = suggestion.trim();
     handleAddSuggestion(e);
+    if (addedText) onOptionAdded?.(addedText);
     setIsOpen(false);
     setActiveIndex(-1);
     setTimeout(() => {
@@ -163,10 +176,18 @@ export default function CustomOptionAutocomplete({
   const cleanQuery = suggestion.trim();
   const hasExactMatch = suggestions.some((s) => s.name.toLowerCase() === cleanQuery.toLowerCase());
 
+  const discoveryPlaceholderByDomain = {
+    cafes: t('discoverySearchCafes') || 'Add a specific cafe (e.g. Tucano, Starbucks)...',
+    bars: t('discoverySearchBars') || 'Add a bar or pub (e.g. Smokehouse, Draft)...',
+    desserts: t('discoverySearchDesserts') || 'Add a dessert spot (e.g. Gioelia, Dulcinella)...',
+    activities: t('discoverySearchActivities') || 'Add an activity (e.g. Bowling, Cinema, VR)...',
+    restaurants: t('discoverySearchRestaurants') || "Add a specific spot (e.g. McDonald's, KFC, Andy's)...",
+  };
+
   const effectivePlaceholder = placeholder || (
     mode === 'CUSTOM'
-      ? (t('customSearchPlaceholder') || 'Type or search idea (e.g. McDonald\'s, KFC, Catan)...')
-      : (t('customAddOptionPlaceholder') || 'Add custom option...')
+      ? (t('customSearchPlaceholder') || "Type or search idea (e.g. McDonald's, KFC, Catan)...")
+      : (discoveryPlaceholderByDomain[activeDomain] || discoveryPlaceholderByDomain.restaurants)
   );
 
   return (

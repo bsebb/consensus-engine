@@ -364,4 +364,11 @@ export const fr = {
   'setup.startHint': 'Invitez vos amis a voter',
   'setup.startHintCustom': 'Invitez vos amis a voter sur vos options',
   'setup.stillLooking': 'Recherche toujours en cours...',
+  discoverySearchRestaurants: "Ajouter un lieu precis (ex. McDonald's, KFC, Andy's)...",
+  discoverySearchCafes: 'Ajouter un cafe (ex. Tucano, Starbucks)...',
+  discoverySearchBars: 'Ajouter un bar ou pub (ex. Smokehouse, Draft)...',
+  discoverySearchDesserts: 'Ajouter un dessert (ex. Gioelia, Dulcinella)...',
+  discoverySearchActivities: 'Ajouter une activite (ex. Bowling, Cinema, VR)...',
+  addedBadge: 'Ajoute',
+  soloOrInviteHint: 'Partagez le code avec vos amis ou commencez maintenant',
 };

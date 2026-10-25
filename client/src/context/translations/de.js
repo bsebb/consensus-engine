@@ -364,4 +364,11 @@ export const de = {
   'setup.startHint': 'Freunde zum Abstimmen einladen',
   'setup.startHintCustom': 'Freunde uber deine Optionen abstimmen lassen',
   'setup.stillLooking': 'Suche lauft noch...',
+  discoverySearchRestaurants: "Bestimmten Ort hinzufugen (z.B. McDonald's, KFC, Andy's)...",
+  discoverySearchCafes: 'Bestimmtes Cafe hinzufugen (z.B. Tucano, Starbucks)...',
+  discoverySearchBars: 'Bar oder Pub hinzufugen (z.B. Smokehouse, Draft)...',
+  discoverySearchDesserts: 'Dessert-Spot hinzufugen (z.B. Gioelia, Dulcinella)...',
+  discoverySearchActivities: 'Aktivitat hinzufugen (z.B. Bowling, Kino, VR)...',
+  addedBadge: 'Neu',
+  soloOrInviteHint: 'Teile den Code mit Freunden oder starte direkt allein',
 };

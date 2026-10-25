@@ -364,5 +364,12 @@ export const ru = {
   'setup.startHint': 'Пригласите друзей голосовать',
   'setup.startHintCustom': 'Пригласите друзей проголосовать за ваши варианты',
   'setup.stillLooking': 'Поиск вариантов продолжается...',
+  discoverySearchRestaurants: "Добавить конкретное место (напр. McDonald's, KFC, Andy's)...",
+  discoverySearchCafes: 'Добавить кофейню (напр. Tucano, Starbucks)...',
+  discoverySearchBars: 'Добавить бар или паб (напр. Smokehouse, Draft)...',
+  discoverySearchDesserts: 'Добавить кондитерскую (напр. Gioelia, Dulcinella)...',
+  discoverySearchActivities: 'Добавить развлечение (напр. Боулинг, Кино, VR)...',
+  addedBadge: 'Добавлено',
+  soloOrInviteHint: 'Отправьте код друзьям или начните голосование сейчас',
 };
 

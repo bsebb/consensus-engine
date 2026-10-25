@@ -9,6 +9,7 @@ function getLocalizedTopic(rawTopic, t) {
   if (lower.includes('cafe') || lower.includes('coffee') || lower.includes('cafes') || lower.includes('кофе') || lower.includes('кафе')) return t('catCafesTopic');
   if (lower.includes('restaurant') || lower.includes('dining') || lower.includes('mâncăm') || lower.includes('поедим') || lower.includes('ресторан')) return t('catRestaurantsTopic');
   if (lower.includes('bar') || lower.includes('pub') || lower.includes('drink') || lower.includes('pahar') || lower.includes('băutură') || lower.includes('выпить') || lower.includes('бар')) return t('catBarsTopic');
+  if (lower.includes('fun') || lower.includes('distraction') || lower.includes('activit') || lower.includes('distracție') || lower.includes('развлеч')) return t('catFunTopic') || rawTopic;
   if (lower.includes('cinema') || lower.includes('movie') || lower.includes('film') || lower.includes('кино')) return t('catCinemaTopic');
   if (lower.includes('dessert') || lower.includes('gelato') || lower.includes('sweet') || lower.includes('dulciuri') || lower.includes('dulce') || lower.includes('desert') || lower.includes('сладк') || lower.includes('десерт')) return t('catDessertsTopic');
   if (lower === 'custom' || lower === 'poll' || lower === 'places nearby' || lower.includes('what should we do') || lower.includes('ce facem') || lower.includes('что будем делать')) return t('catCustomTopic');
@@ -16,9 +17,11 @@ function getLocalizedTopic(rawTopic, t) {
 }
 
 export default function LobbyRoster({
+  pin,
   topic,
   participants = [],
   handleShareInvite,
+  handleCopyPin,
   setQrModalOpen,
 }) {
   const { t } = useLanguage();
@@ -105,6 +108,23 @@ export default function LobbyRoster({
           <span className="tabular-nums">{participants.length} {t('inRoomPrefix')}</span>
         </div>
       </div>
+
+      {participants.length === 1 && (
+        <div className="text-[11px] text-[var(--text-tertiary)] flex items-center justify-between gap-2 pt-1.5 border-t border-[var(--border-subtle)]/60">
+          <span className="truncate">
+            {t('soloOrInviteHint') || `Share code #${pin || ''} to vote with friends, or start solo anytime`}
+          </span>
+          {handleCopyPin && pin && (
+            <button
+              type="button"
+              onClick={handleCopyPin}
+              className="text-[11px] font-bold text-[var(--accent-bg)] hover:underline shrink-0 cursor-pointer"
+            >
+              #{pin}
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

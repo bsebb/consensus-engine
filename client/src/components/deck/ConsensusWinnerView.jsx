@@ -118,10 +118,13 @@ export default function ConsensusWinnerView({
 
   const handleShareWinner = async () => {
     triggerHaptic('tap');
+    const addrLine = winner?.address && winner.address !== 'Added by group' ? `\nAddress: ${winner.address}` : '';
+    const shareText = `Group Consensus Pick: ${winner?.name} (${matchScore || 96}% match on NoYouPick!)${addrLine}`;
+    const shareUrl = window.location.origin;
     const shareData = {
       title: `Consensus Pick: ${winner?.name}`,
-      text: `Our group chose ${winner?.name}!`,
-      url: window.location.href,
+      text: shareText,
+      url: shareUrl,
     };
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
@@ -130,10 +133,10 @@ export default function ConsensusWinnerView({
       } catch {}
     }
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
       addToast({
         title: t('copied') || 'Copied',
-        message: t('linkCopied') || 'Link copied to clipboard',
+        message: t('linkCopied') || 'Result & link copied to clipboard',
         type: 'success',
       });
     } catch {}

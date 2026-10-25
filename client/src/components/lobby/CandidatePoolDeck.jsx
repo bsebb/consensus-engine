@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   LayoutGrid,
   PlusCircle,
@@ -9,6 +9,7 @@ import {
   Star,
   Shuffle,
   X,
+  Sparkles,
 } from 'lucide-react';
 import VenueDetailsModal from '../deck/VenueDetailsModal';
 import CustomOptionAutocomplete from './CustomOptionAutocomplete';
@@ -136,6 +137,12 @@ function CandidatePoolCard({ item, idx, onSelectDetails, onRemoveVenue, isShuffl
 
         {/* Rating and Price Pills */}
         <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+          {item.isGroupAdded && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/90 backdrop-blur-md text-[10px] font-bold text-white border border-white/15 shadow-2xs">
+              <Sparkles size={9} />
+              <span>{t('addedBadge') || 'Added'}</span>
+            </span>
+          )}
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-bold text-amber-300 border border-white/10 shadow-2xs tabular-nums">
             <Star size={10} className="fill-amber-300 text-amber-300" />
             <span>{venueRating.rating}</span>
@@ -194,6 +201,8 @@ export default function CandidatePoolDeck({
   isHost = false,
   mode,
   topic = '',
+  category = '',
+  extraPoolOptions = [],
   candidates = [],
   remainingPoolCount = 0,
   isLoading = false,
@@ -213,6 +222,7 @@ export default function CandidatePoolDeck({
   const { t } = useLanguage();
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [isShuffling, setIsShuffling] = useState(false);
+  const railRef = useRef(null);
 
   const handleShuffleClick = () => {
     triggerHaptic('selection');
@@ -221,6 +231,14 @@ export default function CandidatePoolDeck({
     setTimeout(() => {
       setIsShuffling(false);
     }, 500);
+  };
+
+  const handleOptionAddedToRail = () => {
+    if (mode !== 'CUSTOM' && railRef.current) {
+      setTimeout(() => {
+        railRef.current?.scrollTo?.({ left: 0, behavior: 'smooth' });
+      }, 60);
+    }
   };
 
   return (
@@ -304,8 +322,8 @@ export default function CandidatePoolDeck({
         </div>
       )}
 
-      {/* Custom Mode: Clean, Unobtrusive Input Bar (Host Only) */}
-      {mode === 'CUSTOM' && isHost && handleAddSuggestion && (
+      {/* Search & Add Spot / Option Bar (Available in both Custom and Discovery Lobbies) */}
+      {handleAddSuggestion && (
         <div className="pt-0.5 pb-1">
           <CustomOptionAutocomplete
             suggestion={suggestion}
@@ -313,16 +331,20 @@ export default function CandidatePoolDeck({
             handleAddSuggestion={handleAddSuggestion}
             handleQuickAddSuggestion={handleQuickAddSuggestion}
             topic={topic}
+            category={category}
+            extraPoolOptions={extraPoolOptions}
             existingNames={candidates.map((c) => c.name)}
             duplicateMatch={duplicateMatch}
             mode={mode}
-            disabled={candidates.length >= 12}
+            disabled={mode === 'CUSTOM' ? candidates.length >= 16 : false}
+            onOptionAdded={handleOptionAddedToRail}
           />
         </div>
       )}
 
       {/* Candidates Grid */}
       <div
+        ref={railRef}
         className={mode === 'CUSTOM' || (!isLoading && candidates.length === 0) ? 'grid grid-cols-2 gap-3' : 'places-rail'}
         aria-label={mode === 'CUSTOM' ? t('optionsOnTable') : t('placesOnTable')}
         tabIndex={mode !== 'CUSTOM' ? 0 : undefined}

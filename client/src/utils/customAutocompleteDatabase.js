@@ -122,20 +122,57 @@ export const AUTOCOMPLETE_DATABASE = [
   { name: 'Camping & Campfire Night', category: 'activities', subtitle: 'Tents, Roasted Marshmallows & Stargazing', keywords: ['camping', 'campfire', 'outdoors'] },
 ];
 
-import { searchSmartPlaceSuggestions } from './smartPlaceResolver.js';
+import { searchSmartPlaceSuggestions, inferDiscoveryDomain } from './smartPlaceResolver.js';
 
 /**
- * Fast search and ranking algorithm for custom poll autocomplete.
+ * Fast search and ranking algorithm for custom & discovery poll autocomplete.
  */
-export function searchCustomSuggestions(query = '', topic = '', existingNames = []) {
+export function searchCustomSuggestions(query = '', topic = '', existingNames = [], options = {}) {
+  const { mode = 'CUSTOM', category = '', extraPoolOptions = [] } = options || {};
   const q = String(query || '').toLowerCase().trim();
   const existingSet = new Set(existingNames.map((n) => String(n || '').toLowerCase().trim()));
+  const categoryContext = category || topic;
+  const activeDomain = inferDiscoveryDomain(categoryContext);
+  const isDiscovery = mode !== 'CUSTOM';
 
   // 1. Check typo-tolerant smart place/chain suggestions (e.g. "macdonals" -> McDonald's)
-  const smartPlaces = searchSmartPlaceSuggestions(query, existingNames);
+  const smartPlaces = searchSmartPlaceSuggestions(query, existingNames, categoryContext);
 
-  // If query is empty, return popular curated picks prioritized by room topic
+  // 2. Match remaining pool venues from the room's discovery pool (if any)
+  const poolMatches = [];
+  if (Array.isArray(extraPoolOptions) && extraPoolOptions.length > 0) {
+    for (const opt of extraPoolOptions) {
+      if (!opt?.name) continue;
+      const optLower = opt.name.toLowerCase().trim();
+      if (existingSet.has(optLower)) continue;
+      if (smartPlaces.some((sp) => sp.name.toLowerCase().trim() === optLower)) continue;
+
+      if (!q || optLower.includes(q) || String(opt.category || '').toLowerCase().includes(q)) {
+        poolMatches.push({
+          name: opt.name,
+          category: activeDomain === 'activities' ? 'activities' : 'food',
+          subtitle: `${opt.category || 'Nearby Spot'}${opt.address && opt.address !== 'Local Venue' ? ` • ${opt.address}` : ''}`,
+          score: !q ? 82 : optLower.startsWith(q) ? 92 : 78,
+        });
+      }
+    }
+  }
+
+  // If query is empty, return popular curated picks prioritized by room category/topic
   if (!q) {
+    if (isDiscovery || activeDomain) {
+      const combined = [...smartPlaces, ...poolMatches];
+      const seen = new Set(combined.map((i) => i.name.toLowerCase()));
+      const fallbackCat = activeDomain === 'activities' ? 'activities' : 'food';
+      for (const item of AUTOCOMPLETE_DATABASE) {
+        if (item.category === fallbackCat && !existingSet.has(item.name.toLowerCase()) && !seen.has(item.name.toLowerCase())) {
+          combined.push(item);
+          seen.add(item.name.toLowerCase());
+        }
+      }
+      return combined.slice(0, 8);
+    }
+
     let preferredCategory = null;
     const t = String(topic || '').toLowerCase();
     if (/\b(gam(e|es|ing|ers?)|play(ing|in|s|ed)?|steam)\b/i.test(t)) preferredCategory = 'gaming';
@@ -160,6 +197,8 @@ export function searchCustomSuggestions(query = '', topic = '', existingNames = 
   const scored = [];
   for (const item of AUTOCOMPLETE_DATABASE) {
     if (existingSet.has(item.name.toLowerCase())) continue;
+    // In DISCOVERY mode, exclude unrelated video games unless user is in an activities/custom room
+    if (isDiscovery && item.category === 'gaming' && activeDomain !== 'activities') continue;
 
     const nameLower = item.name.toLowerCase();
     let score = 0;
@@ -191,6 +230,12 @@ export function searchCustomSuggestions(query = '', topic = '', existingNames = 
   for (const sp of smartPlaces) {
     if (!scored.some((s) => s.item.name.toLowerCase() === sp.name.toLowerCase())) {
       scored.push({ item: sp, score: sp.score || 95 });
+    }
+  }
+
+  for (const pm of poolMatches) {
+    if (!scored.some((s) => s.item.name.toLowerCase() === pm.name.toLowerCase())) {
+      scored.push({ item: pm, score: pm.score || 85 });
     }
   }
 

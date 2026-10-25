@@ -263,22 +263,35 @@ test('only host can add or remove custom suggestions and discovery places in lob
 
   const hostSocket = createMockSocket();
   const guestSocket = createMockSocket();
+  const outsiderSocket = createMockSocket();
   registerLobbySocketHandlers(mockIo, hostSocket, mockStore);
   registerLobbySocketHandlers(mockIo, guestSocket, mockStore);
+  registerLobbySocketHandlers(mockIo, outsiderSocket, mockStore);
 
   await hostSocket.trigger('join_lobby', { pin, participant_id: hostId, host_token: hostToken, user_name: 'Host' });
   await guestSocket.trigger('join_lobby', { pin, participant_id: guestId, user_name: 'Guest' });
 
-  // Non-host attempts to add suggestion or remove discovery place -> blocked
-  await guestSocket.trigger('add_suggestion', { pin, suggestion: 'Sneaky Option', participant_id: guestId });
+  // Unjoined outsider attempts to add suggestion -> blocked
+  await outsiderSocket.trigger('add_suggestion', { pin, suggestion: 'Sneaky Option', participant_id: 'outsider-99' });
+  // Non-host guest attempts to remove discovery place -> blocked
   await guestSocket.trigger('remove_discovery_place', { pin, option_id: 'opt-1', participant_id: guestId });
 
   const lobby = activeLobbies.get(pin);
-  assert.equal(lobby.suggestions.length, 0, 'Non-host must not be able to add suggestions');
+  assert.equal(lobby.suggestions.length, 0, 'Unjoined outsider must not be able to add suggestions');
   assert.equal(Boolean(lobby.removedOptionIds?.has('opt-1')), false, 'Non-host must not be able to remove places');
-  assert.equal(guestSocket.directEmissions.filter((e) => e.event === 'room_error').length, 2);
+  assert.equal(outsiderSocket.directEmissions.filter((e) => e.event === 'room_error').length, 1);
+  assert.equal(guestSocket.directEmissions.filter((e) => e.event === 'room_error').length, 1);
 
-  // Host adds suggestion, removes suggestion, adds discovery place, and removes discovery place -> allowed
+  // Joined guest and host can add suggestions; only host can remove suggestions or discovery places
+  await guestSocket.trigger('add_suggestion', { pin, suggestion: 'Guest Option', participant_id: guestId, user_name: 'Guest' });
+  assert.deepEqual(lobby.suggestions, ['Guest Option']);
+
+  await guestSocket.trigger('remove_suggestion', { pin, suggestion: 'Guest Option', participant_id: guestId });
+  assert.deepEqual(lobby.suggestions, ['Guest Option'], 'Non-host cannot remove suggestions');
+
+  await hostSocket.trigger('remove_suggestion', { pin, suggestion: 'Guest Option', participant_id: hostId, host_token: hostToken });
+  assert.deepEqual(lobby.suggestions, []);
+
   await hostSocket.trigger('add_suggestion', { pin, suggestion: 'Host Option', participant_id: hostId, host_token: hostToken });
   assert.deepEqual(lobby.suggestions, ['Host Option']);
 

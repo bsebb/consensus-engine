@@ -234,11 +234,12 @@ function registerLobbySocketHandlers(io, socket, store) {
 
   socket.on('add_suggestion', (data) => {
     try {
-      const { pin, suggestion, user_name } = data || {};
+      const { pin, suggestion, user_name, participant_id } = data || {};
       if (!pin || !suggestion) return;
       const lobby = activeLobbies.get(pin);
-      if (!isCallerHost(lobby, pin, data)) {
-        socket.emit('room_error', { message: 'Only the room host can add options.' });
+      const isJoinedParticipant = Boolean(lobby && participant_id && lobby.has(participant_id));
+      if (!isCallerHost(lobby, pin, data) && !isJoinedParticipant) {
+        socket.emit('room_error', { message: 'Join the room first to add options.' });
         return;
       }
       const clean = String(suggestion).trim().slice(0, 120);
@@ -253,7 +254,7 @@ function registerLobbySocketHandlers(io, socket, store) {
             pin,
             suggestions: lobby.suggestions,
             added: clean,
-            user_name: user_name || 'Host',
+            user_name: user_name || 'Friend',
           });
         }
       }

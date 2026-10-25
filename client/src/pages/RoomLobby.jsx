@@ -319,27 +319,51 @@ export default function RoomLobby() {
     };
   }, [userGps, realOptions, mode]);
 
-  // Duplicate check across both custom and discovery options
+  const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
+  const filteredCandidates = useMemo(() => {
+    if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
+    return candidatePoolPreview.filter((item) => item.isGroupAdded || (item.price_level || 2) <= maxBudgetLevel);
+  }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
+
+  const activePool = useMemo(() => {
+    if (mode === 'CUSTOM') return filteredCandidates;
+    return filteredCandidates.filter((item) => !removedPlaceIds.has(String(item.id)) && !removedPlaceIds.has(item.id));
+  }, [mode, filteredCandidates, removedPlaceIds]);
+
+  const displayedCandidates = useMemo(() => {
+    if (mode === 'CUSTOM') return activePool;
+    return activePool.slice(0, visiblePlacesCount);
+  }, [mode, activePool, visiblePlacesCount]);
+
+  const remainingPoolCount = useMemo(() => {
+    if (mode === 'CUSTOM') return 0;
+    return Math.max(0, activePool.length - displayedCandidates.length);
+  }, [mode, activePool.length, displayedCandidates.length]);
+
+  const prunedCount = lockedConstraint && mode !== 'CUSTOM'
+    ? candidatePoolPreview.length - filteredCandidates.length
+    : 0;
+
+  // Duplicate check across currently visible options on the table
   const duplicateMatch = useMemo(() => {
     const clean = suggestion.trim().toLowerCase();
     if (clean.length < 3) return null;
-    const match = candidatePoolPreview.find(
+    const match = displayedCandidates.find(
       (item) => levenshteinDistance(item.name.toLowerCase(), clean) <= 2
     );
     return match ? match.name : null;
-  }, [suggestion, candidatePoolPreview]);
+  }, [suggestion, displayedCandidates]);
 
   const getHostToken = () => (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(`consensus_host_token_${pin}`) || undefined : undefined);
 
   const handleAddSuggestion = (e) => {
-    e.preventDefault();
-    if (!isHost) return;
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const clean = suggestion.trim();
     if (!clean) return;
 
     if (duplicateMatch) {
       addToast({
-        title: 'Already Listed',
+        title: 'Already on Table',
         message: `"${duplicateMatch}" is already on the table.`,
         type: 'warning',
       });
@@ -355,11 +379,18 @@ export default function RoomLobby() {
     });
 
     setGroupPool((prev) => (prev.some((s) => s.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean]));
+    if (mode !== 'CUSTOM') {
+      setVisiblePlacesCount((prev) => prev + 1);
+      addToast({
+        title: t('addedBadge') || 'Added to Table',
+        message: `"${clean}" added to the front of the table.`,
+        type: 'success',
+      });
+    }
     setSuggestion('');
   };
 
   const handleQuickAddSuggestion = (ideaText) => {
-    if (!isHost) return;
     const clean = String(ideaText || '').trim();
     if (!clean || groupPool.some((s) => s.toLowerCase() === clean.toLowerCase())) return;
     emit('add_suggestion', {
@@ -370,6 +401,14 @@ export default function RoomLobby() {
       user_name: currentUserName,
     });
     setGroupPool((prev) => [...prev, clean]);
+    if (mode !== 'CUSTOM') {
+      setVisiblePlacesCount((prev) => prev + 1);
+      addToast({
+        title: t('addedBadge') || 'Added to Table',
+        message: `"${clean}" added to the front of the table.`,
+        type: 'success',
+      });
+    }
   };
 
   const handleRemoveSuggestion = (idx) => {
@@ -409,31 +448,6 @@ export default function RoomLobby() {
     addToast({ title: t('closedReportedTitle'), message: t('closedReportedDesc'), type: 'info' });
   };
 
-  const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
-  const filteredCandidates = useMemo(() => {
-    if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
-    return candidatePoolPreview.filter((item) => (item.price_level || 2) <= maxBudgetLevel);
-  }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
-
-  const activePool = useMemo(() => {
-    if (mode === 'CUSTOM') return filteredCandidates;
-    return filteredCandidates.filter((item) => !removedPlaceIds.has(String(item.id)) && !removedPlaceIds.has(item.id));
-  }, [mode, filteredCandidates, removedPlaceIds]);
-
-  const displayedCandidates = useMemo(() => {
-    if (mode === 'CUSTOM') return activePool;
-    return activePool.slice(0, visiblePlacesCount);
-  }, [mode, activePool, visiblePlacesCount]);
-
-  const remainingPoolCount = useMemo(() => {
-    if (mode === 'CUSTOM') return 0;
-    return Math.max(0, activePool.length - displayedCandidates.length);
-  }, [mode, activePool.length, displayedCandidates.length]);
-
-  const prunedCount = lockedConstraint && mode !== 'CUSTOM'
-    ? candidatePoolPreview.length - filteredCandidates.length
-    : 0;
-
   const handleAddNextPlace = (count = 1) => {
     if (!isHost || mode === 'CUSTOM' || remainingPoolCount <= 0) return;
     triggerHaptic('selection');
@@ -468,6 +482,11 @@ export default function RoomLobby() {
   const handleRemovePlace = (item) => {
     if (!isHost || !item?.id) return;
     triggerHaptic('tap');
+    if (item.isGroupAdded && typeof item.customIndex === 'number') {
+      handleRemoveSuggestion(item.customIndex);
+      addToast({ title: 'Place Removed', message: `"${item.name}" removed from table`, type: 'info' });
+      return;
+    }
     const strId = String(item.id);
     setRemovedPlaceIds((prev) => new Set([...prev, strId]));
     emit('remove_discovery_place', { pin, option_id: strId, participant_id: participantId, host_token: getHostToken() });
@@ -560,9 +579,11 @@ export default function RoomLobby() {
 
         {/* Compact Room Header & Roster */}
         <LobbyRoster
+          pin={pin}
           topic={topic}
           participants={participants}
           handleShareInvite={handleShareInvite}
+          handleCopyPin={handleCopyPin}
           setQrModalOpen={setQrModalOpen}
         />
 
@@ -581,6 +602,8 @@ export default function RoomLobby() {
           isHost={isHost}
           mode={mode}
           topic={topic}
+          category={location.state?.category || topic}
+          extraPoolOptions={mode !== 'CUSTOM' ? activePool.slice(visiblePlacesCount) : []}
           isLoading={loadingOptions}
           candidates={displayedCandidates}
           remainingPoolCount={remainingPoolCount}
@@ -588,8 +611,8 @@ export default function RoomLobby() {
           prunedCount={prunedCount}
           suggestion={suggestion}
           setSuggestion={setSuggestion}
-          handleAddSuggestion={isHost ? handleAddSuggestion : undefined}
-          handleQuickAddSuggestion={isHost ? handleQuickAddSuggestion : undefined}
+          handleAddSuggestion={handleAddSuggestion}
+          handleQuickAddSuggestion={handleQuickAddSuggestion}
           handleRemoveSuggestion={isHost ? handleRemoveSuggestion : undefined}
           handleAddNextPlace={isHost ? handleAddNextPlace : undefined}
           handleRemovePlace={isHost ? handleRemovePlace : undefined}

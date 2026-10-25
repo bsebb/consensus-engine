@@ -119,7 +119,7 @@ export function useLobbySync({
 
       if (data?.mode) setMode(data.mode);
       if (data?.topic && data.topic !== 'custom' && data.topic !== 'poll') {
-        const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts'].includes(String(data.topic).toLowerCase().trim());
+        const isBare = ['bars & pubs', 'bars', 'cafes', 'restaurants', 'cinema', 'desserts', 'fun & distractions', 'activities'].includes(String(data.topic).toLowerCase().trim());
         setTopic((prev) => ((isBare && prev && prev !== 'Where should we go?') ? prev : data.topic));
       }
       if (data?.group_size) setGroupSize(data.group_size);

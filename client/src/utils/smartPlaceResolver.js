@@ -9,6 +9,8 @@
 
 import { calculateDistanceKm, getSavedExactGps } from './location.js';
 
+import { SMART_PLACE_DIRECTORY } from './smartPlaceDirectory.js';
+export { SMART_PLACE_DIRECTORY };
 const DEFAULT_CENTER = { lat: 47.0245, lng: 28.8322, label: 'Chișinău' };
 
 /**
@@ -65,422 +67,49 @@ export function levenshteinDistance(a, b) {
 }
 
 /**
- * Multi-branch directory of popular chains, restaurants, cafes, and entertainment spots.
- * When a user is within 30km of a branch, we route to the exact nearest branch!
- * If the user is in another city/country, we route to the nearest location via GPS-anchored Maps search.
+ * Maps a SMART_PLACE_DIRECTORY entry to one or more discovery categories:
+ * 'restaurants', 'cafes', 'bars', 'desserts', 'activities'
  */
-export const SMART_PLACE_DIRECTORY = [
-  {
-    canonicalName: "McDonald's",
-    category: 'Fast Food & Burgers',
-    priceLevel: 1,
-    vibe: 'Burgers, Fries & Drive-Thru',
-    aliases: [
-      'mcdonalds', 'mc donalds', 'mcdonald', 'mc donald', 'macdonals', 'macdonalds',
-      'mcdonlds', 'mcdonals', 'makdonalds', 'makdonald', 'mcd', 'mc', 'maccas',
-      'mcdo', 'big mac', 'mc nuggets', 'mcnuggets', 'mcflurry', 'mcdonalds drive',
-    ],
-    branches: [
-      { name: "McDonald's Centru", address: 'Bd. Ștefan cel Mare 134, Chișinău', lat: 47.0243, lng: 28.8325 },
-      { name: "McDonald's MallDova", address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-      { name: "McDonald's Botanica", address: 'Bd. Dacia 21/1, Chișinău', lat: 46.9896, lng: 28.8576 },
-      { name: "McDonald's Rîșcani", address: 'Bd. Moscova 2/1, Chișinău', lat: 47.0405, lng: 28.8602 },
-      { name: "McDonald's Ciocana", address: 'Bd. Mircea cel Bătrân 24/6, Chișinău', lat: 47.0468, lng: 28.8842 },
-      { name: "McDonald's ZityMall", address: 'Str. Calea Ieșilor 8, Chișinău', lat: 47.0389, lng: 28.8185 },
-      { name: "McDonald's Telecentru", address: 'Șos. Hîncești 53, Chișinău', lat: 47.0028, lng: 28.8218 },
-    ],
-  },
-  {
-    canonicalName: 'KFC',
-    category: 'Crispy Chicken & Fast Food',
-    priceLevel: 1,
-    vibe: 'Crispy Chicken Buckets & Wings',
-    aliases: [
-      'kfc', 'k f c', 'kfcc', 'kentucky', 'kentucky fried chicken', 'kentuki',
-      'kfc drive', 'crispy strips', 'zinger', 'kfc bucket',
-    ],
-    branches: [
-      { name: 'KFC Centru', address: 'Bd. Ștefan cel Mare 64, Chișinău', lat: 47.0185, lng: 28.8415 },
-      { name: 'KFC MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-      { name: 'KFC Rîșcani', address: 'Bd. Moscova 1/3, Chișinău', lat: 47.0398, lng: 28.8598 },
-      { name: 'KFC Botanica', address: 'Bd. Dacia 30/2, Chișinău', lat: 46.9862, lng: 28.8615 },
-      { name: 'KFC Ciocana', address: 'Bd. Mircea cel Bătrân 25, Chișinău', lat: 47.0472, lng: 28.8848 },
-    ],
-  },
-  {
-    canonicalName: "Andy's Pizza",
-    category: 'Pizza & Family Dining',
-    priceLevel: 2,
-    vibe: 'Pizza, Pasta & Casual Dining',
-    aliases: [
-      'andys', 'andys pizza', 'andy pizza', 'andys piza', 'andy piza', 'andis',
-      'andis pizza', 'andyspiza', 'andyspizza', 'andy',
-    ],
-    branches: [
-      { name: "Andy's Pizza Centru", address: 'Bd. Ștefan cel Mare 64, Chișinău', lat: 47.0190, lng: 28.8410 },
-      { name: "Andy's Pizza Pușkin", address: 'Str. Pușkin 32, Chișinău', lat: 47.0245, lng: 28.8350 },
-      { name: "Andy's Pizza Botanica", address: 'Bd. Dacia 28, Chișinău', lat: 46.9885, lng: 28.8590 },
-      { name: "Andy's Pizza Rîșcani", address: 'Bd. Moscova 9, Chișinău', lat: 47.0432, lng: 28.8620 },
-      { name: "Andy's Pizza Ciocana", address: 'Bd. Mircea cel Bătrân 11, Chișinău', lat: 47.0435, lng: 28.8815 },
-      { name: "Andy's Pizza Buiucani", address: 'Str. Alba Iulia 75, Chișinău', lat: 47.0375, lng: 28.7885 },
-    ],
-  },
-  {
-    canonicalName: 'La Plăcinte',
-    category: 'Traditional Moldovan Dining',
-    priceLevel: 2,
-    vibe: 'Warm Moldovan Pies, Sarmale & Wine',
-    aliases: [
-      'la placinte', 'laplacinte', 'placinte', 'placinta', 'la placinta', 'la placinti',
-      'placintele', 'moldovan pies', 'zeama',
-    ],
-    branches: [
-      { name: 'La Plăcinte Pușkin', address: 'Str. Pușkin 33, Chișinău', lat: 47.0250, lng: 28.8355 },
-      { name: 'La Plăcinte Ștefan cel Mare', address: 'Bd. Ștefan cel Mare 182, Chișinău', lat: 47.0298, lng: 28.8260 },
-      { name: 'La Plăcinte Botanica', address: 'Bd. Dacia 27, Chișinău', lat: 46.9888, lng: 28.8585 },
-      { name: 'La Plăcinte Rîșcani', address: 'Bd. Moscova 9/1, Chișinău', lat: 47.0435, lng: 28.8622 },
-      { name: 'La Plăcinte Ciocana', address: 'Bd. Mircea cel Bătrân 12, Chișinău', lat: 47.0452, lng: 28.8825 },
-    ],
-  },
-  {
-    canonicalName: 'Star Kebab',
-    category: 'Kebab & Street Food',
-    priceLevel: 1,
-    vibe: 'Charcoal Wraps, Crispy Fries & Sauces',
-    aliases: [
-      'star kebab', 'starkebab', 'star kebap', 'starkebap', 'kebab star',
-    ],
-    branches: [
-      { name: 'Star Kebab Centru', address: 'Str. Ismail 84, Chișinău', lat: 47.0215, lng: 28.8445 },
-      { name: 'Star Kebab Botanica', address: 'Bd. Dacia 20, Chișinău', lat: 46.9905, lng: 28.8570 },
-      { name: 'Star Kebab Rîșcani', address: 'Str. Kiev 11, Chișinău', lat: 47.0420, lng: 28.8605 },
-      { name: 'Star Kebab Buiucani', address: 'Str. Calea Ieșilor 10, Chișinău', lat: 47.0392, lng: 28.8195 },
-    ],
-  },
-  {
-    canonicalName: 'Mister Kebab',
-    category: 'Kebab & Shawarma',
-    priceLevel: 1,
-    vibe: 'Loaded Shawarma Wraps & Late-Night Bites',
-    aliases: ['mister kebab', 'misterkebab', 'mr kebab', 'mrkebab'],
-    branches: [
-      { name: 'Mister Kebab Centru', address: 'Bd. Ștefan cel Mare 128, Chișinău', lat: 47.0235, lng: 28.8332 },
-      { name: 'Mister Kebab Rîșcani', address: 'Bd. Moscova 5, Chișinău', lat: 47.0415, lng: 28.8608 },
-    ],
-  },
-  {
-    canonicalName: 'Burger King',
-    category: 'Flame-Grilled Burgers',
-    priceLevel: 1,
-    vibe: 'Flame-Grilled Whoppers & Crispy Fries',
-    aliases: ['burger king', 'burgerking', 'burgr king', 'burger kng', 'whopper', 'bk'],
-    branches: [
-      { name: 'Burger King / Craft Burger Spot', address: 'Str. Arborilor 21, Chișinău', lat: 46.9972, lng: 28.8510 },
-    ],
-  },
-  {
-    canonicalName: 'Torro Burgers',
-    category: 'Craft Burger Grill',
-    priceLevel: 2,
-    vibe: 'Juicy Smash Burgers, Brioche & Craft Sauces',
-    aliases: ['torro', 'torro burgers', 'toro burgers', 'toro burger', 'torro burger'],
-    branches: [
-      { name: 'Torro Burgers Centru', address: 'Str. Alexandru cel Bun 98, Chișinău', lat: 47.0258, lng: 28.8342 },
-      { name: 'Torro Burgers MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-    ],
-  },
-  {
-    canonicalName: 'Starbucks',
-    category: 'Coffeehouse & Espresso',
-    priceLevel: 2,
-    vibe: 'Iced Lattes, Frappuccinos & Pastries',
-    aliases: ['starbucks', 'starbuks', 'starbuck', 'starbux', 'star bucks', 'frappuccino'],
-    branches: [
-      { name: 'Specialty Coffee & Roastery Central', address: 'Str. Pușkin 15, Chișinău', lat: 47.0225, lng: 28.8340 },
-    ],
-  },
-  {
-    canonicalName: 'Tucano Coffee',
-    category: 'Specialty Coffee & Roastery',
-    priceLevel: 2,
-    vibe: 'Specialty Espresso,Cheesecakes & Cozy Vibe',
-    aliases: ['tucano', 'tucano coffee', 'tukano', 'tucanno', 'tucano brasil', 'tucano costa rica'],
-    branches: [
-      { name: 'Tucano Coffee Brasil', address: 'Str. Aleksandr Pușkin 15, Chișinău', lat: 47.0225, lng: 28.8340 },
-      { name: 'Tucano Coffee Costa Rica', address: 'Bd. Ștefan cel Mare 182, Chișinău', lat: 47.0245, lng: 28.8315 },
-      { name: 'Tucano Coffee Peace', address: 'Bd. Moscova 5, Chișinău', lat: 47.0415, lng: 28.8605 },
-      { name: 'Tucano Coffee MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-    ],
-  },
-  {
-    canonicalName: 'Oliva Restaurant',
-    category: 'Mediterranean & Italian',
-    priceLevel: 2,
-    vibe: 'Wood-Fired Pizza, Salads & Mediterranean Pasta',
-    aliases: ['oliva', 'oliva restaurant', 'olivia', 'oliva verde', 'restaurant oliva'],
-    branches: [
-      { name: 'Oliva Centru', address: 'Bd. Ștefan cel Mare 132, Chișinău', lat: 47.0242, lng: 28.8330 },
-      { name: 'Oliva Rîșcani', address: 'Bd. Moscova 5, Chișinău', lat: 47.0418, lng: 28.8605 },
-      { name: 'Oliva Botanica', address: 'Bd. Decebal 139, Chișinău', lat: 47.0055, lng: 28.8595 },
-      { name: 'Oliva Pușkin', address: 'Str. Pușkin 22, Chișinău', lat: 47.0222, lng: 28.8355 },
-    ],
-  },
-  {
-    canonicalName: 'Trattoria della Nonna',
-    category: 'Italian Trattoria',
-    priceLevel: 2,
-    vibe: 'Authentic Pasta, Quattro Formaggi & Tiramisu',
-    aliases: ['trattoria', 'tratoria', 'trattoria della nonna', 'della nonna', 'tratoria dela nona'],
-    branches: [
-      { name: 'Trattoria della Nonna Centru', address: 'Str. Mitropolit Varlaam 65, Chișinău', lat: 47.0238, lng: 28.8390 },
-      { name: 'Trattoria della Nonna Rîșcani', address: 'Bd. Moscova 17/4, Chișinău', lat: 47.0460, lng: 28.8640 },
-      { name: 'Trattoria della Nonna Botanica', address: 'Bd. Dacia 23, Chișinău', lat: 46.9892, lng: 28.8580 },
-    ],
-  },
-  {
-    canonicalName: 'Osho Bar & Kitchen',
-    category: 'Steakhouse & Dry-Aged Grill',
-    priceLevel: 4,
-    vibe: 'Dry-Aged Ribeye Steaks, Seafood & Wine',
-    aliases: ['osho', 'osho bar', 'oshoo', 'osho steak', 'osho restaurant'],
-    branches: [
-      { name: 'Osho Bar & Kitchen', address: 'Bd. Decebal 23/1, Chișinău', lat: 47.0072, lng: 28.8578 },
-    ],
-  },
-  {
-    canonicalName: 'Pegas Restaurant & Terrace',
-    category: '24/7 Grill & European Dining',
-    priceLevel: 3,
-    vibe: 'Signature Sausages, Steaks & Lively Terrace',
-    aliases: ['pegas', 'pegas restaurant', 'pegass', 'pegas terrace'],
-    branches: [
-      { name: 'Pegas Restaurant & Terrace', address: 'Str. Albișoara 20/1, Chișinău', lat: 47.0325, lng: 28.8380 },
-    ],
-  },
-  {
-    canonicalName: 'Mi Piace Ristorante',
-    category: 'Fine Italian & Parkside Dining',
-    priceLevel: 3,
-    vibe: 'Neapolitan Wood-Fired Pizza, Risotto & Wine',
-    aliases: ['mi piace', 'mipiace', 'mi piaci', 'ristorante mi piace'],
-    branches: [
-      { name: 'Mi Piace Ristorante', address: 'Str. Trandafirilor 4, Chișinău', lat: 47.0020, lng: 28.8565 },
-    ],
-  },
-  {
-    canonicalName: 'Rozmarin Cafe',
-    category: 'Brunch, Roastery & Bistro',
-    priceLevel: 2,
-    vibe: 'Avocado Toast, Specialty Coffee & Cozy Patio',
-    aliases: ['rozmarin', 'rozmarin cafe', 'rosmarin', 'rozmarine'],
-    branches: [
-      { name: 'Rozmarin Cafe', address: 'Bd. Ștefan cel Mare 202, Chișinău', lat: 47.0320, lng: 28.8225 },
-    ],
-  },
-  {
-    canonicalName: 'Crème de la Crème',
-    category: 'French Patisserie & Brunch',
-    priceLevel: 2,
-    vibe: 'Croissants, French Macarons & Garden Terrace',
-    aliases: ['creme de la creme', 'creme', 'crem de la crem'],
-    branches: [
-      { name: 'Crème de la Crème', address: 'Str. Alexandru cel Bun 98A, Chișinău', lat: 47.0238, lng: 28.8340 },
-    ],
-  },
-  {
-    canonicalName: 'Draft Arena',
-    category: 'Craft Beer Pub & Grill',
-    priceLevel: 2,
-    vibe: 'Draft Beers, Burger Platters & Live Sports',
-    aliases: ['draft', 'draft arena', 'draft pub', 'draft beer'],
-    branches: [
-      { name: 'Draft Arena Botanica', address: 'Bd. Dacia 35, Chișinău', lat: 46.9855, lng: 28.8620 },
-      { name: 'Draft Arena Rîșcani', address: 'Str. Kiev 16, Chișinău', lat: 47.0430, lng: 28.8610 },
-      { name: 'Draft Arena Ciocana', address: 'Bd. Mircea cel Bătrân 12/2, Chișinău', lat: 47.0460, lng: 28.8820 },
-      { name: 'Draft Arena Buiucani', address: 'Str. Alba Iulia 75, Chișinău', lat: 47.0370, lng: 28.7880 },
-    ],
-  },
-  {
-    canonicalName: 'Smokehouse BBQ',
-    category: 'Texas BBQ & Craft Beer',
-    priceLevel: 2,
-    vibe: 'Smoked Brisket, Pulled Pork Ribs & Craft Ales',
-    aliases: ['smokehouse', 'smoke house', 'smokehouse bbq', 'bbq ribs'],
-    branches: [
-      { name: 'Smokehouse BBQ & Beer', address: 'Bd. Ștefan cel Mare 128, Chișinău', lat: 47.0230, lng: 28.8325 },
-    ],
-  },
-  {
-    canonicalName: 'Taproom 27',
-    category: 'Craft Beer Taproom',
-    priceLevel: 2,
-    vibe: 'Local Craft IPAs, Stouts & Smokehouse Bites',
-    aliases: ['taproom', 'taproom 27', 'tap room', 'taproom27'],
-    branches: [
-      { name: 'Taproom 27 Craft Beer', address: 'Str. Vasile Alecsandri 117, Chișinău', lat: 47.0205, lng: 28.8390 },
-    ],
-  },
-  {
-    canonicalName: 'Esushi',
-    category: 'Sushi & Japanese Rolls',
-    priceLevel: 2,
-    vibe: 'Philadelphia Rolls, Salmon Sashimi & Poke Bowls',
-    aliases: ['esushi', 'e sushi', 'e-sushi', 'vasabi', 'sushi', 'susi', 'sushi rolls', 'sashimi'],
-    branches: [
-      { name: 'Esushi Centru', address: 'Str. București 68, Chișinău', lat: 47.0225, lng: 28.8318 },
-      { name: 'Esushi MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-      { name: 'Esushi Rîșcani', address: 'Bd. Moscova 14, Chișinău', lat: 47.0445, lng: 28.8630 },
-    ],
-  },
-  {
-    canonicalName: 'Gioelia Cremeria',
-    category: 'Artisanal Italian Gelateria',
-    priceLevel: 2,
-    vibe: 'Pistachio & Hazelnut Freshly Churned Gelato',
-    aliases: ['gioelia', 'gioela', 'gioelia cremeria', 'gelato', 'inghetata', 'ice cream'],
-    branches: [
-      { name: 'Gioelia Cremeria Centru', address: 'Str. Constantin Tănase 9, Chișinău', lat: 47.0285, lng: 28.8365 },
-      { name: 'Gioelia Cremeria MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-    ],
-  },
-  {
-    canonicalName: 'Dulcinella',
-    category: 'Confectionery & Desserts',
-    priceLevel: 1,
-    vibe: 'Cakes, Pastries & Sweet Treats',
-    aliases: ['dulcinella', 'dulcinela', 'tort', 'prajituri'],
-    branches: [
-      { name: 'Dulcinella Centru', address: 'Str. Tighina 49, Chișinău', lat: 47.0195, lng: 28.8410 },
-      { name: 'Dulcinella Botanica', address: 'Bd. Decebal 64, Chișinău', lat: 47.0075, lng: 28.8590 },
-      { name: 'Dulcinella Rîșcani', address: 'Bd. Moscova 3, Chișinău', lat: 47.0420, lng: 28.8610 },
-    ],
-  },
-  {
-    canonicalName: "Domino's Pizza",
-    category: 'Pizza Delivery & Takeout',
-    priceLevel: 2,
-    vibe: 'Hot Loaded Pizzas & Cheesy Bread',
-    aliases: ['dominos', 'domino', 'dominos pizza', 'domino pizza'],
-    branches: [
-      { name: 'Wood-Fired Pizza Spot', address: 'Bd. Ștefan cel Mare 132, Chișinău', lat: 47.0242, lng: 28.8330 },
-    ],
-  },
-  {
-    canonicalName: 'Subway',
-    category: 'Fresh Subs & Sandwiches',
-    priceLevel: 1,
-    vibe: 'Toasted Sub Sandwiches & Cookies',
-    aliases: ['subway', 'subwey', 'sub way'],
-    branches: [
-      { name: 'Subway / Artisan Sandwich Spot', address: 'Bd. Ștefan cel Mare 128, Chișinău', lat: 47.0235, lng: 28.8332 },
-    ],
-  },
-  {
-    canonicalName: 'Taco Bell',
-    category: 'Tacos & Quesadillas',
-    priceLevel: 1,
-    vibe: 'Crunchy Tacos, Burritos & Quesadillas',
-    aliases: ['taco bell', 'tacobell', 'tacos', 'taco', 'burrito', 'quesadilla'],
-    branches: [
-      { name: 'Tacos & Mexican Grill Spot', address: 'Str. Pușkin 22, Chișinău', lat: 47.0225, lng: 28.8355 },
-    ],
-  },
-  {
-    canonicalName: 'Wood-Fired Pizza',
-    category: 'Neapolitan Pizzeria',
-    priceLevel: 2,
-    vibe: 'Crispy Wood-Fired Crust & Fresh Mozzarella',
-    aliases: ['pizza', 'piza', 'pizzeria', 'pizeria', 'wood fired pizza', 'neapolitan pizza'],
-    branches: [
-      { name: 'Ciao Cacao / Mi Piace Pizzeria', address: 'Str. Arborilor 21, Chișinău', lat: 46.9972, lng: 28.8510 },
-      { name: 'Oliva Wood-Fired Pizza Centru', address: 'Bd. Ștefan cel Mare 132, Chișinău', lat: 47.0242, lng: 28.8330 },
-    ],
-  },
-  {
-    canonicalName: 'Shawarma & Kebab',
-    category: 'Street Food & Grill',
-    priceLevel: 1,
-    vibe: 'Spiced Charcoal Wraps, Crispy Fries & Garlic Sauce',
-    aliases: ['shawarma', 'shaorma', 'shaurma', 'shawerma', 'doner', 'kebab', 'kebap'],
-    branches: [
-      { name: 'Star Kebab Centru', address: 'Str. Ismail 84, Chișinău', lat: 47.0215, lng: 28.8445 },
-      { name: 'Mister Kebab Centru', address: 'Bd. Ștefan cel Mare 128, Chișinău', lat: 47.0235, lng: 28.8332 },
-    ],
-  },
-  {
-    canonicalName: 'Smash Burgers & Fries',
-    category: 'Craft Burger Joint',
-    priceLevel: 2,
-    vibe: 'Double Smash Patties, Melted Cheddar & Fries',
-    aliases: ['burger', 'burgers', 'burgr', 'smash burger', 'smash burgers', 'cheeseburger'],
-    branches: [
-      { name: 'Torro Burgers Centru', address: 'Str. Alexandru cel Bun 98, Chișinău', lat: 47.0258, lng: 28.8342 },
-      { name: "McDonald's Centru", address: 'Bd. Ștefan cel Mare 134, Chișinău', lat: 47.0243, lng: 28.8325 },
-    ],
-  },
-  {
-    canonicalName: 'Cineplex Cinema',
-    category: 'Cinema & Movie Theater',
-    priceLevel: 2,
-    vibe: 'Big-Screen Blockbusters, Dolby Sound & Popcorn',
-    aliases: ['cineplex', 'cineplexx', 'cinema', 'movie theater', 'loteanu', 'malldova cinema', 'imax'],
-    branches: [
-      { name: 'Cineplex Loteanu', address: 'Bd. Ștefan cel Mare 103, Chișinău', lat: 47.0252, lng: 28.8315 },
-      { name: 'Cineplex MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-    ],
-  },
-  {
-    canonicalName: 'Plaza Bowling & Billiards',
-    category: 'Fun & Distractions • Bowling',
-    priceLevel: 2,
-    vibe: '10-Pin Bowling Lanes, Pool Tables & Drinks',
-    aliases: ['bowling', 'bouling', 'bowlin', 'plaza bowling', 'bowling night'],
-    branches: [
-      { name: 'Plaza Bowling MallDova', address: 'Str. Arborilor 21 (MallDova), Chișinău', lat: 46.9972, lng: 28.8510 },
-    ],
-  },
-  {
-    canonicalName: 'Billiard Club Classic',
-    category: 'Fun & Distractions • Billiards',
-    priceLevel: 2,
-    vibe: '8-Ball Pool Tables, Snooker & Lounge Bar',
-    aliases: ['billiards', 'billiard', 'biliard', 'pool table', '8 ball pool', 'snooker'],
-    branches: [
-      { name: 'Billiard Club Classic', address: 'Str. Armenească 35, Chișinău', lat: 47.0230, lng: 28.8370 },
-    ],
-  },
-  {
-    canonicalName: 'Karting Club Racing',
-    category: 'Fun & Distractions • Karting',
-    priceLevel: 3,
-    vibe: 'High-Speed Go-Kart Racing Circuit & Lap Timing',
-    aliases: ['karting', 'go kart', 'gokart', 'karting club', 'go-kart racing'],
-    branches: [
-      { name: 'Karting Club Moldova', address: 'Șos. Hîncești 210, Chișinău', lat: 46.9850, lng: 28.8120 },
-    ],
-  },
-  {
-    canonicalName: 'Laser Tag & VR Arena',
-    category: 'Fun & Distractions • Arcade',
-    priceLevel: 2,
-    vibe: 'Tactical Laser Tag, VR Simulators & Arcade',
-    aliases: ['laser tag', 'lasertag', 'vr club', 'arcade', 'cyber city'],
-    branches: [
-      { name: 'Laser Tag Arena', address: 'Bd. Mircea cel Bătrân 14, Chișinău', lat: 47.0460, lng: 28.8820 },
-      { name: 'VR Club Centru', address: 'Str. Pușkin 32, Chișinău', lat: 47.0240, lng: 28.8350 },
-    ],
-  },
-  {
-    canonicalName: 'Escape Room Quest',
-    category: 'Fun & Distractions • Escape Game',
-    priceLevel: 3,
-    vibe: '60-Minute Team Mystery & Puzzle Rooms',
-    aliases: ['escape room', 'escaperoom', 'escape quest', 'quest room'],
-    branches: [
-      { name: 'Escaperoom Chișinău', address: 'Str. Pușkin 12, Chișinău', lat: 47.0210, lng: 28.8350 },
-    ],
-  },
-];
+function getEntryDiscoveryDomains(entry) {
+  const cat = String(entry.category || '').toLowerCase();
+  const name = String(entry.canonicalName || '').toLowerCase();
+  const domains = new Set();
+
+  if (/fun & distractions|cinema|bowling|billiard|karting|laser|arcade|escape|trampoline/i.test(cat)) {
+    domains.add('activities');
+  }
+  if (/coffee|patisserie|roastery|brunch|cafe|café/i.test(cat) || /tucano|starbucks|rozmarin|bonjour|creme|delice/i.test(name)) {
+    domains.add('cafes');
+  }
+  if (/gelateria|confectionery|dessert|patisserie/i.test(cat) || /gioelia|dulcinella|creme|delice/i.test(name)) {
+    domains.add('desserts');
+  }
+  if (/pub|taproom|craft beer|cocktail|nightlife|bar/i.test(cat) || /draft|smokehouse|taproom|marlene|eli pili|pegas/i.test(name)) {
+    domains.add('bars');
+  }
+  if (
+    domains.size === 0 ||
+    /burger|pizza|dining|trattoria|sushi|kebab|grill|steakhouse|pies|subs|tacos|bbq/i.test(cat)
+  ) {
+    if (!domains.has('activities')) {
+      domains.add('restaurants');
+    }
+  }
+  return domains;
+}
+
+/**
+ * Infers the active discovery domain from category ID or room topic.
+ */
+export function inferDiscoveryDomain(categoryOrTopic = '') {
+  const s = String(categoryOrTopic || '').toLowerCase();
+  if (/fun|distraction|activit|bowling|game|play|bored|weekend/i.test(s)) return 'activities';
+  if (/cafe|coffee|café|espresso|latte|кафе|кофе/i.test(s)) return 'cafes';
+  if (/bar|pub|drink|beer|cocktail|wine|nightlife|pahar|băutură|бар|выпить/i.test(s)) return 'bars';
+  if (/dessert|sweet|gelato|ice cream|cake|pastry|dulce|dulciuri|десерт|сладк/i.test(s)) return 'desserts';
+  if (/restaurant|eat|dinner|lunch|food|hungry|mâncăm|ресторан|поедим/i.test(s)) return 'restaurants';
+  return null;
+}
 
 /**
  * Checks if a custom poll topic is asking about a physical place to eat, drink, or go out.
@@ -688,39 +317,82 @@ export function resolveSmartCustomVenue(rawName, topic = '', userGps = null) {
 }
 
 /**
- * Searches SMART_PLACE_DIRECTORY with typo tolerance for autocomplete suggestions.
+ * Searches SMART_PLACE_DIRECTORY with typo tolerance and category awareness for autocomplete suggestions.
  */
-export function searchSmartPlaceSuggestions(query = '', existingNames = []) {
+export function searchSmartPlaceSuggestions(query = '', existingNames = [], categoryOrTopic = '') {
   const norm = normalizePlaceToken(query);
-  if (!norm || norm.length < 2) return [];
-
   const existingSet = new Set(existingNames.map((n) => normalizePlaceToken(n)));
+  const activeDomain = inferDiscoveryDomain(categoryOrTopic);
   const results = [];
 
-  for (const entry of SMART_PLACE_DIRECTORY) {
-    if (existingSet.has(normalizePlaceToken(entry.canonicalName))) continue;
+  // When query is empty, return curated popular chains/places for the active category
+  if (!norm) {
+    for (const entry of SMART_PLACE_DIRECTORY) {
+      if (existingSet.has(normalizePlaceToken(entry.canonicalName))) continue;
+      const domains = getEntryDiscoveryDomains(entry);
+      const isDomainMatch = activeDomain ? domains.has(activeDomain) : true;
+      if (!isDomainMatch) continue;
 
-    const match = matchSmartPlaceEntry(query);
-    if (match && match.entry.canonicalName === entry.canonicalName) {
+      const uiCategory = domains.has('activities') ? 'activities' : 'food';
       results.push({
         name: entry.canonicalName,
-        category: 'food',
+        category: uiCategory,
         subtitle: `${entry.vibe} • Routes to nearest location`,
-        score: match.score + 10,
+        score: isDomainMatch ? 95 : 70,
+      });
+    }
+    return results.slice(0, 7);
+  }
+
+  const matched = norm.length >= 2 ? matchSmartPlaceEntry(query) : null;
+
+  for (const entry of SMART_PLACE_DIRECTORY) {
+    const canonNorm = normalizePlaceToken(entry.canonicalName);
+    if (existingSet.has(canonNorm)) continue;
+
+    const domains = getEntryDiscoveryDomains(entry);
+    const isDomainMatch = activeDomain ? domains.has(activeDomain) : false;
+    const domainBoost = isDomainMatch ? 12 : 0;
+    const uiCategory = domains.has('activities') ? 'activities' : 'food';
+
+    if (matched && matched.entry.canonicalName === entry.canonicalName) {
+      results.push({
+        name: entry.canonicalName,
+        category: uiCategory,
+        subtitle: `${entry.vibe} • Routes to nearest location`,
+        score: matched.score + 15 + domainBoost,
       });
       continue;
     }
 
-    const canonNorm = normalizePlaceToken(entry.canonicalName);
-    if (canonNorm.includes(norm) || entry.aliases.some((a) => normalizePlaceToken(a).includes(norm))) {
+    if (
+      canonNorm.startsWith(norm) ||
+      entry.aliases.some((a) => normalizePlaceToken(a).startsWith(norm))
+    ) {
       results.push({
         name: entry.canonicalName,
-        category: 'food',
+        category: uiCategory,
         subtitle: `${entry.vibe} • Routes to nearest location`,
-        score: 75,
+        score: 88 + domainBoost,
+      });
+      continue;
+    }
+
+    if (
+      norm.length >= 2 &&
+      (canonNorm.includes(norm) ||
+        entry.aliases.some((a) => normalizePlaceToken(a).includes(norm)) ||
+        normalizePlaceToken(entry.vibe).includes(norm) ||
+        normalizePlaceToken(entry.category).includes(norm))
+    ) {
+      results.push({
+        name: entry.canonicalName,
+        category: uiCategory,
+        subtitle: `${entry.vibe} • Routes to nearest location`,
+        score: 75 + domainBoost,
       });
     }
   }
 
-  return results.sort((a, b) => b.score - a.score).slice(0, 5);
+  return results.sort((a, b) => b.score - a.score).slice(0, 7);
 }

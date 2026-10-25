@@ -364,4 +364,11 @@ export const es = {
   'setup.startHint': 'Invita a tus amigos a votar',
   'setup.startHintCustom': 'Invita a tus amigos a votar tus opciones',
   'setup.stillLooking': 'Seguimos buscando lugares...',
+  discoverySearchRestaurants: "Anadir un lugar especifico (ej. McDonald's, KFC, Andy's)...",
+  discoverySearchCafes: 'Anadir una cafeteria (ej. Tucano, Starbucks)...',
+  discoverySearchBars: 'Anadir un bar o pub (ej. Smokehouse, Draft)...',
+  discoverySearchDesserts: 'Anadir postres (ej. Gioelia, Dulcinella)...',
+  discoverySearchActivities: 'Anadir una actividad (ej. Bolera, Cine, VR)...',
+  addedBadge: 'Anadido',
+  soloOrInviteHint: 'Comparte el codigo con amigos o empieza ahora mismo',
 };

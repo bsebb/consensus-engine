@@ -364,5 +364,12 @@ export const ro = {
   'setup.startHint': 'Invită prietenii să voteze',
   'setup.startHintCustom': 'Invită prietenii să voteze opțiunile tale',
   'setup.stillLooking': 'Încă se caută opțiuni...',
+  discoverySearchRestaurants: "Adaugă un loc anume (ex. McDonald's, KFC, Andy's)...",
+  discoverySearchCafes: 'Adaugă o cafenea (ex. Tucano, Starbucks)...',
+  discoverySearchBars: 'Adaugă un bar sau pub (ex. Smokehouse, Draft)...',
+  discoverySearchDesserts: 'Adaugă un loc cu deserturi (ex. Gioelia, Dulcinella)...',
+  discoverySearchActivities: 'Adaugă o activitate (ex. Bowling, Cinema, VR)...',
+  addedBadge: 'Adăugat',
+  soloOrInviteHint: 'Trimite codul prietenilor sau începe votul acum',
 };
 

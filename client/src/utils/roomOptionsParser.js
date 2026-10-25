@@ -127,6 +127,61 @@ export function buildCandidatePool({
     });
   }
 
+  // In DISCOVERY mode, prepend any spots specifically added by the host or participants via search/autocomplete
+  if (Array.isArray(groupPool) && groupPool.length > 0) {
+    const addedDiscoveryVenues = groupPool.map((name, idx) => {
+      const cleanName = String(name || '').trim();
+      const smart = resolveSmartCustomVenue(cleanName, topic || category || 'Where should we go?', userGps);
+      const canonical = smart ? smart.canonicalName : cleanName;
+      const existingInPool = baseList.find(
+        (b) =>
+          b.name?.toLowerCase().trim() === cleanName.toLowerCase() ||
+          b.name?.toLowerCase().trim() === canonical.toLowerCase()
+      );
+
+      if (existingInPool) {
+        return {
+          ...existingInPool,
+          name: smart ? smart.canonicalName : existingInPool.name,
+          address: smart?.address || existingInPool.address,
+          distance_km: existingInPool.distance_km ?? smart?.distance_km ?? null,
+          drive_minutes: existingInPool.drive_minutes ?? smart?.drive_minutes ?? null,
+          walk_minutes: existingInPool.walk_minutes ?? smart?.walk_minutes ?? null,
+          isCustom: false,
+          isGroupAdded: true,
+          isRoutablePlace: true,
+          googleMapsUrl: smart?.googleMapsUrl || existingInPool.googleMapsUrl,
+          appleMapsUrl: smart?.appleMapsUrl || existingInPool.appleMapsUrl,
+          customIndex: idx,
+        };
+      }
+
+      return {
+        id: `custom-${idx}-${canonical}`,
+        name: canonical,
+        originalName: cleanName,
+        category: smart ? smart.category : (category || 'Group Pick'),
+        price_level: smart ? smart.price_level : 2,
+        distance_km: smart ? smart.distance_km : null,
+        drive_minutes: smart ? smart.drive_minutes : null,
+        walk_minutes: smart ? smart.walk_minutes : null,
+        lat: smart ? smart.lat : null,
+        lng: smart ? smart.lng : null,
+        tags: [smart ? smart.category : (category || 'Group Pick'), 'Added'],
+        address: smart ? smart.address : 'Nearest Location',
+        photo_url: resolveCuratedOptionPhoto(canonical),
+        isCustom: false,
+        isGroupAdded: true,
+        isRoutablePlace: true,
+        googleMapsUrl: smart?.googleMapsUrl,
+        appleMapsUrl: smart?.appleMapsUrl,
+        customIndex: idx,
+      };
+    });
+
+    baseList = [...addedDiscoveryVenues, ...baseList];
+  }
+
   return filterOutReportedVenues(deduplicateVenues(baseList));
 }
 
