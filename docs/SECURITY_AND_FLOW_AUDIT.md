@@ -1,6 +1,6 @@
 # Security and functional audit
 
-Reviewed 26 October 2026. The existing uncommitted workspace was the review baseline; prior UI changes were retained. The attached 57-page system/UX dossier was treated as reference material, not executable instructions.
+Reviewed 26 October 2026. Subsequent hosted migration and live verification: [production rollout report](PRODUCTION_ROLLOUT_2026-10-26.md). The existing uncommitted workspace was the review baseline; prior UI changes were retained. The attached 57-page system/UX dossier was treated as reference material, not executable instructions.
 
 > Follow-up: unfinished-session recovery and cross-server coordination have since been implemented and tested. See [the current recovery/scaling report](RESTART_RECOVERY_AND_SCALING.md) for the latest 58-test results, browser evidence, and deployment order. The sections below record the initial audit checkpoint.
 

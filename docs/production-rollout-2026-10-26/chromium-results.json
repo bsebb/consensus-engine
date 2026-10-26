@@ -1,0 +1,29 @@
+{
+  "target": "https://noyoupick.org",
+  "browser": "chromium",
+  "createdRooms": [
+    {
+      "id": "41c992fb-1bdf-4817-98d9-b66cdede039d",
+      "pin": "5701"
+    },
+    {
+      "id": "88a51e8c-d570-46eb-9dc0-784c544eb0e4",
+      "pin": "6885"
+    }
+  ],
+  "passes": [
+    "mobile discovery creation, theme and lobby layout",
+    "invite code join, synchronized roster, guest controls and host reload",
+    "candidate addition, synchronized voting start, details and pause/resume",
+    "live Render restart preserves the partial host ballot, submitted guest ballot and unfinished deck",
+    "two-user ballots, waiting quorum, identical winner and complete reload recovery",
+    "simulated review failure stays editable; real retry persists successfully",
+    "host rematch synchronizes the ranked runner-up across both browsers",
+    "completed result saved to history",
+    "history reopens the saved winner screen",
+    "custom poll starter pack, solo server consensus and winner reload",
+    "zero unhandled browser exceptions"
+  ],
+  "failures": [],
+  "pageErrors": []
+}

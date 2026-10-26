@@ -1,0 +1,56 @@
+{
+  "savedTestRooms": [
+    {
+      "id": "830bf142-33ed-4324-9d97-291ac68c6746",
+      "pin": "4662",
+      "status": "RESOLVED",
+      "createdAt": "2026-10-26T20:29:29.751Z",
+      "submissions": 2,
+      "participants": 2,
+      "votes": 14,
+      "feedbacks": 1
+    },
+    {
+      "id": "41c992fb-1bdf-4817-98d9-b66cdede039d",
+      "pin": "5701",
+      "status": "RESOLVED",
+      "createdAt": "2026-10-26T20:26:04.586Z",
+      "submissions": 2,
+      "participants": 2,
+      "votes": 14,
+      "feedbacks": 1
+    },
+    {
+      "id": "88a51e8c-d570-46eb-9dc0-784c544eb0e4",
+      "pin": "6885",
+      "status": "RESOLVED",
+      "createdAt": "2026-10-26T20:28:02.914Z",
+      "submissions": 1,
+      "participants": 1,
+      "votes": 4,
+      "feedbacks": 0
+    },
+    {
+      "id": "155d169f-b3f1-4898-9ab3-382c9e204425",
+      "pin": "8557",
+      "status": "RESOLVED",
+      "createdAt": "2026-10-26T20:28:09.552Z",
+      "submissions": 2,
+      "participants": 2,
+      "votes": 14,
+      "feedbacks": 1
+    },
+    {
+      "id": "75cf1943-b48c-427f-8ea5-424fb62ef89a",
+      "pin": "8561",
+      "status": "RESOLVED",
+      "createdAt": "2026-10-26T20:29:47.878Z",
+      "submissions": 1,
+      "participants": 1,
+      "votes": 4,
+      "feedbacks": 0
+    }
+  ],
+  "deletedOwnTestRooms": 5,
+  "removedOwnFeedbackContributions": 3
+}

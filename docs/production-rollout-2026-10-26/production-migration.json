@@ -1,0 +1,83 @@
+{
+  "target": "production",
+  "schemaMatches": true,
+  "dataChecksumsUnchanged": true,
+  "before": {
+    "rooms": {
+      "count": 352,
+      "hash": "ef84bd80791e16df5520597429e98caf"
+    },
+    "participants": {
+      "count": 503,
+      "hash": "abfc014f6b2849e02c0bfba8ca0f6bf5"
+    },
+    "options": {
+      "count": 9901,
+      "hash": "99c0e011a3d56842fca1e3162708c164"
+    },
+    "votes": {
+      "count": 210,
+      "hash": "1eb0ee9cc267e8428c3651d9651122a8"
+    },
+    "feedbacks": {
+      "count": 3,
+      "hash": "11a3b6ca57bed63a061f148d19d13d5b"
+    },
+    "venue_analytics": {
+      "count": 7,
+      "hash": "03ba81fce8d5b24552ee31c99bc24b49"
+    },
+    "cached_venues": {
+      "count": 711,
+      "hash": "bfd8549888fddfb39db8b62a7a1c6bef"
+    }
+  },
+  "after": {
+    "rooms": {
+      "count": 352,
+      "hash": "ef84bd80791e16df5520597429e98caf"
+    },
+    "participants": {
+      "count": 503,
+      "hash": "abfc014f6b2849e02c0bfba8ca0f6bf5"
+    },
+    "options": {
+      "count": 9901,
+      "hash": "99c0e011a3d56842fca1e3162708c164"
+    },
+    "votes": {
+      "count": 210,
+      "hash": "1eb0ee9cc267e8428c3651d9651122a8"
+    },
+    "feedbacks": {
+      "count": 3,
+      "hash": "11a3b6ca57bed63a061f148d19d13d5b"
+    },
+    "venue_analytics": {
+      "count": 7,
+      "hash": "03ba81fce8d5b24552ee31c99bc24b49"
+    },
+    "cached_venues": {
+      "count": 711,
+      "hash": "bfd8549888fddfb39db8b62a7a1c6bef"
+    }
+  },
+  "migrations": [
+    {
+      "migration_name": "20261018000000_initial",
+      "finished_at": "2026-10-26T20:23:28.400Z"
+    },
+    {
+      "migration_name": "20261025112500_add_device_id",
+      "finished_at": "2026-10-26T20:23:29.970Z"
+    },
+    {
+      "migration_name": "20261025122000_add_cached_venues",
+      "finished_at": "2026-10-26T20:23:30.232Z"
+    },
+    {
+      "migration_name": "20261026190000_durable_room_state",
+      "finished_at": "2026-10-26T20:23:30.505Z"
+    }
+  ]
+}

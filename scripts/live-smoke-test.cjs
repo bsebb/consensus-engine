@@ -30,7 +30,8 @@ async function voteAll(page) {
   const browser = await browserEngine.launch({ headless: true, ...(process.env.AUDIT_BROWSER !== 'webkit' && process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}) });
   const contexts = [];
   const newPage = async (name, width = 393, height = 852) => {
-    const ctx = await browser.newContext({ viewport: { width, height }, isMobile: width < 500, hasTouch: width < 500 });
+    // Keep fault injection deterministic: service-worker requests bypass Playwright routes.
+    const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height }, isMobile: width < 500, hasTouch: width < 500 });
     contexts.push(ctx);
     const page = await ctx.newPage();
     page.setDefaultTimeout(25000);

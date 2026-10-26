@@ -1,0 +1,20 @@
+{
+  "target": "https://noyoupick.org",
+  "browser": "webkit",
+  "createdRooms": [
+    {
+      "id": "155d169f-b3f1-4898-9ab3-382c9e204425",
+      "pin": "8557"
+    }
+  ],
+  "passes": [
+    "mobile discovery creation, theme and lobby layout",
+    "invite code join, synchronized roster, guest controls and host reload",
+    "candidate addition, synchronized voting start, details and pause/resume",
+    "two-user ballots, waiting quorum, identical winner and complete reload recovery"
+  ],
+  "failures": [
+    "locator.waitFor: Timeout 25000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Session Feedback' }).getByRole('alert') to be visible\u001b[22m\n\n    at /Users/seb/Documents/consensus-engine/scripts/live-smoke-test.cjs:142:37"
+  ],
+  "pageErrors": []
+}

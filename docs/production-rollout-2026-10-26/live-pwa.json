@@ -1,0 +1,20 @@
+[
+  {
+    "browser": "chromium",
+    "headers": true,
+    "controlledByServiceWorker": true,
+    "allBuildAssetsCached": true,
+    "assetCount": 6,
+    "offlineShell": "passed",
+    "pageErrors": []
+  },
+  {
+    "browser": "webkit",
+    "headers": true,
+    "controlledByServiceWorker": true,
+    "allBuildAssetsCached": true,
+    "assetCount": 6,
+    "offlineShell": "covered by prior local origin-outage test",
+    "pageErrors": []
+  }
+]

@@ -1,6 +1,6 @@
 # Restart recovery and scaling — implementation and local verification
 
-26 October 2026. Follow-up to the [security and flow audit](SECURITY_AND_FLOW_AUDIT.md). Changes remain local; no Git push, hosted database migration, or live deployment has been performed.
+26 October 2026. Follow-up to the [security and flow audit](SECURITY_AND_FLOW_AUDIT.md). This report records the local verification before deployment. The subsequent migration, deployment and live checks are recorded in [the production rollout report](PRODUCTION_ROLLOUT_2026-10-26.md).
 
 ## Result
 

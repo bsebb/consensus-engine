@@ -1,0 +1,11 @@
+{
+  "liveDeploy": {
+    "id": "dep-dbfre4m417fc73er1h6g",
+    "status": "live",
+    "commit": "aac67f88259d3a5665359b9b1fc46480de61e4b0"
+  },
+  "runtimeLogEntriesChecked": 49,
+  "hasMoreLogs": false,
+  "errorEntries": 0,
+  "errorMessages": []
+}
