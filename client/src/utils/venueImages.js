@@ -478,6 +478,7 @@ const TRUSTED_PHOTO_HOSTS = [
 function isUntrustedScrapedUrl(url = '') {
   if (!url || typeof url !== 'string' || !url.startsWith('https://')) return true;
   if (url.includes('photo-1538688525198-9b88f6f53126')) return true;
+  if (url.includes('c7ae-Ristorante-Trattoria-della-Nonna-interior')) return true;
   try {
     const host = new URL(url).hostname.toLowerCase();
     return !TRUSTED_PHOTO_HOSTS.includes(host);

@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "readiness returns 503 while PostgreSQL is stopped",
+    "a ballot during the database outage fails closed without announcing a winner",
+    "database reconnect restores the saved ballot and accepts the retry exactly once"
+  ],
+  "failures": []
+}

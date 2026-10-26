@@ -9,6 +9,7 @@ export default function LobbyDock({
   candidateCount = 0,
   participants = [],
   mode = 'DISCOVERY',
+  groupSize = 2,
   onResumeVoting,
   onStartVoting,
 }) {
@@ -17,6 +18,7 @@ export default function LobbyDock({
   const hostEntry = participants.find((p) => p.isHost);
   const hostName = hostEntry?.name || 'Host';
   const itemUnit = mode === 'CUSTOM' ? (t('optionsLabel') || 'options') : (t('placesLabel') || 'places');
+  const showHeadcount = groupSize > 1;
 
   return (
     <div className="fixed bottom-0 inset-x-0 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[var(--bg-root)] via-[var(--bg-root)]/95 to-transparent pointer-events-none z-30">
@@ -34,25 +36,32 @@ export default function LobbyDock({
             <ArrowRight size={17} />
           </button>
         ) : isHost ? (
-          <button
-            type="button"
-            data-testid="host-start-voting-cta"
-            disabled={!isReady}
-            onClick={() => {
-              triggerHaptic('selection');
-              onStartVoting?.();
-            }}
-            className="w-full h-13 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] disabled:opacity-45 text-white font-extrabold text-sm sm:text-base tracking-tight flex items-center justify-center gap-2.5 shadow-[0_8px_28px_var(--accent-glow)] active:scale-[0.98] transition-all cursor-pointer disabled:cursor-not-allowed"
-          >
-            <Play size={15} className="fill-current shrink-0" />
-            <span>{isReady ? (t('startVoting') || 'Start voting') : (t('addMoreToStart')?.replace('{count}', Math.max(1, 2 - candidateCount)) || `Add ${Math.max(1, 2 - candidateCount)} more to start`)}</span>
-            {isReady && (
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-bold tabular-nums">
-                {candidateCount} {itemUnit}
-              </span>
+          <>
+            {showHeadcount && participants.length < groupSize && (
+              <div className="text-center text-[11px] font-semibold text-[var(--text-tertiary)] mb-1.5 tabular-nums animate-[fadeIn_0.2s_ease-out]">
+                {participants.length} of {groupSize} joined · Ready to start anytime
+              </div>
             )}
-            <ArrowRight size={17} className="shrink-0" />
-          </button>
+            <button
+              type="button"
+              data-testid="host-start-voting-cta"
+              disabled={!isReady}
+              onClick={() => {
+                triggerHaptic('selection');
+                onStartVoting?.();
+              }}
+              className="w-full h-13 rounded-2xl bg-[var(--accent-bg)] hover:bg-[var(--accent-bg-hover)] disabled:opacity-45 text-white font-extrabold text-sm sm:text-base tracking-tight flex items-center justify-center gap-2.5 shadow-[0_8px_28px_var(--accent-glow)] active:scale-[0.98] transition-all cursor-pointer disabled:cursor-not-allowed"
+            >
+              <Play size={15} className="fill-current shrink-0" />
+              <span>{isReady ? (t('startVoting') || 'Start voting') : (t('addMoreToStart')?.replace('{count}', Math.max(1, 2 - candidateCount)) || `Add ${Math.max(1, 2 - candidateCount)} more to start`)}</span>
+              {isReady && (
+                <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-bold tabular-nums">
+                  {candidateCount} {itemUnit}
+                </span>
+              )}
+              <ArrowRight size={17} className="shrink-0" />
+            </button>
+          </>
         ) : (
           <div
             data-testid="guest-waiting-status"
@@ -65,7 +74,9 @@ export default function LobbyDock({
               </span>
               <div className="flex flex-col min-w-0 text-left">
                 <span className="text-xs font-bold text-[var(--text-primary)] truncate">
-                  {t('hostSettingTable') || `Waiting for ${hostName} to start swiping...`}
+                  {showHeadcount
+                    ? `Waiting for ${hostName} to start (${participants.length} of ${groupSize} joined)...`
+                    : (t('hostSettingTable') || `Waiting for ${hostName} to start swiping...`)}
                 </span>
                 <span className="text-[11px] text-[var(--text-secondary)] truncate tabular-nums">
                   {candidateCount} {itemUnit} {t('onTheTable') || 'on the table'}

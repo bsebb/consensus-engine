@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MapPin, Plus, Minus, RotateCcw } from 'lucide-react';
 
 function latLngToTile(lat, lng, zoom) {
@@ -13,7 +13,7 @@ export default function CleanStreetMiniMap({
   lat,
   lng,
   venueName = 'Venue',
-  address = '',
+  address: _address = '',
   className = '',
 }) {
   const containerRef = useRef(null);
@@ -112,7 +112,6 @@ export default function CleanStreetMiniMap({
     const maxTileY = Math.floor((viewportTop + dimensions.height) / 256);
 
     const tileList = [];
-    const subdomains = ['a', 'b', 'c', 'd'];
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {

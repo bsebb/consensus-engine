@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Navigation, ExternalLink, BarChart3, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
+  Navigation, ExternalLink, BarChart3, ChevronUp, ChevronDown,
   CheckCircle2, Star, RotateCcw, MapPin, Route, Info, Sparkles, Compass, Share2, Heart,
 } from 'lucide-react';
 import Button from '../ui/Button';
@@ -25,12 +25,22 @@ export default function ConsensusWinnerView({
   mode, topic, winner, matchScore, mapsDirUrl, condorcetOpen, setCondorcetOpen,
   pairwiseBreakdown = [], userRating, handleInlineRate, setIsReviewOpen,
   navigate, pin, participantId, deviceId, emit, onQuickRematch,
+  status, support: _support, supportText, tieBroken, vetoCount: _vetoCount,
 }) {
   const { addToast } = useToast();
   const { lang, t } = useLanguage();
   const isCustomWinner = Boolean(mode === 'CUSTOM' || winner?.isCustom);
   const isRoutable = Boolean(winner?.isRoutablePlace || (winner?.address && winner?.address !== 'Added by group'));
   const useRealVenueDisplay = !isCustomWinner || isRoutable;
+
+  const narrativeText = useMemo(() => {
+    if (status === 'RUNNER_UP') return 'A ranked alternative selected by your host.';
+    if (status === 'CLEAR') return 'Top-ranked choice with zero vetoes.';
+    if (status === 'WEAK') return 'Top-ranked choice with limited group approval.';
+    if (status === 'TIE_BROKEN' || tieBroken) return 'Selected from equally ranked choices using the tie-break.';
+    if (status === 'NO_CONSENSUS') return 'No clear favorite emerged. This is a fallback pick.';
+    return null;
+  }, [status, tieBroken]);
 
   const { primaryPhoto, photoSlides, fallbackPhoto } = useVenuePhotos(
     useRealVenueDisplay ? winner?.name : '',
@@ -74,8 +84,6 @@ export default function ConsensusWinnerView({
       setInsightsRefreshKey((prev) => prev + 1);
     }
   }, [userRating]);
-
-  useEffect(() => { triggerHaptic('victory'); }, []);
 
   const winnerVibe = getVenueVibe(winner?.name, winner?.category);
   const winnerRating = getVenueRating(winner?.name, winner?.category);
@@ -123,7 +131,7 @@ export default function ConsensusWinnerView({
   const handleShareWinner = async () => {
     triggerHaptic('tap');
     const addrLine = winner?.address && winner.address !== 'Added by group' ? `\nAddress: ${winner.address}` : '';
-    const shareText = `Group Consensus Pick: ${winner?.name} (${matchScore || 96}% match on NoYouPick!)${addrLine}`;
+    const shareText = `Group Consensus Pick: ${winner?.name} (${matchScore ?? 0}% match on NoYouPick!)${addrLine}`;
     const shareUrl = window.location.origin;
     const shareData = { title: `Consensus Pick: ${winner?.name}`, text: shareText, url: shareUrl };
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
@@ -174,8 +182,7 @@ export default function ConsensusWinnerView({
       });
     } catch (err) {
       console.warn('[ConsensusWinnerView] Telemetry sync notice:', err);
-      setTelemetrySubmitted(true);
-      addToast({ title: t('feedbackSaved') || 'Rating Saved', message: t('thanksFeedback') || 'Thank you for sharing your feedback!', type: 'info' });
+      addToast({ title: 'Rating not saved', message: 'Please check your connection and try again.', type: 'error' });
     } finally {
       setIsSubmittingTelemetry(false);
     }
@@ -205,7 +212,7 @@ export default function ConsensusWinnerView({
     <main className="winner-scroll w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 py-3 pb-8">
       <div className="max-w-md mx-auto w-full flex flex-col items-center gap-3.5 animate-[fadeIn_0.25s_ease-out]">
       {/* Winner Hero Card */}
-      <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-lg border border-[var(--border-main)] flex flex-col text-center">
+      <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.12),0_0_24px_rgba(255,99,64,0.1)] border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner && !isRoutable ? (
           customWinnerPhoto && !customImgErr ? (
             <div className={`relative h-[clamp(160px,23dvh,210px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
@@ -275,27 +282,6 @@ export default function ConsensusWinnerView({
                 </div>
               )}
 
-              {validSlides.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx((prev) => (prev > 0 ? prev - 1 : validSlides.length - 1)); }}
-                    aria-label="Previous photo"
-                    className="absolute left-2.5 top-[42%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
-                  >
-                    <ChevronLeft size={16} strokeWidth={2.5} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { triggerHaptic('tap'); setWinnerPhotoIdx((prev) => (prev + 1) % validSlides.length); }}
-                    aria-label="Next photo"
-                    className="absolute right-2.5 top-[42%] -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/85 backdrop-blur-md text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer z-20 active:scale-95 shadow-md"
-                  >
-                    <ChevronRight size={16} strokeWidth={2.5} />
-                  </button>
-                </>
-              )}
-
               <div className={`absolute ${validSlides.length > 1 ? 'top-6' : 'top-4'} inset-x-4 flex items-center justify-between z-10`}>
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 backdrop-blur-md text-xs font-bold text-amber-300 border border-white/15 shadow-md tabular-nums">
                   <Star size={13} className="fill-amber-300 text-amber-300" />
@@ -304,7 +290,7 @@ export default function ConsensusWinnerView({
                 </div>
                 <div className="animate-match-badge-glow flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-black shadow-[0_0_18px_rgba(16,185,129,0.45)]">
                   <Sparkles size={13} />
-                  <span>{matchScore || 96}% {t('match')}</span>
+                  <span>{supportText || `${matchScore ?? 0}% ${t('match')}`}</span>
                 </div>
               </div>
 
@@ -359,34 +345,43 @@ export default function ConsensusWinnerView({
         )}
 
         <div className="p-4 flex flex-col items-center gap-3">
+          {narrativeText && (
+            <div className="w-full px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2 text-left animate-[fadeIn_0.2s_ease-out]">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+              <span>{narrativeText}</span>
+            </div>
+          )}
+
           {isCustomWinner && !isRoutable ? (
             <div className="grid grid-cols-2 gap-2.5 w-full">
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('groupMatch')}</span>
-                <span className="text-lg font-black text-emerald-500 tabular-nums">{matchScore}%</span>
+                <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{supportText ? 'Group Support' : t('groupMatch')}</span>
+                <span className="text-sm sm:text-base font-black text-emerald-500 tabular-nums">
+                  {supportText || `${matchScore}%`}
+                </span>
               </div>
               <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)]">
                 <span className="text-[10px] font-semibold text-[var(--text-tertiary)]">{t('votingResult')}</span>
-                <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">{t('condorcetWinner')}</span>
+                <span className="text-xs font-bold text-[var(--text-primary)] mt-0.5">{status === 'NO_CONSENSUS' ? 'No consensus' : status === 'TIE_BROKEN' ? 'Tie-break pick' : status === 'RUNNER_UP' ? 'Ranked alternative' : 'Ranked winner'}</span>
               </div>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2.5 w-full">
                 <div className="flex flex-col items-start justify-center px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-left">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)]">
+                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)]">
                     {t('priceTierLabel')}
                   </span>
-                  <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] mt-0.5 tabular-nums">
+                  <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] mt-0.5 tabular-nums">
                     {formatRegionalPricePill(winner?.price_level || 2, winner)}
                   </span>
                 </div>
                 <div className="flex flex-col items-start justify-center px-3.5 py-2.5 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-left">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-tertiary)] flex items-center gap-1">
-                    <Route size={10} className="text-[var(--accent-bg)]" />
+                  <span className="text-[11px] font-semibold text-[var(--text-tertiary)] flex items-center gap-1">
+                    <Route size={11} className="text-[var(--accent-bg)]" />
                     <span>{t('roadRoute')}</span>
                   </span>
-                  <span className="text-xs sm:text-sm font-black text-[var(--text-primary)] tabular-nums mt-0.5 leading-snug">
+                  <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] tabular-nums mt-0.5 leading-snug">
                     {travelSummary}
                   </span>
                 </div>

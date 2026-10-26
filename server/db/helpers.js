@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { roomTransaction } = require('../src/state/transactionContext');
 const { prisma } = require('./prismaClient');
 const {
     getCachedVenuesByGrid,
@@ -15,6 +16,7 @@ const persistedParticipantCache = new Map();
 const MAX_PERSISTED_CACHE_SIZE = 10000;
 
 function markParticipantPersisted(roomId, participantId, deviceId, resolvedRecord) {
+    if (roomTransaction.getStore() && !roomTransaction.getStore().finished) return;
     if (persistedParticipantCache.size >= MAX_PERSISTED_CACHE_SIZE) {
         const oldestKey = persistedParticipantCache.keys().next().value;
         if (oldestKey) persistedParticipantCache.delete(oldestKey);
@@ -49,7 +51,7 @@ async function ensureRoomPersisted(key) {
     }
 }
 
-async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null, preGeneratedId = null) {
+async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null, preGeneratedId = null, initialOptions = null) {
     const data = {
         ...(preGeneratedId ? { id: preGeneratedId } : {}),
         hostId,
@@ -59,16 +61,13 @@ async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId
         radius: typeof radius === 'number' ? radius : null,
     };
     try {
+        if (initialOptions) {
+            data.participants = { create: { id: hostId, deviceId: hostDeviceId } };
+            if (initialOptions.length) data.options = { create: initialOptions.map(({ roomId, ...option }) => option) };
+        }
         return await prisma.room.create({ data });
     } catch (error) {
-        if (error && error.code === 'P2002') {
-            try {
-                await prisma.room.deleteMany({ where: { pin } });
-                return await prisma.room.create({ data });
-            } catch (retryErr) {
-                console.error(retryErr);
-            }
-        }
+        if (error?.code === 'P2002') throw error;
         console.error(error);
         throw new Error("Failed to create room");
     }
@@ -98,19 +97,27 @@ function deriveRoomParticipantUuid(roomId, participantId) {
 async function createParticipantWithId(roomId, participantId, budgetCap = null, deviceId = null, options = {}) {
     const cleanDeviceId = deviceId && typeof deviceId === 'string' ? deviceId.trim().slice(0, 64) : null;
     const isNewRoom = Boolean(options && options.isNewRoom);
+    const checkOwner = (record) => {
+        if (record && record.deviceId !== cleanDeviceId) {
+            const err = new Error('Participant identity belongs to another device');
+            err.code = 'FORBIDDEN';
+            throw err;
+        }
+        return record;
+    };
     let targetId = participantId;
     try {
         if (!isNewRoom) {
             await ensureRoomPersisted(roomId);
         }
-        if (budgetCap === null) {
+        if (budgetCap === null && !roomTransaction.getStore()) {
             if (cleanDeviceId && persistedParticipantCache.has(`${roomId}:dev:${cleanDeviceId}`)) {
                 return persistedParticipantCache.get(`${roomId}:dev:${cleanDeviceId}`);
             }
             if (persistedParticipantCache.has(`${roomId}:${participantId}`)) {
                 const cached = persistedParticipantCache.get(`${roomId}:${participantId}`);
                 if (!cleanDeviceId || cached?.deviceId) {
-                    return cached;
+                    return checkOwner(cached);
                 }
             }
         }
@@ -175,6 +182,7 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null, 
             }
         }
         if (existingById) {
+            checkOwner(existingById);
             const needsDeviceBackfill = cleanDeviceId && !existingById.deviceId;
             const needsBudgetUpdate = budgetCap !== null && existingById.budgetCap !== budgetCap;
             if (needsDeviceBackfill || needsBudgetUpdate) {
@@ -194,6 +202,7 @@ async function createParticipantWithId(roomId, participantId, budgetCap = null, 
         return null;
     } catch (error) {
         console.error(error);
+        if (error.code === 'FORBIDDEN') throw error;
         throw new Error("Failed to create participant with ID");
     }
 }
@@ -312,6 +321,7 @@ async function getRoomSummaryByPin(pin) {
                 status: true,
                 theme: true,
                 radius: true,
+                winnerOptionId: true,
             },
         });
         return room;

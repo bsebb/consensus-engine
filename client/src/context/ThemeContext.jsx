@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { flushSync } from 'react-dom';
 
 export const ACCENTS = [
   { id: 'coral', name: 'Coral', color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)' },
@@ -30,19 +29,6 @@ export function ThemeProvider({ children }) {
     const root = typeof document !== 'undefined' ? document.documentElement : null;
     return root ? root.classList.contains('dark') : false;
   });
-
-  // Listen for system preference changes when in 'system' mode
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemChange = () => {
-      if (theme === 'system') {
-        changeTheme('system');
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleSystemChange);
-    return () => mediaQuery.removeEventListener('change', handleSystemChange);
-  }, [theme]);
 
   // Apply accent color CSS variables
   useEffect(() => {
@@ -86,6 +72,19 @@ export function ThemeProvider({ children }) {
       root.classList.remove('theme-transitioning');
     }, 320);
   };
+
+  // Listen for system preference changes when in 'system' mode
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      if (theme === 'system') {
+        changeTheme('system');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleSystemChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemChange);
+  }, [theme]);
 
   const toggleTheme = () => {
     changeTheme(isDark ? 'light' : 'dark');

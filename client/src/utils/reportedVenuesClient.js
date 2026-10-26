@@ -60,11 +60,6 @@ export function markVenueClosedClient(venue) {
       body: payload,
     }).catch(() => {});
 
-    fetch(apiUrl('/api/v1/rooms/report-closed'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-    }).catch(() => {});
   } catch {}
 }
 

@@ -220,22 +220,27 @@ export default function VenueDetailsModal({
             <Star size={12} className="text-amber-400 fill-amber-400" />
             <span>{rating}</span>
             <span className="text-white/70 font-normal">({reviewCount})</span>
-            <span className="w-1 h-1 rounded-full bg-white/40" />
-            <span className="text-[10px] text-emerald-300 font-semibold tracking-wide flex items-center gap-0.5">
-              <Check size={10} className="stroke-[3]" />
-              <span>Verified</span>
-            </span>
+            {Boolean(venue?.isVerified || venue?.is_verified) && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-white/40" />
+                <span className="text-[10px] text-emerald-300 font-semibold tracking-wide flex items-center gap-0.5">
+                  <Check size={10} className="stroke-[3]" />
+                  <span>Verified</span>
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
+            {Boolean(activeSlide?.isStock || venue?.isStock || !isRealPhoto) && (
+              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white/80 text-[10px] font-medium">
+                Illustrative photo
+              </span>
+            )}
             {validSlides.length > 1 ? (
               <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1.5 tabular-nums">
                 <Camera size={11} className="text-emerald-400" />
                 <span>{safeIdx + 1}/{validSlides.length}</span>
-              </span>
-            ) : !isRealPhoto ? (
-              <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-white text-[11px] font-semibold">
-                {t('venuePreview')}
               </span>
             ) : null}
 

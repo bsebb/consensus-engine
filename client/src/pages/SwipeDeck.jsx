@@ -7,6 +7,7 @@ import ReviewModal from '../components/ui/ReviewModal';
 import ConsensusWinnerView from '../components/deck/ConsensusWinnerView';
 import SwipeCard from '../components/deck/SwipeCard';
 import SwipeControls from '../components/deck/SwipeControls';
+import DeckHint from '../components/deck/DeckHint';
 import WaitingForBallotsView from '../components/deck/WaitingForBallotsView';
 import VenueDetailsModal from '../components/deck/VenueDetailsModal';
 import DeckHeader from '../components/deck/DeckHeader';
@@ -21,11 +22,7 @@ import { triggerHaptic } from '../utils/haptics';
 import restaurantsMock from '../mocks/restaurants.json';
 import { filterOutReportedVenues } from '../utils/reportedVenuesClient';
 import { parseGooglePlaceMetadata, buildInitialSwipeCards } from '../utils/roomOptionsParser';
-
-const DEFAULT_WINNER = {
-  id: 'winner_default', name: 'Consensus Spot', category: 'Local Favorites',
-  address: 'Local Venue', distance_km: null, price_level: 2, tags: ['Group Favorite'],
-};
+import { useConsensusOutcome, saveConsensusHistory } from '../hooks/useConsensusOutcome';
 
 export default function SwipeDeck() {
   const { pin } = useParams();
@@ -50,28 +47,44 @@ export default function SwipeDeck() {
   }, [pin]);
 
   const [cards, setCards] = useState(() =>
-    buildInitialSwipeCards({ locationState: location.state, mode, topic, mockPool: restaurantsMock })
+    buildInitialSwipeCards({ locationState: location.state, mode, topic, mockPool: restaurantsMock }).slice(0, 12)
   );
 
   const hasCustomCards = Boolean(location.state?.customCards);
   const categoryFromState = location.state?.category;
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [myVotes, setMyVotes] = useState(() => {
+    if (typeof localStorage !== 'undefined' && pin) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`ballot:${pin}`) || '[]');
+        if (Array.isArray(saved) && saved.length > 0) return saved;
+      } catch {}
+    }
+    return [];
+  });
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (typeof localStorage !== 'undefined' && pin) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`ballot:${pin}`) || '[]');
+        if (Array.isArray(saved) && saved.length > 0) return saved.length;
+      } catch {}
+    }
+    return 0;
+  });
   const [activeTab, setActiveTab] = useState('swipe');
   const [selectedPhotoIdx, setSelectedPhotoIdx] = useState(0);
-  const [myVotes, setMyVotes] = useState([]);
+  const resetDragRef = useRef(null);
+  const winnerSoundPlayedRef = useRef(false);
   const [exitDirection, setExitDirection] = useState(null);
   const [enterDirection, setEnterDirection] = useState(null);
-  const [showWinner, setShowWinner] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('reveal') === 'true' || params.get('winner') === 'true') return true;
-    }
-    return Boolean(location.state?.resolved);
-  });
+  const [showWinner, setShowWinner] = useState(Boolean(location.state?.resolved && location.state?.winner));
   const [serverWinner, setServerWinner] = useState(null);
   const [serverPairwise, setServerPairwise] = useState(null);
   const [serverMatchScore, setServerMatchScore] = useState(null);
+  const [serverStatus, setServerStatus] = useState(location.state?.status || null);
+  const [serverSupport, setServerSupport] = useState(location.state?.support || null);
+  const [serverSupportText, setServerSupportText] = useState(location.state?.supportText || null);
+  const [serverTieBroken, setServerTieBroken] = useState(false);
   const [votesReceived, setVotesReceived] = useState(1);
   const [quorumTotal, setQuorumTotal] = useState(totalParticipants);
   const [participants] = useState(() => (Array.isArray(location.state?.participants) ? location.state.participants : []));
@@ -109,7 +122,7 @@ export default function SwipeDeck() {
                 photo_url: meta.photoUrl,
               };
             });
-            setCards(filterOutReportedVenues(deduplicateVenues(rehydrated)));
+            setCards(filterOutReportedVenues(deduplicateVenues(rehydrated)).slice(0, 12));
           }
         })
         .catch((err) => console.warn('[SwipeDeck] REST room rehydration notice:', err));
@@ -134,13 +147,6 @@ export default function SwipeDeck() {
     });
     return () => { cancelled = true; };
   }, [cards.length, mode]);
-
-  useEffect(() => {
-    if (currentIndex >= cards.length && !showWinner && quorumTotal <= 1 && cards.length > 0) {
-      const timer = setTimeout(() => setShowWinner(true), 450);
-      return () => clearTimeout(timer);
-    }
-  }, [currentIndex, cards.length, showWinner, quorumTotal]);
 
   const isSwiping = !showWinner && currentIndex < cards.length;
 
@@ -207,6 +213,7 @@ export default function SwipeDeck() {
       const nextIdx = currentIndex + 1;
       setCurrentIndex(nextIdx);
       setExitDirection(null);
+      resetDragRef.current?.();
 
       if (pin && typeof emit === 'function') {
         emit('voting_step_progress', {
@@ -220,11 +227,15 @@ export default function SwipeDeck() {
     }, 220);
   }, [cards, currentIndex, exitDirection, enterDirection, vetoesRemaining, superlikesRemaining, addToast, t, pin, emit, participantId, currentUserName]);
 
+  const cardTapCallbackRef = useRef(null);
+  const handleCardTap = useCallback((tapInfo) => {
+    cardTapCallbackRef.current?.(tapInfo);
+  }, []);
+
   // Touch and pointer gesture tracking via useDeckGestures
   const {
     isDragging,
     dragOffset,
-    setDragOffset,
     cardRef,
     handlePointerDown,
     handlePointerMove,
@@ -235,7 +246,14 @@ export default function SwipeDeck() {
     isSwiping,
     onVote: handleVote,
     exitDirection,
+    onCardTap: handleCardTap,
   });
+
+  useEffect(() => { resetDragRef.current = resetDrag; }, [resetDrag]);
+
+  useEffect(() => {
+    resetDrag();
+  }, [currentIndex, resetDrag]);
 
   const handleUndo = useCallback(() => {
     if (currentIndex <= 0 || exitDirection || enterDirection) return;
@@ -258,8 +276,8 @@ export default function SwipeDeck() {
 
       if (e.key === 'ArrowRight') { e.preventDefault(); handleVote(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); handleVote(-1); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); handleVote(-100); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); handleVote(2); }
+      else if (e.key === 'ArrowDown' || e.key === 'v' || e.key === 'V') { e.preventDefault(); handleVote(-100); }
+      else if (e.key === 'ArrowUp' || e.key === 's' || e.key === 'S') { e.preventDefault(); handleVote(2); }
       else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') {
         if (currentIndex > 0) { e.preventDefault(); handleUndo(); }
       }
@@ -272,6 +290,16 @@ export default function SwipeDeck() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, cards.length, showWinner, handleVote, handleUndo]);
 
+  useEffect(() => {
+    if (pin && typeof localStorage !== 'undefined') {
+      if (myVotes.length > 0 && !showWinner) {
+        localStorage.setItem(`ballot:${pin}`, JSON.stringify(myVotes));
+      } else if (showWinner) {
+        localStorage.removeItem(`ballot:${pin}`);
+      }
+    }
+  }, [pin, myVotes, showWinner]);
+
   useSwipeDeckSync({
     pin,
     participantId,
@@ -281,8 +309,18 @@ export default function SwipeDeck() {
     myVotes,
     currentIndex, showWinner, locationState: location.state,
     setCards, setVotesReceived, setQuorumTotal, setVotedParticipantIds, setServerWinner,
-    setServerMatchScore, setServerPairwise, setShowWinner,
-    onAlreadyVoted: () => setCurrentIndex(cards.length),
+    setServerMatchScore, setServerPairwise, setServerStatus, setServerSupport,
+    setServerSupportText, setServerTieBroken, setShowWinner,
+    onAlreadyVoted: count => setCurrentIndex(count || cards.length),
+    onBallotRestore: snapshot => {
+      const ids = new Set(snapshot.map(c => c.id));
+      const valid = myVotes.filter(v => ids.has(v.option_id));
+      if (valid.length !== myVotes.length) { setMyVotes(valid); setCurrentIndex(valid.length); }
+    },
+    onRoomError: data => {
+      addToast({ title: 'Room update', message: data?.message || 'Please try again.', type: 'error' });
+      if (/room not found|removed from this room|join the next pick/i.test(data?.message || '')) navigate('/', { replace: true });
+    },
     isConnected,
     emit, on, off,
   });
@@ -290,7 +328,7 @@ export default function SwipeDeck() {
   const handleHostForceReveal = () => {
     const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
     emit('host_force_reveal', { pin, host_id: participantId, host_token: hostToken || undefined });
-    if (!isConnected) setShowWinner(true);
+
   };
 
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -309,6 +347,7 @@ export default function SwipeDeck() {
       emit('leave_lobby', { pin, participant_id: participantId, user_name: location.state?.userName });
       emit('leave_room', { pin, participant_id: participantId });
       localStorage.removeItem('consensus_active_pin');
+      localStorage.removeItem(`ballot:${pin}`);
       sessionStorage.removeItem('consensus_active_pin');
       sessionStorage.removeItem(`consensus_host_${pin}`);
       sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
@@ -325,131 +364,36 @@ export default function SwipeDeck() {
   };
 
   const handleQuickRematch = useCallback(() => {
+    if (!isHost || !isConnected) return;
     triggerHaptic('like');
-    const prevWinnerName = serverWinner?.name || location.state?.winner?.name || location.state?.winner;
-    setCards((prev) => {
-      if (prev.length > 2 && prevWinnerName) {
-        const remaining = prev.filter((c) => c.name !== prevWinnerName);
-        if (remaining.length >= 2) return remaining;
-      }
-      return prev;
-    });
-    setMyVotes([]);
-    setCurrentIndex(0);
-    setSelectedPhotoIdx(0);
-    setActiveTab('swipe');
-    setServerWinner(null);
-    setServerPairwise(null);
-    setServerMatchScore(null);
-    setShowWinner(false);
-    addToast({
-      title: 'Runner-Up Rematch Started',
-      message: 'Swiping on the remaining top spots!',
-      type: 'info',
-    });
-  }, [serverWinner, location.state, addToast]);
+    emit('quick_rematch', { pin, host_id: participantId, host_token: sessionStorage.getItem(`consensus_host_token_${pin}`) || undefined });
+  }, [isHost, isConnected, emit, pin, participantId]);
 
-  const consensusResult = useMemo(() => {
-    if (serverWinner) {
-      const matchedCard = cards.find((c) => c.id === serverWinner.id || c.name === serverWinner.name);
-      return {
-        winner: matchedCard ? { ...serverWinner, ...matchedCard } : serverWinner,
-        vetoCount: 0,
-        matchScore: serverMatchScore || 96,
-      };
-    }
-    if (location.state?.winner) {
-      const winnerName = typeof location.state.winner === 'object' ? location.state.winner.name : location.state.winner;
-      const found = cards.find((c) => c.name.toLowerCase() === String(winnerName).toLowerCase()) || {
-        id: 'historical-winner',
-        name: winnerName,
-        price_level: location.state?.priceLevel || 2,
-        distance_km: null,
-        address: 'Local Venue',
-      };
-      return { winner: found, vetoCount: 0, matchScore: location.state?.matchScore || 94 };
-    }
-    if (!cards || cards.length === 0) {
-      return { winner: DEFAULT_WINNER, vetoCount: 0, matchScore: 100 };
-    }
-
-    const scored = cards.map((card) => {
-      const myVote = myVotes.find((v) => v.option_id === card.id);
-      return { card, isVetoed: myVote?.score === -100, score: myVote ? myVote.score : 0 };
-    });
-
-    const nonVetoed = scored.filter((s) => !s.isVetoed);
-    const pool = (nonVetoed.length > 0 ? nonVetoed : scored).sort((a, b) => b.score - a.score);
-
-    return {
-      winner: pool[0]?.card || cards[0],
-      vetoCount: scored.filter((s) => s.isVetoed).length,
-      matchScore: nonVetoed.length > 0 ? 94 : 72,
-    };
-  }, [cards, myVotes, serverWinner, serverMatchScore, location.state]);
-
-  const pairwiseBreakdown = useMemo(() => {
-    if (serverPairwise && Array.isArray(serverPairwise) && serverPairwise.length > 0) return serverPairwise;
-    const winner = consensusResult.winner;
-    if (!winner || !cards || cards.length === 0) return [];
-
-    const winVoteObj = myVotes.find((v) => v.option_id === winner.id || v.name === winner.name);
-    const winScore = winVoteObj ? winVoteObj.score : 1;
-
-    return cards.filter((c) => c.id !== winner.id && c.name !== winner.name).map((rival) => {
-      const rivalVoteObj = myVotes.find((v) => v.option_id === rival.id || v.name === rival.name);
-      const rivalScore = rivalVoteObj ? rivalVoteObj.score : -1;
-      const votesFor = winScore >= rivalScore ? 1 : 0;
-      const votesAgainst = rivalScore > winScore ? 1 : 0;
-      return {
-        opponent: rival.name,
-        score: `${votesFor}-${votesAgainst}`,
-        margin: `Preferred over ${rival.name} (${votesFor}-${votesAgainst})`,
-      };
-    });
-  }, [serverPairwise, consensusResult.winner, cards, myVotes]);
+  const { consensusResult, pairwiseBreakdown } = useConsensusOutcome({
+    cards,
+    myVotes,
+    serverWinner,
+    serverMatchScore,
+    serverPairwise,
+    locationState: location.state,
+  });
 
   useEffect(() => {
     if (showWinner && consensusResult.winner) {
-      triggerHaptic('match');
-      try {
-        const history = JSON.parse(localStorage.getItem('consensus_history') || '[]');
-        const optionsList = cards.map((c) => {
-          const pw = pairwiseBreakdown.find((p) => p.opponent === c.name);
-          return {
-            name: c.name,
-            category: c.category || 'Venue',
-            priceLevel: c.price_level || 2,
-            isWinner: c.name === consensusResult.winner.name,
-            duelMargin: c.name === consensusResult.winner.name
-              ? 'Consensus Winner'
-              : `Defeated by ${consensusResult.winner.name} (${pw ? pw.score : '1-0'})`,
-          };
-        });
-
-        const entry = {
-          pin, topic, winner: consensusResult.winner.name,
-          winnerDetails: {
-            name: consensusResult.winner.name, priceLevel: consensusResult.winner.price_level || 2,
-            distanceKm: consensusResult.winner.distance_km ?? null, address: consensusResult.winner.address || 'Local Venue',
-            matchScore: consensusResult.matchScore || 94,
-          },
-          options: optionsList, pairwiseDuels: pairwiseBreakdown,
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          participantsCount: totalParticipants, priceLevel: consensusResult.winner.price_level || 2,
-        };
-        const existingIdx = history.findIndex((h) => h.pin === pin);
-        if (existingIdx !== -1) {
-          history[existingIdx] = entry;
-        } else {
-          history.unshift(entry);
-        }
-        localStorage.setItem('consensus_history', JSON.stringify(history.slice(0, 30)));
-      } catch (err) {
-        console.warn('[SwipeDeck] Local history save error:', err);
+      if (!winnerSoundPlayedRef.current) {
+        winnerSoundPlayedRef.current = true;
+        triggerHaptic('match');
       }
+      saveConsensusHistory({
+        pin,
+        topic,
+        consensusResult: { ...consensusResult, status: serverStatus, support: serverSupport, supportText: serverSupportText },
+        cards,
+        pairwiseBreakdown,
+        totalParticipants,
+      });
     }
-  }, [showWinner, consensusResult, pin, topic, totalParticipants, cards, pairwiseBreakdown]);
+  }, [showWinner, consensusResult, pin, topic, totalParticipants, cards, pairwiseBreakdown, serverStatus, serverSupport, serverSupportText]);
 
   const activeCard = cards[currentIndex];
   const activeRating = activeCard ? getVenueRating(activeCard.name, activeCard.category) : { rating: '4.7', reviewCount: '1.2k' };
@@ -482,8 +426,6 @@ export default function SwipeDeck() {
         showWinner={showWinner}
         currentIndex={currentIndex}
         cardsLength={cards.length}
-        mode={mode}
-        activeCard={activeCard}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isConnected={isConnected}
@@ -511,7 +453,11 @@ export default function SwipeDeck() {
           deviceId={deviceId}
           emit={emit}
           vetoCount={consensusResult.vetoCount}
-          onQuickRematch={cards.length > 1 ? handleQuickRematch : undefined}
+          status={serverStatus}
+          support={serverSupport}
+          supportText={serverSupportText}
+          tieBroken={serverTieBroken}
+          onQuickRematch={isHost && cards.length > 1 ? handleQuickRematch : undefined}
         />
       ) : currentIndex >= cards.length ? (
         <WaitingForBallotsView
@@ -526,6 +472,7 @@ export default function SwipeDeck() {
       ) : (
         <>
           <SwipeCard
+            key={activeCard?.id ? `card-${activeCard.id}` : `card-${currentIndex}`}
             mode={mode}
             topic={topic}
             cardIndex={currentIndex + 1}
@@ -546,6 +493,7 @@ export default function SwipeDeck() {
             cardWalkDesc={cardWalkDesc}
             vetoesRemaining={vetoesRemaining}
             superlikesRemaining={superlikesRemaining}
+            onRegisterCardTap={(cb) => { cardTapCallbackRef.current = cb; }}
             onOpenDetails={(idx = 0) => {
               setSelectedPhotoIdx(typeof idx === 'number' ? idx : 0);
               setActiveTab('details');
@@ -553,7 +501,7 @@ export default function SwipeDeck() {
           />
 
           <VenueDetailsModal
-            key={activeCard?.id || activeCard?.name || 'swipedeck-venue-modal'}
+            key={activeCard?.id ? `details-modal-${activeCard.id}` : 'swipedeck-venue-modal'}
             venue={activeCard}
             isOpen={activeTab === 'details'}
             initialPhotoIdx={selectedPhotoIdx}
@@ -567,13 +515,16 @@ export default function SwipeDeck() {
 
       {/* Floating Tactical Control Dock */}
       {!showWinner && currentIndex < cards.length && (
-        <SwipeControls
-          handleVote={handleVote}
-          handleUndo={handleUndo}
-          canUndo={currentIndex > 0}
-          vetoesRemaining={vetoesRemaining}
-          superlikesRemaining={superlikesRemaining}
-        />
+        <div className="relative flex flex-col items-center w-full">
+          {currentIndex === 0 && <DeckHint />}
+          <SwipeControls
+            handleVote={handleVote}
+            handleUndo={handleUndo}
+            canUndo={currentIndex > 0}
+            vetoesRemaining={vetoesRemaining}
+            superlikesRemaining={superlikesRemaining}
+          />
+        </div>
       )}
 
       {/* Review Modal Portal */}

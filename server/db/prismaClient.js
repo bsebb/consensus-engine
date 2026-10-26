@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { roomTransaction } = require('../src/state/transactionContext');
 
 function getSafeDatabaseUrl() {
     const rawUrl = (process.env.DATABASE_URL || '').trim();
@@ -27,7 +28,7 @@ function getSafeDatabaseUrl() {
 }
 
 const safeUrl = getSafeDatabaseUrl();
-const prisma = global.__prisma || new PrismaClient(
+const rootPrisma = global.__prisma || new PrismaClient(
     safeUrl
         ? {
             datasources: {
@@ -40,6 +41,19 @@ const prisma = global.__prisma || new PrismaClient(
         }
 );
 
-global.__prisma = prisma;
+global.__prisma = rootPrisma;
+// Helpers join the current room transaction rather than opening a second connection
+// that would wait on the row lock held by the first connection.
+const prisma = new Proxy(rootPrisma, {
+    get(target, property) {
+        const context = roomTransaction.getStore();
+        const client = context && !context.finished ? context.tx : target;
+        if (property === '$transaction' && client !== target) {
+            return work => typeof work === 'function' ? work(prisma) : Promise.all(work);
+        }
+        const value = client[property];
+        return typeof value === 'function' ? value.bind(client) : value;
+    },
+});
 
-module.exports = { prisma, getSafeDatabaseUrl };
+module.exports = { prisma, rootPrisma, getSafeDatabaseUrl };

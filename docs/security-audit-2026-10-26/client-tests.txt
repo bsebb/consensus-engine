@@ -1,0 +1,11 @@
+✔ deliberate downward pulls dismiss, even when released slowly (0.26875ms)
+✔ a short flick dismisses but a tap or short slow drag snaps back (0.048917ms)
+✔ cancellation and upward gestures never dismiss (0.038542ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.752334

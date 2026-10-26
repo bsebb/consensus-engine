@@ -3,7 +3,9 @@ const express = require('express');
 const http = require('http');
 const helmet = require('helmet');
 const { Server } = require('socket.io');
-const { searchRestaurants, fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
+const { coordinatedIO } = require('./src/state/roomCoordinator');
+const { initializeRealtime } = require('./src/state/realtimeCluster');
+const { fetchRealVenuePhotos } = require('./src/utils/foursquarePlaces');
 const { discoverDiscoveryVenues } = require('./src/services/venueDiscoveryService');
 const { resolveGamePoster } = require('./src/utils/gamePosterService');
 const { searchCustomAutocomplete } = require('./src/utils/customAutocompleteService');
@@ -12,9 +14,7 @@ const { reportClosedVenue } = require('./src/utils/reportedVenues');
 const { getStorageMetrics, pruneExpiredRooms, initStorageSafeguard } = require('./src/utils/storageSafeguard');
 const roomRoutes = require('./routes/roomRoutes');
 const { setIO } = require('./src/utils/socket');
-const { verifyHostToken } = require('./src/utils/hostAuth');
 const { createRateLimiter } = require('./src/utils/rateLimiter');
-const { dispatchActivityNotification } = require('./src/utils/storageSafeguard');
 const cors = require('cors');
 
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -38,13 +38,15 @@ const checkOrigin = (origin, callback) => {
 };
 
 const app = express();
-app.set('trust proxy', 1);
+// Explicitly configure the deployment's trusted proxy ranges; direct installs trust none.
+app.set('trust proxy', process.env.TRUST_PROXY || false);
 app.disable('x-powered-by');
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(cors({ origin: checkOrigin, credentials: true }));
-app.use(express.json({ limit: '16kb' }));
+app.use(createRateLimiter({ windowMs: 60000, max: 1200 }));
+app.use(express.json({ limit: '16kb', inflate: false }));
 
 const sensitiveLimiter = createRateLimiter({ windowMs: 60000, max: 40 });
 
@@ -90,7 +92,7 @@ const requireAdminAuth = (req, res, next) => {
   const adminSecret = process.env.ADMIN_API_KEY;
   const rawIp = req.ip || req.socket?.remoteAddress || '';
   const isLocal = rawIp === '127.0.0.1' || rawIp === '::1' || rawIp === '::ffff:127.0.0.1';
-  if (!adminSecret && isLocal) return next();
+  if (!adminSecret && isLocal && process.env.NODE_ENV !== 'production') return next();
   if (!adminSecret) {
     return res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'System endpoints disabled in production without ADMIN_API_KEY.' });
   }
@@ -122,16 +124,26 @@ app.post('/api/v1/system/prune', requireAdminAuth, sensitiveLimiter, async (req,
   }
 });
 
+app.get('/ready', async (req, res) => {
+  try {
+    await ready;
+    await prisma.$queryRaw`SELECT 1`;
+    if (!realtime.isReady()) throw new Error('Subscription unavailable');
+    res.json({ status: 'ready' });
+  } catch { res.status(503).json({ status: 'unavailable' }); }
+});
+
 app.use('/api/v1/rooms', roomRoutes);
 
 // Spatial venue discovery endpoint across all 6 categories (restaurants, cafes, bars, cinema, desserts, activities)
-app.get('/api/v1/places', async (req, res) => {
+app.get('/api/v1/places', sensitiveLimiter, async (req, res) => {
   try {
     const rawCategory = String(req.query.category || req.query.theme || 'restaurants').trim();
     const lat = req.query.lat ?? req.query.latitude;
     const lng = req.query.lng ?? req.query.longitude;
-    const radius = Number(req.query.radius) || 5000;
+    const radius = Math.max(100, Math.min(50000, Number(req.query.radius) || 5000));
     const targetPlaces = Math.max(1, Math.min(50, Number(req.query.limit || req.query.targetPlaces) || 30));
+    if ((lat != null && (!Number.isFinite(Number(lat)) || Math.abs(Number(lat)) > 90)) || (lng != null && (!Number.isFinite(Number(lng)) || Math.abs(Number(lng)) > 180))) return res.status(400).json({ success: false, error: 'INVALID_COORDINATES' });
     const isExactGps = req.query.is_exact_gps === 'true' || (lat != null && lng != null);
 
     const places = await discoverDiscoveryVenues({
@@ -161,7 +173,7 @@ app.get('/api/v1/places', async (req, res) => {
 });
 
 // Real venue photography endpoint (returns up to 4 real high-res CDN photos for any venue)
-app.get('/api/v1/venue-photos', async (req, res) => {
+app.get('/api/v1/venue-photos', sensitiveLimiter, async (req, res) => {
   try {
     const { name = '', address = '', category = '' } = req.query;
     if (!name.trim()) {
@@ -176,7 +188,7 @@ app.get('/api/v1/venue-photos', async (req, res) => {
 });
 
 // Community reviews & aggregated analytics endpoint for any venue
-app.get('/api/v1/venues/insights', async (req, res) => {
+app.get('/api/v1/venues/insights', sensitiveLimiter, async (req, res) => {
   try {
     const { getVenueCommunityInsights } = require('./db/helpers');
     const name = String(req.query.name || '').trim();
@@ -199,9 +211,10 @@ app.post('/api/v1/venues/report-closed', sensitiveLimiter, (req, res) => {
       return res.status(400).json({ success: false, error: 'Venue name is required' });
     }
     const result = reportClosedVenue({ name, address, lat, lng, reason });
+    if (!result.success) return res.status(400).json(result);
     return res.status(200).json({
       success: true,
-      message: 'Venue reported as closed and excluded from future discovery decks.',
+      message: 'Venue report submitted for review.',
       venue: result.venue,
     });
   } catch {
@@ -228,7 +241,7 @@ app.get('/api/v1/places/photo', sensitiveLimiter, async (req, res) => {
 });
 
 // Official game artwork lookup (strict Steam match, then Wikipedia cover art)
-app.get('/api/v1/options/game-poster', async (req, res) => {
+app.get('/api/v1/options/game-poster', sensitiveLimiter, async (req, res) => {
   try {
     const result = await resolveGamePoster(req.query.query);
     res.set('Cache-Control', 'public, max-age=86400');
@@ -244,7 +257,7 @@ app.get('/api/v1/options/game-poster', async (req, res) => {
 });
 
 // Multi-domain live autocomplete query (Steam games, movies, activities)
-app.get('/api/v1/options/autocomplete', async (req, res) => {
+app.get('/api/v1/options/autocomplete', sensitiveLimiter, async (req, res) => {
   try {
     const suggestions = await searchCustomAutocomplete({
       query: req.query.query,
@@ -261,7 +274,7 @@ app.get('/api/v1/options/autocomplete', async (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
+  const statusCode = Number.isInteger(err.status) ? err.status : (Number.isInteger(err.statusCode) ? err.statusCode : 500);
   const isProd = process.env.NODE_ENV === 'production';
   console.error(`[Error]: ${err.message}`);
 
@@ -278,6 +291,7 @@ const httpServer = http.createServer(app);
 // Initialize Socket.io on HTTP server with restricted origins, 16KB max frame size,
 // and perMessageDeflate disabled for 1000+ CCU low-memory/low-CPU efficiency
 const io = new Server(httpServer, {
+  allowRequest: (req, callback) => checkOrigin(req.headers.origin, callback),
   cors: {
     origin: checkOrigin,
     methods: ['GET', 'POST'],
@@ -288,10 +302,18 @@ const io = new Server(httpServer, {
   httpCompression: false,
   pingInterval: 25000,
   pingTimeout: 20000,
-  transports: ['websocket', 'polling'],
+  transports: process.env.SOCKET_POLLING === 'true' ? ['websocket', 'polling'] : ['websocket'],
 });
 setIO(io);
-app.set('io', io);
+app.set('io', coordinatedIO(io));
+let realtime;
+const ready = initializeRealtime(io).then(cluster => { realtime = cluster; return cluster; });
+// Attach a rejection handler immediately; startup and tests also await this promise.
+ready.catch(error => console.error('[Startup]', error.code || error.name));
+io.httpServer.once('close', () => {
+  io.of('/').adapter.close();
+  realtime?.close().catch(() => {});
+});
 
 const { prisma } = require('./db/helpers');
 const sessionStore = require('./src/sockets/socketSessionStore');
@@ -300,8 +322,23 @@ const { registerRoomSocketHandlers } = require('./src/sockets/roomSocketHandler'
 // Initialize background TTL sweep for session store
 sessionStore.initSessionStoreSweep(io);
 
+const originalClose = io.close.bind(io);
+io.close = async callback => {
+  sessionStore.shuttingDown = true;
+  await require('./src/state/roomCoordinator').drainRoomWork();
+  return originalClose(callback);
+};
+
 // Wire real-time multiplayer socket events
 io.on('connection', (socket) => {
+  let messageCount = 0;
+  let windowStart = Date.now();
+  socket.use((packet, next) => {
+    if (Date.now() - windowStart > 10000) { messageCount = 0; windowStart = Date.now(); }
+    if (++messageCount > 100) { socket.emit('room_error', { message: 'Please slow down.' }); return; }
+    if (packet[1] != null && (typeof packet[1] !== 'object' || Array.isArray(packet[1]))) return;
+    next();
+  });
   registerRoomSocketHandlers(io, socket, sessionStore);
 });
 
@@ -312,25 +349,21 @@ httpServer.headersTimeout = 66000;
 httpServer.maxRequestsPerSocket = 0;
 
 if (require.main === module) {
-  httpServer.listen(PORT, '0.0.0.0', 2048, () => {
-    console.log(`Server listening on http://0.0.0.0:${PORT}`);
-    initStorageSafeguard();
-  });
+  ready.then(() => {
+    httpServer.listen(PORT, process.env.HOST || '0.0.0.0', 2048, () => {
+      console.log(`Server listening on port ${PORT}`);
+      initStorageSafeguard();
+    });
+  }).catch(() => process.exit(1));
 }
 
 // Gracefully handle process termination (Render deploys, container recycling, local ctrl-c)
 // to immediately release PostgreSQL client connections and prevent connection pool exhaustion.
 async function gracefulShutdown(signal) {
   console.log(`[Server] Received ${signal}. Draining sockets, closing HTTP server, and releasing database connections...`);
-  httpServer.close(async () => {
-    try {
-      if (prisma && prisma.$disconnect) {
-        await prisma.$disconnect();
-        console.log('[Server] Prisma disconnected cleanly.');
-      }
-    } catch (e) {
-      console.error('[Server] Error during database disconnect:', e.message);
-    }
+  io.close(async () => {
+    try { await realtime?.close(); await prisma.$disconnect(); }
+    catch (e) { console.error('[Shutdown]', e.code || e.name); }
     process.exit(0);
   });
 
@@ -344,5 +377,5 @@ async function gracefulShutdown(signal) {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-module.exports = { app, httpServer, io };
+module.exports = { app, httpServer, io, ready };
 

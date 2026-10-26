@@ -1,0 +1,170 @@
+
+> server@1.0.0 test
+> node --require ./test-support/testEnvironment.js --test 'src/**/*.test.js'
+
+◇ injected env (2) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+▶ Flow 1: Discovery Room Creation, Category Pools & Activity Gallery Verification
+  ✔ GET /api/v1/places returns deduplicated, rich venues with valid coordinates, price labels, and verified photos for all 6 categories (30.528916ms)
+  ✔ POST /api/v1/rooms creates Discovery rooms across all 6 categories with hydrated options (46.91125ms)
+  ✔ All 20 Fun & Distractions activities resolve verified /api/v1/venue-photos and 4 distinct sub-type-matching slides in getVenuePhotoGallery (60.604958ms)
+✔ Flow 1: Discovery Room Creation, Category Pools & Activity Gallery Verification (141.861167ms)
+▶ Flow 2: Smart Search, Typo-Tolerant Autocomplete & Real-Time Lobby Suggestions (Discovery & Custom)
+  ✔ Typo-tolerant smart search and nearest-branch GPS routing resolve all 8 required queries accurately (6.301791ms)
+[Socket] HostAlex joined room 5135 (Lobby count: 1)
+[Socket] GuestMaria joined room 5135 (Lobby count: 2)
+(node:45056) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[Socket] HostAlex joined room 7508 (Lobby count: 1)
+[Socket] GuestMaria joined room 7508 (Lobby count: 2)
+  ✔ Socket.io add_custom_suggestion & remove_custom_suggestion work in both DISCOVERY and CUSTOM rooms and parseRoomOptions places group-added venues at the front of the deck (21.996042ms)
+✔ Flow 2: Smart Search, Typo-Tolerant Autocomplete & Real-Time Lobby Suggestions (Discovery & Custom) (28.668958ms)
+[Socket] HostAlex joined room 3247 (Lobby count: 1)
+[Socket] GuestElena joined room 3247 (Lobby count: 2)
+[Socket] Voting started in room 3247 with 4 options (quorum: 2)
+[Socket] Consensus resolved for room 3247: "Casa della Mozzarella" won across 2 ballots! (Status: CLEAR)
+▶ Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus
+  ✔ Host + Guest real-time Socket.io voting resolves Schulze Condorcet winner, pairwise breakdown, and match score (16.568459ms)
+[Socket] Host joined room 8840 (Lobby count: 1)
+[Socket] Guest1 joined room 8840 (Lobby count: 2)
+[Socket] Guest2 joined room 8840 (Lobby count: 3)
+[Socket] Voting started in room 8840 with 3 options (quorum: 3)
+[Socket] Consensus resolved for room 8840: "Plaza Bowling MallDova" won across 3 ballots! (Status: CLEAR)
+  ✔ Veto (-100) elimination and 3-voter Condorcet tie-break handling over live sockets (11.246417ms)
+✔ Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus (28.215292ms)
+◇ injected env (2) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+[Socket] Host joined room 6917 (Lobby count: 1)
+[Socket] Guest joined room 6917 (Lobby count: 2)
+✔ public room, roster and budget broadcasts contain no device credentials or private budget amounts (60.993959ms)
+[Socket] Host joined room 4497 (Lobby count: 1)
+[Socket] Guest joined room 4497 (Lobby count: 2)
+[Socket] Host joined room 9367 (Lobby count: 1)
+[Socket] Guest joined room 9367 (Lobby count: 2)
+[Socket] Unauthorized host_start_voting in room 4497 by ca6a9812-d024-49a0-80e3-0f2953ff7162
+[Socket] Unauthorized host_start_voting in room 4497 by daa65f4b-5cdb-4d22-84ab-815c090c5864
+✔ forged host joins, unjoined actions and cross-room host privileges are denied (11.840333ms)
+[Socket] Host joined room 6493 (Lobby count: 1)
+[Socket] Guest joined room 6493 (Lobby count: 2)
+[Socket] Voting started in room 6493 with 3 options (quorum: 2)
+✔ one member cannot change another member’s budget, remove them, or cast their ballot (40.328292ms)
+[Socket] Host joined room 9972 (Lobby count: 1)
+[Socket] Guest joined room 9972 (Lobby count: 2)
+[Socket] Voting started in room 9972 with 3 options (quorum: 2)
+✔ REST mutations require the matching private device credential or host authorization (15.702209ms)
+[Socket] Host joined room 1118 (Lobby count: 1)
+[Socket] Guest joined room 1118 (Lobby count: 2)
+[Socket] Voting started in room 1118 with 3 options (quorum: 2)
+[Socket] Consensus resolved for room 1118: "One" won across 2 ballots! (Status: CLEAR)
+[Socket] Guest joined room 1118 (Lobby count: 2)
+✔ REST fallback and socket ballot share one immutable vote and resolve identically for both users (53.753ms)
+[Socket] Host joined room 4353 (Lobby count: 1)
+[Socket] Guest joined room 4353 (Lobby count: 2)
+[Socket] Voting started in room 4353 with 3 options (quorum: 2)
+✔ duplicate starts cannot reset ballots; late joins do not enlarge the voting quorum (6.95075ms)
+[Socket] Host joined room 1215 (Lobby count: 1)
+[Socket] Guest joined room 1215 (Lobby count: 2)
+prisma:error 
+Invalid `prisma.room.create()` invocation in
+/Users/seb/Documents/consensus-engine/server/db/helpers.js:66:34
+
+  63     data.participants = { create: { id: hostId, deviceId: hostDeviceId } };
+  64     if (initialOptions.length) data.options = { create: initialOptions.map(({ roomId, ...option }) => option) };
+  65 }
+→ 66 return await prisma.room.create(
+Unique constraint failed on the fields: (`pin`)
+✔ PIN collisions preserve the original persisted room and participant (6.5025ms)
+✔ rate limits cannot be bypassed by rotating device IDs (0.148208ms)
+[Error]: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+[Error]: request entity too large
+✔ malformed and oversized JSON are client errors; unapproved WebSocket origins are rejected (3.220083ms)
+✔ ballot quotas and option IDs apply consistently (0.16725ms)
+[Socket] Host joined room 6013 (Lobby count: 1)
+[Socket] Guest joined room 6013 (Lobby count: 2)
+[Socket] Voting started in room 6013 with 3 options (quorum: 2)
+✔ simultaneous starts create one snapshot and mixed REST/socket retries persist one matching ballot (24.224083ms)
+[Socket] Host joined room 7084 (Lobby count: 1)
+[Socket] Guest joined room 7084 (Lobby count: 2)
+[Socket] Voting started in room 7084 with 3 options (quorum: 2)
+[Socket] Consensus resolved for room 7084: "Three" won across 1 ballots! (Status: NO_CONSENSUS)
+✔ host removal is idempotent, hides private credentials, and guest rematches cannot change the result (51.728ms)
+[Socket] Host joined room 8565 (Lobby count: 1)
+[Socket] Guest joined room 8565 (Lobby count: 2)
+[Socket] Voting started in room 8565 with 3 options (quorum: 2)
+[Socket] Consensus resolved for room 8565: "One" won across 2 ballots! (Status: CLEAR)
+[Socket] Consensus resolved for room 8565: "One" won across 2 ballots! (Status: CLEAR)
+[Socket] Guest joined room 8565 (Lobby count: 1)
+✔ completed results recover from persisted ballots when all room session caches are lost (11.148ms)
+[Socket] Host joined room 8440 (Lobby count: 1)
+[Socket] Guest joined room 8440 (Lobby count: 2)
+[Socket] Voting started in room 8440 with 3 options (quorum: 1)
+✔ host migration grants the remaining verified member host controls and revokes the departed host (5.887833ms)
+[Socket] Host joined room 5360 (Lobby count: 1)
+[Socket] Guest joined room 5360 (Lobby count: 2)
+[Socket] Voting started in room 5360 with 2 options (quorum: 2)
+✔ group price caps are enforced on the server snapshot and All clears the stored filter (13.805375ms)
+[Socket] Host joined room 4989 (Lobby count: 1)
+[Socket] Guest joined room 4989 (Lobby count: 2)
+✔ empty and duplicate-ID decks are rejected before a session is created (3.224958ms)
+✔ production administration fails closed without an admin key, even with forged forwarding headers (0.973708ms)
+[Socket] Consensus resolved for room TEST99: "Sushi Spot" won across 3 ballots! (Status: CLEAR)
+[Socket] Cannot resolve winner for room NOOP99: no options
+[Socket] Alex joined room 8842 (Lobby count: 1)
+[Socket] Alex (Safari) joined room 8842 (Lobby count: 1)
+[Socket] Host joined room 9123 (Lobby count: 1)
+[Socket] Guest joined room 9123 (Lobby count: 2)
+✔ resolveAndBroadcastWinner computes real tally, approval_count, and total_voted for 3 voters (34.292791ms)
+✔ resolveAndBroadcastWinner emits room_error and avoids winner_announced when session has no options (0.240458ms)
+✔ join_lobby enforces per-room deviceId idempotency and reuses existing participant slot across browser switches (1.633208ms)
+✔ only host can add or remove custom suggestions and discovery places in lobby (0.75225ms)
+Running Fallback Venues & Spatial Discovery Tests...
+[PASS] Test 1: Chișinău restaurant search returns 30 venues
+[PASS] Test 2: Zero Strășeni venues leaked into Chișinău search
+[PASS] Test 3: All Chișinău venues within spatial bounds and have valid schema
+[PASS] Test 4: Strășeni local search returns local venues only
+[PASS] Test 5: Option records composite ID formatted accurately
+[PASS] Test 6: Chișinău pool scales up to 50 venues (50 venues returned) and activities (15)
+
+--- ALL FALLBACK & DISCOVERY TESTS PASSED SUCCESSFULLY ---
+✔ src/utils/fallbackVenues.test.js (165.390834ms)
+[PASS] hostAuth unit tests passed successfully.
+✔ src/utils/hostAuth.test.js (170.173667ms)
+Starting tests for isDuplicateIdea...
+
+[PASS] Test 1:Exact match (different casing)
+[PASS] Test 2:Minor typo (distance 1)
+[PASS] Test 3:Formatting mess (extra whitespace)
+[PASS] Test 4:Completely different concepts
+[PASS] Test 5:Edge case: Empty string
+
+--- TEST SUMMARY ---
+SUCCESS: All 5 tests passed.
+✔ src/utils/levenshtein.test.js (150.613041ms)
+[PASS] rateLimiter unit tests passed successfully.
+✔ src/utils/rateLimiter.test.js (150.055ms)
+▶ Schulze & Ballot Validation Suite
+  ✔ Sanitizer: normalizes valid ballots and enforces quotas (0.914042ms)
+  ✔ Schulze: absolute Condorcet winner (7.879375ms)
+  ✔ Schulze: Condorcet 3-cycle paradox with decisive support breaks the paradox (0.160584ms)
+  ✔ Schulze: Deterministic tie-break via SHA-256 hash when perfectly tied (0.106584ms)
+  ✔ Schulze: Hard veto prunes candidate from tournament (0.079917ms)
+  ✔ Schulze: All-vetoed fallback prefers fewest vetoes (0.061834ms)
+  ✔ Schulze: All-pass produces NO_CONSENSUS status (0.140583ms)
+  ✔ Schulze: Single voter edge case (0.076083ms)
+  ✔ Schulze: Permutation invariance (ballot submission order does not alter outcome) (0.564875ms)
+✔ Schulze & Ballot Validation Suite (11.889917ms)
+Running Storage Safeguard & Security Invariant Tests...
+[PASS] Test 1: Telemetry returns valid system metrics (RAM: 19.2MB/512MB, 3.8%)
+[PASS] Test 2: Pruning execution completed without unhandled errors
+[PASS] Test 3: System safeguard checker evaluated thresholds successfully
+[PASS] Test 4: Censorship DoS prevention verified (short strings cannot censor catalog)
+[PASS] Test 5: Activity notification dispatcher verified for room creation and decision events
+
+--- ALL STORAGE SAFEGUARD & SECURITY TESTS PASSED ---
+✔ src/utils/storageSafeguard.test.js (217.993666ms)
+ℹ tests 46
+ℹ suites 0
+ℹ pass 46
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 585.050042

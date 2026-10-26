@@ -48,8 +48,8 @@ function loadReportedFile() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         parsed.forEach((item) => {
-          if (item && item.key) closedVenueKeys.add(item.key);
-          if (item && item.name) closedVenueKeys.add(normalizeVenueKey(item.name));
+          if (item?.status === 'approved' && item.key) closedVenueKeys.add(item.key);
+          if (item?.status === 'approved' && item.name) closedVenueKeys.add(normalizeVenueKey(item.name));
         });
       }
     }
@@ -66,7 +66,9 @@ function persistReport(reportItem) {
     if (fs.existsSync(REPORTED_FILE)) {
       existing = JSON.parse(fs.readFileSync(REPORTED_FILE, 'utf8'));
     }
+    existing = existing.filter(item => item.key !== reportItem.key);
     existing.push(reportItem);
+    existing = existing.slice(-5000);
     fs.writeFileSync(REPORTED_FILE, JSON.stringify(existing, null, 2), 'utf8');
   } catch (err) {
     console.warn('[ReportedVenues] Could not persist reported venue:', err.message);
@@ -82,10 +84,9 @@ function reportClosedVenue({ name = '', address = '', lat = null, lng = null, re
     return { success: false, error: 'Invalid venue identifier' };
   }
 
-  closedVenueKeys.add(normKey);
-
   const reportItem = {
     key: normKey,
+    status: 'pending',
     name: String(name).trim().slice(0, 100),
     address: String(address || '').trim().slice(0, 150),
     lat: lat != null && !isNaN(Number(lat)) ? Number(lat) : null,
@@ -95,7 +96,7 @@ function reportClosedVenue({ name = '', address = '', lat = null, lng = null, re
   };
 
   persistReport(reportItem);
-  return { success: true, venue: name, key: normKey };
+  return { success: true, venue: name, key: normKey, status: 'pending' };
 }
 
 function isVenueReportedClosed(name = '', lat = null, lng = null) {

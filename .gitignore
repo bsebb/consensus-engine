@@ -111,3 +111,12 @@ activity/
 LESSONS.md
 HANDOFF.md
 .neon
+
+# Checked-in build and regression tools
+!scripts/prepare-service-worker.cjs
+!scripts/security-browser-test.cjs
+!scripts/restart-browser-test.cjs
+!scripts/cluster-load-test.cjs
+!scripts/rehearse-migrations.cjs
+!scripts/database-outage-test.cjs
+!scripts/live-smoke-test.cjs

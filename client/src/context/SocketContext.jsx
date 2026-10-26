@@ -22,7 +22,7 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     // Initialize socket connection
     const socketInstance = io(SERVER_URL, {
-      transports: ['websocket', 'polling'],
+      transports: import.meta.env.VITE_SOCKET_POLLING === 'true' ? ['websocket', 'polling'] : ['websocket'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
@@ -53,10 +53,17 @@ export function SocketProvider({ children }) {
       setConnectionError(err.message);
     });
 
+    const heartbeat = setInterval(() => {
+      if (!socketInstance.connected || document.visibilityState === 'hidden') return;
+      const pin = localStorage.getItem('consensus_active_pin');
+      if (pin) socketInstance.emit('heartbeat', { pin, participant_id: getRoomParticipantId(pin) });
+    }, 20000);
+
     socketRef.current = socketInstance;
     setSocket(socketInstance);
 
     return () => {
+      clearInterval(heartbeat);
       socketInstance.disconnect();
       socketRef.current = null;
       setSocket(null);

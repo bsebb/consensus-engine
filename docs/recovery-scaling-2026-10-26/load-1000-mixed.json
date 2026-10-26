@@ -1,0 +1,33 @@
+{
+  "clients": 1000,
+  "rooms": 20,
+  "serverProcesses": 2,
+  "roomLookups": 1000,
+  "restBallots": 500,
+  "maxConcurrentRestRequests": 50,
+  "socketBallots": 500,
+  "allClientsReceivedCorrectResult": true,
+  "durableVoteRows": 2000,
+  "errors": [],
+  "connectMs": 1942,
+  "votingMs": 1415,
+  "ballotToResultMs": {
+    "p50": 1079,
+    "p95": 1414,
+    "p99": 1415
+  },
+  "metrics": [
+    {
+      "pid": 46987,
+      "clients": 500,
+      "rssMb": 151.62738800048828,
+      "eventLoopP99Ms": 21.479423
+    },
+    {
+      "pid": 46988,
+      "clients": 500,
+      "rssMb": 143.36107635498047,
+      "eventLoopP99Ms": 21.954559
+    }
+  ]
+}

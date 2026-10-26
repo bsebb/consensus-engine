@@ -1,18 +1,15 @@
+const { recordSessionBallot } = require('../utils/ballotSubmission');
+const { publicParticipant, authenticatedParticipant, authenticatedHost, forbidden } = require('../utils/roomSecurity');
+const { sanitizeBallot } = require('../utils/ballot');
 const crypto = require('crypto');
 const {
   createRoom,
   createParticipantWithId,
-  registerPendingRoomWrite,
   getRoomByPin,
   getRoomWithVotesByPin,
   updateRoomConfig,
   updateParticipantBudget,
-  pruneOptionsByBudget,
-  createOption,
   createOptionsBulk,
-  createVote,
-  createVotesBulk,
-  countVotedParticipants,
   submitVenueFeedback,   //Afina
 } = require('../../db/helpers');
 
@@ -52,13 +49,18 @@ const createNewRoom = async (req, res) => {
     latitude,
     longitude,
     is_exact_gps = false,
-  } = req.body;
+  } = req.body || {};
 
-  if (!host_id) {
+  if (typeof host_id !== 'string' || host_id.length > 64 || !host_id.trim() ||
+      typeof (host_device_id || device_id) !== 'string' || (host_device_id || device_id).length < 8 ||
+      (host_device_id || device_id).length > 64 || !['CUSTOM', 'DISCOVERY'].includes(mode) ||
+      typeof theme !== 'string' || theme.length > 120 || !Number.isInteger(radius) || radius < 100 || radius > 50000 ||
+      (latitude != null && (!Number.isFinite(Number(latitude)) || Math.abs(Number(latitude)) > 90)) ||
+      (longitude != null && (!Number.isFinite(Number(longitude)) || Math.abs(Number(longitude)) > 180))) {
     return res.status(400).json({
       success: false,
       error: 'MISSING_HOST_ID',
-      message: 'host_id is required to create a room.',
+      message: 'Valid host/device identifiers, mode, theme, radius and coordinates are required.',
     });
   }
 
@@ -104,6 +106,19 @@ const createNewRoom = async (req, res) => {
     budgetCap: null,
   };
 
+  // Reserve the PIN durably before publishing it. A collision must never delete a room.
+  let dbRoom;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    try {
+      dbRoom = await createRoom(host_id, pin, roomTheme, radius, cleanHostDeviceId, roomId, createdOptions);
+      break;
+    } catch (err) {
+      if (err.code !== 'P2002') throw err;
+      pin = generatePin();
+    }
+  }
+  if (!dbRoom) return res.status(503).json({ success: false, error: 'ROOM_CAPACITY', message: 'Please try creating the room again.' });
+
   // Pre-seed in-memory room caches immediately so GET /rooms/:pin and socket join_lobby respond in 0ms from RAM
   const topicLabel = mode === 'DISCOVERY' ? (theme || 'Places Nearby') : (theme || 'What should we do?');
   roomSummaryCache.set(pin, {
@@ -125,24 +140,9 @@ const createNewRoom = async (req, res) => {
     theme: roomTheme,
     topic: topicLabel,
     mode: mode === 'CUSTOM' ? 'CUSTOM' : 'DISCOVERY',
-    participants: [optimisticHostParticipant],
+    participants: [publicParticipant(optimisticHostParticipant)],
     options: createdOptions,
   });
-
-  // Persist room, host participant, and options asynchronously via write-behind promise
-  // (Tracked in pendingRoomWrites so any immediate DB query on this roomId/pin awaits completion safely)
-  const persistPromise = (async () => {
-    try {
-      const dbRoom = await createRoom(host_id, pin, roomTheme, radius, cleanHostDeviceId, roomId);
-      await createParticipantWithId(dbRoom.id, host_id, null, cleanHostDeviceId, { isNewRoom: true }).catch(() => {});
-      if (createdOptions.length > 0) {
-        await createOptionsBulk(createdOptions).catch(() => {});
-      }
-    } catch (err) {
-      console.warn('[roomController] Background room persistence notice:', err.message);
-    }
-  })();
-  registerPendingRoomWrite(roomId, pin, persistPromise);
 
   if (mode === 'DISCOVERY') {
     dispatchActivityNotification('room_created', {
@@ -168,12 +168,9 @@ const createNewRoom = async (req, res) => {
 const getRoom = async (req, res) => {
   try {
     const { pin } = req.params;
-    const cached = roomResponseCache.get(pin);
-    if (cached && cached.expiresAt > Date.now()) {
-      return res.status(200).json(cached.payload);
-    }
 
     const room = await getRoomByPin(pin);
+    if (room.runtimeState?.closed) return res.status(410).json({ success: false, error: 'ROOM_CLOSED', message: 'This room has expired. Please create a new pick.' });
 
     const isCustom = Boolean(room.theme && room.theme.startsWith('custom'));
     const rawThemeTopic = room.theme ? room.theme.replace(/^custom:/, '').trim() : '';
@@ -181,15 +178,20 @@ const getRoom = async (req, res) => {
       ? (rawThemeTopic && rawThemeTopic !== 'custom' && rawThemeTopic !== 'poll' ? rawThemeTopic : 'What should we do?')
       : (room.theme || 'Places Nearby');
 
+    const activeSession = activeVotingSessions?.get(pin);
+    const optionsToReturn = (activeSession && Array.isArray(activeSession.options) && activeSession.options.length > 0)
+      ? activeSession.options
+      : (Array.isArray(room.options) ? room.options.slice(0, 12) : []);
+
     const payload = {
       room_id: room.id,
       pin: room.pin,
-      status: room.status,
+      status: activeSession ? (activeSession.isResolved ? 'RESOLVED' : 'VOTING') : room.status,
       theme: room.theme,
       topic: resolvedTopic,
       mode: isCustom ? 'CUSTOM' : 'DISCOVERY',
-      participants: room.participants,
-      options: room.options,
+      participants: room.participants.map(publicParticipant),
+      options: optionsToReturn,
     };
 
     setBoundedRoomCache(pin, payload);
@@ -207,7 +209,7 @@ const updateConfig = async (req, res) => {
   const { id } = req.params;
   const { host_id, host_token, pin, theme, radius, status } = req.body || {};
 
-  if (!id || !pin || !host_id || !host_token) {
+  if (!id || !pin || !host_id) {
     return res.status(400).json({
       success: false,
       error: 'MISSING_CREDENTIALS',
@@ -224,7 +226,7 @@ const updateConfig = async (req, res) => {
     });
   }
 
-  if (!verifyHostToken(pin, host_id, host_token)) {
+  if (!authenticatedHost(room, req.body, activeLobbies.get(pin))) {
     return res.status(403).json({
       success: false,
       error: 'FORBIDDEN',
@@ -232,10 +234,13 @@ const updateConfig = async (req, res) => {
     });
   }
 
+  if (activeVotingSessions.has(pin) || room.status === 'RESOLVED') {
+    return res.status(409).json({ success: false, error: 'CONFIG_LOCKED', message: 'Room settings are locked after voting starts.' });
+  }
   const safeUpdateData = {};
   if (typeof theme === 'string') safeUpdateData.theme = theme.slice(0, 100);
   if (typeof radius === 'number') safeUpdateData.radius = Math.max(500, Math.min(50000, Math.round(radius)));
-  if (['CONFIGURING', 'SUGGESTING', 'VOTING', 'RESOLVED'].includes(status)) {
+  if (['CONFIGURING', 'SUGGESTING'].includes(status)) {
     safeUpdateData.status = status;
   }
 
@@ -253,7 +258,7 @@ const updateConfig = async (req, res) => {
 // Lilia: handle Step Zero budget constraint submission
 const submitConstraints = async (req, res) => {
   const { pin } = req.params;
-  const { participant_id, device_id, max_price_level } = req.body;
+  const { participant_id, device_id, max_price_level } = req.body || {};
 
   // Lilia: validate the Step Zero budget range
   if (
@@ -272,19 +277,9 @@ const submitConstraints = async (req, res) => {
   // Lilia: verify that the participant belongs to this room (by participant_id or same-room device_id)
   const room = await getRoomByPin(pin);
 
-  const matchedParticipant = room.participants.find(
-    (participant) =>
-      participant.id === participant_id ||
-      (device_id && participant.deviceId === device_id)
-  );
+  const matchedParticipant = authenticatedParticipant(room, participant_id, device_id);
 
-  if (!matchedParticipant) {
-    return res.status(404).json({
-      success: false,
-      error: 'PARTICIPANT_NOT_FOUND',
-      message: 'Participant does not belong to this room.',
-    });
-  }
+  if (!matchedParticipant) return forbidden(res);
 
   // Lilia: save the participant's budget limit (and backfill deviceId if missing) without destructively deleting room options
   await updateParticipantBudget(matchedParticipant.id, max_price_level, device_id);
@@ -304,7 +299,7 @@ const submitConstraints = async (req, res) => {
 // Lilia: save a participant's batched rankings and broadcast live vote progress
 const submitVotes = async (req, res) => {
   const { pin } = req.params;
-  const { participant_id, device_id, rankings } = req.body;
+  const { participant_id, device_id, rankings } = req.body || {};
 
   // Lilia: validate the batched rankings payload
   if (
@@ -321,7 +316,7 @@ const submitVotes = async (req, res) => {
   }
 
   // Validate every ranking before writing anything to the database
-  const validScores = new Set([1, -1, -100, 2]);
+  const validScores = new Set([1, -1, -100, 2, 0]);
 
   const rankingsAreValid = rankings.every(
     (ranking) =>
@@ -338,7 +333,7 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  // Verify that the participant belongs to this room (by participant_id or same-room device_id), or self-heal
+  // Authenticate the exact participant with its private device credential.
   const room = await getRoomByPin(pin);
   if (!room) {
     return res.status(404).json({
@@ -348,35 +343,14 @@ const submitVotes = async (req, res) => {
     });
   }
 
-  let matchedParticipant = room.participants.find(
-    (participant) =>
-      participant.id === participant_id ||
-      (device_id && participant.deviceId === device_id)
-  );
-
-  if (!matchedParticipant) {
-    try {
-      matchedParticipant = await createParticipantWithId(room.id, participant_id, null, device_id);
-      if (matchedParticipant) {
-        room.participants.push(matchedParticipant);
-        invalidateRoomCache(pin);
-      }
-    } catch (err) {
-      console.warn('[roomController] Auto-create participant on vote notice:', err.message);
-    }
-  }
-
-  if (!matchedParticipant && room.participants.length > 0) {
-    matchedParticipant = room.participants[0];
-  }
-
-  if (!matchedParticipant) {
-    return res.status(404).json({
-      success: false,
-      error: 'PARTICIPANT_NOT_FOUND',
-      message: 'Participant does not belong to this room.',
-    });
-  }
+  const matchedParticipant = authenticatedParticipant(room, participant_id, device_id);
+  if (!matchedParticipant) return forbidden(res);
+  const session = activeVotingSessions.get(pin);
+  if (session?.eligibleParticipantIds && !session.eligibleParticipantIds.has(participant_id)) return forbidden(res);
+  if (!session || !session.options?.length) return res.status(409).json({ success: false, error: 'VOTING_NOT_STARTED' });
+  let sanitized;
+  try { sanitized = sanitizeBallot(rankings, session.options.map(o => o.id)); }
+  catch (err) { return res.status(400).json({ success: false, error: err.code, message: err.message }); }
 
   const effectiveParticipantId = matchedParticipant.id;
   if (device_id && !matchedParticipant.deviceId) {
@@ -386,97 +360,21 @@ const submitVotes = async (req, res) => {
     await updateRoomConfig(room.id, { hostDeviceId: String(device_id).trim().slice(0, 64) }).catch(() => {});
   }
 
-  // Map submitted options to registered room options by ID or name, auto-registering any custom/missing options
-  const roomOptionIds = new Set(room.options.map((option) => option.id));
-  const optionByName = new Map(room.options.map((option) => [option.name.toLowerCase().trim(), option.id]));
-  const missingOptionsToCreate = [];
-
-  const validRankings = rankings
-    .map((r) => {
-      if (!r) return null;
-      let targetId = null;
-      const rawName = String(r.name || r.option_id || '')
-        .replace(/^custom-\d+-/i, '')
-        .trim()
-        .slice(0, 120);
-      const nameKey = rawName.toLowerCase();
-
-      if (roomOptionIds.has(r.option_id)) {
-        targetId = r.option_id;
-      } else if (nameKey && optionByName.has(nameKey)) {
-        targetId = optionByName.get(nameKey);
-      } else if (rawName) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(r.option_id || ''));
-        targetId = isUuid ? r.option_id : crypto.randomUUID();
-        roomOptionIds.add(targetId);
-        optionByName.set(nameKey, targetId);
-        missingOptionsToCreate.push({
-          id: targetId,
-          roomId: room.id,
-          name: rawName,
-          source: 'USER_CUSTOM',
-          googlePlaceId: String(r.option_id || targetId).slice(0, 180),
-          priceLevel: 2,
-        });
-      }
-      if (!targetId) return null;
-      return {
-        participantId: effectiveParticipantId,
-        optionId: targetId,
-        score: r.score,
-      };
-    })
-    .filter(Boolean);
-
-  if (missingOptionsToCreate.length > 0) {
-    await createOptionsBulk(missingOptionsToCreate).catch(() => {});
-    invalidateRoomCache(pin);
-  }
-
-  if (validRankings.length > 0) {
-    try {
-      await createVotesBulk(validRankings);
-    } catch (bulkErr) {
-      console.warn('[roomController] Bulk vote insert notice:', bulkErr.message);
-      for (const r of validRankings) {
-        await createVote(r.participantId, r.optionId, r.score).catch(() => {});
-      }
+  const accepted = await recordSessionBallot(session, effectiveParticipantId,
+    Array.from(sanitized, ([option_id, score]) => ({ option_id, score })));
+  if (accepted) {
+    const io = req.app.get('io');
+    io.to(pin).emit('vote_progress', { pin, voted_participants: session.submissions.size, total_participants: session.expectedCount,
+      voted_participant_ids: Array.from(session.submissions.keys()) });
+    if (session.submissions.size >= session.expectedCount) {
+      await require('../sockets/socketSessionStore').resolveAndBroadcastWinner(io, pin);
     }
-  }
-
-  // Count unique participants who have completed voting (use O(1) in-memory session when active)
-  const activeSession = activeVotingSessions.get(pin);
-  let votedParticipants = activeSession && activeSession.submissions.size > 0
-    ? activeSession.submissions.size
-    : 1;
-  if (!activeSession || activeSession.submissions.size === 0) {
-    try {
-      votedParticipants = await countVotedParticipants(room.id);
-    } catch (cntErr) {
-      console.warn('[roomController] countVotedParticipants notice:', cntErr.message);
-    }
-  }
-  const totalParticipants = room.participants.length;
-
-  // Lilia: broadcast progress only inside this Socket.io room
-  let io = null;
-  try {
-    io = req.app.get('io') || getIO();
-  } catch (ioErr) {
-    console.warn('[roomController] Socket instance lookup notice:', ioErr.message);
-  }
-
-  if (io) {
-    io.to(pin).emit('vote_progress', {
-      pin,
-      voted_participants: votedParticipants,
-      total_participants: totalParticipants,
-    });
   }
 
   return res.status(200).json({
     success: true,
     message: 'Votes recorded safely.',
+    ...(session.isResolved ? require('../sockets/socketSessionStore').buildResolvedPayload(pin, session) : {}),
   });
 };
 
@@ -484,6 +382,14 @@ const submitVotes = async (req, res) => {
 const finalizeVoting = async (req, res) => {
   const { pin } = req.params;
   const room = await getRoomWithVotesByPin(pin);
+  if (!authenticatedHost(room, req.body, activeLobbies.get(pin))) return forbidden(res);
+  const session = activeVotingSessions.get(pin);
+  if (session) {
+    const { resolveAndBroadcastWinner } = require('../sockets/socketSessionStore');
+    if (!session.submissions.size) return res.status(409).json({ success: false, error: 'NO_BALLOTS' });
+    await resolveAndBroadcastWinner(req.app.get('io'), pin);
+    return res.json({ success: true, winner_option_id: session.winner?.id });
+  }
 
   if (!room) {
     return res.status(404).json({
@@ -553,7 +459,7 @@ const finalizeVoting = async (req, res) => {
 // Afina: process end-of-event venue feedback and trigger analytics recalculation
 const submitFeedback = async (req, res) => {
     const { pin } = req.params;
-    const { participant_id, device_id, option_id, option_name, satisfaction_score, price_accuracy_score, comment } = req.body;
+    const { participant_id, device_id, option_id, option_name, satisfaction_score, price_accuracy_score, comment } = req.body || {};
 
     if (!participant_id || !option_id || satisfaction_score === undefined || price_accuracy_score === undefined) {
         return res.status(400).json({
@@ -565,7 +471,7 @@ const submitFeedback = async (req, res) => {
 
     // Strict boundary check for 1-5 star ratings
     if (
-        typeof satisfaction_score !== 'number' || typeof price_accuracy_score !== 'number' ||
+        !Number.isInteger(satisfaction_score) || !Number.isInteger(price_accuracy_score) ||
         satisfaction_score < 1 || satisfaction_score > 5 ||
         price_accuracy_score < 1 || price_accuracy_score > 5
     ) {
@@ -576,6 +482,14 @@ const submitFeedback = async (req, res) => {
         });
     }
 
+    const room = await getRoomByPin(pin);
+    const participant = authenticatedParticipant(room, participant_id, device_id);
+    if (!participant) return forbidden(res);
+    const session = activeVotingSessions.get(pin);
+    const validOption = room.options.some(o => o.id === option_id) || session?.options?.some(o => o.id === option_id);
+    if (!validOption || (room.status !== 'RESOLVED' && !session?.isResolved)) {
+      return res.status(409).json({ success: false, error: 'INVALID_FEEDBACK_OPTION' });
+    }
     const result = await submitVenueFeedback(participant_id, option_id, satisfaction_score, price_accuracy_score, {
         pin,
         device_id,
@@ -606,6 +520,7 @@ const getMorePlaces = async (req, res) => {
       return res.status(400).json({ success: false, error: 'INVALID_ROOM', message: 'Room not eligible for venue discovery.' });
     }
 
+    if (!authenticatedHost(room, req.body, activeLobbies.get(pin))) return forbidden(res);
     const theme = room.theme || 'restaurant';
     const newPlaces = await expandRoomVenues({
       room,
@@ -653,16 +568,31 @@ const reportClosedVenueHandler = async (req, res) => {
   }
 
   const result = reportClosedVenue({ name, address, lat, lng, reason });
+  if (!result.success) return res.status(400).json(result);
   return res.status(200).json({
     success: true,
-    message: 'Venue reported as closed and excluded from future discovery decks.',
+    message: 'Venue report submitted for review.',
     venue: result.venue,
+  });
+};
+
+const getSession = async (req, res) => {
+  let deviceId = req.query.device_id || req.headers['x-device-id'];
+  if (!deviceId || typeof deviceId !== 'string' || !deviceId.trim()) {
+    deviceId = crypto.randomUUID();
+  } else {
+    deviceId = deviceId.trim().slice(0, 64);
+  }
+  return res.status(200).json({
+    success: true,
+    deviceId,
   });
 };
 
 module.exports = {
   createNewRoom,
   getRoom,
+  getSession,
   getMorePlaces,
   updateConfig,
   submitConstraints,

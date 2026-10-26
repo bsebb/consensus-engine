@@ -378,13 +378,8 @@ export default function CustomPollDrawer({
             icon={ArrowRight}
             className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)]"
           >
-            {isCreatingRoom
-              ? (t('startingRoom') || 'Starting Room...')
-              : isValid
-                ? (t('startVotingRoomWithCount')
-                    ? t('startVotingRoomWithCount').replace('{count}', customOptions.length)
-                    : `${t('startRoom') || 'Start Voting Room'} (${customOptions.length})`)
-                : (t('startRoom') || 'Start Voting Room')}
+            {isCreatingRoom ? t('createRoomBtn') : `${t('createRoomBtn')}${isValid ? ` (${customOptions.length})` : ''}`}
+
           </Button>
 
           <button

@@ -10,14 +10,14 @@ createRoot(document.getElementById('root')).render(
 )
 
 // Register PWA Service Worker for standalone installability & auto-updating
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
         console.log('[PWA] Service Worker registered with scope:', reg.scope);
         // Force immediate check for sw updates
-        reg.update();
+        return reg.update();
       })
       .catch((err) => {
         console.warn('[PWA] Service Worker registration failed:', err);
@@ -26,7 +26,11 @@ if ('serviceWorker' in navigator) {
 
   // Automatically refresh when a new Service Worker takes over so users receive updates immediately
   let refreshing = false;
+  let hadController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return; }
+    // Preserve the active room and swipe progress; apply code updates on the next visit.
+    if (/^\/(lobby|deck)\//.test(window.location.pathname)) return;
     if (!refreshing) {
       refreshing = true;
       window.location.reload();

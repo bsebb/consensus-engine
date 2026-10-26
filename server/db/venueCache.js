@@ -245,70 +245,16 @@ async function submitVenueFeedback(participant_id, option_id, satisfaction_score
             });
         }
 
-        if (!participant && targetRoomId) {
-            participant = await prisma.participant.findFirst({
-                where: { roomId: targetRoomId },
-            });
-        }
-
         if (!targetRoomId && participant) {
             targetRoomId = participant.roomId;
         }
 
-        // If option wasn't found by UUID (e.g. custom poll option or fallback card), find by name in room or create it
-        if (!option && targetRoomId) {
-            option = await prisma.option.findFirst({
-                where: {
-                    roomId: targetRoomId,
-                    name: { equals: optionNameFallback, mode: 'insensitive' },
-                },
-            });
-            if (!option) {
-                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(option_id || ''));
-                const existingOptWithId = isUuid
-                    ? await prisma.option.findUnique({ where: { id: String(option_id) } }).catch(() => null)
-                    : null;
-                const safeOptionId = isUuid && !existingOptWithId ? String(option_id) : crypto.randomUUID();
-                option = await prisma.option.create({
-                    data: {
-                        id: safeOptionId,
-                        roomId: targetRoomId,
-                        name: optionNameFallback,
-                        source: 'USER_CUSTOM',
-                        googlePlaceId: String(option_id || `custom_${safeOptionId}`).slice(0, 180),
-                        priceLevel: 2,
-                    },
-                });
-            }
-        }
-
-        if (!option) {
-            throw new Error("Option not found for analytics.");
-        }
+        if (!option) throw new Error('Option not found for analytics');
 
         const placeId = option.googlePlaceId || option.id;
 
-        // Ensure participant exists in target room (and has deviceId backfilled)
-        if (!participant) {
-            const derivedId = participant_id
-                ? deriveRoomParticipantUuid(option.roomId, String(participant_id))
-                : crypto.randomUUID();
-            participant = await prisma.participant.upsert({
-                where: { id: derivedId },
-                update: {
-                    ...(cleanDeviceId ? { deviceId: cleanDeviceId } : {}),
-                },
-                create: {
-                    id: derivedId,
-                    roomId: option.roomId,
-                    deviceId: cleanDeviceId,
-                },
-            });
-        } else if (cleanDeviceId && !participant.deviceId) {
-            participant = await prisma.participant.update({
-                where: { id: participant.id },
-                data: { deviceId: cleanDeviceId },
-            }).catch(() => participant);
+        if (!participant || participant.roomId !== option.roomId || !cleanDeviceId || participant.deviceId !== cleanDeviceId) {
+            throw new Error('Valid participant authorization is required');
         }
 
         let feedback = await prisma.feedback.findFirst({

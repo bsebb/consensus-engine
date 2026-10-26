@@ -1,6 +1,5 @@
 import React from 'react';
-import { LogOut, Settings, Copy, Check, Share2 } from 'lucide-react';
-import ThemeToggle from '../ThemeToggle';
+import { LogOut, Settings, Copy, Check, SlidersHorizontal } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function LobbyHeader({
@@ -8,19 +7,21 @@ export default function LobbyHeader({
   copied,
   onLeave,
   onCopyPin,
-  onShare,
   onOpenSettings,
+  onOpenRoomSettings,
+  isHost = false,
 }) {
   const { t } = useLanguage();
 
   return (
     <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 safe-pt-header pb-2 shrink-0">
-      <div className="relative flex items-center justify-between gap-2 max-w-md mx-auto min-h-[36px]">
-        <div className="flex items-center z-10">
+      <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[40px]">
+        {/* Left Slot: Home Navigation Pill */}
+        <div className="flex items-center justify-start z-10 shrink-0">
           <button
             type="button"
             onClick={onLeave}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] border border-[var(--border-main)] active:scale-[0.97] touch-manipulation"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] active:scale-[0.97] touch-manipulation shadow-2xs"
             aria-label="Leave Room"
           >
             <LogOut size={13} />
@@ -28,11 +29,12 @@ export default function LobbyHeader({
           </button>
         </div>
 
-        <div className="flex-1 min-w-0 flex items-center justify-center z-10 pointer-events-auto">
+        {/* Absolute Dead Center: Room Code Pill */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center z-10 pointer-events-auto">
           <button
             type="button"
             onClick={onCopyPin}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.97] touch-manipulation shadow-2xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] transition-all cursor-pointer active:scale-[0.97] touch-manipulation shadow-2xs"
             title={t('shareLink')}
             aria-label={t('shareLink')}
           >
@@ -43,7 +45,7 @@ export default function LobbyHeader({
               </>
             ) : (
               <>
-                <span className="hidden min-[380px]:inline text-[var(--text-tertiary)] font-normal">{t('code')}</span>
+                <span className="text-[var(--text-tertiary)] font-normal">{t('code')}</span>
                 <span className="text-[var(--accent-bg)] tabular-nums font-bold">#{pin}</span>
                 <Copy size={11} className="text-[var(--text-tertiary)] ml-0.5" />
               </>
@@ -51,28 +53,28 @@ export default function LobbyHeader({
           </button>
         </div>
 
-        <div className="flex items-center gap-0.5 z-10 shrink-0">
-          {onShare && (
+        {/* Right Slot: Balanced Action Buttons (Room Settings + Preferences) */}
+        <div className="flex items-center justify-end gap-1.5 z-10 shrink-0">
+          {onOpenRoomSettings && (
             <button
               type="button"
-              onClick={onShare}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer active:scale-95 touch-manipulation"
-              aria-label={t('inviteFriends')}
-              title={t('inviteFriends')}
+              onClick={onOpenRoomSettings}
+              className="w-8.5 h-8.5 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] active:scale-95 transition-all cursor-pointer touch-manipulation shadow-2xs"
+              aria-label={isHost ? 'Room Settings' : 'Room Rules'}
+              title={isHost ? 'Room Settings' : 'Room Rules'}
             >
-              <Share2 size={15} />
+              <SlidersHorizontal size={14} />
             </button>
           )}
           <button
             type="button"
             onClick={onOpenSettings}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95 transition-all cursor-pointer touch-manipulation"
+            className="w-8.5 h-8.5 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-main)] active:scale-95 transition-all cursor-pointer touch-manipulation shadow-2xs"
             aria-label="Open Settings"
             title="Preferences"
           >
-            <Settings size={16} />
+            <Settings size={15} />
           </button>
-          <ThemeToggle />
         </div>
       </div>
     </header>

@@ -12,6 +12,7 @@ import LobbyRoster from '../components/lobby/LobbyRoster';
 import LobbyHeader from '../components/lobby/LobbyHeader';
 import LobbyDock from '../components/lobby/LobbyDock';
 import NoActiveLobbyView from '../components/lobby/NoActiveLobbyView';
+import RoomSettingsModal from '../components/lobby/RoomSettingsModal';
 import { useLobbySync } from '../hooks/useLobbySync';
 import { apiUrl } from '../utils/api';
 import { detectUserGps, getSavedExactGps, fetchRoadRouteMetrics } from '../utils/location';
@@ -40,6 +41,7 @@ export default function RoomLobby() {
   const { addToast } = useToast();
   const { t } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false);
   const isTransitioningToDeckRef = useRef(false);
   const isPrefetchingRef = useRef(false);
 
@@ -172,16 +174,7 @@ export default function RoomLobby() {
 
   useEffect(() => {
     if (pin) localStorage.setItem('consensus_active_pin', pin);
-    const handleBeforeUnload = () => {
-      if (pin && participantId) emit('leave_lobby', { pin, participant_id: participantId, user_name: currentUserName });
-    };
-    window.addEventListener('pagehide', handleBeforeUnload);
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('pagehide', handleBeforeUnload);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [pin, participantId, currentUserName, emit]);
+  }, [pin]);
 
   const handleLeaveLobby = () => {
     isTransitioningToDeckRef.current = false;
@@ -246,7 +239,7 @@ export default function RoomLobby() {
     setBudgetLimit(newLimit);
     setLockedConstraint(shouldFilter);
     const max_price_level = !shouldFilter ? 4 : newLimit <= 180 ? 1 : newLimit <= 350 ? 2 : 3;
-    if (shouldFilter) {
+    {
       fetch(apiUrl(`/api/v1/rooms/${pin}/constraints`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,11 +268,24 @@ export default function RoomLobby() {
     return () => { cancelled = true; };
   }, [userGps, realOptions, mode]);
 
-  const maxBudgetLevel = !lockedConstraint ? 4 : budgetLimit <= 180 ? 1 : budgetLimit <= 350 ? 2 : 3;
+  // Budget precedence: host ceiling is upper bound, group minimum wins
+  const effectiveBudgetLimit = useMemo(() => {
+    const sealedLimits = participants
+      .filter((p) => p.budgetSealed && typeof p.budgetLimit === 'number')
+      .map((p) => p.budgetLimit);
+    if (lockedConstraint && typeof budgetLimit === 'number') {
+      sealedLimits.push(budgetLimit);
+    }
+    if (sealedLimits.length === 0) return lockedConstraint ? budgetLimit : 600;
+    return Math.min(...sealedLimits);
+  }, [participants, lockedConstraint, budgetLimit]);
+
+  const hasActiveBudgetFilter = lockedConstraint || participants.some((p) => p.budgetSealed);
+  const maxBudgetLevel = !hasActiveBudgetFilter ? 4 : effectiveBudgetLimit <= 180 ? 1 : effectiveBudgetLimit <= 350 ? 2 : 3;
   const filteredCandidates = useMemo(() => {
-    if (!lockedConstraint || mode === 'CUSTOM') return candidatePoolPreview;
+    if (!hasActiveBudgetFilter || mode === 'CUSTOM') return candidatePoolPreview;
     return candidatePoolPreview.filter((item) => item.isGroupAdded || (item.price_level || 2) <= maxBudgetLevel);
-  }, [candidatePoolPreview, lockedConstraint, mode, maxBudgetLevel]);
+  }, [candidatePoolPreview, hasActiveBudgetFilter, mode, maxBudgetLevel]);
 
   const activePool = useMemo(() => {
     if (mode === 'CUSTOM') return filteredCandidates;
@@ -288,7 +294,7 @@ export default function RoomLobby() {
 
   const displayedCandidates = useMemo(() => (mode === 'CUSTOM' ? activePool : activePool.slice(0, visiblePlacesCount)), [mode, activePool, visiblePlacesCount]);
   const remainingPoolCount = useMemo(() => (mode === 'CUSTOM' ? 0 : Math.max(0, activePool.length - displayedCandidates.length)), [mode, activePool.length, displayedCandidates.length]);
-  const prunedCount = lockedConstraint && mode !== 'CUSTOM' ? candidatePoolPreview.length - filteredCandidates.length : 0;
+  const prunedCount = hasActiveBudgetFilter && mode !== 'CUSTOM' ? candidatePoolPreview.length - filteredCandidates.length : 0;
 
   const duplicateMatch = useMemo(() => {
     const clean = suggestion.trim().toLowerCase();
@@ -371,7 +377,7 @@ export default function RoomLobby() {
       fetch(apiUrl(`/api/v1/rooms/${pin}/more-places`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latitude: userGps?.lat, longitude: userGps?.lng, is_exact_gps: Boolean(userGps) }),
+        body: JSON.stringify({ host_id: participantId, device_id: deviceId, host_token: getHostToken(), latitude: userGps?.lat, longitude: userGps?.lng, is_exact_gps: Boolean(userGps) }),
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
@@ -420,20 +426,10 @@ export default function RoomLobby() {
       addToast({ title: t('addAtLeastTwoTitle'), message: t('addAtLeastTwoMsg'), type: 'warning' });
       return;
     }
-    const activeParticipantCount = Math.max(1, participants.length);
     const hostToken = sessionStorage.getItem(`consensus_host_token_${pin}`);
     sessionStorage.removeItem(`consensus_pause_voting_${pin}`);
     emit('host_start_voting', { pin, host_id: participantId, host_token: hostToken || undefined, options: displayedCandidates, topic, mode });
 
-    isTransitioningToDeckRef.current = true;
-    sessionStorage.setItem(`consensus_host_${pin}`, 'true');
-    navigate(`/deck/${pin}`, {
-      state: {
-        mode, topic, isHost: true, totalParticipants: activeParticipantCount,
-        customCards: displayedCandidates, budgetLimit: lockedConstraint ? budgetLimit : undefined,
-        participants: participants.map((p) => ({ id: p.id, name: p.name, isHost: Boolean(p.isHost) })),
-      },
-    });
   };
 
   useEffect(() => {
@@ -455,7 +451,8 @@ export default function RoomLobby() {
     <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden select-none">
       <LobbyHeader
         pin={pin} copied={copied} onLeave={handleLeaveLobby}
-        onCopyPin={handleCopyPin} onShare={handleShareInvite} onOpenSettings={() => setSettingsOpen(true)}
+        onCopyPin={handleCopyPin} onOpenSettings={() => setSettingsOpen(true)}
+        onOpenRoomSettings={() => setRoomSettingsOpen(true)} isHost={isHost}
         topic={topic} participants={participants} isConnected={isConnected}
       />
 
@@ -513,7 +510,26 @@ export default function RoomLobby() {
 
       <LobbyDock
         isVotingActive={isVotingActive} isHost={isHost} candidateCount={displayedCandidates.length}
-        participants={participants} mode={mode} onResumeVoting={handleResumeVoting} onStartVoting={handleStartVoting}
+        participants={participants} mode={mode} groupSize={groupSize} onResumeVoting={handleResumeVoting} onStartVoting={handleStartVoting}
+      />
+
+      <RoomSettingsModal
+        isOpen={roomSettingsOpen}
+        onClose={() => setRoomSettingsOpen(false)}
+        isHost={isHost}
+        mode={mode}
+        groupSize={groupSize}
+        deckSize={visiblePlacesCount}
+        budgetLimit={budgetLimit}
+        lockedConstraint={lockedConstraint}
+        onApplySettings={(newSettings) => {
+          if (newSettings.groupSize !== undefined) setGroupSize(newSettings.groupSize);
+          if (newSettings.deckSize !== undefined) setVisiblePlacesCount(Math.min(12, newSettings.deckSize));
+          if (newSettings.budgetLimit !== undefined && newSettings.lockedConstraint !== undefined) {
+            handleSelectBudgetTier(newSettings.budgetLimit, newSettings.lockedConstraint);
+          }
+          addToast({ title: 'Room Settings Applied', message: 'Preferences updated for this session.', type: 'success' });
+        }}
       />
 
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />

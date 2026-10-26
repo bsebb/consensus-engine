@@ -35,6 +35,21 @@ export default function History() {
   const [userFeedbacks, setUserFeedbacks] = useState([]);
   const [activeReviewSession, setActiveReviewSession] = useState(null);
 
+  const formatHistoryDate = (dateVal) => {
+    if (!dateVal) return 'Recent';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    try {
+      return new Intl.DateTimeFormat(lang || 'en', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      }).format(d);
+    } catch {
+      return d.toLocaleDateString();
+    }
+  };
+
   const loadUserFeedbacks = () => {
     try {
       const fb = JSON.parse(localStorage.getItem('consensus_feedbacks') || '[]');
@@ -119,6 +134,9 @@ export default function History() {
 
   const handleClearHistory = () => {
     triggerHaptic('tap');
+    if (typeof window !== 'undefined' && !window.confirm(t('confirmClearHistory') || 'Clear all past decisions from this device?')) {
+      return;
+    }
     localStorage.removeItem('consensus_history');
     setStoredSessions([]);
     setExpandedPin(null);
@@ -263,7 +281,7 @@ export default function History() {
                         </span>
                         <span className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1">
                           <Calendar size={11} />
-                          <span>{s.date}</span>
+                          <span>{formatHistoryDate(s.date)}</span>
                         </span>
                       </div>
                     </div>
@@ -281,7 +299,7 @@ export default function History() {
                           <div className="text-[11px] font-semibold text-[var(--status-success)] flex items-center gap-1">
                             <span>{t('historyWinnerPick')}</span>
                             <span>·</span>
-                            <span>{s.matchScore}% {t('historyAgreement')}</span>
+                            <span>{s.support ? `${s.support.liked} of ${s.support.total} agreed` : `${s.participantsCount || 4} of ${s.participantsCount || 4} agreed`}</span>
                           </div>
                         </div>
                       </div>
@@ -325,7 +343,7 @@ export default function History() {
                             <span>{t('historyRankings')}</span>
                           </span>
                           <span className="text-[10px] tabular-nums font-normal lowercase">
-                            {s.options?.length || 0} {t('optionsSuffix')}
+                            {s.options?.length || 0} {(s.options?.length || 0) === 1 ? 'option' : (t('optionsSuffix') || 'options')}
                           </span>
                         </div>
 
@@ -434,7 +452,11 @@ export default function History() {
                                 topic: s.topic,
                                 totalParticipants: s.participantsCount,
                                 priceLevel: s.priceLevel,
-                                matchScore: s.matchScore,
+                                matchScore: s.matchScore ?? s.winnerDetails?.matchScore,
+                                winnerDetails: s.winnerDetails,
+                                support: s.support,
+                                supportText: s.supportText,
+                                status: s.status,
                               },
                             });
                           }}

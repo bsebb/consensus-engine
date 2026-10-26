@@ -1,0 +1,16 @@
+{
+  "passes": [
+    "mobile discovery creation, theme and lobby layout",
+    "invite code join, synchronized roster, guest controls and host reload",
+    "candidate addition, synchronized voting start, details and pause/resume",
+    "two-user ballots, waiting quorum, identical winner and complete reload recovery",
+    "review failure stays editable; retry persists the review successfully",
+    "host rematch synchronizes the ranked runner-up across both browsers",
+    "completed result saved to history",
+    "history reopens the saved winner screen",
+    "custom poll starter pack, solo server consensus and winner reload",
+    "zero unhandled browser exceptions"
+  ],
+  "failures": [],
+  "pageErrors": []
+}

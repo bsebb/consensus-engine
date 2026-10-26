@@ -1,7 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Home, Layers, MapPin } from 'lucide-react';
-import ThemeToggle from '../ThemeToggle';
-import SegmentedControl from '../ui/SegmentedControl';
+import { ArrowLeft, Home, Info } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function DeckHeader({
@@ -9,8 +7,6 @@ export default function DeckHeader({
   showWinner,
   currentIndex,
   cardsLength,
-  mode,
-  activeCard,
   activeTab,
   setActiveTab,
   isConnected,
@@ -20,13 +16,14 @@ export default function DeckHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 safe-pt-header pb-1.5 relative shrink-0 select-none">
-      <div className="relative flex items-center justify-between gap-2 max-w-md mx-auto min-h-[36px]">
-        <div className="flex items-center z-10">
+    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 safe-pt-header pb-2 relative shrink-0 select-none">
+      <div className="grid grid-cols-3 items-center max-w-md mx-auto min-h-[40px]">
+        {/* Left Slot: Lobby Back Action Pill */}
+        <div className="flex items-center justify-start z-10">
           <button
             type="button"
             onClick={onBackClick}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-[0.96]"
+            className="w-[84px] sm:w-[88px] h-8 flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer py-1.5 px-3 rounded-full bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border border-[var(--border-subtle)] shrink-0 active:scale-95 shadow-2xs"
             aria-label={showWinner ? t('home') : 'Back to Lobby or Leave'}
           >
             {showWinner ? <Home size={14} /> : <ArrowLeft size={14} />}
@@ -34,31 +31,43 @@ export default function DeckHeader({
           </button>
         </div>
 
-        {/* Segmented Tab Switcher or Status Pill - Dead Centered */}
-        <div className="flex-1 min-w-0 flex items-center justify-center z-10 pointer-events-auto">
+        {/* Dead Center: Dominant Progress Badge (3 / 12) + Secondary PIN */}
+        <div className="flex items-center justify-center z-10 pointer-events-none whitespace-nowrap">
           {!showWinner && currentIndex < cardsLength ? (
-            <div className="w-full max-w-[210px]">
-              <SegmentedControl
-                options={[
-                  { value: 'swipe', label: `${t('card')} ${Math.min(currentIndex + 1, cardsLength)}/${cardsLength}`, icon: Layers },
-                  { value: 'details', label: t('details'), icon: MapPin },
-                ]}
-                value={activeTab}
-                onChange={setActiveTab}
-                size="sm"
-                variant="accent"
-              />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] shadow-2xs tabular-nums">
+              <span className="text-[var(--accent-bg)] font-black text-sm">{currentIndex + 1}</span>
+              <span className="text-[var(--text-tertiary)] font-semibold">/ {cardsLength}</span>
+              <span className="text-[var(--border-main)]">•</span>
+              <span className="text-[var(--text-tertiary)] text-[11px] font-normal">#{pin}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-inset)] border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-primary)] shadow-2xs">
-              <span className="text-[var(--text-tertiary)] font-normal">{t('roomPrefix')}</span>
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-main)] text-xs font-bold text-[var(--text-primary)] shadow-2xs">
+              <span className="text-[var(--text-tertiary)] font-normal">{t('roomPrefix') || 'Room'}</span>
               <span className="text-[var(--accent-bg)] tabular-nums">#{pin}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 z-10">
-          <ThemeToggle />
+        {/* Right Slot: Details Action Pill (Identical size & style to Lobby pill) */}
+        <div className="flex items-center justify-end z-10">
+          {!showWinner && currentIndex < cardsLength ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab?.(activeTab === 'details' ? 'swipe' : 'details')}
+              className={`w-[84px] sm:w-[88px] h-8 flex items-center justify-center gap-1.5 text-xs font-semibold transition-all cursor-pointer py-1.5 px-3 rounded-full border shrink-0 active:scale-95 shadow-2xs ${
+                activeTab === 'details'
+                  ? 'bg-[var(--accent-bg)] text-white border-transparent'
+                  : 'bg-[var(--bg-inset)] hover:bg-black/5 dark:hover:bg-white/5 border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+              title="Toggle venue details (D)"
+              aria-label="Toggle venue details"
+            >
+              <Info size={14} className={activeTab === 'details' ? 'text-white' : 'text-[var(--accent-bg)]'} />
+              <span>{t('details') || 'Details'}</span>
+            </button>
+          ) : (
+            <div className="w-[84px] sm:w-[88px]" />
+          )}
         </div>
       </div>
 
@@ -72,7 +81,7 @@ export default function DeckHeader({
 
       {/* Flush Hairline Progress Edge */}
       {!showWinner && currentIndex < cardsLength && (
-        <div className="absolute bottom-0 inset-x-0 h-[2px] bg-transparent overflow-hidden pointer-events-none">
+        <div className="absolute bottom-0 inset-x-0 h-[2.5px] bg-[var(--border-subtle)] overflow-hidden pointer-events-none">
           <div
             className="h-full bg-[var(--accent-bg)] transition-all duration-300 shadow-[0_0_8px_var(--accent-glow)]"
             style={{ width: `${progressPercent}%` }}

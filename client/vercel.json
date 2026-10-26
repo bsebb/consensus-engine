@@ -21,7 +21,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; media-src 'self' data: blob:; connect-src 'self' https://noyoupick.org https://*.noyoupick.org https://*.onrender.com wss://*.onrender.com https://api.geoapify.com https://nominatim.openstreetmap.org https://router.project-osrm.org https://places.googleapis.com;"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' https://noyoupick.org https://*.noyoupick.org wss://noyoupick.org wss://*.noyoupick.org https://*.onrender.com wss://*.onrender.com https://api.geoapify.com https://nominatim.openstreetmap.org https://router.project-osrm.org https://places.googleapis.com;"
         }
       ]
     }

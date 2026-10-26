@@ -125,6 +125,12 @@ async function dispatchSafeguardAlert(title, message, metrics) {
  * Allows the owner to see room creation and consensus decision events in real-time.
  */
 async function dispatchActivityNotification(eventType, data = {}) {
+  const { roomTransaction, afterCommit } = require('../state/transactionContext');
+  const ctx = roomTransaction.getStore();
+  if (ctx && !ctx.finished) {
+    afterCommit(() => { dispatchActivityNotification(eventType, data).catch(() => {}); });
+    return;
+  }
   const webhookUrl = process.env.ALERT_WEBHOOK_URL;
   if (!webhookUrl || typeof webhookUrl !== 'string' || !webhookUrl.startsWith('http')) {
     return;
@@ -134,7 +140,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
     let payload = null;
 
     if (eventType === 'room_created') {
-      const { pin, topic, mode, optionCount, initialTableCount, hostId, deviceId } = data;
+      const { pin, topic, mode, optionCount, initialTableCount } = data;
       const optionsDesc = mode === 'CUSTOM'
         ? `${optionCount || 0} custom choices`
         : `${initialTableCount || 6} on table (${optionCount || 30} in discovery pool)`;
@@ -153,7 +159,6 @@ async function dispatchActivityNotification(eventType, data = {}) {
               { name: 'Mode', value: mode === 'CUSTOM' ? 'Custom Poll' : 'Discovery', inline: true },
               { name: 'Category / Topic', value: formattedTopic, inline: true },
               { name: 'Options', value: optionsDesc, inline: true },
-              { name: 'Device ID', value: deviceId ? `\`${deviceId}\`` : (hostId ? `\`${String(hostId).slice(0, 12)}...\`` : 'Anonymous'), inline: true },
             ],
             footer: { text: 'NoYouPick • Live Activity' },
             timestamp: new Date().toISOString(),
@@ -200,7 +205,7 @@ async function dispatchActivityNotification(eventType, data = {}) {
         ],
       };
     } else if (eventType === 'feedback_submitted') {
-      const { pin, venueName, satisfactionScore, priceAccuracyScore, comment, deviceId } = data;
+      const { pin, venueName, satisfactionScore, priceAccuracyScore, comment } = data;
       const satStars = '*'.repeat(Math.max(1, Math.min(5, Number(satisfactionScore) || 5)));
       const priceStars = '*'.repeat(Math.max(1, Math.min(5, Number(priceAccuracyScore) || 5)));
       const fields = [
@@ -210,9 +215,6 @@ async function dispatchActivityNotification(eventType, data = {}) {
       ];
       if (comment && String(comment).trim()) {
         fields.push({ name: 'User Note', value: `"${String(comment).trim().slice(0, 300)}"`, inline: false });
-      }
-      if (deviceId) {
-        fields.push({ name: 'Device ID', value: `\`${deviceId}\``, inline: true });
       }
 
       payload = {

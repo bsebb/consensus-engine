@@ -238,9 +238,12 @@ test('only host can add or remove custom suggestions and discovery places in lob
     activeVotingSessions,
     disconnectTimeouts,
     roomSummaryCache,
-    getCachedRoomSummary: async (p) => roomSummaryCache.get(p)?.room || null,
+    getCachedRoomSummary: async () => null,
   };
 
+  const seed = new Map([[hostId, { id: hostId, deviceId: 'host-device-unit', name: 'Host', isHost: true }]]);
+  seed.suggestions = [];
+  activeLobbies.set(pin, seed);
   const roomEmissions = [];
   const mockIo = {
     to: (targetPin) => ({
@@ -268,8 +271,8 @@ test('only host can add or remove custom suggestions and discovery places in lob
   registerLobbySocketHandlers(mockIo, guestSocket, mockStore);
   registerLobbySocketHandlers(mockIo, outsiderSocket, mockStore);
 
-  await hostSocket.trigger('join_lobby', { pin, participant_id: hostId, host_token: hostToken, user_name: 'Host' });
-  await guestSocket.trigger('join_lobby', { pin, participant_id: guestId, user_name: 'Guest' });
+  await hostSocket.trigger('join_lobby', { pin, participant_id: hostId, device_id: 'host-device-unit', host_token: hostToken, user_name: 'Host' });
+  await guestSocket.trigger('join_lobby', { pin, participant_id: guestId, device_id: 'guest-device-unit', user_name: 'Guest' });
 
   // Unjoined outsider attempts to add suggestion -> blocked
   await outsiderSocket.trigger('add_suggestion', { pin, suggestion: 'Sneaky Option', participant_id: 'outsider-99' });
@@ -283,7 +286,7 @@ test('only host can add or remove custom suggestions and discovery places in lob
   assert.equal(guestSocket.directEmissions.filter((e) => e.event === 'room_error').length, 1);
 
   // Joined guest and host can add suggestions; only host can remove suggestions or discovery places
-  await guestSocket.trigger('add_suggestion', { pin, suggestion: 'Guest Option', participant_id: guestId, user_name: 'Guest' });
+  await guestSocket.trigger('add_suggestion', { pin, suggestion: 'Guest Option', participant_id: guestId, device_id: 'guest-device-unit', user_name: 'Guest' });
   assert.deepEqual(lobby.suggestions, ['Guest Option']);
 
   await guestSocket.trigger('remove_suggestion', { pin, suggestion: 'Guest Option', participant_id: guestId });

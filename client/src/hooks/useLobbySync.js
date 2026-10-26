@@ -30,7 +30,7 @@ export function useLobbySync({
   addToast,
 }) {
   const propsRef = useRef({});
-  propsRef.current = {
+  useEffect(() => { propsRef.current = {
     pin,
     participantId,
     setParticipantId,
@@ -58,7 +58,7 @@ export function useLobbySync({
     on,
     off,
     addToast,
-  };
+  }; });
 
   const hasNavigatedToDeckRef = useRef(false);
 
@@ -92,7 +92,7 @@ export function useLobbySync({
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         sendJoin();
       }
-    }, 3500);
+    }, 15000);
 
     const handleParticipantJoined = (data) => {
       const {

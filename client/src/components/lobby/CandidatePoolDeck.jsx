@@ -147,7 +147,7 @@ export default function CandidatePoolDeck({
 
       <div
         ref={railRef}
-        className={mode === 'CUSTOM' || (!isLoading && candidates.length === 0) ? 'grid grid-cols-2 gap-3' : 'places-rail'}
+        className={mode === 'CUSTOM' || (!isLoading && candidates.length === 0) ? 'grid grid-cols-2 gap-3' : 'places-rail no-scrollbar'}
         aria-label={mode === 'CUSTOM' ? t('optionsOnTable') : t('placesOnTable')}
         tabIndex={mode !== 'CUSTOM' ? 0 : undefined}
         onKeyDown={(event) => {

@@ -1,5 +1,9 @@
 const crypto = require('crypto');
 
+if (process.env.NODE_ENV === 'production' && (!process.env.HOST_TOKEN_SECRET || process.env.HOST_TOKEN_SECRET.length < 32 || process.env.HOST_TOKEN_SECRET.startsWith('replace-'))) {
+  throw new Error('Set a stable, random HOST_TOKEN_SECRET of at least 32 characters on all backend instances.');
+}
+
 const HOST_TOKEN_SECRET = process.env.HOST_TOKEN_SECRET || crypto.randomBytes(32).toString('hex');
 
 /**

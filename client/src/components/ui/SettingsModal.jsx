@@ -23,7 +23,7 @@ import useDrawerGesture from './useDrawerGesture';
 
 export default function SettingsModal({ isOpen, onClose }) {
   const { theme, setTheme, accent, setAccent, ACCENTS } = useTheme();
-  const { lang, setLang, t } = useLanguage();
+  const { t } = useLanguage();
   const { addToast } = useToast();
   const [isClosing, setIsClosing] = useState(false);
 

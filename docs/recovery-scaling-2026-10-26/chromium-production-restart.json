@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "production headers, complete first-visit precache and app shell during an actual origin outage",
+    "lobby, guest suggestion, roster and host controls survive a backend SIGKILL",
+    "unfinished five-card deck, local partial swipe and the guest’s submitted ballot recover after a second SIGKILL",
+    "remaining swipes resolve one shared result after recovery",
+    "zero unhandled browser exceptions",
+    "full browser user-flow suite passes on the recovered backend"
+  ],
+  "pageErrors": []
+}

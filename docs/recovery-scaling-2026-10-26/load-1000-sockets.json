@@ -1,0 +1,29 @@
+{
+  "clients": 1000,
+  "rooms": 20,
+  "serverProcesses": 2,
+  "allClientsReceivedCorrectResult": true,
+  "durableVoteRows": 2000,
+  "errors": [],
+  "connectMs": 1086,
+  "votingMs": 853,
+  "ballotToResultMs": {
+    "p50": 825,
+    "p95": 853,
+    "p99": 853
+  },
+  "metrics": [
+    {
+      "pid": 46295,
+      "clients": 500,
+      "rssMb": 138.84510803222656,
+      "eventLoopP99Ms": 22.495231
+    },
+    {
+      "pid": 46296,
+      "clients": 500,
+      "rssMb": 139.64193725585938,
+      "eventLoopP99Ms": 22.167551
+    }
+  ]
+}

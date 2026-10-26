@@ -23,7 +23,7 @@ import { triggerHaptic } from '../utils/haptics';
 
 export default function HostSettings() {
   const navigate = useNavigate();
-  const { participantId, deviceId, setRoomParticipantId } = useSocket();
+  const { deviceId, setRoomParticipantId } = useSocket();
   const { addToast } = useToast();
   const { t } = useLanguage();
   const userName = localStorage.getItem('consensus_user_name') || 'Host';

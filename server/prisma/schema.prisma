@@ -29,6 +29,7 @@ model Room {
   theme          String?
   radius         Int?
   
+  runtimeState   Json?
   winnerOptionId String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -148,4 +149,20 @@ model CachedVenue {
 
   @@index([gridKey])
   @@map("cached_venues")
+}
+
+model ApiRateLimit {
+  key       String   @id
+  count     Int
+  resetAt   DateTime @db.Timestamptz(6)
+  @@index([resetAt])
+  @@map("api_rate_limits")
+}
+
+model SocketAttachment {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  payload   Bytes
+  @@index([createdAt])
+  @@map("socket_io_attachments")
 }

@@ -149,6 +149,7 @@ export default function JoinPinForm({
               key={index}
               ref={digitRefs[index]}
               type="text"
+              aria-label={`Room code digit ${index + 1} of 4`}
               inputMode="numeric"
               pattern="[0-9]*"
               autoComplete="one-time-code"

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
-const { httpServer } = require('../app');
+const { httpServer, io, ready } = require('../app');
 const { prisma } = require('../db/helpers');
 const { CATEGORIZED_FALLBACKS } = require('./data/curatedVenues');
 const { detectGalleryTheme, CURATED_SLIDE_GALLERIES } = require('../../client/src/utils/venueGalleryCatalog.js');
@@ -130,6 +130,7 @@ let baseUrl = '';
 let clientUtils = {};
 
 test.before(async () => {
+  await ready;
   await new Promise((resolve) => {
     if (httpServer.listening) {
       resolve();
@@ -157,13 +158,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await new Promise((resolve) => {
-    if (httpServer.listening) {
-      httpServer.close(() => resolve());
-    } else {
-      resolve();
-    }
-  });
+  await new Promise(resolve => io.close(resolve));
   try {
     if (prisma && prisma.$disconnect) {
       await prisma.$disconnect();
@@ -678,9 +673,9 @@ test('Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus', async 
     const { pin, host_token } = await createRes.json();
 
     const options = [
-      { id: 'opt-vetoed', name: 'Vetoed Spot', category: 'Activity' },
-      { id: 'opt-bowling', name: 'Plaza Bowling MallDova', category: 'Bowling & Billiards' },
-      { id: 'opt-karting', name: 'Karting Club Moldova', category: 'Go-Kart Racing Track' },
+      { id: `${pin}:opt-vetoed`, name: 'Vetoed Spot', category: 'Activity' },
+      { id: `${pin}:opt-bowling`, name: 'Plaza Bowling MallDova', category: 'Bowling & Billiards' },
+      { id: `${pin}:opt-karting`, name: 'Karting Club Moldova', category: 'Go-Kart Racing Track' },
     ];
 
     const sHost = await createSocketClient(baseUrl).connect();
@@ -688,13 +683,13 @@ test('Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus', async 
     const sGuest2 = await createSocketClient(baseUrl).connect();
 
     try {
-      sHost.emit('join_lobby', { pin, participant_id: hostId, user_name: 'Host', host_token });
+      sHost.emit('join_lobby', { pin, participant_id: hostId, device_id: 'dev-host-tie', user_name: 'Host', host_token });
       await sHost.waitFor('lobby_state', (d) => d.pin === pin);
 
-      sGuest1.emit('join_lobby', { pin, participant_id: guest1Id, user_name: 'Guest1' });
+      sGuest1.emit('join_lobby', { pin, participant_id: guest1Id, device_id: 'dev-guest1-tie', user_name: 'Guest1' });
       await sGuest1.waitFor('lobby_state', (d) => d.pin === pin && d.participants.length >= 2);
 
-      sGuest2.emit('join_lobby', { pin, participant_id: guest2Id, user_name: 'Guest2' });
+      sGuest2.emit('join_lobby', { pin, participant_id: guest2Id, device_id: 'dev-guest2-tie', user_name: 'Guest2' });
       await sGuest2.waitFor('lobby_state', (d) => d.pin === pin && d.participants.length === 3);
 
       sHost.emit('host_start_voting', {
@@ -707,15 +702,15 @@ test('Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus', async 
       });
       await sGuest2.waitFor('voting_started', (d) => d.pin === pin);
 
-      // 2 of 3 voters superlike 'opt-vetoed', but Guest2 vetoes it (-100).
-      // Between 'opt-bowling' and 'opt-karting', 'opt-bowling' wins 2-1.
+      // 2 of 3 voters superlike `${pin}:opt-vetoed`, but Guest2 vetoes it (-100).
+      // Between `${pin}:opt-bowling` and `${pin}:opt-karting`, `${pin}:opt-bowling` wins 2-1.
       sHost.emit('submit_ballot', {
         pin,
         participant_id: hostId,
         rankings: [
-          { option_id: 'opt-vetoed', score: 2 },
-          { option_id: 'opt-bowling', score: 1 },
-          { option_id: 'opt-karting', score: -1 },
+          { option_id: `${pin}:opt-vetoed`, score: 2 },
+          { option_id: `${pin}:opt-bowling`, score: 1 },
+          { option_id: `${pin}:opt-karting`, score: -1 },
         ],
       });
 
@@ -723,9 +718,9 @@ test('Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus', async 
         pin,
         participant_id: guest1Id,
         rankings: [
-          { option_id: 'opt-vetoed', score: 2 },
-          { option_id: 'opt-bowling', score: -1 },
-          { option_id: 'opt-karting', score: 1 },
+          { option_id: `${pin}:opt-vetoed`, score: 2 },
+          { option_id: `${pin}:opt-bowling`, score: -1 },
+          { option_id: `${pin}:opt-karting`, score: 1 },
         ],
       });
 
@@ -733,16 +728,16 @@ test('Flow 3: Multi-User Real-Time Voting & Schulze Condorcet Consensus', async 
         pin,
         participant_id: guest2Id,
         rankings: [
-          { option_id: 'opt-vetoed', score: -100 }, // Hard veto eliminates opt-vetoed!
-          { option_id: 'opt-bowling', score: 2 },
-          { option_id: 'opt-karting', score: 1 },
+          { option_id: `${pin}:opt-vetoed`, score: -100 }, // Hard veto eliminates opt-vetoed!
+          { option_id: `${pin}:opt-bowling`, score: 2 },
+          { option_id: `${pin}:opt-karting`, score: 1 },
         ],
       });
 
       const consensus = await sHost.waitFor('consensus_reached', (d) => d.pin === pin);
       assert.equal(
         consensus.winningOptionId,
-        'opt-bowling',
+        `${pin}:opt-bowling`,
         `Hard veto (-100) must eliminate opt-vetoed and elect Condorcet winner opt-bowling, got ${consensus.winningOptionId}`
       );
       assert.equal(consensus.winner.name, 'Plaza Bowling MallDova');

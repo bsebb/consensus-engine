@@ -4,11 +4,13 @@
   "description": "The Real-Time Consensus Engine backend",
   "main": "app.js",
   "scripts": {
-    "test": "node --test 'src/**/*.test.js'",
+    "test": "node --require ./test-support/testEnvironment.js --test 'src/**/*.test.js'",
     "postinstall": "prisma generate",
     "build": "prisma generate",
     "dev": "nodemon app.js",
-    "start": "node app.js"
+    "start": "node app.js",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:baseline": "prisma migrate resolve --applied 20261018000000_initial"
   },
   "keywords": [],
   "author": "",
@@ -18,10 +20,12 @@
     "@neon/config": "^1.9.4",
     "@neon/env": "^1.6.5",
     "@prisma/client": "^5.22.0",
+    "@socket.io/postgres-adapter": "^0.5.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "pg": "^8.23.1",
     "prisma": "^5.22.0",
     "socket.io": "^4.8.3"
   },

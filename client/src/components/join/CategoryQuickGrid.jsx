@@ -22,19 +22,12 @@ export default function CategoryQuickGrid({
   const isCustomMode = selectedCategory === 'Custom';
 
   const handleTileClick = (cat) => {
-    const isAlreadySelected = selectedCategory === cat.id;
     const isCustom = cat.id === 'Custom';
     triggerHaptic('tap');
 
-    if (isCustom) {
-      onSelectCategory(cat.id);
-      onOpenCustomDrawer?.();
-      return;
-    }
-
     onSelectCategory(cat.id);
-    if (isAlreadySelected && !isCreatingRoom) {
-      onStartRoom?.();
+    if (isCustom) {
+      onOpenCustomDrawer?.();
     }
   };
 

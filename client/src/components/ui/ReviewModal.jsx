@@ -21,6 +21,7 @@ export default function ReviewModal({
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [isClosing, setIsClosing] = useState(false);
 
 
@@ -38,6 +39,7 @@ export default function ReviewModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     const feedbackPayload = {
       participant_id: participantId || 'anon_user',
@@ -48,6 +50,20 @@ export default function ReviewModal({
       price_accuracy_score: Number(priceAccuracy),
       comment: comment.trim() || undefined,
     };
+
+    // Try posting to backend
+    try {
+      const response = await fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedbackPayload),
+      });
+      if (!response.ok) throw new Error('Feedback was not saved');
+    } catch {
+      setError('Your review was not saved. Please check your connection and try again.');
+      setLoading(false);
+      return;
+    }
 
     // Save locally including comment and winner name
     try {
@@ -64,16 +80,7 @@ export default function ReviewModal({
       console.warn('[ReviewModal] LocalStorage error:', err);
     }
 
-    // Try posting to backend
-    try {
-      await fetch(apiUrl(`/api/v1/rooms/${pin}/feedback`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedbackPayload),
-      });
-    } catch {
-      console.info('[ReviewModal] Backend feedback endpoint offline, saved locally');
-    }
+
 
     invalidateClientVenueInsights(winnerName);
     setLoading(false);
@@ -138,6 +145,7 @@ export default function ReviewModal({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-1">
                 {t('consensusWinner')}

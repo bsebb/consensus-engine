@@ -47,8 +47,8 @@ export const VENUE_IMAGE_MAP = {
   "asti": "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=900&q=85",
   "caravan": "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=900&q=85",
   "gok-oguz": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=85",
-  "trattoria della nonna": "https://img.restaurantguru.com/c7ae-Ristorante-Trattoria-della-Nonna-interior.jpg",
-  "nonna": "https://img.restaurantguru.com/c7ae-Ristorante-Trattoria-della-Nonna-interior.jpg",
+  "trattoria della nonna": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85",
+  "nonna": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=85",
   "khinkali": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/35/Tbilisi%2C_Khachapuri_and_khinkali%2C_Georgian_traditional_food%2C_Georgia.jpg/960px-Tbilisi%2C_Khachapuri_and_khinkali%2C_Georgian_traditional_food%2C_Georgia.jpg",
   "tbilisi": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dc/2019-07-17_Khachapuri_%28Adjaruli%29_served_at_Georgian_Restaurant_in_Kyiv.jpg/960px-2019-07-17_Khachapuri_%28Adjaruli%29_served_at_Georgian_Restaurant_in_Kyiv.jpg",
 

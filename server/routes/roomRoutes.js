@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
+router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 const roomController = require('../src/controllers/roomController');
-const asyncHandler = require('../src/utils/asyncHandler');
+const wrapAsync = require('../src/utils/asyncHandler');
+const { durableRoomHandler } = require('../src/state/httpRoomState');
+const asyncHandler = handler => wrapAsync(durableRoomHandler(handler));
 const { createRateLimiter } = require('../src/utils/rateLimiter');
 
 const roomCreateLimiter = createRateLimiter({
@@ -58,6 +61,7 @@ const configLimiter = createRateLimiter({
   message: 'Too many configuration updates. Please slow down.',
 });
 
+router.get('/session', pinLookupLimiter, asyncHandler(roomController.getSession));
 router.post('/', roomCreateLimiter, asyncHandler(roomController.createNewRoom));
 // Ephemeral Crowd-Sourced Self-Healing: report closed/outdated venue
 router.post('/report-closed', reportClosedLimiter, asyncHandler(roomController.reportClosedVenueHandler));

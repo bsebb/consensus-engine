@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import {
   Utensils, Coffee, Wine, IceCream,
   ListPlus, User, Sparkles, Check,
@@ -42,7 +42,9 @@ function saveStoredNickname(value) {
 export default function JoinRoom() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
-  const hasUrlPin = Boolean(searchParams.get('pin') && /^\d{4}$/.test(searchParams.get('pin')));
+  const { pin: routePin } = useParams();
+  const invitationPin = routePin || searchParams.get('pin') || '';
+  const hasUrlPin = /^\d{4}$/.test(invitationPin);
 
   const categories = useMemo(() => [
     { id: 'Restaurants', theme: 'restaurants', title: t('catRestaurants'), desc: t('catRestaurantsDesc'), icon: Utensils, topic: t('catRestaurantsTopic'), wide: false },
@@ -87,13 +89,9 @@ export default function JoinRoom() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   useEffect(() => {
-    const pinParam = searchParams.get('pin');
-    if (pinParam && /^\d{4}$/.test(pinParam)) {
-      navigate(`/lobby/${pinParam}`, { replace: true });
-      return;
-    }
+    if (/^\d{4}$/.test(invitationPin)) setActiveTab('join');
     if (searchParams.get('ratePin')) setCheckinModalOpen(true);
-  }, [searchParams, navigate]);
+  }, [searchParams, invitationPin]);
 
   useEffect(() => {
     try {
@@ -265,21 +263,24 @@ export default function JoinRoom() {
   const handleQuickHomeRate = async (stars) => {
     if (!recentSession || !recentWinnerName) return;
     triggerHaptic('like');
-    setRecentRating(stars);
     const targetPin = recentSession.pin;
     const targetOptionId = recentSession.winnerDetails?.id || `winner_${targetPin || 'home'}`;
     const targetPid = (targetPin && getRoomParticipantId ? getRoomParticipantId(targetPin) : null) || participantId || 'anon_user';
 
+    try {
+      if (!targetPin) throw new Error('Missing room');
+      const response = await fetch(apiUrl(`/api/v1/rooms/${targetPin}/feedback`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participant_id: targetPid, device_id: deviceId, option_id: targetOptionId, option_name: recentWinnerName, satisfaction_score: stars, price_accuracy_score: stars }),
+      });
+      if (!response.ok) throw new Error('Feedback not saved');
+    } catch {
+      addToast({ title: 'Rating not saved', message: 'Please check your connection and try again.', type: 'error' });
+      return;
+    }
+    setRecentRating(stars);
     recordLocalFeedback({ pin: targetPin, winnerName: recentWinnerName, optionId: targetOptionId, participantId: targetPid, deviceId, satisfactionScore: stars, priceAccuracyScore: stars });
     invalidateClientVenueInsights(recentWinnerName);
-
-    if (targetPin) {
-      fetch(apiUrl(`/api/v1/rooms/${targetPin}/feedback`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participant_id: targetPid, device_id: deviceId || undefined, option_id: targetOptionId, option_name: recentWinnerName, satisfaction_score: stars, price_accuracy_score: stars }),
-      }).catch(() => {});
-    }
     addToast({ title: t('feedbackSaved') || 'Rating Saved', message: `Rated ${recentWinnerName} ${stars}/5 stars`, type: 'success' });
   };
 
@@ -305,10 +306,10 @@ export default function JoinRoom() {
 
       <main className="w-full flex-1 min-h-0 flex flex-col justify-center items-center max-w-md mx-auto py-0.5 overflow-y-auto no-scrollbar overscroll-contain">
         <div className="text-center mb-1 sm:mb-2 shrink-0 flex flex-col justify-center items-center px-2 select-none">
-          <h1 className="text-base sm:text-2xl font-black tracking-tight text-[var(--text-primary)] truncate whitespace-nowrap max-w-full leading-tight">
+          <h1 className="text-lg sm:text-2xl font-black tracking-tight text-[var(--text-primary)] line-clamp-2 max-w-full leading-tight">
             {activeTab === 'create' ? (isCustomMode && customTopic.trim() ? customTopic.trim() : activeCatObj.topic) : t('joinWithCode')}
           </h1>
-          <p className="text-[11px] sm:text-sm text-[var(--text-secondary)] truncate whitespace-nowrap max-w-full leading-normal mt-0.5">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] line-clamp-2 max-w-full leading-normal mt-0.5">
             {activeTab === 'create' ? (isCustomMode && customOptions.length > 0 ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready` : activeCatObj.desc) : t('roomCodeHint')}
           </p>
         </div>
@@ -372,7 +373,7 @@ export default function JoinRoom() {
               hasSavedNickname={Boolean(name.trim())}
             />
           ) : (
-            <JoinPinForm initialPin={searchParams.get('pin') || ''} onJoin={executeJoin} loading={isJoiningRoom} />
+            <JoinPinForm initialPin={invitationPin} onJoin={executeJoin} loading={isJoiningRoom} />
           )}
         </div>
 

@@ -1,0 +1,4 @@
+{
+  "freshInstall": "All four migrations deploy from empty and match the Prisma schema",
+  "existingInstall": "Baselining and upgrade preserve room/participant/option/ballot data; repeated deploy is a no-op"
+}

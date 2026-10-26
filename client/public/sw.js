@@ -1,7 +1,10 @@
-const CACHE_NAME = 'noyoupick-pwa-v46';
+const CACHE_NAME = 'noyoupick-pwa-v47';
+const BUILD_ASSETS = [];
 const STATIC_ASSETS = [
+  ...BUILD_ASSETS,
   '/',
   '/index.html',
+  '/theme-init.js',
   '/manifest.webmanifest',
   '/favicon.ico',
   '/favicon.svg',
@@ -22,7 +25,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key.startsWith('noyoupick-pwa-') && key !== CACHE_NAME) {
             return caches.delete(key);
           }
         })
