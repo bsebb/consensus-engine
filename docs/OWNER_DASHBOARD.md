@@ -34,6 +34,18 @@ Passkeys use maintained SimpleWebAuthn libraries with user verification required
 
 There is no public signup, password fallback, or anonymous credential reset. Owner setup requires a random, 24-hour, one-time invitation. Enrollment atomically closes setup and clears the invitation hash. Owner recovery after losing a passkey requires trusted infrastructure access.
 
+## Excluding confirmed test activity
+
+The default Activity filter is **User activity**. Rooms with `isTest=true` are excluded from every total, trend, returning-browser calculation, category, winner, feedback item and session list. Test-room details are also excluded from default reads. **Test sessions** and **All activity** are explicit owner-only review views. Date filters apply to each view.
+
+Migration `20261027131000_classify_test_sessions` adds the reversible flag and labels confirmed historical fixtures. It matches the established automated host/device combinations, one explicit test-device fixture, and exact legacy audit/test host identifiers. It does not classify browser-generated identities, topics, missing device IDs or dates alone as testing. The owner requested that unmarked activity remain visible.
+
+An owner can open a session and choose **Exclude as test session** or, in the testing view, **Include as user activity**. The authenticated, same-origin classification endpoint changes only the flag. It does not delete records or change room activity timestamps, runtime snapshots, ballots, feedback or access rights.
+
+New authorized live smoke tests send `X-NoYouPick-Test: 1` and the infrastructure `X-Admin-Key` when creating rooms. The server rejects the marker without a matching `ADMIN_API_KEY`; request-body flags alone cannot hide user activity. The live smoke script now requires that key and sends it only to the app's established API origins. Local tests continue using disposable databases.
+
+The migration was rehearsed on the existing temporary Neon branch before production. Checksums for existing room data, activity timestamps, ballots, feedback and owner-authentication records were unchanged. All three date ranges were checked for consistent totals across user/testing/all views. Live counts and browser screenshots remain in private files. Local tests cover exclusion, direct detail access, returning-browser contamination, owner-only classification, reversibility, unchanged room timestamps and trusted test labeling.
+
 ## Owner access
 
 The owner has completed passkey enrollment. The redesign preserves the existing credential and sessions; it does not reissue setup access.
@@ -44,7 +56,7 @@ All disposable live-test passkeys and their sessions were revoked before minting
 
 ## Verification
 
-- **68 server tests** passed after the redesign, with no failures or skipped tests; **3 client utility tests** passed.
+- **70 server tests** passed after the redesign, with no failures or skipped tests; **3 client utility tests** passed.
 - Production build and lint pass. Forty pre-existing, non-failing client lint warnings remain. No dashboard lint warning remains.
 - Client and server dependency audits reported zero known advisories.
 - The dashboard migration was rehearsed on a temporary Neon branch, then applied to production through Prisma. All existing application-table checksums were unchanged, and the final schema matches Prisma. The rehearsal branch expires automatically at 15:00 UTC on 27 October.

@@ -428,3 +428,255 @@ test('session details, vote actions, feedback and returning browsers derive from
     await auth.db.room.deleteMany({ where: { id: { in: ids } } });
   }
 });
+
+test('test activity is excluded consistently, reviewable and reversibly classified by the owner', async () => {
+  const marker = 'Classification ' + randomUUID(),
+    device = 'classification-' + randomUUID(),
+    ids = [];
+  const headers = { Cookie: auth.COOKIE + '=' + (await session()) };
+  const get = async (path) => {
+    const r = await fetch(base + '/api/v1/dashboard' + path, { headers });
+    assert.equal(r.status, 200);
+    return r.json();
+  };
+  try {
+    const old = await auth.db.room.create({
+      data: {
+        pin: randomUUID(),
+        hostId: randomUUID(),
+        theme: 'custom:' + marker,
+        isTest: true,
+        createdAt: new Date(Date.now() - 40 * 86400000),
+        participants: {
+          create: {
+            deviceId: device,
+            createdAt: new Date(Date.now() - 40 * 86400000),
+          },
+        },
+      },
+    });
+    ids.push(old.id);
+    for (const isTest of [false, true]) {
+      const room = await auth.db.room.create({
+        data: {
+          pin: randomUUID(),
+          hostId: randomUUID(),
+          theme: 'custom:' + marker,
+          isTest,
+          status: 'RESOLVED',
+          runtimeState: { closed: false, voting: { expectedCount: 1 } },
+          participants: { create: { deviceId: device } },
+          options: {
+            create: {
+              name: isTest ? 'Test-only winner' : 'Real winner',
+              source: 'USER_CUSTOM',
+            },
+          },
+        },
+        include: { participants: true, options: true },
+      });
+      ids.push(room.id);
+      await auth.db.room.update({
+        where: { id: room.id },
+        data: { winnerOptionId: room.options[0].id },
+      });
+      await auth.db.vote.create({
+        data: {
+          participantId: room.participants[0].id,
+          optionId: room.options[0].id,
+          score: isTest ? -100 : 1,
+        },
+      });
+      await auth.db.feedback.create({
+        data: {
+          participantId: room.participants[0].id,
+          optionId: room.options[0].id,
+          satisfactionScore: isTest ? 1 : 5,
+          priceAccuracyScore: 4,
+          comment: marker + (isTest ? ' test' : ' real'),
+        },
+      });
+    }
+    const [, realId, testId] = ids;
+    const listPath =
+      '/sessions?' + new URLSearchParams({ search: marker, days: 7 });
+    assert.deepEqual(
+      (await get(listPath)).items.map((r) => r.id),
+      [realId]
+    );
+    assert.deepEqual(
+      (await get(listPath + '&traffic=test')).items.map((r) => r.id),
+      [testId]
+    );
+    assert.equal((await get(listPath + '&traffic=all')).total, 2);
+    assert.equal(
+      (await fetch(base + '/api/v1/dashboard/sessions/' + testId, { headers }))
+        .status,
+      404
+    );
+    assert.equal(
+      (await get('/sessions/' + testId + '?traffic=test')).isTest,
+      true
+    );
+    const realStats = await get('/analytics?days=7'),
+      testStats = await get('/analytics?days=7&traffic=test');
+    assert.equal(realStats.traffic, 'real');
+    assert.equal(testStats.summary.rooms, 1);
+    assert.equal(testStats.summary.resolved, 1);
+    assert.equal(testStats.votes.vetoes, 1);
+    assert.equal(testStats.summary.feedback, 1);
+    assert.equal(testStats.summary.satisfaction, 1);
+    assert.equal(testStats.audience.returning, 1);
+    assert.equal(
+      testStats.daily.reduce((sum, d) => sum + d.rooms, 0),
+      1
+    );
+    assert.equal(
+      testStats.phases.reduce((sum, p) => sum + p.rooms, 0),
+      1
+    );
+    assert.equal(
+      realStats.feedback.some((f) => f.comment === marker + ' test'),
+      false
+    );
+    assert.equal(
+      realStats.popular.some((p) => p.name === 'Test-only winner'),
+      false
+    );
+    const returningBefore = realStats.audience.returning;
+    const prior = await auth.db.room.findUnique({ where: { id: testId } });
+    assert.equal(
+      (
+        await post(
+          '/sessions/' + testId + '/classification',
+          { isTest: false },
+          headers
+        )
+      ).status,
+      200
+    );
+    const after = await auth.db.room.findUnique({ where: { id: testId } });
+    assert.deepEqual({ ...after, isTest: true }, prior); // No timestamps, snapshots, ballots or room rights changed.
+    assert.equal((await get(listPath)).total, 2);
+    assert.equal(
+      (await get('/analytics?days=7&traffic=test')).summary.rooms,
+      0
+    );
+    assert.equal((await get('/sessions/' + testId)).isTest, false);
+    assert.equal(
+      (
+        await post(
+          '/sessions/' + old.id + '/classification',
+          { isTest: false },
+          headers
+        )
+      ).status,
+      200
+    );
+    assert.equal(
+      (await get('/analytics?days=7')).audience.returning,
+      returningBefore + 1
+    ); // Test-only history did not make a real browser 'returning'.
+    for (const endpoint of [
+      '/analytics?traffic=invalid',
+      '/sessions?traffic=invalid',
+      '/sessions/' + realId + '?traffic=invalid',
+    ])
+      assert.equal(
+        (await fetch(base + '/api/v1/dashboard' + endpoint, { headers }))
+          .status,
+        400
+      );
+    for (const body of [{}, { isTest: 'true' }, { isTest: 1 }])
+      assert.equal(
+        (await post('/sessions/' + realId + '/classification', body, headers))
+          .status,
+        400
+      );
+    assert.equal(
+      (
+        await post(
+          '/sessions/' + randomUUID() + '/classification',
+          { isTest: true },
+          headers
+        )
+      ).status,
+      404
+    );
+    assert.equal(
+      (await post('/sessions/' + realId + '/classification', { isTest: true }))
+        .status,
+      401
+    );
+    assert.equal(
+      (
+        await post(
+          '/sessions/' + realId + '/classification',
+          { isTest: true },
+          { ...headers, Origin: 'https://attacker.invalid' }
+        )
+      ).status,
+      403
+    );
+    assert.equal(
+      (await auth.db.room.findUnique({ where: { id: realId } })).isTest,
+      false
+    );
+  } finally {
+    await auth.db.room.deleteMany({ where: { id: { in: ids } } });
+  }
+});
+
+test('only authenticated test harnesses can label new live rooms as tests', async () => {
+  const original = process.env.ADMIN_API_KEY,
+    secret = randomBytes(32).toString('hex'),
+    ids = [];
+  process.env.ADMIN_API_KEY = secret;
+  const body = () => ({
+    host_id: randomUUID(),
+    device_id: 'v2_' + randomUUID(),
+    mode: 'CUSTOM',
+    theme: 'Test marker boundary',
+    radius: 5000,
+    isTest: true,
+    is_test: true,
+  });
+  const create = (data, extra = {}) =>
+    fetch(base + '/api/v1/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...extra },
+      body: JSON.stringify(data),
+    });
+  try {
+    assert.equal(
+      (await create(body(), { 'X-NoYouPick-Test': '1' })).status,
+      403
+    );
+    assert.equal(
+      (
+        await create(body(), {
+          'X-NoYouPick-Test': '1',
+          'X-Admin-Key': 'wrong',
+        })
+      ).status,
+      403
+    );
+    for (const tagged of [false, true]) {
+      const r = await create(
+        body(),
+        tagged ? { 'X-NoYouPick-Test': '1', 'X-Admin-Key': secret } : {}
+      );
+      assert.equal(r.status, 201);
+      const result = await r.json();
+      ids.push(result.room_id);
+      const row = await auth.db.room.findUnique({
+        where: { id: result.room_id },
+      });
+      assert.equal(row.isTest, tagged);
+    }
+  } finally {
+    if (original === undefined) delete process.env.ADMIN_API_KEY;
+    else process.env.ADMIN_API_KEY = original;
+    await auth.db.room.deleteMany({ where: { id: { in: ids } } });
+  }
+});

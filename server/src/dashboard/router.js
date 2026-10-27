@@ -2,7 +2,12 @@ const express = require('express');
 const webauthn = require('@simplewebauthn/server');
 const a = require('./auth');
 const { createRateLimiter } = require('../utils/rateLimiter');
-const { analytics, sessions, sessionDetail } = require('./analytics');
+const {
+  analytics,
+  sessions,
+  sessionDetail,
+  classifySession,
+} = require('./analytics');
 const router = express.Router();
 router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, private');
@@ -209,9 +214,12 @@ router.get(
   a.requireSession,
   wrap(async (req, res) => {
     const days = Number(req.query.days || 30);
+    const traffic = req.query.traffic || 'real';
+    if (!['real', 'test', 'all'].includes(traffic))
+      return res.status(400).json({ error: 'Invalid activity filter.' });
     if (![7, 30, 90].includes(days))
       return res.status(400).json({ error: 'Choose 7, 30 or 90 days.' });
-    res.json(await analytics(days));
+    res.json(await analytics(days, traffic));
   })
 );
 
@@ -223,7 +231,8 @@ router.get(
       page = Number(req.query.page || 1),
       status = String(req.query.status || 'all'),
       mode = String(req.query.mode || 'all'),
-      search = String(req.query.search || '').trim();
+      search = String(req.query.search || '').trim(),
+      traffic = req.query.traffic || 'real';
     if (
       ![7, 30, 90].includes(days) ||
       !Number.isInteger(page) ||
@@ -233,10 +242,11 @@ router.get(
         status
       ) ||
       !['all', 'custom', 'discovery'].includes(mode) ||
-      search.length > 80
+      search.length > 80 ||
+      !['real', 'test', 'all'].includes(traffic)
     )
       return res.status(400).json({ error: 'Invalid session filters.' });
-    res.json(await sessions({ days, page, status, mode, search }));
+    res.json(await sessions({ days, page, status, mode, search, traffic }));
   })
 );
 router.get(
@@ -249,9 +259,32 @@ router.get(
       )
     )
       return res.status(400).json({ error: 'Invalid session.' });
-    const detail = await sessionDetail(req.params.id);
+    const traffic = req.query.traffic || 'real';
+    if (!['real', 'test', 'all'].includes(traffic))
+      return res.status(400).json({ error: 'Invalid activity filter.' });
+    const detail = await sessionDetail(req.params.id, traffic);
     if (!detail) return res.status(404).json({ error: 'Session not found.' });
     res.json(detail);
+  })
+);
+
+router.post(
+  '/sessions/:id/classification',
+  a.sameOrigin,
+  a.requireSession,
+  wrap(async (req, res) => {
+    if (
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+        req.params.id
+      ) ||
+      typeof req.body?.isTest !== 'boolean'
+    )
+      return res
+        .status(400)
+        .json({ error: 'Choose whether this is a test session.' });
+    if (!(await classifySession(req.params.id, req.body.isTest)))
+      return res.status(404).json({ error: 'Session not found.' });
+    res.json({ isTest: req.body.isTest });
   })
 );
 

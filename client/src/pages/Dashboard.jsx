@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [days, setDays] = useState(30);
+  const [traffic, setTraffic] = useState('real');
   const [data, setData] = useState(null);
   const [tab, setTab] = useState('overview');
   const requestVersion = useRef(0);
@@ -85,7 +86,7 @@ export default function Dashboard() {
     if (!authenticated) return;
     let cancelled = false;
     const version = ++requestVersion.current;
-    request(`/analytics?days=${days}`)
+    request(`/analytics?days=${days}&traffic=${traffic}`)
       .then((result) => {
         if (!cancelled && version === requestVersion.current) {
           setData(result);
@@ -104,7 +105,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [authenticated, days]);
+  }, [authenticated, days, traffic]);
   async function signIn() {
     setBusy(true);
     setError('');
@@ -143,7 +144,9 @@ export default function Dashboard() {
     setError('');
     const version = ++requestVersion.current;
     try {
-      const result = await request(`/analytics?days=${days}`);
+      const result = await request(
+        `/analytics?days=${days}&traffic=${traffic}`
+      );
       if (version === requestVersion.current) setData(result);
     } catch (e) {
       if (version !== requestVersion.current) return;
@@ -253,6 +256,23 @@ export default function Dashboard() {
             </div>
             <div className="dash-actions">
               <label className="dash-period">
+                <span>Activity</span>
+                <select
+                  aria-label="Activity type"
+                  value={traffic}
+                  onChange={(e) => {
+                    requestVersion.current++;
+                    setData(null);
+                    setBusy(false);
+                    setTraffic(e.target.value);
+                  }}
+                >
+                  <option value="real">User activity</option>
+                  <option value="test">Test sessions</option>
+                  <option value="all">All activity</option>
+                </select>
+              </label>
+              <label className="dash-period">
                 <span>Period</span>
                 <select
                   value={days}
@@ -309,8 +329,10 @@ export default function Dashboard() {
               )}
               {tab === 'sessions' && (
                 <SessionExplorer
-                  key={days}
+                  key={`${days}-${traffic}`}
                   days={days}
+                  traffic={traffic}
+                  onClassified={refresh}
                   revision={data.asOf}
                   onUnauthorized={expireSession}
                 />
@@ -328,6 +350,11 @@ export default function Dashboard() {
                   · chart dates in UTC
                 </span>
                 <p>
+                  {traffic === 'real'
+                    ? 'Confirmed test sessions are excluded. '
+                    : traffic === 'test'
+                      ? 'Showing test sessions only. '
+                      : 'Showing user activity and test sessions. '}
                   Figures cover rooms created in this period and their recorded
                   activity. Older expired records may have been removed. Browser
                   identities are anonymous.

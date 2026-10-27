@@ -5,6 +5,7 @@ const path = require('node:path');
 const browserEngine = require(process.env.PLAYWRIGHT_MODULE || 'playwright')[process.env.AUDIT_BROWSER || 'chromium'];
 const base = 'https://noyoupick.org';
 if (process.env.AUDIT_LIVE_CONFIRM !== 'noyoupick.org') throw new Error('Set AUDIT_LIVE_CONFIRM=noyoupick.org to explicitly authorize live test room creation.');
+if (!process.env.ADMIN_API_KEY) throw new Error('Live tests require ADMIN_API_KEY to label every created room as testing.');
 const output = process.env.AUDIT_OUTPUT || '/private/tmp/consensus-live-smoke';
 fs.mkdirSync(output, { recursive: true });
 const failures = [];
@@ -39,6 +40,11 @@ async function voteAll(page) {
       if (response.status() === 201 && response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/rooms') {
         try { const room = await response.json(); createdRooms.push({ id: room.room_id, pin: room.pin }); } catch {}
       }
+    });
+    await page.route('**/api/v1/rooms', async route => {
+      const request=route.request();
+      if (request.method() !== 'POST' || !['https://noyoupick.org','https://www.noyoupick.org','https://consensus-engine-un6e.onrender.com'].includes(new URL(request.url()).origin)) return route.continue();
+      return route.continue({headers:{...request.headers(),'x-noyoupick-test':'1','x-admin-key':process.env.ADMIN_API_KEY}});
     });
     page.on('pageerror', e => pageErrors.push(`${name}: ${e.message}`));
     return page;

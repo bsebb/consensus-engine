@@ -64,6 +64,16 @@ const createNewRoom = async (req, res) => {
     });
   }
 
+  // Live test harnesses must opt in with the infrastructure credential. Public
+  // request bodies cannot hide sessions from the owner's activity figures.
+  const isTest = req.get('X-NoYouPick-Test') === '1';
+  if (isTest) {
+    const expected = process.env.ADMIN_API_KEY;
+    const supplied = req.get('X-Admin-Key') || '';
+    if (!expected || !crypto.timingSafeEqual(crypto.createHash('sha256').update(supplied).digest(), crypto.createHash('sha256').update(expected).digest())) {
+      return res.status(403).json({success:false,error:'FORBIDDEN'});
+    }
+  }
   const hostDeviceId = host_device_id || device_id || null;
   const cleanHostDeviceId = hostDeviceId && typeof hostDeviceId === 'string' ? hostDeviceId.trim().slice(0, 64) : null;
   const roomTheme = mode === 'CUSTOM' ? `custom:${theme || 'poll'}` : theme;
@@ -110,7 +120,7 @@ const createNewRoom = async (req, res) => {
   let dbRoom;
   for (let attempt = 0; attempt < 25; attempt++) {
     try {
-      dbRoom = await createRoom(host_id, pin, roomTheme, radius, cleanHostDeviceId, roomId, createdOptions);
+      dbRoom = await createRoom(host_id, pin, roomTheme, radius, cleanHostDeviceId, roomId, createdOptions, isTest);
       break;
     } catch (err) {
       if (err.code !== 'P2002') throw err;

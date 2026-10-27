@@ -51,10 +51,11 @@ async function ensureRoomPersisted(key) {
     }
 }
 
-async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null, preGeneratedId = null, initialOptions = null) {
+async function createRoom(hostId, pin, theme = null, radius = null, hostDeviceId = null, preGeneratedId = null, initialOptions = null, isTest = false) {
     const data = {
         ...(preGeneratedId ? { id: preGeneratedId } : {}),
         hostId,
+        isTest,
         hostDeviceId: hostDeviceId ? String(hostDeviceId).slice(0, 64) : null,
         pin,
         theme: theme ? String(theme) : null,

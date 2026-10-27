@@ -10,7 +10,11 @@ function periodStart(days) {
 
 // Aggregate inside PostgreSQL. Credentials, names of participants and private
 // runtime snapshots never cross the database boundary into a dashboard response.
-function cohort(start) {
+function trafficFilter(traffic = 'real') {
+  return Prisma.sql`(${traffic}='all' OR r."isTest"=(${traffic}='test'))`;
+}
+
+function cohort(start, traffic) {
   return Prisma.sql`WITH scoped AS (
     SELECT r.id, r.theme, r.status, r."createdAt", r."updatedAt", r."winnerOptionId",
       CASE WHEN r.theme LIKE 'custom:%' THEN 'custom' ELSE 'discovery' END AS mode,
@@ -19,7 +23,7 @@ function cohort(start) {
         WHEN r."runtimeState" IS NULL THEN 'legacy'
         WHEN r."runtimeState"->>'closed'='true' OR r."updatedAt" < (NOW() AT TIME ZONE 'UTC')-INTERVAL '30 minutes' THEN 'inactive'
         WHEN r.status='VOTING' THEN 'voting' ELSE 'setup' END AS phase
-    FROM rooms r WHERE r."createdAt" >= ${start}
+    FROM rooms r WHERE r."createdAt" >= ${start} AND ${trafficFilter(traffic)}
   ), people AS (
     SELECT p.id, p."roomId", p."deviceId", p."createdAt" FROM participants p JOIN scoped r ON r.id=p."roomId"
   ), member_counts AS (
@@ -44,21 +48,21 @@ function cohort(start) {
   )`;
 }
 
-async function analytics(days) {
+async function analytics(days, traffic = 'real') {
   const start = periodStart(days);
-  const [result] = await db.$queryRaw(Prisma.sql`${cohort(start)},
+  const [result] = await db.$queryRaw(Prisma.sql`${cohort(start, traffic)},
     device_visits AS (
       SELECT "deviceId" AS device, count(DISTINCT "roomId")::int AS visits
       FROM people WHERE NULLIF("deviceId",'') IS NOT NULL GROUP BY "deviceId"
     ), first_seen AS (
       SELECT p."deviceId" AS device, min(p."createdAt") AS first_seen
-      FROM participants p JOIN device_visits d ON d.device=p."deviceId" GROUP BY p."deviceId"
+      FROM participants p JOIN device_visits d ON d.device=p."deviceId" JOIN rooms r ON r.id=p."roomId" WHERE ${trafficFilter(traffic)} GROUP BY p."deviceId"
     ), daily_rooms AS (
       SELECT to_char("createdAt",'YYYY-MM-DD') AS day, count(*)::int AS rooms,
         count(*) FILTER(WHERE status='RESOLVED')::int AS resolved
       FROM scoped GROUP BY 1
     ), daily_people AS (
-      SELECT to_char("createdAt",'YYYY-MM-DD') AS day, count(DISTINCT "deviceId")::int AS browsers
+      SELECT to_char("createdAt",'YYYY-MM-DD') AS day, count(DISTINCT NULLIF("deviceId",''))::int AS browsers
       FROM people GROUP BY 1
     ), daily_votes AS (
       SELECT to_char(v."createdAt",'YYYY-MM-DD') AS day, count(DISTINCT v."participantId")::int AS ballots
@@ -112,14 +116,21 @@ async function analytics(days) {
       COALESCE((SELECT jsonb_agg(x ORDER BY x.hour) FROM (SELECT extract(hour FROM "createdAt")::int AS hour,count(*)::int AS rooms FROM scoped GROUP BY 1) x),'[]'::jsonb) AS hourly,
       COALESCE((SELECT jsonb_agg(f) FROM recent_reviews f),'[]'::jsonb) AS feedback
   `);
-  return { days, asOf: new Date().toISOString(), ...result };
+  return { days, traffic, asOf: new Date().toISOString(), ...result };
 }
 
-async function sessions({ days, page, status, mode, search }) {
+async function sessions({
+  days,
+  page,
+  status,
+  mode,
+  search,
+  traffic = 'real',
+}) {
   const where = Prisma.sql`WHERE (${status}='all' OR r.phase=${status}) AND (${mode}='all' OR r.mode=${mode})
     AND (${search}='' OR strpos(lower(COALESCE(r.theme,'') || ' ' || COALESCE(r.winner,'')),lower(${search}))>0)`;
   const [result] =
-    await db.$queryRaw(Prisma.sql`${cohort(periodStart(days))}, filtered AS (SELECT r.* FROM room_stats r ${where})
+    await db.$queryRaw(Prisma.sql`${cohort(periodStart(days), traffic)}, filtered AS (SELECT r.* FROM room_stats r ${where})
     SELECT (SELECT count(*)::int FROM filtered) AS total,
       COALESCE((SELECT jsonb_agg(x) FROM (
         SELECT id, mode, category, CASE WHEN mode='custom' THEN regexp_replace(theme,'^custom:','') ELSE category END AS topic,
@@ -128,15 +139,15 @@ async function sessions({ days, page, status, mode, search }) {
           to_char("updatedAt",'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt"
         FROM filtered ORDER BY "createdAt" DESC,id DESC LIMIT 20 OFFSET ${(page - 1) * 20}
       ) x),'[]'::jsonb) AS items`);
-  return { ...result, page, pageSize: 20, days };
+  return { ...result, page, pageSize: 20, days, traffic };
 }
 
-async function sessionDetail(id) {
+async function sessionDetail(id, traffic = 'real') {
   // Select only safe scalar metadata; never select/return the private snapshot.
   const [rows, options, [counts], feedback] = await db.$transaction(
     [
       db.$queryRaw`
-    SELECT id,theme,status,"winnerOptionId",
+    SELECT id,theme,status,"isTest","winnerOptionId",
       CASE WHEN status='RESOLVED' THEN 'completed' WHEN "runtimeState" IS NULL THEN 'legacy'
         WHEN "runtimeState"->>'closed'='true' OR "updatedAt" < (NOW() AT TIME ZONE 'UTC')-INTERVAL '30 minutes' THEN 'inactive'
         WHEN status='VOTING' THEN 'voting' ELSE 'setup' END AS phase,
@@ -144,7 +155,7 @@ async function sessionDetail(id) {
       to_char("updatedAt",'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt",
       CASE WHEN jsonb_typeof("runtimeState"#>'{voting,expectedCount}')='number' THEN ("runtimeState"#>>'{voting,expectedCount}')::int ELSE NULL END AS "expectedVoters",
       CASE WHEN jsonb_typeof("runtimeState"#>'{voting,matchScore}')='number' THEN ("runtimeState"#>>'{voting,matchScore}')::float8 ELSE NULL END AS "matchScore"
-    FROM rooms WHERE id=${id}`,
+    FROM rooms r WHERE id=${id} AND ${trafficFilter(traffic)}`,
       db.$queryRaw`SELECT o.id,o.name,o.id=r."winnerOptionId" AS winner,
       count(v.id)::int AS ratings,count(v.id) FILTER(WHERE v.score=1)::int AS likes,
       count(v.id) FILTER(WHERE v.score=2)::int AS supers,count(v.id) FILTER(WHERE v.score=-1)::int AS passes,
@@ -174,4 +185,16 @@ async function sessionDetail(id) {
     feedback,
   };
 }
-module.exports = { analytics, sessions, sessionDetail, periodStart };
+async function classifySession(id, isTest) {
+  // Do not move updatedAt: changing analytics labels is not room activity.
+  return Boolean(
+    await db.$executeRaw`UPDATE rooms SET "isTest"=${isTest} WHERE id=${id}`
+  );
+}
+module.exports = {
+  analytics,
+  sessions,
+  sessionDetail,
+  classifySession,
+  periodStart,
+};

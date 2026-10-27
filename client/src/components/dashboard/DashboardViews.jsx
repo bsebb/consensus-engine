@@ -440,7 +440,13 @@ export function FeedbackList({ items = [], summary }) {
     </>
   );
 }
-export function SessionExplorer({ days, revision, onUnauthorized }) {
+export function SessionExplorer({
+  days,
+  traffic,
+  revision,
+  onUnauthorized,
+  onClassified,
+}) {
   const [page, setPage] = useState(1),
     [status, setStatus] = useState('all'),
     [mode, setMode] = useState('all'),
@@ -450,11 +456,12 @@ export function SessionExplorer({ days, revision, onUnauthorized }) {
     [selected, setSelected] = useState(null),
     [detail, setDetail] = useState(null),
     [error, setError] = useState(''),
-    [attempt, setAttempt] = useState(0);
+    [attempt, setAttempt] = useState(0),
+    [classifying, setClassifying] = useState(false);
   useEffect(() => {
     const control = new AbortController();
     request(
-      `/sessions?${new URLSearchParams({ days, page, status, mode, search })}`,
+      `/sessions?${new URLSearchParams({ days, page, status, mode, search, traffic })}`,
       undefined,
       { signal: control.signal }
     )
@@ -468,11 +475,23 @@ export function SessionExplorer({ days, revision, onUnauthorized }) {
         setError(e.message);
       });
     return () => control.abort();
-  }, [days, page, status, mode, search, revision, attempt, onUnauthorized]);
+  }, [
+    days,
+    page,
+    status,
+    mode,
+    search,
+    traffic,
+    revision,
+    attempt,
+    onUnauthorized,
+  ]);
   useEffect(() => {
     if (!selected) return;
     const control = new AbortController();
-    request(`/sessions/${selected}`, undefined, { signal: control.signal })
+    request(`/sessions/${selected}?traffic=${traffic}`, undefined, {
+      signal: control.signal,
+    })
       .then((value) => {
         setDetail(value);
         setError('');
@@ -483,7 +502,26 @@ export function SessionExplorer({ days, revision, onUnauthorized }) {
         setError(e.message);
       });
     return () => control.abort();
-  }, [selected, revision, attempt, onUnauthorized]);
+  }, [selected, traffic, revision, attempt, onUnauthorized]);
+  async function changeClassification() {
+    setClassifying(true);
+    setError('');
+    try {
+      await request(`/sessions/${selected}/classification`, {
+        isTest: !detail.isTest,
+      });
+      setSelected(null);
+      setDetail(null);
+      setResult(null);
+      setAttempt((n) => n + 1);
+      onClassified();
+    } catch (e) {
+      if (e.status === 401) onUnauthorized();
+      setError(e.message);
+    } finally {
+      setClassifying(false);
+    }
+  }
   function filters(set, value) {
     set(value);
     setPage(1);
@@ -532,6 +570,30 @@ export function SessionExplorer({ days, revision, onUnauthorized }) {
                 {date(detail.createdAt)} ·{' '}
                 {detail.mode === 'custom' ? 'Custom poll' : 'Discovery'}
               </p>
+            </div>
+            <div className="dash-classification">
+              <div>
+                <strong>
+                  {detail.isTest ? 'Test session' : 'User activity'}
+                </strong>
+                <p>
+                  {detail.isTest
+                    ? 'Excluded from the default dashboard.'
+                    : 'Included in the default dashboard.'}{' '}
+                  Changing this label keeps the session and all its data.
+                </p>
+              </div>
+              <button
+                className="dash-button secondary"
+                disabled={classifying}
+                onClick={changeClassification}
+              >
+                {classifying
+                  ? 'Saving…'
+                  : detail.isTest
+                    ? 'Include as user activity'
+                    : 'Exclude as test session'}
+              </button>
             </div>
             <div className="dash-inline-stats detail-stats">
               <div>

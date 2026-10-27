@@ -396,6 +396,52 @@ async function stop(c) {
     pass(
       'trends, theme, pagination, repeated search, status filters, per-choice results and feedback work on desktop and mobile'
     );
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await page
+      .getByRole('textbox', { name: 'Search sessions' })
+      .fill('Board games');
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page
+      .getByText('12 matching rooms · newest first', { exact: true })
+      .waitFor();
+    await page
+      .getByRole('button', { name: /Open session Board games/ })
+      .first()
+      .click();
+    await page
+      .getByRole('heading', { name: 'Choice-by-choice results', exact: true })
+      .waitFor();
+    await page
+      .getByRole('button', { name: 'Exclude as test session', exact: true })
+      .click();
+    await page
+      .getByText('11 matching rooms · newest first', { exact: true })
+      .waitFor();
+    await page
+      .getByLabel('Activity type', { exact: true })
+      .selectOption('test');
+    await page
+      .getByRole('button', { name: /Open session Board games/ })
+      .first()
+      .click();
+    await page
+      .getByRole('button', { name: 'Include as user activity', exact: true })
+      .click();
+    await page
+      .getByText('No sessions match these filters.', { exact: true })
+      .waitFor();
+    await page
+      .getByLabel('Activity type', { exact: true })
+      .selectOption('real');
+    await page
+      .getByRole('button', { name: /Open session Board games/ })
+      .first()
+      .waitFor();
+    await page.getByRole('button', { name: 'Overview', exact: true }).click();
+    pass(
+      'test sessions are hidden by default, reviewable separately and restorable without deleting activity'
+    );
+
     await page.setViewportSize({ width: 1365, height: 1000 });
     await stop(front.child);
     front = await child('server/test-support/productionFrontend.js', {
@@ -416,18 +462,20 @@ async function stop(c) {
       .waitFor();
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
-    await page.route('**/api/v1/dashboard/analytics?days=90', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          summary: { rooms: 24 },
-          days: 90,
-          daily: [],
-          categories: [],
-          popular: [],
-        }),
-      })
+    await page.route(
+      '**/api/v1/dashboard/analytics?days=90&traffic=real',
+      (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            summary: { rooms: 24 },
+            days: 90,
+            daily: [],
+            categories: [],
+            popular: [],
+          }),
+        })
     );
     await page.getByLabel('Period').selectOption('90');
     await page
@@ -435,7 +483,7 @@ async function stop(c) {
       .filter({ hasText: 'The dashboard update is finishing.' })
       .waitFor();
     assert.equal(await page.getByText('NaN%', { exact: false }).count(), 0);
-    await page.unroute('**/api/v1/dashboard/analytics?days=90');
+    await page.unroute('**/api/v1/dashboard/analytics?days=90&traffic=real');
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     await page
       .getByRole('heading', { name: 'Room activity', exact: true })
