@@ -1,0 +1,27 @@
+{
+  "target": "rehearsal",
+  "schemaMatches": true,
+  "dataChecksumsUnchanged": true,
+  "migrations": [
+    {
+      "migration_name": "20261018000000_initial",
+      "finished_at": "2026-10-26T20:23:28.400Z"
+    },
+    {
+      "migration_name": "20261025112500_add_device_id",
+      "finished_at": "2026-10-26T20:23:29.970Z"
+    },
+    {
+      "migration_name": "20261025122000_add_cached_venues",
+      "finished_at": "2026-10-26T20:23:30.232Z"
+    },
+    {
+      "migration_name": "20261026190000_durable_room_state",
+      "finished_at": "2026-10-26T20:23:30.505Z"
+    },
+    {
+      "migration_name": "20261026220000_owner_dashboard",
+      "finished_at": "2026-10-27T11:44:40.422Z"
+    }
+  ]
+}

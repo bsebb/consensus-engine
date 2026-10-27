@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "live dashboard address shows only sign-in; private analytics return 401",
+    "live passkey enrollment, same-origin secure cookie, and aggregate data work",
+    "owner session survives the actual live Render restart",
+    "live date selection, refresh, mobile scrolling, and logout revocation work",
+    "registered passkey signs back in with zero unhandled browser exceptions"
+  ],
+  "pageErrors": []
+}

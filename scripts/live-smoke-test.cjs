@@ -105,7 +105,7 @@ async function voteAll(page) {
       const gate = process.env.AUDIT_RESTART_GATE;
       fs.writeFileSync(gate + '.requested', JSON.stringify({ pin, createdRooms }));
       console.log('READY_FOR_AUTHORIZED_RENDER_RESTART');
-      const deadline = Date.now() + 600000;
+      const deadline = Date.now() + Number(process.env.AUDIT_RESTART_TIMEOUT_MS || 1200000);
       while (!fs.existsSync(gate + '.complete')) {
         if (Date.now() > deadline) throw new Error('Live restart verification timed out');
         await host.waitForTimeout(1000);

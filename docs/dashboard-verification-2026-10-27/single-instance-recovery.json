@@ -1,0 +1,35 @@
+{
+  "replacementDeployId": "dep-dbg9aut9fdbs73d5lrlg",
+  "plan": "free",
+  "configuredInstances": 1,
+  "optionCount": 7,
+  "savedBallots": 1,
+  "exactVotingStateUnchanged": true,
+  "dashboardSessionPreserved": true,
+  "beforeInstances": [
+    {
+      "id": "srv-dbaabf7btjjs73eddig0-zk5lh",
+      "createdAt": "2026-10-27T12:04:23Z",
+      "status": "RUNNING",
+      "ready": true
+    }
+  ],
+  "afterInstances": [
+    {
+      "id": "srv-dbaabf7btjjs73eddig0-pdl4n",
+      "createdAt": "2026-10-27T12:14:06Z",
+      "status": "RUNNING",
+      "ready": true
+    }
+  ],
+  "healthBefore": {
+    "status": "ok",
+    "uptime": 550,
+    "timestamp": "2026-10-27T12:13:47.177Z"
+  },
+  "healthAfter": {
+    "status": "ok",
+    "uptime": 9,
+    "timestamp": "2026-10-27T12:14:28.401Z"
+  }
+}
