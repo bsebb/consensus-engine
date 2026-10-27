@@ -18,5 +18,12 @@ export async function dashboardRequest(path, body, { signal } = {}) {
     error.status = response.status;
     throw error;
   }
+  // Frontend and backend deploy independently. Never display partial metrics
+  // from the previous analytics contract during a rolling release.
+  if (path.startsWith('/analytics') && (!data.audience || !data.votes)) {
+    throw new Error(
+      'The dashboard update is finishing. Please refresh in a moment.'
+    );
+  }
   return data;
 }

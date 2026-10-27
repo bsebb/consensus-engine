@@ -4,6 +4,7 @@
     "real WebAuthn enrollment verifies a user-verified credential and issues a protected session cookie",
     "trends, theme, pagination, repeated search, status filters, per-choice results and feedback work on desktop and mobile",
     "the same owner cookie authenticates through a separate backend process",
+    "rolling deployment contract mismatch stays private and recovers with Refresh",
     "aggregate metrics, date range, refresh and mobile layout work",
     "logout revokes the session across both processes",
     "registered passkey signs back in through the second process",

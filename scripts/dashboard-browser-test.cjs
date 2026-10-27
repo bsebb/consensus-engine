@@ -416,6 +416,33 @@ async function stop(c) {
       .waitFor();
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh', exact: true }).waitFor();
+    await page.route('**/api/v1/dashboard/analytics?days=90', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          summary: { rooms: 24 },
+          days: 90,
+          daily: [],
+          categories: [],
+          popular: [],
+        }),
+      })
+    );
+    await page.getByLabel('Period').selectOption('90');
+    await page
+      .getByRole('alert')
+      .filter({ hasText: 'The dashboard update is finishing.' })
+      .waitFor();
+    assert.equal(await page.getByText('NaN%', { exact: false }).count(), 0);
+    await page.unroute('**/api/v1/dashboard/analytics?days=90');
+    await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await page
+      .getByRole('heading', { name: 'Room activity', exact: true })
+      .waitFor();
+    pass(
+      'rolling deployment contract mismatch stays private and recovers with Refresh'
+    );
     pass('aggregate metrics, date range, refresh and mobile layout work');
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await page

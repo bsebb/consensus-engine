@@ -24,7 +24,7 @@ Feedback shows review totals, average satisfaction and price accuracy, plus the 
 
 These are room cohorts: totals and feedback cover rooms created in the selected period. Activity after creation belongs to that cohort. Recently active excludes completed/closed rooms and requires an update in the last 30 minutes. Older rooms without snapshots are explicitly labeled. Timing measures room creation to the last recorded ballot in completed rooms; it is not a precise result-generation timestamp.
 
-No schema migration or infrastructure upgrade is required for the redesign. Aggregation stays in PostgreSQL, session results are bounded, queries are parameterized, and each room detail is read in a consistent database snapshot. Existing owner authentication remains enforced on every new route.
+No schema migration or infrastructure upgrade is required for the redesign. Aggregation stays in PostgreSQL, session results are bounded, queries are parameterized, and each room detail is read in a consistent database snapshot. Existing owner authentication remains enforced on every new route. A frontend guard rejects the old analytics response during independent frontend/backend rollouts and provides a working Refresh action. The browser rehearsal verifies this temporary mismatch and recovery.
 
 These are aggregates over retained database records. Expired-room cleanup can remove historical records. Anonymous browser identities are not verified people, and this release does not add page-view tracking or claim a lifetime analytics ledger.
 
@@ -53,6 +53,8 @@ All disposable live-test passkeys and their sessions were revoked before minting
 - The complete live host/guest flow passed after replacement, including invite join, roster sync, reload, candidate addition, details, pause/resume, partial-vote recovery, quorum, shared result, feedback retry, rematch, history and custom polls.
 - Successful browser runs had zero unhandled page exceptions.
 - Cleanup removed exactly four test-created rooms, their dependent test data, and one test contribution to venue feedback averages. It did not prune ordinary app data.
+
+The redesign was deployed and checked through the owner’s existing signed-in browser: Overview, completed-session filtering, individual choice results and Feedback loaded correctly with retained production records. Owner passkeys and sessions were not reset. Actual live figures remain outside Git.
 
 The expanded redesign tests cover filter validation, literal searches, pagination, score tiers, unvoted choices, feedback truncation and escaping, returning-browser counts, private-field exclusion, all room-status classifications, mobile scrolling and shared theme preferences. A local database running in a non-UTC timezone caught and verified a fix to inactivity classification. The local browser rehearsal uses only a disposable database; do not rerun live enrollment helpers after owner enrollment.
 
