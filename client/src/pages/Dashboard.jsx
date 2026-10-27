@@ -191,6 +191,7 @@ export default function Dashboard() {
           {authenticated && (
             <button
               className="dash-button secondary dash-signout"
+              aria-label="Sign out"
               onClick={logout}
               disabled={busy}
             >
