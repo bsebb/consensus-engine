@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
 export const ACCENTS = [
-  { id: 'coral', name: 'Coral', color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)' },
-  { id: 'violet', name: 'Violet', color: '#8B5CF6', hover: '#7C3AED', glow: 'rgba(139, 92, 246, 0.28)' },
-  { id: 'emerald', name: 'Emerald', color: '#10B981', hover: '#059669', glow: 'rgba(16, 185, 129, 0.28)' },
-  { id: 'blue', name: 'Blue', color: '#3B82F6', hover: '#2563EB', glow: 'rgba(59, 130, 246, 0.28)' },
-  { id: 'amber', name: 'Amber', color: '#F59E0B', hover: '#D97706', glow: 'rgba(245, 158, 11, 0.28)' },
+  { id: 'coral', name: 'Coral', color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)', glowSubtle: 'rgba(240, 77, 62, 0.12)', glowFocus: 'rgba(240, 77, 62, 0.20)' },
+  { id: 'violet', name: 'Violet', color: '#8B5CF6', hover: '#7C3AED', glow: 'rgba(139, 92, 246, 0.28)', glowSubtle: 'rgba(139, 92, 246, 0.12)', glowFocus: 'rgba(139, 92, 246, 0.20)' },
+  { id: 'emerald', name: 'Emerald', color: '#10B981', hover: '#059669', glow: 'rgba(16, 185, 129, 0.28)', glowSubtle: 'rgba(16, 185, 129, 0.12)', glowFocus: 'rgba(16, 185, 129, 0.20)' },
+  { id: 'blue', name: 'Blue', color: '#3B82F6', hover: '#2563EB', glow: 'rgba(59, 130, 246, 0.28)', glowSubtle: 'rgba(59, 130, 246, 0.12)', glowFocus: 'rgba(59, 130, 246, 0.20)' },
+  { id: 'amber', name: 'Amber', color: '#F59E0B', hover: '#D97706', glow: 'rgba(245, 158, 11, 0.28)', glowSubtle: 'rgba(245, 158, 11, 0.12)', glowFocus: 'rgba(245, 158, 11, 0.20)' },
 ];
 
 export const APPEARANCE_MODES = [
@@ -38,6 +38,8 @@ export function ThemeProvider({ children }) {
     root.style.setProperty('--accent-bg-hover', target.hover);
     root.style.setProperty('--accent-glow', target.glow);
     root.style.setProperty('--accent-glow-hover', target.glow);
+    root.style.setProperty('--accent-glow-subtle', target.glowSubtle);
+    root.style.setProperty('--accent-glow-focus', target.glowFocus);
     localStorage.setItem('app-accent', accent);
   }, [accent]);
 

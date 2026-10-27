@@ -17,10 +17,10 @@
     
     --accent-bg: #ff5733;
     --accent-bg-hover: #f04824;
-    --accent-glow: rgba(255, 87, 51, 0.22);
-    --accent-glow-hover: rgba(255, 87, 51, 0.35);
-    --accent-glow-focus: rgba(255, 87, 51, 0.18);
-    --accent-glow-subtle: rgba(255, 87, 51, 0.08);
+    --accent-glow: color-mix(in srgb, var(--accent-bg) 22%, transparent);
+    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 35%, transparent);
+    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 18%, transparent);
+    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 10%, transparent);
 
     --status-success: #059669;
     --status-warning: #d97706;
@@ -69,10 +69,10 @@
 
     --accent-bg: #ff6340;
     --accent-bg-hover: #ff7656;
-    --accent-glow: rgba(255, 99, 64, 0.28);
-    --accent-glow-hover: rgba(255, 99, 64, 0.42);
-    --accent-glow-focus: rgba(255, 99, 64, 0.20);
-    --accent-glow-subtle: rgba(255, 99, 64, 0.12);
+    --accent-glow: color-mix(in srgb, var(--accent-bg) 28%, transparent);
+    --accent-glow-hover: color-mix(in srgb, var(--accent-bg) 42%, transparent);
+    --accent-glow-focus: color-mix(in srgb, var(--accent-bg) 20%, transparent);
+    --accent-glow-subtle: color-mix(in srgb, var(--accent-bg) 14%, transparent);
 
     --status-success: #10b981;
     --status-warning: #f59e0b;
@@ -565,7 +565,7 @@ button:active:not(:disabled),
 
 .category-tile.is-selected {
   border-color: var(--accent-bg) !important;
-  background-color: var(--accent-glow-subtle) !important;
+  background-color: color-mix(in srgb, var(--accent-bg) 12%, var(--bg-inset)) !important;
   box-shadow: 0 0 20px -2px var(--accent-glow), 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
