@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   startRegistration,
   startAuthentication,
@@ -6,52 +6,21 @@ import {
 } from '@simplewebauthn/browser';
 import {
   Fingerprint,
-  ArrowUpRight,
   RefreshCw,
   LogOut,
   ShieldCheck,
-  Users,
-  Vote,
-  CheckCircle2,
-  Activity,
+  ArrowLeft,
 } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
+import BrandLogo from '../components/ui/BrandLogo';
+import { dashboardRequest as request } from '../utils/dashboardApi';
+import {
+  Overview,
+  SessionExplorer,
+  FeedbackList,
+} from '../components/dashboard/DashboardViews';
 import './Dashboard.css';
 
-const API = '/api/v1/dashboard';
-async function request(path, body) {
-  const response = await fetch(API + path, {
-    method: body === undefined ? 'GET' : 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error('Dashboard temporarily unavailable. Please try again.');
-  }
-  if (!response.ok) {
-    const error = new Error(data.error || 'Please try again.');
-    error.status = response.status;
-    throw error;
-  }
-  return data;
-}
-const number = (n) => new Intl.NumberFormat('en').format(n || 0);
-function Metric({ label, value, caption, Icon }) {
-  return (
-    <article className="dash-metric">
-      <div className="dash-metric-top">
-        <span>{label}</span>
-        <Icon size={18} />
-      </div>
-      <strong>{value}</strong>
-      <p>{caption}</p>
-    </article>
-  );
-}
 export default function Dashboard() {
   const [setupToken, setSetupToken] = useState(
     () => new URLSearchParams(window.location.hash.slice(1)).get('setup') || ''
@@ -62,6 +31,14 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [days, setDays] = useState(30);
   const [data, setData] = useState(null);
+  const [tab, setTab] = useState('overview');
+  const requestVersion = useRef(0);
+  const expireSession = useCallback(() => {
+    requestVersion.current++;
+    setAuthenticated(false);
+    setData(null);
+    setError('Your session expired. Please sign in again.');
+  }, []);
   // The one-time setup capability stays in memory and is removed from browser history.
   useEffect(() => {
     if (window.location.hash)
@@ -107,15 +84,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (!authenticated) return;
     let cancelled = false;
+    const version = ++requestVersion.current;
     request(`/analytics?days=${days}`)
       .then((result) => {
-        if (!cancelled) {
+        if (!cancelled && version === requestVersion.current) {
           setData(result);
           setError('');
         }
       })
       .catch((e) => {
-        if (!cancelled) {
+        if (!cancelled && version === requestVersion.current) {
           if (e.status === 401) {
             setAuthenticated(false);
             setData(null);
@@ -163,19 +141,23 @@ export default function Dashboard() {
   async function refresh() {
     setBusy(true);
     setError('');
+    const version = ++requestVersion.current;
     try {
-      setData(await request(`/analytics?days=${days}`));
+      const result = await request(`/analytics?days=${days}`);
+      if (version === requestVersion.current) setData(result);
     } catch (e) {
+      if (version !== requestVersion.current) return;
       if (e.status === 401) {
         setAuthenticated(false);
         setData(null);
       }
       setError(e.message);
     } finally {
-      setBusy(false);
+      if (version === requestVersion.current) setBusy(false);
     }
   }
   async function logout() {
+    requestVersion.current++;
     setBusy(true);
     setError('');
     try {
@@ -189,35 +171,31 @@ export default function Dashboard() {
     }
   }
   const summary = data?.summary;
-  const trend = data
-    ? Array.from({ length: days }, (_, i) => {
-        const date = new Date();
-        date.setUTCDate(date.getUTCDate() - days + 1 + i);
-        const day = date.toISOString().slice(0, 10);
-        return {
-          day,
-          rooms: data.daily.find((d) => d.day === day)?.rooms || 0,
-        };
-      })
-    : [];
-  const max = Math.max(1, ...trend.map((d) => d.rooms));
   return (
     <main className="owner-dashboard">
       <header className="dash-header">
         <a className="dash-brand" href="/">
-          NoYouPick<span>OWNER</span>
+          <span className="dash-logo">
+            <BrandLogo size={24} />
+          </span>
+          <span>
+            <strong>NoYouPick</strong>
+            <small>Owner dashboard</small>
+          </span>
         </a>
         <div className="dash-header-right">
           <span className="dash-private">
-            <ShieldCheck size={15} /> Private access
+            <ShieldCheck size={13} /> Private
           </span>
+          <ThemeToggle />
           {authenticated && (
             <button
-              className="dash-button secondary"
+              className="dash-button secondary dash-signout"
               onClick={logout}
               disabled={busy}
             >
-              <LogOut size={16} /> Sign out
+              <LogOut size={14} />
+              <span>Sign out</span>
             </button>
           )}
         </div>
@@ -225,7 +203,7 @@ export default function Dashboard() {
       {!authenticated ? (
         <section className="dash-login">
           <div className="dash-key">
-            <Fingerprint size={38} />
+            <Fingerprint size={34} />
           </div>
           <span className="dash-eyebrow">YOUR APP, AT A GLANCE</span>
           <h1>{setupToken ? 'Make this dashboard yours.' : 'Welcome back.'}</h1>
@@ -244,7 +222,7 @@ export default function Dashboard() {
             disabled={checking || busy}
             onClick={signIn}
           >
-            <Fingerprint size={19} />
+            <Fingerprint size={18} />
             {checking
               ? 'Checking access…'
               : busy
@@ -259,16 +237,18 @@ export default function Dashboard() {
             Only the registered owner can sign in.
           </small>
           <a className="dash-back" href="/">
-            Back to the app <ArrowUpRight size={14} />
+            <ArrowLeft size={14} /> Back to the app
           </a>
         </section>
       ) : (
         <div className="dash-content">
           <section className="dash-title">
             <div>
-              <span className="dash-eyebrow">OWNER DASHBOARD</span>
-              <h1>How’s it picking?</h1>
-              <p>A clear view of the choices people are making together.</p>
+              <span className="dash-eyebrow">BEHIND THE PICKS</span>
+              <h1>Your app. In detail.</h1>
+              <p>
+                See what brings people together, and where their picks end up.
+              </p>
             </div>
             <div className="dash-actions">
               <label className="dash-period">
@@ -276,7 +256,9 @@ export default function Dashboard() {
                 <select
                   value={days}
                   onChange={(e) => {
+                    requestVersion.current++;
                     setData(null);
+                    setBusy(false);
                     setDays(Number(e.target.value));
                   }}
                 >
@@ -290,11 +272,26 @@ export default function Dashboard() {
                 disabled={busy}
                 onClick={refresh}
               >
-                <RefreshCw size={16} />
+                <RefreshCw size={15} />
                 {busy ? 'Updating…' : 'Refresh'}
               </button>
             </div>
           </section>
+          <nav className="dash-tabs" aria-label="Dashboard sections">
+            {[
+              ['overview', 'Overview'],
+              ['sessions', 'Sessions'],
+              ['feedback', 'Feedback'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                aria-current={tab === key ? 'page' : undefined}
+                onClick={() => setTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
           {error && (
             <div className="dash-error" role="alert">
               {error}
@@ -306,137 +303,20 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <section className="dash-metrics" aria-label="App metrics">
-                <Metric
-                  label="Rooms created"
-                  value={number(summary.rooms)}
-                  caption={`${number(summary.recentlyActive)} active in the last 30 minutes`}
-                  Icon={Activity}
+              {tab === 'overview' && (
+                <Overview data={data} onSessions={() => setTab('sessions')} />
+              )}
+              {tab === 'sessions' && (
+                <SessionExplorer
+                  key={days}
+                  days={days}
+                  revision={data.asOf}
+                  onUnauthorized={expireSession}
                 />
-                <Metric
-                  label="Unique browsers"
-                  value={number(summary.uniqueDevices)}
-                  caption={`${number(summary.joins)} total room joins`}
-                  Icon={Users}
-                />
-                <Metric
-                  label="Picks completed"
-                  value={number(summary.resolved)}
-                  caption={`${summary.completionRate}% of rooms reached a result`}
-                  Icon={CheckCircle2}
-                />
-                <Metric
-                  label="People who voted"
-                  value={number(summary.voters)}
-                  caption={`${number(summary.ratings)} individual card ratings`}
-                  Icon={Vote}
-                />
-              </section>
-              <section className="dash-panel dash-trend">
-                <div className="dash-panel-heading">
-                  <div>
-                    <h2>Room activity</h2>
-                    <p>New rooms by day · UTC</p>
-                  </div>
-                  <span className="dash-pill">
-                    {number(summary.rooms)} rooms
-                  </span>
-                </div>
-                <div
-                  className="dash-chart"
-                  role="img"
-                  aria-label={`Daily room creation over the last ${days} days`}
-                >
-                  {trend.map((d) => (
-                    <div
-                      key={d.day}
-                      className="dash-bar-slot"
-                      title={`${d.day}: ${d.rooms} rooms`}
-                    >
-                      <div
-                        className="dash-bar"
-                        style={{
-                          height: `${Math.max(d.rooms ? 2 : 0, (d.rooms / max) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="dash-chart-labels">
-                  <span>{trend[0]?.day}</span>
-                  <span>{trend.at(-1)?.day}</span>
-                </div>
-              </section>
-              <div className="dash-columns">
-                <section className="dash-panel">
-                  <div className="dash-panel-heading">
-                    <div>
-                      <h2>What people are picking</h2>
-                      <p>Most popular room categories</p>
-                    </div>
-                  </div>
-                  {data.categories.length ? (
-                    data.categories.map((c, i) => (
-                      <div className="dash-row" key={c.category}>
-                        <span className="dash-rank">
-                          {String(i + 1).padStart(2, '0')}
-                        </span>
-                        <span>{c.category}</span>
-                        <strong>{number(c.rooms)}</strong>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="dash-empty">No rooms in this period yet.</p>
-                  )}
-                </section>
-                <section className="dash-panel">
-                  <div className="dash-panel-heading">
-                    <div>
-                      <h2>Group favourites</h2>
-                      <p>Choices that won the most rooms</p>
-                    </div>
-                  </div>
-                  {data.popular.length ? (
-                    data.popular.map((p, i) => (
-                      <div className="dash-row" key={p.name}>
-                        <span className="dash-rank">
-                          {String(i + 1).padStart(2, '0')}
-                        </span>
-                        <span>{p.name}</span>
-                        <strong>
-                          {number(p.wins)} <small>wins</small>
-                        </strong>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="dash-empty">
-                      Completed picks will appear here.
-                    </p>
-                  )}
-                </section>
-              </div>
-              <section className="dash-feedback">
-                <div>
-                  <h2>The feedback loop</h2>
-                  <p>How people felt about their picks.</p>
-                </div>
-                <div>
-                  <strong>{number(summary.feedback)}</strong>
-                  <span>reviews submitted</span>
-                </div>
-                <div>
-                  <strong>
-                    {summary.satisfaction === null
-                      ? '—'
-                      : `${summary.satisfaction}/5`}
-                  </strong>
-                  <span>average satisfaction</span>
-                </div>
-                <div>
-                  <strong>{number(summary.customRooms)}</strong>
-                  <span>custom polls created</span>
-                </div>
-              </section>
+              )}{' '}
+              {tab === 'feedback' && (
+                <FeedbackList items={data.feedback} summary={summary} />
+              )}
               <footer className="dash-footer">
                 <span>
                   Updated{' '}
@@ -444,12 +324,12 @@ export default function Dashboard() {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}{' '}
-                  · aggregated data
+                  · chart dates in UTC
                 </span>
                 <p>
-                  Based on retained app records. Expired rooms may have been
-                  removed. Browsers are anonymous device identities, not
-                  verified people.
+                  Figures cover rooms created in this period and their recorded
+                  activity. Older expired records may have been removed. Browser
+                  identities are anonymous.
                 </p>
               </footer>
             </>

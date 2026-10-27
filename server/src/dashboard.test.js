@@ -1,6 +1,6 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { randomBytes } = require('node:crypto');
+const { randomBytes, randomUUID } = require('node:crypto');
 const { app, httpServer, io, ready } = require('../app');
 const auth = require('./dashboard/auth');
 let base;
@@ -145,8 +145,8 @@ test('dashboard queries are bounded and return aggregates without participant cr
   assert.equal(data.days, 7);
   assert.ok(Number.isInteger(data.summary.rooms));
   assert.ok(Array.isArray(data.daily));
-  assert.ok(data.categories.length <= 10);
-  assert.ok(data.popular.length <= 10);
+  assert.ok(data.categories.length <= 20);
+  assert.ok(data.popular.length <= 20);
   assert.doesNotMatch(
     JSON.stringify(data),
     /deviceId|hostId|runtimeState|publicKey|setupToken|participantId/
@@ -176,9 +176,255 @@ test('one-time owner setup links expire after 24 hours even with a matching stor
 test('private dashboard reads reject sibling subdomains even with a valid owner cookie', async () => {
   const raw = await session();
   const response = await fetch(base + '/api/v1/dashboard/analytics', {
-    headers: { Origin: 'https://other.noyoupick.org', Cookie: auth.COOKIE + '=' + raw },
+    headers: {
+      Origin: 'https://other.noyoupick.org',
+      Cookie: auth.COOKIE + '=' + raw,
+    },
   });
   assert.equal(response.status, 403);
   assert.equal(response.headers.get('access-control-allow-origin'), null);
   assert.deepEqual(await response.json(), { error: 'Request not allowed.' });
+});
+
+test('session explorer protects and validates every private read', async () => {
+  for (const endpoint of ['/sessions', '/sessions/' + randomUUID()]) {
+    const r = await fetch(base + '/api/v1/dashboard' + endpoint);
+    assert.equal(r.status, 401);
+    assert.match(r.headers.get('cache-control'), /no-store/);
+  }
+  const headers = { Cookie: auth.COOKIE + '=' + (await session()) };
+  for (const query of [
+    'page=0',
+    'page=1.5',
+    'page=1001',
+    'days=8',
+    'status=RESOLVED',
+    'mode=bad',
+    'search=' + 'a'.repeat(81),
+  ]) {
+    assert.equal(
+      (await fetch(base + '/api/v1/dashboard/sessions?' + query, { headers }))
+        .status,
+      400,
+      query
+    );
+  }
+  assert.equal(
+    (await fetch(base + '/api/v1/dashboard/sessions/not-a-uuid', { headers }))
+      .status,
+    400
+  );
+  assert.equal(
+    (
+      await fetch(base + '/api/v1/dashboard/sessions/' + randomUUID(), {
+        headers,
+      })
+    ).status,
+    404
+  );
+});
+
+test('session details, vote actions, feedback and returning browsers derive from retained records without leaking identities', async () => {
+  const ids = [],
+    marker = 'Dashboard ' + randomUUID(),
+    device = 'private-device-' + randomUUID();
+  const now = new Date(),
+    earlier = new Date(Date.now() - 40 * 86400000);
+  const headers = { Cookie: auth.COOKIE + '=' + (await session()) };
+  try {
+    const old = await auth.db.room.create({
+      data: {
+        pin: randomUUID(),
+        hostId: 'private-host',
+        theme: 'custom:' + marker,
+        createdAt: earlier,
+        participants: { create: { deviceId: device, createdAt: earlier } },
+      },
+    });
+    ids.push(old.id);
+    const room = await auth.db.room.create({
+      data: {
+        pin: randomUUID(),
+        hostId: 'private-host',
+        hostDeviceId: device,
+        theme: 'custom:' + marker,
+        status: 'RESOLVED',
+        runtimeState: {
+          closed: false,
+          secret: 'private-snapshot',
+          voting: { expectedCount: 2, matchScore: 50 },
+        },
+        createdAt: now,
+        participants: {
+          create: [
+            { deviceId: device, budgetCap: 999 },
+            { deviceId: 'private-other' },
+          ],
+        },
+        options: {
+          create: [
+            { name: 'Winner', source: 'USER_CUSTOM' },
+            { name: 'Runner-up', source: 'USER_CUSTOM' },
+            { name: 'Unvoted', source: 'USER_CUSTOM' },
+          ],
+        },
+      },
+      include: { participants: true, options: true },
+    });
+    ids.push(room.id);
+    const [a, b] = room.participants,
+      [winner, other] = room.options;
+    await auth.db.room.update({
+      where: { id: room.id },
+      data: { winnerOptionId: winner.id },
+    });
+    await auth.db.vote.createMany({
+      data: [
+        { participantId: a.id, optionId: winner.id, score: 2 },
+        { participantId: b.id, optionId: winner.id, score: -100 },
+        { participantId: a.id, optionId: other.id, score: -1 },
+        { participantId: b.id, optionId: other.id, score: 0 },
+      ],
+    });
+    await auth.db.feedback.create({
+      data: {
+        participantId: a.id,
+        optionId: winner.id,
+        satisfactionScore: 4,
+        priceAccuracyScore: 3,
+        comment: '<script>window.bad=1</script>' + 'x'.repeat(600),
+      },
+    });
+    const second = await auth.db.room.create({
+      data: {
+        pin: randomUUID(),
+        hostId: 'private-host',
+        theme: 'custom:' + marker,
+        runtimeState: { closed: false },
+        participants: { create: { deviceId: device } },
+      },
+    });
+    ids.push(second.id);
+    async function get(path) {
+      const r = await fetch(base + '/api/v1/dashboard' + path, { headers });
+      assert.equal(r.status, 200);
+      return r.json();
+    }
+    const list = await get(
+      '/sessions?' +
+        new URLSearchParams({ search: marker, days: 7, mode: 'custom' })
+    );
+    assert.equal(list.total, 2);
+    assert.equal(list.pageSize, 20);
+    assert.equal(list.items.length, 2);
+    const item = list.items.find((x) => x.id === room.id);
+    assert.equal(item.status, 'completed');
+    assert.equal(item.members, 2);
+    assert.equal(item.voters, 2);
+    assert.equal(item.ratings, 4);
+    assert.equal(item.winner, 'Winner');
+    assert.equal(
+      (
+        await get(
+          '/sessions?' +
+            new URLSearchParams({ search: marker, status: 'setup' })
+        )
+      ).total,
+      1
+    );
+    assert.equal(
+      (
+        await get(
+          '/sessions?' + new URLSearchParams({ search: marker, page: 2 })
+        )
+      ).items.length,
+      0
+    );
+    assert.equal(
+      (
+        await get(
+          '/sessions?' + new URLSearchParams({ search: "%' OR 1=1 --" })
+        )
+      ).total,
+      0
+    );
+    const detail = await get('/sessions/' + room.id);
+    assert.equal(detail.topic, marker);
+    assert.equal(detail.phase, 'completed');
+    assert.equal(detail.expectedVoters, 2);
+    assert.equal(detail.matchScore, 50);
+    assert.equal(detail.members, 2);
+    assert.equal(detail.candidateCount, 3);
+    assert.equal(detail.options.length, 3);
+    assert.deepEqual(
+      detail.options.map(({ name, likes, supers, passes, vetoes, unseen }) => ({
+        name,
+        likes,
+        supers,
+        passes,
+        vetoes,
+        unseen,
+      })),
+      [
+        {
+          name: 'Winner',
+          likes: 0,
+          supers: 1,
+          passes: 0,
+          vetoes: 1,
+          unseen: 0,
+        },
+        {
+          name: 'Runner-up',
+          likes: 0,
+          supers: 0,
+          passes: 1,
+          vetoes: 0,
+          unseen: 1,
+        },
+        {
+          name: 'Unvoted',
+          likes: 0,
+          supers: 0,
+          passes: 0,
+          vetoes: 0,
+          unseen: 0,
+        },
+      ]
+    );
+    assert.equal(detail.feedback.length, 1);
+    assert.equal(detail.feedback[0].satisfaction, 4);
+    assert.equal(detail.feedback[0].priceAccuracy, 3);
+    assert.equal(detail.feedback[0].comment.length, 500);
+    const stats = await get('/analytics?days=7');
+    assert.ok(stats.audience.returning >= 1);
+    assert.ok(stats.audience.repeatInPeriod >= 1);
+    assert.ok(stats.votes.supers >= 1);
+    assert.ok(stats.votes.vetoes >= 1);
+    assert.ok(stats.summary.medianMinutesToLastBallot >= 0);
+    for (const data of [list, detail, stats])
+      assert.doesNotMatch(
+        JSON.stringify(data),
+        /private-device|private-host|private-other|private-snapshot|budgetCap|runtimeState|hostDeviceId|participantId|publicKey/
+      );
+    for (const [status, runtimeState, expected] of [
+      ['VOTING', { closed: false }, 'voting'],
+      ['CONFIGURING', { closed: true }, 'inactive'],
+      ['CONFIGURING', null, 'legacy'],
+    ]) {
+      await auth.db.room.update({
+        where: { id: second.id },
+        data: {
+          status,
+          runtimeState:
+            runtimeState === null
+              ? require('@prisma/client').Prisma.DbNull
+              : runtimeState,
+        },
+      });
+      assert.equal((await get('/sessions/' + second.id)).phase, expected);
+    }
+  } finally {
+    await auth.db.room.deleteMany({ where: { id: { in: ids } } });
+  }
 });

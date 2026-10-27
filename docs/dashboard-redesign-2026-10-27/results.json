@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "dashboard address exposes only the login screen",
+    "real WebAuthn enrollment verifies a user-verified credential and issues a protected session cookie",
+    "trends, theme, pagination, repeated search, status filters, per-choice results and feedback work on desktop and mobile",
+    "the same owner cookie authenticates through a separate backend process",
+    "aggregate metrics, date range, refresh and mobile layout work",
+    "logout revokes the session across both processes",
+    "registered passkey signs back in through the second process",
+    "a signed assertion cannot replay its consumed challenge",
+    "initial setup capability is invalid after enrollment",
+    "cross-origin mutations fail and no unhandled browser errors occur"
+  ],
+  "pageErrors": []
+}

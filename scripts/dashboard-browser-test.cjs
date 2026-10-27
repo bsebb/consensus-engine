@@ -103,7 +103,7 @@ async function stop(c) {
       'UPDATE dashboard_owner SET "setupTokenHash"=$1 WHERE id=\'owner\'',
       [createHash('sha256').update(setupToken).digest('hex')]
     );
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 24; i++) {
       const id = randomUUID(),
         person = randomUUID();
       await client.query(
@@ -112,7 +112,7 @@ async function stop(c) {
           id,
           String(1000 + i),
           person,
-          i < 7 ? 'RESOLVED' : 'CONFIGURING',
+          i < 17 ? 'RESOLVED' : 'CONFIGURING',
           i % 2 ? 'restaurants' : 'custom:Board games',
           i % 6,
         ]
@@ -124,9 +124,9 @@ async function stop(c) {
       );
       await client.query(
         'INSERT INTO participants (id,"roomId","deviceId","updatedAt") VALUES ($1,$2,$3,NOW())',
-        [person, id, randomUUID()]
+        [person, id, i < 6 ? 'returning-test-browser' : randomUUID()]
       );
-      if (i < 7) {
+      if (i < 17) {
         await client.query('UPDATE rooms SET "winnerOptionId"=$1 WHERE id=$2', [
           option,
           id,
@@ -137,6 +137,69 @@ async function stop(c) {
         );
       }
     }
+    // Synthetic data only. Include every rating action, multiple members and written feedback.
+    const {
+      rows: [sample],
+    } = await client.query(
+      `SELECT r.id, o.id AS option, p.id AS person FROM rooms r JOIN options o ON o."roomId"=r.id JOIN participants p ON p."roomId"=r.id WHERE r.theme='custom:Board games' AND r.status='RESOLVED' ORDER BY r."createdAt" DESC LIMIT 1`
+    );
+    const guest = randomUUID(),
+      extra = randomUUID();
+    await client.query(
+      'INSERT INTO participants (id,"roomId","deviceId","updatedAt") VALUES ($1,$2,$3,NOW())',
+      [guest, sample.id, 'sample-guest']
+    );
+    await client.query(
+      `INSERT INTO options (id,"roomId",name,source,"updatedAt") VALUES ($1,$2,$3,'USER_CUSTOM',NOW())`,
+      [extra, sample.id, 'Ticket to Ride']
+    );
+    await client.query(
+      'INSERT INTO votes (id,"participantId","optionId",score,"updatedAt") VALUES ($1,$2,$3,2,NOW()),($4,$2,$5,-1,NOW()),($6,$7,$5,0,NOW())',
+      [
+        randomUUID(),
+        guest,
+        sample.option,
+        randomUUID(),
+        extra,
+        randomUUID(),
+        sample.person,
+      ]
+    );
+    await client.query('UPDATE rooms SET "runtimeState"=$1 WHERE id=$2', [
+      JSON.stringify({
+        closed: false,
+        voting: { expectedCount: 2, matchScore: 100 },
+      }),
+      sample.id,
+    ]);
+    await client.query(
+      `UPDATE rooms SET "runtimeState"=$1 WHERE status='CONFIGURING'`,
+      [JSON.stringify({ closed: false })]
+    );
+    await client.query(
+      'INSERT INTO feedbacks (id,"participantId","optionId","satisfactionScore","priceAccuracyScore",comment,"updatedAt") VALUES ($1,$2,$3,5,4,$4,NOW())',
+      [
+        randomUUID(),
+        guest,
+        sample.option,
+        'Easy choice for our game night. <img src=x onerror="window.feedbackExecuted=true">',
+      ]
+    );
+    const oldRoom = randomUUID();
+    await client.query(
+      `INSERT INTO rooms (id,pin,"hostId",theme,"createdAt","updatedAt") VALUES ($1,$2,$3,$4,NOW()-interval '40 days',NOW()-interval '40 days')`,
+      [oldRoom, 'old-browser', randomUUID(), 'custom:Older sample']
+    );
+    await client.query(
+      `INSERT INTO participants (id,"roomId","deviceId","createdAt","updatedAt") VALUES ($1,$2,$3,NOW()-interval '40 days',NOW())`,
+      [randomUUID(), oldRoom, 'returning-test-browser']
+    );
+    await client.query(
+      `UPDATE participants p SET "createdAt"=r."createdAt"+interval '5 seconds' FROM rooms r WHERE r.id=p."roomId"`
+    );
+    await client.query(
+      `UPDATE votes v SET "createdAt"=r."createdAt"+interval '2 minutes' FROM participants p JOIN rooms r ON r.id=p."roomId" WHERE p.id=v."participantId"`
+    );
     const origin = `http://localhost:${webPort}`;
     const env = {
       TEST_DATABASE_URL: url,
@@ -178,18 +241,24 @@ async function stop(c) {
       .getByRole('button', { name: 'Sign in with passkey', exact: true })
       .waitFor();
     assert.equal(
-      await page.getByText('How’s it picking?', { exact: true }).count(),
+      await page.getByText('Your app. In detail.', { exact: true }).count(),
       0
     );
     pass('dashboard address exposes only the login screen');
     await page.goto(origin + '/dashboard#setup=' + setupToken);
-    await page.getByRole('button', { name: 'Create my passkey', exact: true }).waitFor();
-    await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
-    await page.getByRole('button', { name: 'Create my passkey', exact: true }).waitFor();
+    await page
+      .getByRole('button', { name: 'Create my passkey', exact: true })
+      .waitFor();
+    await page.evaluate(() =>
+      navigator.serviceWorker.dispatchEvent(new Event('controllerchange'))
+    );
+    await page
+      .getByRole('button', { name: 'Create my passkey', exact: true })
+      .waitFor();
     await page
       .getByRole('button', { name: 'Create my passkey', exact: true })
       .click();
-    await page.getByText('How’s it picking?', { exact: true }).waitFor();
+    await page.getByText('Your app. In detail.', { exact: true }).waitFor();
     await page
       .getByRole('heading', { name: 'Room activity', exact: true })
       .waitFor();
@@ -215,6 +284,14 @@ async function stop(c) {
     pass(
       'real WebAuthn enrollment verifies a user-verified credential and issues a protected session cookie'
     );
+    await page.getByRole('button', { name: 'Browsers', exact: true }).click();
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Browsers', exact: true })
+        .getAttribute('aria-pressed'),
+      'true'
+    );
+    await page.getByRole('button', { name: 'Rooms', exact: true }).click();
     await page.screenshot({
       path: path.join(output, 'dashboard-desktop.png'),
       fullPage: true,
@@ -230,14 +307,94 @@ async function stop(c) {
       fullPage: true,
     });
     await page
-      .getByRole('heading', { name: 'The feedback loop' })
+      .getByRole('heading', { name: 'Room status' })
       .scrollIntoViewIfNeeded();
     assert.ok(
-      (
-        await page
-          .getByRole('heading', { name: 'The feedback loop' })
-          .boundingBox()
-      ).y < 852
+      (await page.getByRole('heading', { name: 'Room status' }).boundingBox())
+        .y < 852
+    );
+    await page.getByRole('switch', { name: 'Switch to Dark' }).click();
+    await page.waitForFunction(
+      () =>
+        document.documentElement.classList.contains('dark') &&
+        !document.documentElement.classList.contains('theme-transitioning')
+    );
+    await page.locator('.owner-dashboard').evaluate((el) => el.scrollTo(0, 0));
+    await page.screenshot({
+      path: path.join(output, 'dashboard-mobile-dark.png'),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1365, height: 1000 });
+    await page.screenshot({
+      path: path.join(output, 'dashboard-desktop-dark.png'),
+      fullPage: true,
+    });
+    await page.getByRole('switch', { name: 'Switch to Light' }).click();
+    await page.waitForFunction(
+      () =>
+        !document.documentElement.classList.contains('dark') &&
+        !document.documentElement.classList.contains('theme-transitioning')
+    );
+    await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByText('Page 2 of 2', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Previous', exact: true }).click();
+    await page.getByText('Page 1 of 2', { exact: true }).waitFor();
+    await page
+      .getByRole('textbox', { name: 'Search sessions' })
+      .fill('Board games');
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page
+      .getByText('12 matching rooms · newest first', { exact: true })
+      .waitFor();
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page
+      .getByText('12 matching rooms · newest first', { exact: true })
+      .waitFor();
+    await page.getByLabel('Session status').selectOption('completed');
+    await page
+      .getByText('9 matching rooms · newest first', { exact: true })
+      .waitFor();
+    await page
+      .getByRole('button', { name: /Open session Board games/ })
+      .first()
+      .click();
+    await page
+      .getByRole('heading', { name: 'Choice-by-choice results', exact: true })
+      .waitFor();
+    await page
+      .getByRole('heading', { name: 'Ticket to Ride', exact: true })
+      .waitFor();
+    await page.getByText('Satisfaction 5/5', { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => window.feedbackExecuted), undefined);
+    await page.screenshot({
+      path: path.join(output, 'dashboard-session.png'),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page
+      .getByRole('heading', { name: 'Session feedback', exact: true })
+      .scrollIntoViewIfNeeded();
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1
+      )
+    );
+    await page.screenshot({
+      path: path.join(output, 'dashboard-session-mobile.png'),
+      fullPage: true,
+    });
+    await page
+      .getByRole('button', { name: 'Back to sessions', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Feedback', exact: true }).click();
+    await page
+      .getByRole('heading', { name: 'Recent feedback', exact: true })
+      .waitFor();
+    await page.getByText('Price accuracy 4/5', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Overview', exact: true }).click();
+    pass(
+      'trends, theme, pagination, repeated search, status filters, per-choice results and feedback work on desktop and mobile'
     );
     await page.setViewportSize({ width: 1365, height: 1000 });
     await stop(front.child);
@@ -246,7 +403,7 @@ async function stop(c) {
       TEST_FRONTEND_PORT: String(webPort),
     });
     await page.reload();
-    await page.getByText('How’s it picking?', { exact: true }).waitFor();
+    await page.getByText('Your app. In detail.', { exact: true }).waitFor();
     await page
       .getByRole('heading', { name: 'Room activity', exact: true })
       .waitFor();
@@ -276,7 +433,7 @@ async function stop(c) {
     await page
       .getByRole('button', { name: 'Sign in with passkey', exact: true })
       .click();
-    await page.getByText('How’s it picking?', { exact: true }).waitFor();
+    await page.getByText('Your app. In detail.', { exact: true }).waitFor();
     assert.ok(assertion);
     pass('registered passkey signs back in through the second process');
     const replay = await page.evaluate(async (body) => {

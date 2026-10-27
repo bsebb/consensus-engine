@@ -2,7 +2,7 @@ const express = require('express');
 const webauthn = require('@simplewebauthn/server');
 const a = require('./auth');
 const { createRateLimiter } = require('../utils/rateLimiter');
-const { analytics } = require('./analytics');
+const { analytics, sessions, sessionDetail } = require('./analytics');
 const router = express.Router();
 router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, private');
@@ -53,11 +53,9 @@ router.post(
       where: { id: 'owner' },
     });
     if (!owner || owner.enrolled)
-      return res
-        .status(409)
-        .json({
-          error: 'Owner access is already set up. Sign in with your passkey.',
-        });
+      return res.status(409).json({
+        error: 'Owner access is already set up. Sign in with your passkey.',
+      });
     const { origin, ...rp } = a.settings();
     const options = await webauthn.generateRegistrationOptions({
       ...rp,
@@ -216,4 +214,45 @@ router.get(
     res.json(await analytics(days));
   })
 );
+
+router.get(
+  '/sessions',
+  a.requireSession,
+  wrap(async (req, res) => {
+    const days = Number(req.query.days || 30),
+      page = Number(req.query.page || 1),
+      status = String(req.query.status || 'all'),
+      mode = String(req.query.mode || 'all'),
+      search = String(req.query.search || '').trim();
+    if (
+      ![7, 30, 90].includes(days) ||
+      !Number.isInteger(page) ||
+      page < 1 ||
+      page > 1000 ||
+      !['all', 'setup', 'voting', 'completed', 'inactive', 'legacy'].includes(
+        status
+      ) ||
+      !['all', 'custom', 'discovery'].includes(mode) ||
+      search.length > 80
+    )
+      return res.status(400).json({ error: 'Invalid session filters.' });
+    res.json(await sessions({ days, page, status, mode, search }));
+  })
+);
+router.get(
+  '/sessions/:id',
+  a.requireSession,
+  wrap(async (req, res) => {
+    if (
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
+        req.params.id
+      )
+    )
+      return res.status(400).json({ error: 'Invalid session.' });
+    const detail = await sessionDetail(req.params.id);
+    if (!detail) return res.status(404).json({ error: 'Session not found.' });
+    res.json(detail);
+  })
+);
+
 module.exports = router;
