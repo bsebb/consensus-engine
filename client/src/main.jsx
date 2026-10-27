@@ -29,8 +29,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   let hadController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!hadController) { hadController = true; return; }
-    // Preserve the active room and swipe progress; apply code updates on the next visit.
-    if (/^\/(lobby|deck)\//.test(window.location.pathname)) return;
+    // Preserve active room progress and an in-memory owner setup link during updates.
+    if (/^\/(lobby|deck)\//.test(window.location.pathname) || window.location.pathname === '/dashboard') return;
     if (!refreshing) {
       refreshing = true;
       window.location.reload();

@@ -183,6 +183,9 @@ async function stop(c) {
     );
     pass('dashboard address exposes only the login screen');
     await page.goto(origin + '/dashboard#setup=' + setupToken);
+    await page.getByRole('button', { name: 'Create my passkey', exact: true }).waitFor();
+    await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
+    await page.getByRole('button', { name: 'Create my passkey', exact: true }).waitFor();
     await page
       .getByRole('button', { name: 'Create my passkey', exact: true })
       .click();
