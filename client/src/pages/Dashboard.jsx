@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '../components/ThemeToggle';
 import BrandLogo from '../components/ui/BrandLogo';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { dashboardRequest as request } from '../utils/dashboardApi';
 import {
   Overview,
@@ -298,21 +299,18 @@ export default function Dashboard() {
               </button>
             </div>
           </section>
-          <nav className="dash-tabs" aria-label="Dashboard sections">
-            {[
-              ['overview', 'Overview'],
-              ['sessions', 'Sessions'],
-              ['feedback', 'Feedback'],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                aria-current={tab === key ? 'page' : undefined}
-                onClick={() => setTab(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
+          <div className="dash-tabs-nav" aria-label="Dashboard sections">
+            <SegmentedControl
+              options={[
+                { value: 'overview', label: 'Overview' },
+                { value: 'sessions', label: 'Sessions' },
+                { value: 'feedback', label: 'Feedback' },
+              ]}
+              value={tab}
+              onChange={setTab}
+              size="md"
+            />
+          </div>
           {error && (
             <div className="dash-error" role="alert">
               {error}

@@ -97,9 +97,9 @@
 .dash-eyebrow {
   display: block;
   color: var(--accent-bg);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
   margin-bottom: 14px;
 }
 .owner-dashboard h1 {
@@ -131,14 +131,28 @@
   color: var(--text-secondary);
 }
 .owner-dashboard select {
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid var(--border-main);
   border-radius: 14px;
-  background: var(--bg-surface);
+  background-color: var(--bg-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
   color: var(--text-primary);
   height: 42px;
-  padding: 0 30px 0 12px;
+  padding: 0 34px 0 14px;
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.owner-dashboard select:hover {
+  border-color: var(--border-hover, var(--border-main));
+}
+.owner-dashboard select:focus {
+  border-color: var(--accent-bg);
+  outline: none;
 }
 .dash-button {
   display: inline-flex;
@@ -175,26 +189,15 @@
   background: var(--bg-inset);
   color: var(--text-primary);
 }
-.dash-tabs {
-  display: flex;
-  gap: 6px;
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 14px;
+.dash-tabs-nav {
   margin-bottom: 24px;
+  max-width: 380px;
+  width: 100%;
 }
-.dash-tabs button {
-  border: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  padding: 10px 18px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.dash-tabs button[aria-current='page'] {
-  background: var(--accent-bg);
-  color: #fff;
-  box-shadow: 0 3px 12px var(--accent-glow);
+.dash-chart-control-wrap {
+  margin-bottom: 18px;
+  max-width: 320px;
+  width: 100%;
 }
 .dash-metrics {
   display: grid;
@@ -350,7 +353,7 @@
   display: flex;
   justify-content: space-between;
   color: var(--text-tertiary);
-  font-size: 9px;
+  font-size: 11px;
   margin-top: 10px;
 }
 .dash-day-detail {
@@ -362,7 +365,7 @@
   border-radius: 12px;
   padding: 12px;
   margin-top: 18px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 .dash-day-detail strong {
@@ -488,7 +491,7 @@
   font-size: 18px;
 }
 .dash-vote-legend.small > div > span {
-  font-size: 9px;
+  font-size: 10px;
 }
 .dash-audience {
   display: grid;
@@ -548,7 +551,7 @@
 }
 .dash-row small {
   color: var(--text-tertiary);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
 }
 .dash-rank {
@@ -578,7 +581,7 @@
   border-radius: 99px;
   background: var(--bg-inset);
   color: var(--text-secondary);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
 }
 .dash-status.completed {
@@ -598,7 +601,7 @@
   justify-content: space-between;
   gap: 30px;
   color: var(--text-tertiary);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.7;
   margin-top: 24px;
   padding-bottom: 8px;
@@ -999,7 +1002,7 @@
     margin-top: 18px;
   }
   .dash-metric > p {
-    font-size: 9px;
+    font-size: 10px;
   }
   .dash-two-column {
     grid-template-columns: 1fr;
