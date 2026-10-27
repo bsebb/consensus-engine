@@ -10,6 +10,16 @@ router.use((req, res, next) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   next();
 });
+// The public app permits several origins; private dashboard reads permit only
+// the canonical dashboard origin, including sibling-subdomain requests.
+router.use((req, res, next) => {
+  if (req.headers.origin && req.headers.origin !== a.settings().origin) {
+    res.removeHeader('Access-Control-Allow-Origin');
+    res.removeHeader('Access-Control-Allow-Credentials');
+    return res.status(403).json({ error: 'Request not allowed.' });
+  }
+  next();
+});
 const authLimit = createRateLimiter({
   scope: 'dashboard-auth',
   windowMs: 60000,

@@ -172,3 +172,13 @@ test('one-time owner setup links expire after 24 hours even with a matching stor
     });
   }
 });
+
+test('private dashboard reads reject sibling subdomains even with a valid owner cookie', async () => {
+  const raw = await session();
+  const response = await fetch(base + '/api/v1/dashboard/analytics', {
+    headers: { Origin: 'https://other.noyoupick.org', Cookie: auth.COOKIE + '=' + raw },
+  });
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.deepEqual(await response.json(), { error: 'Request not allowed.' });
+});
