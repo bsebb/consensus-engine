@@ -39,6 +39,7 @@ model Room {
   options        Option[]      @relation("RoomOptions")
 
   @@index([hostDeviceId])
+  @@index([createdAt])
   @@map("rooms")
 }
 
@@ -57,6 +58,7 @@ model Participant {
   @@index([roomId])
   @@index([deviceId])
   @@index([roomId, deviceId])
+  @@index([createdAt])
   @@map("participants")
 }
 
@@ -127,6 +129,7 @@ model Feedback {
 
   @@index([participantId])
   @@index([optionId])
+  @@index([createdAt])
   @@map("feedbacks")
 }
 
@@ -165,4 +168,38 @@ model SocketAttachment {
   payload   Bytes
   @@index([createdAt])
   @@map("socket_io_attachments")
+}
+
+model DashboardOwner {
+  id       String  @id
+  enrolled Boolean @default(false)
+  setupTokenHash String?
+  @@map("dashboard_owner")
+}
+
+model DashboardCredential {
+  id         String   @id
+  publicKey  Bytes
+  counter    BigInt   @default(0)
+  transports Json     @default("[]")
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  @@map("dashboard_credentials")
+}
+
+model DashboardChallenge {
+  id        String   @id
+  challenge String
+  purpose   String
+  binding   String
+  expiresAt DateTime @db.Timestamptz(6)
+  @@index([expiresAt])
+  @@map("dashboard_challenges")
+}
+
+model DashboardSession {
+  id        String   @id
+  expiresAt DateTime @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  @@index([expiresAt])
+  @@map("dashboard_sessions")
 }

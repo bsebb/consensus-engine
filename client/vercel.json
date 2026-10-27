@@ -24,9 +24,26 @@
           "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; media-src 'self' data: blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' https://noyoupick.org https://*.noyoupick.org wss://noyoupick.org wss://*.noyoupick.org https://*.onrender.com wss://*.onrender.com https://api.geoapify.com https://nominatim.openstreetmap.org https://router.project-osrm.org https://places.googleapis.com;"
         }
       ]
+    },
+    {
+      "source": "/dashboard",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/v1/dashboard/:path*",
+      "destination": "https://consensus-engine-un6e.onrender.com/api/v1/dashboard/:path*"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

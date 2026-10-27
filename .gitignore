@@ -120,3 +120,6 @@ HANDOFF.md
 !scripts/rehearse-migrations.cjs
 !scripts/database-outage-test.cjs
 !scripts/live-smoke-test.cjs
+!scripts/dashboard-browser-test.cjs
+.private/
+!scripts/prepare-dashboard-access.cjs

@@ -71,7 +71,7 @@ export default function InstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  if (!showPrompt) return null;
+  if (!showPrompt || window.location.pathname === '/dashboard') return null;
 
   return (
     <aside aria-label="Install App" className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-[1900] select-none">

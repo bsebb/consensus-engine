@@ -133,6 +133,8 @@ app.get('/ready', async (req, res) => {
   } catch { res.status(503).json({ status: 'unavailable' }); }
 });
 
+app.use('/api/v1/dashboard', require('./src/dashboard/router'));
+
 app.use('/api/v1/rooms', roomRoutes);
 
 // Spatial venue discovery endpoint across all 6 categories (restaurants, cafes, bars, cinema, desserts, activities)

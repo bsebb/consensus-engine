@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { SocketProvider } from './context/SocketContext';
@@ -13,6 +13,13 @@ import SwipeDeck from './pages/SwipeDeck';
 import History from './pages/History';
 import { initGlobalIosHaptics } from './utils/haptics';
 
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+
+function AppFrame({ children }) {
+  const { pathname } = useLocation();
+  return <div className={pathname === '/dashboard' ? 'dashboard-shell' : 'pwa-shell'}>{children}</div>;
+}
+
 function App() {
   useEffect(() => {
     initGlobalIosHaptics();
@@ -24,7 +31,7 @@ function App() {
         <SocketProvider>
           <ToastProvider>
             <BrowserRouter>
-              <div className="pwa-shell">
+              <AppFrame>
                 <ErrorBoundary>
                   <Routes>
                     <Route path="/" element={<JoinRoom />} />
@@ -34,12 +41,13 @@ function App() {
                     <Route path="/lobby/:pin" element={<RoomLobby />} />
                     <Route path="/deck/:pin" element={<SwipeDeck />} />
                     <Route path="/history" element={<History />} />
+                    <Route path="/dashboard" element={<Suspense fallback={<div role="status">Loading…</div>}><Dashboard /></Suspense>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </ErrorBoundary>
                 <MobileNav />
                 <InstallPrompt />
-              </div>
+              </AppFrame>
             </BrowserRouter>
           </ToastProvider>
         </SocketProvider>
