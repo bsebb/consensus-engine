@@ -463,7 +463,7 @@ export default function RoomLobby() {
         </div>
       )}
 
-      <main className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-3 pb-32">
+      <main className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-3.5 sm:px-4 md:px-6 pt-3 pb-32">
         <div className="max-w-md md:max-w-6xl mx-auto w-full flex flex-col gap-3.5">
         {isVotingActive && (
           <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs animate-[fadeIn_0.2s_ease-out]">
@@ -478,8 +478,8 @@ export default function RoomLobby() {
           </div>
         )}
 
-        <div className="w-full flex flex-col md:flex-row gap-4 lg:gap-6 items-start">
-          <aside className="w-full md:w-[340px] lg:w-[380px] shrink-0 flex flex-col gap-3.5">
+        <div className="w-full flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
+          <aside className={`w-full grid grid-cols-1 ${mode !== 'CUSTOM' ? 'md:grid-cols-2 lg:grid-cols-1' : ''} lg:w-[330px] xl:w-[350px] shrink-0 gap-3.5 lg:sticky lg:top-0`}>
             <LobbyRoster
               pin={pin} topic={topic} participants={participants}
               candidateCount={displayedCandidates.length} isHost={isHost}

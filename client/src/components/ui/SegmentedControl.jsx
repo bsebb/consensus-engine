@@ -18,30 +18,30 @@ export default function SegmentedControl({
   }, []);
 
   // Strict Concentric Radii Law: R_inner = R_outer - padding
-  // sm: outer 10px, padding 2.5px -> inner 7.5px
-  // md: outer 12px, padding 3px   -> inner 9px
-  // lg: outer 14px, padding 3.5px -> inner 10.5px
+  // sm: outer 12px, padding 3px   -> inner 9px    (38px total height)
+  // md: outer 16px, padding 3px   -> inner 13px   (44px total height = h-11)
+  // lg: outer 16px, padding 3.5px -> inner 12.5px (48px total height = h-12)
   // pill: outer 9999px, padding 3px -> inner 9999px
   const sizeConfigs = {
     sm: {
       padding: '3px',
       trackRadius: pill ? '9999px' : '12px',
       innerRadius: pill ? '9999px' : '9px',
-      btn: 'py-1.5 px-2.5 min-h-[34px] text-xs font-semibold',
+      btn: 'py-1 px-2.5 min-h-[32px] text-xs font-semibold',
       text: 'text-xs',
     },
     md: {
       padding: '3px',
-      trackRadius: pill ? '9999px' : '14px',
-      innerRadius: pill ? '9999px' : '11px',
-      btn: 'py-2 px-1.5 sm:px-3 min-h-[38px] text-[11px] sm:text-sm font-semibold',
+      trackRadius: pill ? '9999px' : '16px',
+      innerRadius: pill ? '9999px' : '13px',
+      btn: 'py-1.5 px-2 sm:px-3 min-h-[38px] text-xs sm:text-[13px] font-semibold',
       text: 'text-sm',
     },
     lg: {
       padding: '3.5px',
       trackRadius: pill ? '9999px' : '16px',
       innerRadius: pill ? '9999px' : '12.5px',
-      btn: 'py-2 px-3.5 min-h-[42px] text-sm font-semibold',
+      btn: 'py-2 px-3.5 min-h-[41px] text-sm font-semibold',
       text: 'text-sm sm:text-base',
     },
   };
@@ -75,7 +75,7 @@ export default function SegmentedControl({
         className={`absolute pointer-events-none z-10 ${
           isAccent
             ? 'shadow-[0_2px_8px_var(--accent-glow)]'
-            : 'bg-[var(--bg-elevated)] shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] border border-[var(--border-subtle)] dark:border-[var(--border-main)]'
+            : 'bg-white dark:bg-[#26262e] shadow-[0_1px_3px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_6px_rgba(0,0,0,0.45)]'
         } ${!isMounted || activeIndex < 0 ? 'opacity-0' : 'opacity-100'}`}
         style={{
           top: cfg.padding,
@@ -86,7 +86,7 @@ export default function SegmentedControl({
           transform: `translate3d(calc(${safeIndex} * 100%), 0, 0)`,
           backgroundColor: isAccent ? 'var(--accent-bg)' : undefined,
           transition: isMounted && activeIndex >= 0
-            ? 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 300ms cubic-bezier(0.16, 1, 0.3, 1), border-color 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease'
+            ? 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 300ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease'
             : 'none',
           willChange: 'transform',
         }}

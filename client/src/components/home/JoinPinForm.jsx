@@ -130,44 +130,58 @@ export default function JoinPinForm({
         submitCode();
       }}
       onPaste={handlePaste}
-      className="flex flex-col gap-4 animate-[fadeIn_0.2s_ease-out]"
+      className="flex flex-col gap-3 animate-[fadeIn_0.2s_ease-out]"
     >
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between px-1">
-          <label className="text-xs font-semibold text-[var(--text-secondary)]">
-            {t('roomCodeLabel')}
-          </label>
-          <span className="text-[11px] text-[var(--text-tertiary)]">
-            {t('roomCodeHint')}
-          </span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:items-end">
+        <div className="md:col-span-2 flex flex-col gap-1.5 min-w-0">
+          <div className="flex items-center justify-between px-1 h-[18px]">
+            <label className="text-xs font-semibold text-[var(--text-secondary)]">
+              {t('roomCodeLabel')}
+            </label>
+            <span className="text-[11px] text-[var(--text-tertiary)]">
+              {t('roomCodeHint')}
+            </span>
+          </div>
+
+          {/* 4 PIN Input Boxes with Global Form Paste */}
+          <div className={`grid grid-cols-4 gap-2.5 md:gap-3 transition-transform ${isShaking ? 'animate-shake' : ''}`}>
+            {pinDigits.map((digit, index) => (
+              <input
+                key={index}
+                ref={digitRefs[index]}
+                type="text"
+                aria-label={`Room code digit ${index + 1} of 4`}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                maxLength={1}
+                value={digit}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => handleDigitChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                className={`w-full h-14 text-center font-bold text-2xl rounded-2xl border transition-all duration-150 outline-none select-all tabular-nums touch-manipulation ${
+                  errorText
+                    ? 'border-rose-500/50 bg-rose-500/5 text-rose-500 focus:border-rose-500'
+                    : digit
+                    ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]'
+                    : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)]'
+                }`}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* 4 PIN Input Boxes with Global Form Paste */}
-        <div className={`grid grid-cols-4 gap-2.5 transition-transform ${isShaking ? 'animate-shake' : ''}`}>
-          {pinDigits.map((digit, index) => (
-            <input
-              key={index}
-              ref={digitRefs[index]}
-              type="text"
-              aria-label={`Room code digit ${index + 1} of 4`}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="one-time-code"
-              maxLength={1}
-              value={digit}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => handleDigitChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className={`w-full h-14 text-center font-bold text-2xl rounded-2xl border transition-all duration-150 outline-none select-all tabular-nums touch-manipulation ${
-                errorText
-                  ? 'border-rose-500/50 bg-rose-500/5 text-rose-500 focus:border-rose-500'
-                  : digit
-                  ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]'
-                  : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)]'
-              }`}
-            />
-          ))}
-        </div>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          disabled={pin.length !== 4 || loading}
+          loading={loading}
+          icon={ArrowRight}
+          className="md:col-span-1 w-full h-12 md:h-14 py-0 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] touch-manipulation"
+        >
+          {t('joinRoomBtn')}
+        </Button>
       </div>
 
       {errorText && (
@@ -176,18 +190,6 @@ export default function JoinPinForm({
           <span className="truncate">{errorText}</span>
         </div>
       )}
-
-      <Button
-        type="submit"
-        variant="primary"
-        size="md"
-        disabled={pin.length !== 4 || loading}
-        loading={loading}
-        icon={ArrowRight}
-        className="w-full h-12 rounded-2xl font-bold text-base shadow-[0_6px_20px_var(--accent-glow)] mt-1 touch-manipulation"
-      >
-        {t('joinRoomBtn')}
-      </Button>
     </form>
   );
 }

@@ -11,13 +11,21 @@ import JoinRoom from './pages/JoinRoom';
 import RoomLobby from './pages/RoomLobby';
 import SwipeDeck from './pages/SwipeDeck';
 import History from './pages/History';
+import { useDevice } from './hooks/useDevice';
 import { initGlobalIosHaptics } from './utils/haptics';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 function AppFrame({ children }) {
   const { pathname } = useLocation();
-  return <div className={pathname === '/dashboard' ? 'dashboard-shell' : 'pwa-shell'}>{children}</div>;
+  const { isDesktop } = useDevice();
+  return (
+    <div className={pathname === '/dashboard' ? 'dashboard-shell' : 'pwa-shell'}>
+      {children}
+      <MobileNav />
+      {!isDesktop && <InstallPrompt />}
+    </div>
+  );
 }
 
 function App() {
@@ -45,8 +53,6 @@ function App() {
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </ErrorBoundary>
-                <MobileNav />
-                <InstallPrompt />
               </AppFrame>
             </BrowserRouter>
           </ToastProvider>

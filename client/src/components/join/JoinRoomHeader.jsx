@@ -12,7 +12,7 @@ export default function JoinRoomHeader({
   const { lang, t } = useLanguage();
 
   return (
-    <header className="w-full flex items-center justify-between pb-1.5 md:pb-3 max-w-md md:max-w-5xl mx-auto shrink-0">
+    <header className="w-full flex items-center justify-between py-1 md:py-2 max-w-md md:max-w-4xl mx-auto shrink-0">
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F1422] to-[#05070B] border border-white/10 flex items-center justify-center shadow-xs overflow-hidden p-0.5">
           <BrandLogo size={22} />

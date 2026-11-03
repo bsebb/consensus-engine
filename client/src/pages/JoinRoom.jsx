@@ -304,98 +304,103 @@ export default function JoinRoom() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <main className="w-full flex-1 min-h-0 flex flex-col justify-center items-center max-w-md md:max-w-4xl lg:max-w-5xl mx-auto py-0.5 md:py-3 overflow-y-auto no-scrollbar overscroll-contain">
-        <div className="text-center mb-1.5 sm:mb-2 md:mb-4 shrink-0 flex flex-col justify-center items-center px-2 select-none">
-          <h1 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)] line-clamp-2 max-w-full leading-tight">
-            {activeTab === 'create' ? (isCustomMode && customTopic.trim() ? customTopic.trim() : activeCatObj.topic) : t('joinWithCode')}
-          </h1>
-          <p className="text-xs sm:text-sm md:text-base text-[var(--text-secondary)] line-clamp-2 max-w-full leading-normal mt-0.5">
-            {activeTab === 'create' ? (isCustomMode && customOptions.length > 0 ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready` : activeCatObj.desc) : t('roomCodeHint')}
-          </p>
-        </div>
-
-        <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-2.5 sm:p-4 md:p-6 flex flex-col gap-2.5 sm:gap-3.5 shrink-0">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 sm:gap-2.5 md:gap-4">
-            <div className="md:w-64 shrink-0">
-              <SegmentedControl
-                options={[{ value: 'create', label: t('startPick') }, { value: 'join', label: t('joinWithCode') }]}
-                value={activeTab}
-                onChange={setActiveTab}
-                size="sm"
-              />
-            </div>
-
-            <div className="flex-1 flex flex-col gap-1">
-              <div className="flex items-center justify-between px-1">
-                <label htmlFor="userName" className="text-xs font-semibold text-[var(--text-secondary)]">
-                  {t('yourName')}
-                </label>
-                {name.trim() && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <Check size={10} />
-                    <span>{t('savedBadge') || 'Saved'}</span>
-                  </span>
-                )}
-              </div>
-              <div className="relative">
-                <input
-                  id="userName"
-                  name="userName"
-                  type="text"
-                  placeholder={t('namePlaceholder')}
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    saveStoredNickname(e.target.value);
-                  }}
-                  className="w-full min-h-[40px] sm:min-h-[44px] pl-10 pr-4 rounded-xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
-                />
-                {name.trim() ? (
-                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">
-                    {name.trim().slice(0, 2).toUpperCase()}
-                  </div>
-                ) : (
-                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                )}
-              </div>
-            </div>
+      <main className="w-full flex-1 min-h-0 flex flex-col overflow-y-auto no-scrollbar overscroll-contain">
+        <div className="w-full max-w-md md:max-w-4xl mx-auto my-auto py-1 md:py-4 flex flex-col items-center">
+          <div className="text-center mb-1.5 sm:mb-2 md:mb-4 shrink-0 flex flex-col justify-center items-center px-2 select-none">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-black tracking-tight text-[var(--text-primary)] line-clamp-2 max-w-full leading-tight">
+              {activeTab === 'create' ? (isCustomMode && customTopic.trim() ? customTopic.trim() : activeCatObj.topic) : t('joinWithCode')}
+            </h1>
+            <p className="text-xs sm:text-sm md:text-base text-[var(--text-secondary)] line-clamp-2 max-w-full leading-normal mt-0.5">
+              {activeTab === 'create' ? (isCustomMode && customOptions.length > 0 ? `${customOptions.length} ${t('optionsSuffix') || 'options'} ready` : activeCatObj.desc) : t('roomCodeHint')}
+            </p>
           </div>
 
-          {activeTab === 'create' ? (
-            <CategoryQuickGrid
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleSelectCategory}
-              favoriteCategory={favoriteCategory}
-              customTopic={customTopic}
-              customOptions={customOptions}
-              onOpenCustomDrawer={() => setIsCustomDrawerOpen(true)}
-              gpsState={gpsState}
-              onOpenLocationModal={() => setIsLocationModalOpen(true)}
-              onStartRoom={handleStartRoom}
-              isCreatingRoom={isCreatingRoom}
-              hasSavedNickname={Boolean(name.trim())}
-            />
-          ) : (
-            <div className="w-full max-w-md mx-auto py-2">
-              <JoinPinForm initialPin={invitationPin} onJoin={executeJoin} loading={isJoiningRoom} />
-            </div>
-          )}
-        </div>
+          <div className="w-full rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-main)] shadow-[0_12px_36px_rgba(0,0,0,0.06)] p-2.5 sm:p-4 md:p-6 flex flex-col gap-2.5 sm:gap-3.5 md:gap-4 shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5 md:gap-3 items-end">
+              <div className="md:col-span-1 flex flex-col gap-1.5 min-w-0">
+                <div className="hidden md:flex items-center px-1 h-[18px]">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                    {t('modeLabel') || 'Mode'}
+                  </span>
+                </div>
+                <SegmentedControl
+                  options={[{ value: 'create', label: t('startPick') }, { value: 'join', label: t('joinWithCode') }]}
+                  value={activeTab}
+                  onChange={setActiveTab}
+                  size="md"
+                />
+              </div>
 
-        <RecentRoomsDrawer
-          recentSession={recentSession} recentWinnerName={recentWinnerName} recentRating={recentRating}
-          activePin={activePin} historyList={historyList} isOpen={recentDrawerOpen}
-          onClose={() => setRecentDrawerOpen(false)} onOpenDrawer={() => setRecentDrawerOpen(true)}
-          onQuickRate={handleQuickHomeRate} onOpenReviewModal={() => setCheckinModalOpen(true)}
-          onNavigateHistory={() => navigate('/history')} onRejoinPin={(pinToRejoin) => navigate(`/lobby/${pinToRejoin}`)}
-          onQuickSelectCategory={(item) => {
-            const matchedCat = categories.find((c) => c.topic === item.topic || c.id.toLowerCase() === String(item.category || '').toLowerCase());
-            const targetCat = matchedCat ? matchedCat.id : 'Restaurants';
-            handleSelectCategory(targetCat);
-            handleStartRoom({ category: targetCat });
-          }}
-        />
+              <div className="md:col-span-2 flex flex-col gap-1.5 min-w-0">
+                <div className="flex items-center justify-between px-1 h-[18px]">
+                  <label htmlFor="userName" className="text-xs font-semibold text-[var(--text-secondary)]">
+                    {t('yourName')}
+                  </label>
+                  {name.trim() && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <Check size={10} />
+                      <span>{t('savedBadge') || 'Saved'}</span>
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    id="userName"
+                    name="userName"
+                    type="text"
+                    placeholder={t('namePlaceholder')}
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      saveStoredNickname(e.target.value);
+                    }}
+                    className="w-full h-11 pl-10 pr-4 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border-main)] text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:border-[var(--accent-bg)] outline-none transition-all"
+                  />
+                  {name.trim() ? (
+                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--accent-bg)] text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">
+                      {name.trim().slice(0, 2).toUpperCase()}
+                    </div>
+                  ) : (
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {activeTab === 'create' ? (
+              <CategoryQuickGrid
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={handleSelectCategory}
+                favoriteCategory={favoriteCategory}
+                customTopic={customTopic}
+                customOptions={customOptions}
+                onOpenCustomDrawer={() => setIsCustomDrawerOpen(true)}
+                gpsState={gpsState}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+                onStartRoom={handleStartRoom}
+                isCreatingRoom={isCreatingRoom}
+                hasSavedNickname={Boolean(name.trim())}
+              />
+            ) : (
+              <JoinPinForm initialPin={invitationPin} onJoin={executeJoin} loading={isJoiningRoom} />
+            )}
+          </div>
+
+          <RecentRoomsDrawer
+            recentSession={recentSession} recentWinnerName={recentWinnerName} recentRating={recentRating}
+            activePin={activePin} historyList={historyList} isOpen={recentDrawerOpen}
+            onClose={() => setRecentDrawerOpen(false)} onOpenDrawer={() => setRecentDrawerOpen(true)}
+            onQuickRate={handleQuickHomeRate} onOpenReviewModal={() => setCheckinModalOpen(true)}
+            onNavigateHistory={() => navigate('/history')} onRejoinPin={(pinToRejoin) => navigate(`/lobby/${pinToRejoin}`)}
+            onQuickSelectCategory={(item) => {
+              const matchedCat = categories.find((c) => c.topic === item.topic || c.id.toLowerCase() === String(item.category || '').toLowerCase());
+              const targetCat = matchedCat ? matchedCat.id : 'Restaurants';
+              handleSelectCategory(targetCat);
+              handleStartRoom({ category: targetCat });
+            }}
+          />
+        </div>
       </main>
 
       <footer className="text-center pt-1 pb-0.5 shrink-0">

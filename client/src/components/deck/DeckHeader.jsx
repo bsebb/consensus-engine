@@ -16,8 +16,8 @@ export default function DeckHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 safe-pt-header pb-2 relative shrink-0 select-none">
-      <div className="grid grid-cols-3 items-center max-w-md mx-auto min-h-[40px]">
+    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 md:px-6 safe-pt-header pb-2 relative shrink-0 select-none">
+      <div className="grid grid-cols-3 items-center max-w-md md:max-w-4xl mx-auto min-h-[40px]">
         {/* Left Slot: Lobby Back Action Pill */}
         <div className="flex items-center justify-start z-10">
           <button
@@ -73,7 +73,7 @@ export default function DeckHeader({
 
       {/* Reconnection notification */}
       {!isConnected && (
-        <div className="bg-amber-500/15 border border-amber-500/25 rounded-xl px-3 py-1 text-center flex items-center justify-center gap-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-2 max-w-md mx-auto">
+        <div className="bg-amber-500/15 border border-amber-500/25 rounded-xl px-3 py-1 text-center flex items-center justify-center gap-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-2 max-w-md md:max-w-4xl mx-auto">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
           <span>{t('reconnecting')}</span>
         </div>
