@@ -22,7 +22,7 @@ export default function LobbyDock({
 
   return (
     <div className="fixed bottom-0 inset-x-0 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[var(--bg-root)] via-[var(--bg-root)]/95 to-transparent pointer-events-none z-30">
-      <div className="max-w-md mx-auto pointer-events-auto">
+      <div className="max-w-md md:max-w-xl mx-auto pointer-events-auto">
         {isVotingActive ? (
           <button
             type="button"

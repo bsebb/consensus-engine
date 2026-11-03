@@ -10,6 +10,9 @@
     var m = document.querySelector('meta[name="theme-color"]');
     if (m) m.setAttribute('content', isDark ? '#111113' : '#fafafa');
 
+    var isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+    document.documentElement.setAttribute('data-device', isDesktop ? 'desktop' : 'mobile');
+
     var accents = {
       coral: { color: '#F04D3E', hover: '#D93828', glow: 'rgba(240, 77, 62, 0.28)', subtle: 'rgba(240, 77, 62, 0.12)', focus: 'rgba(240, 77, 62, 0.20)' },
       violet: { color: '#8B5CF6', hover: '#7C3AED', glow: 'rgba(139, 92, 246, 0.28)', subtle: 'rgba(139, 92, 246, 0.12)', focus: 'rgba(139, 92, 246, 0.20)' },

@@ -124,3 +124,9 @@ HANDOFF.md
 .private/
 !scripts/prepare-dashboard-access.cjs
 !scripts/dashboard-live-test.cjs
+
+# Antigravity artifacts and research
+.agents/
+brag-output/
+research/
+skills-lock.json

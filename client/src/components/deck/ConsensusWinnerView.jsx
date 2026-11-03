@@ -210,9 +210,10 @@ export default function ConsensusWinnerView({
 
   return (
     <main className="winner-scroll w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 py-3 pb-8">
-      <div className="max-w-md mx-auto w-full flex flex-col items-center gap-3.5 animate-[fadeIn_0.25s_ease-out]">
-      {/* Winner Hero Card */}
-      <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.12),0_0_24px_rgba(255,99,64,0.1)] border border-[var(--border-main)] flex flex-col text-center">
+      <div className="max-w-md md:max-w-5xl mx-auto w-full flex flex-col md:flex-row items-start gap-4 lg:gap-6 animate-[fadeIn_0.25s_ease-out]">
+        <div className="w-full md:w-[460px] lg:w-[490px] shrink-0 flex flex-col gap-3.5">
+          {/* Winner Hero Card */}
+          <div className="w-full shrink-0 rounded-3xl bg-[var(--bg-elevated)] overflow-hidden shadow-[0_16px_40px_rgba(0,0,0,0.12),0_0_24px_rgba(255,99,64,0.1)] border border-[var(--border-main)] flex flex-col text-center">
         {isCustomWinner && !isRoutable ? (
           customWinnerPhoto && !customImgErr ? (
             <div className={`relative h-[clamp(160px,23dvh,210px)] w-full ${isLogoImage(customWinnerPhoto) ? 'bg-zinc-900' : 'bg-[var(--bg-inset)]'}`}>
@@ -486,45 +487,48 @@ export default function ConsensusWinnerView({
         </div>
       </div>
 
-      {/* Community Data Collection & Feedback */}
-      <WinnerFeedbackCard
-        isCustomWinner={isCustomWinner}
-        winner={winner}
-        satisfactionScore={satisfactionScore}
-        priceAccuracyScore={priceAccuracyScore}
-        telemetrySubmitted={telemetrySubmitted}
-        isSubmittingTelemetry={isSubmittingTelemetry}
-        handleSelectSatisfaction={handleSelectSatisfaction}
-        setPriceAccuracyScore={setPriceAccuracyScore}
-        handleSubmitTelemetry={handleSubmitTelemetry}
-        setIsReviewOpen={setIsReviewOpen}
-        insightsRefreshKey={insightsRefreshKey}
-        reminderScheduled={reminderScheduled}
-        onScheduleReminder={handleScheduleReminder}
-      />
-
-      {/* Post-Match Retention Loop: Quick Runner-Up Rematch or Start Another Pick */}
-      <div className="w-full shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {onQuickRematch && (
+        {/* Post-Match Retention Loop: Quick Runner-Up Rematch or Start Another Pick */}
+        <div className="w-full shrink-0 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {onQuickRematch && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={onQuickRematch}
+              icon={Sparkles}
+              className="w-full rounded-2xl active:scale-[0.98] transition-transform"
+            >
+              {t('runnerUpRematch')}
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="md"
-            onClick={onQuickRematch}
-            icon={Sparkles}
-            className="w-full rounded-2xl active:scale-[0.98] transition-transform"
+            onClick={handleStartAnother}
+            icon={RotateCcw}
+            className={`w-full rounded-2xl active:scale-[0.98] transition-transform ${!onQuickRematch ? 'sm:col-span-2' : ''}`}
           >
-            {t('runnerUpRematch')}
+            {t('startAnotherPick')}
           </Button>
-        )}
-        <Button
-          variant="secondary"
-          size="md"
-          onClick={handleStartAnother}
-          icon={RotateCcw}
-          className={`w-full rounded-2xl active:scale-[0.98] transition-transform ${!onQuickRematch ? 'sm:col-span-2' : ''}`}
-        >
-          {t('startAnotherPick')}
-        </Button>
+        </div>
+      </div>
+
+      {/* Right Column: Feedback and Community Insights */}
+      <div className="w-full flex-1 min-w-0 flex flex-col gap-3.5">
+        <WinnerFeedbackCard
+          isCustomWinner={isCustomWinner}
+          winner={winner}
+          satisfactionScore={satisfactionScore}
+          priceAccuracyScore={priceAccuracyScore}
+          telemetrySubmitted={telemetrySubmitted}
+          isSubmittingTelemetry={isSubmittingTelemetry}
+          handleSelectSatisfaction={handleSelectSatisfaction}
+          setPriceAccuracyScore={setPriceAccuracyScore}
+          handleSubmitTelemetry={handleSubmitTelemetry}
+          setIsReviewOpen={setIsReviewOpen}
+          insightsRefreshKey={insightsRefreshKey}
+          reminderScheduled={reminderScheduled}
+          onScheduleReminder={handleScheduleReminder}
+        />
       </div>
 
       {(!isCustomWinner || isRoutable) && (

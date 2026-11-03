@@ -21,8 +21,8 @@ export default function WaitingForBallotsView({
     : `${votesReceived} of ${quorumTotal} finished`;
 
   return (
-    <main className="px-4 py-4 flex flex-col items-center justify-center text-center flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)] select-none">
-      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] p-6 sm:p-7 border border-[var(--border-main)] flex flex-col items-center gap-4.5 shadow-lg">
+    <main className="px-4 py-4 md:py-8 flex flex-col items-center justify-center text-center flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-md md:max-w-2xl mx-auto w-full animate-[modalSpring_0.35s_var(--spring-smooth)] select-none">
+      <div className="w-full rounded-3xl bg-[var(--bg-elevated)] p-6 sm:p-7 md:p-8 border border-[var(--border-main)] flex flex-col items-center gap-4.5 shadow-lg">
         {/* Animated Celebration Ring */}
         <div className="relative flex items-center justify-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(16,185,129,0.35)] animate-bounce-subtle">
@@ -64,7 +64,7 @@ export default function WaitingForBallotsView({
         {/* Live Participant Roster (showing who is done vs voting) */}
         {participants && participants.length > 0 && (
           <div className="w-full flex flex-col gap-1.5 text-left">
-            <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto no-scrollbar pr-0.5">
+            <div className="flex flex-col md:grid md:grid-cols-2 gap-1.5 md:gap-2 max-h-48 overflow-y-auto no-scrollbar pr-0.5">
               {participants.map((p, idx) => {
                 const isCurrent = p.id === currentParticipantId;
                 const isDone = isCurrent || (Array.isArray(votedParticipantIds) && votedParticipantIds.includes(p.id));

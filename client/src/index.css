@@ -353,7 +353,7 @@ html.theme-transitioning [data-sliding-thumb] {
     opacity 0.15s ease !important;
 }
 
-/* Mobile PWA Shell */
+/* Responsive PWA & Desktop Adaptive Shell */
 .pwa-shell {
   width: 100%;
   max-width: 480px;
@@ -365,9 +365,10 @@ html.theme-transitioning [data-sliding-thumb] {
   flex-direction: column;
   position: relative;
   background-color: transparent;
+  transition: max-width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (min-width: 641px) {
+@media (min-width: 641px) and (max-width: 767px) {
   .pwa-shell {
     border-left: 1px solid var(--border-main);
     border-right: 1px solid var(--border-main);
@@ -375,12 +376,44 @@ html.theme-transitioning [data-sliding-thumb] {
   }
 }
 
-@media (max-width: 640px) {
+@media (min-width: 768px) {
   .pwa-shell {
+    max-width: 1120px;
     border-left: none;
     border-right: none;
     box-shadow: none;
+    padding-left: 16px;
+    padding-right: 16px;
   }
+}
+
+@media (min-width: 1024px) {
+  .pwa-shell {
+    max-width: 1200px;
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+}
+
+/* Desktop Keyboard Hint Badges */
+.kbd-shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-tertiary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Glass Surfaces */
@@ -662,6 +695,16 @@ button:active:not(:disabled),
   margin: -2px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+@media (min-width: 768px) {
+  .places-rail {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow-x: visible;
+    scroll-snap-type: none;
+    margin: 0;
+    padding: 0;
+  }
 }
 .places-rail::-webkit-scrollbar {
   display: none;

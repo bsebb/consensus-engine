@@ -14,8 +14,8 @@ export default function LobbyHeader({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 safe-pt-header pb-2 shrink-0">
-      <div className="relative flex items-center justify-between max-w-md mx-auto min-h-[40px]">
+    <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-3.5 sm:px-4 md:px-6 safe-pt-header pb-2 shrink-0">
+      <div className="relative flex items-center justify-between max-w-md md:max-w-6xl mx-auto min-h-[40px]">
         {/* Left Slot: Home Navigation Pill */}
         <div className="flex items-center justify-start z-10 shrink-0">
           <button

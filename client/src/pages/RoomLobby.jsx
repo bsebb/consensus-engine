@@ -464,7 +464,7 @@ export default function RoomLobby() {
       )}
 
       <main className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-3 pb-32">
-        <div className="max-w-md mx-auto w-full flex flex-col gap-3">
+        <div className="max-w-md md:max-w-6xl mx-auto w-full flex flex-col gap-3.5">
         {isVotingActive && (
           <div className="bg-emerald-500/15 border border-emerald-500/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 shadow-xs animate-[fadeIn_0.2s_ease-out]">
             <div className="flex items-center gap-2">
@@ -478,33 +478,39 @@ export default function RoomLobby() {
           </div>
         )}
 
-        <LobbyRoster
-          pin={pin} topic={topic} participants={participants}
-          candidateCount={displayedCandidates.length} isHost={isHost}
-          handleShareInvite={handleShareInvite} handleCopyPin={handleCopyPin} setQrModalOpen={setQrModalOpen}
-        />
+        <div className="w-full flex flex-col md:flex-row gap-4 lg:gap-6 items-start">
+          <aside className="w-full md:w-[340px] lg:w-[380px] shrink-0 flex flex-col gap-3.5">
+            <LobbyRoster
+              pin={pin} topic={topic} participants={participants}
+              candidateCount={displayedCandidates.length} isHost={isHost}
+              handleShareInvite={handleShareInvite} handleCopyPin={handleCopyPin} setQrModalOpen={setQrModalOpen}
+            />
 
-        {mode !== 'CUSTOM' && (
-          <StepZeroVault
-            lockedConstraint={lockedConstraint} budgetLimit={budgetLimit}
-            onSelectTier={handleSelectBudgetTier} locationContext={candidatePoolPreview[0] || userGps}
-          />
-        )}
+            {mode !== 'CUSTOM' && (
+              <StepZeroVault
+                lockedConstraint={lockedConstraint} budgetLimit={budgetLimit}
+                onSelectTier={handleSelectBudgetTier} locationContext={candidatePoolPreview[0] || userGps}
+              />
+            )}
+          </aside>
 
-        <CandidatePoolDeck
-          isHost={isHost} mode={mode} topic={topic} category={location.state?.category || topic}
-          extraPoolOptions={mode !== 'CUSTOM' ? activePool.slice(visiblePlacesCount) : []}
-          isLoading={loadingOptions} candidates={displayedCandidates} remainingPoolCount={remainingPoolCount}
-          lockedConstraint={lockedConstraint} prunedCount={prunedCount} suggestion={suggestion}
-          setSuggestion={setSuggestion} handleAddSuggestion={handleAddSuggestion}
-          handleQuickAddSuggestion={handleQuickAddSuggestion}
-          handleRemoveSuggestion={isHost ? handleRemoveSuggestion : undefined}
-          handleAddNextPlace={isHost ? handleAddNextPlace : undefined}
-          handleRemovePlace={isHost ? handleRemovePlace : undefined}
-          duplicateMatch={duplicateMatch} recentlyAddedName={recentlyAddedName}
-          onShuffle={isHost ? handleShuffleCandidates : undefined}
-          onReportClosed={isHost ? handleReportClosedVenue : undefined}
-        />
+          <section className="w-full flex-1 min-w-0">
+            <CandidatePoolDeck
+              isHost={isHost} mode={mode} topic={topic} category={location.state?.category || topic}
+              extraPoolOptions={mode !== 'CUSTOM' ? activePool.slice(visiblePlacesCount) : []}
+              isLoading={loadingOptions} candidates={displayedCandidates} remainingPoolCount={remainingPoolCount}
+              lockedConstraint={lockedConstraint} prunedCount={prunedCount} suggestion={suggestion}
+              setSuggestion={setSuggestion} handleAddSuggestion={handleAddSuggestion}
+              handleQuickAddSuggestion={handleQuickAddSuggestion}
+              handleRemoveSuggestion={isHost ? handleRemoveSuggestion : undefined}
+              handleAddNextPlace={isHost ? handleAddNextPlace : undefined}
+              handleRemovePlace={isHost ? handleRemovePlace : undefined}
+              duplicateMatch={duplicateMatch} recentlyAddedName={recentlyAddedName}
+              onShuffle={isHost ? handleShuffleCandidates : undefined}
+              onReportClosed={isHost ? handleReportClosedVenue : undefined}
+            />
+          </section>
+        </div>
         </div>
       </main>
 

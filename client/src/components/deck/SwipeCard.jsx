@@ -149,7 +149,7 @@ export default function SwipeCard({
     : `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) rotate(${dragOffset.x * 0.08}deg)`;
 
   return (
-    <main className="px-3 sm:px-4 py-0.5 sm:py-1 flex flex-col justify-center flex-1 min-h-0 h-full max-w-md mx-auto w-full select-none swipe-card-viewport">
+    <main className="px-3 sm:px-4 py-0.5 sm:py-1 flex flex-col justify-center flex-1 min-h-0 h-full max-w-md md:max-w-lg lg:max-w-xl mx-auto w-full select-none swipe-card-viewport">
       <div
         ref={setCombinedRef}
         onPointerDown={handlePointerDown}

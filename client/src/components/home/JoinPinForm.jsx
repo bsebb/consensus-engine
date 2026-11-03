@@ -165,7 +165,6 @@ export default function JoinPinForm({
                   ? 'border-[var(--accent-bg)] bg-[var(--accent-bg)]/10 text-[var(--accent-bg)]'
                   : 'border-[var(--border-main)] bg-[var(--bg-inset)] text-[var(--text-primary)] focus:border-[var(--accent-bg)]'
               }`}
-              aria-label={`Digit ${index + 1}`}
             />
           ))}
         </div>

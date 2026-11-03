@@ -151,7 +151,7 @@ export default function History() {
     <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden select-none">
       {/* PWA Mobile Header */}
       <header className="sticky top-0 z-30 bg-[var(--bg-root)] border-b border-[var(--border-main)] px-4 safe-pt-header pb-3 shrink-0">
-        <div className="relative flex items-center justify-between max-w-md mx-auto w-full min-h-[36px]">
+        <div className="relative flex items-center justify-between max-w-md md:max-w-5xl mx-auto w-full min-h-[36px]">
           <div className="flex items-center z-10">
             <button
               type="button"
@@ -193,7 +193,7 @@ export default function History() {
 
       {/* Main Content */}
       <main className="w-full flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-4 pt-3.5 pb-8">
-        <div className="max-w-md mx-auto w-full flex flex-col gap-3.5">
+        <div className="max-w-md md:max-w-5xl mx-auto w-full flex flex-col gap-3.5">
         {/* Section Header: Clean headline without duplicate labels */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-baseline gap-2">
@@ -246,7 +246,7 @@ export default function History() {
           </div>
         ) : (
           /* Decision Cards Feed with Smooth Accordion Drawer */
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col md:grid md:grid-cols-2 md:items-start gap-3.5">
             {sessions.map((s, idx) => {
               const isExpanded = expandedPin === s.pin;
               const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
